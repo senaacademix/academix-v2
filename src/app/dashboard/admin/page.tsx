@@ -1,0 +1,30 @@
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { AdminDashboard } from "@/features/admin/components/AdminDashboard";
+import { getAdminDashboardStatsAction, getRecentActivityAction } from "@/features/admin/actions/adminActions";
+
+export default async function AdminDashboardPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+    redirect("/dashboard/student");
+  }
+
+  const [stats, recentActivity] = await Promise.all([
+    getAdminDashboardStatsAction(),
+    getRecentActivityAction(5)
+  ]);
+
+  return (
+    <div className="container mx-auto py-8">
+      <AdminDashboard 
+        stats={stats} 
+        recentActivity={recentActivity} 
+        isObserver={session.user.role === "observer"}
+        currentUserRole={session.user.role}
+        userName={session.user.name || undefined}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,1945 @@
+"use client";
+
+import React, { useMemo, useState, useEffect } from "react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipProvider as UITooltipProvider, TooltipTrigger as UITooltipTrigger } from "@/components/ui/tooltip";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    LineChart,
+    Line
+} from "recharts";
+import { Users, GraduationCap, UserX, UserCheck, BookOpen, AlertTriangle, CheckCircle2, Clock, Calendar, AlertCircle, Settings, Info, Eye, EyeOff, Trash2, ExternalLink, FileText, Mail, Loader2, Search, Award, LogOut } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatName } from "@/lib/utils";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { toast } from "sonner";
+import { getGroupImprovementPlans, deleteImprovementPlan } from "@/features/student/actions/improvementPlanActions";
+import { fromUTC } from "@/lib/dateUtils";
+
+interface GroupAnalyticsPanelProps {
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    inline?: boolean;
+    isTeacher?: boolean;
+    isLoading: boolean;
+    analyticsData: {
+        groupId?: string;
+        groupName: string;
+        groupDescription?: string | null;
+        program?: string;
+        period?: string;
+        environment?: string;
+        startDate?: Date | null;
+        endDate?: Date | null;
+        startTime?: string;
+        endTime?: string;
+        students: { total: number; active: number; banned: number };
+        totalCourseClasses: number;
+        attendances: { status: string; date: Date; courseId: string }[];
+        remarks: {
+            id: string;
+            type: string;
+            title: string;
+            description: string;
+            date: Date;
+            userId: string;
+            courseId: string;
+            course: { title: string };
+            user: { name: string; profile: any };
+            teacher: { name: string; profile: any };
+        }[];
+        coursesStats: { title: string; averageGrade: number; totalGrades: number }[];
+        coursesList?: { id: string; title: string; teacherName?: string; schedules?: { dayOfWeek: string }[] }[];
+        studentMetrics?: {
+            id: string;
+            name: string;
+            identificacion: string;
+            banned: boolean;
+            gradesAvg: number;
+            courseGrades?: Record<string, number>;
+            courseAttendances?: Record<string, { present: number; absent: number; late: number; leaveEarly?: number; absentHours?: number; lateHours?: number; leaveEarlyHours?: number; totalClasses?: number }>;
+            courseRemarks?: Record<string, { attention: number; commendation: number }>;
+            attendances: { present: number; absent: number; late: number; leaveEarly?: number; absentHours?: number; lateHours?: number; leaveEarlyHours?: number };
+            remarks: { attention: number; commendation: number };
+        }[];
+    } | null;
+}
+
+const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#3b82f6'];
+
+const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        // Default weights if not passed
+        const wAcad = data.wAcademic !== undefined ? data.wAcademic : 70;
+        const wAtt = data.wAttendance !== undefined ? data.wAttendance : 20;
+        const wDisc = data.wDiscipline !== undefined ? data.wDiscipline : 10;
+        
+        return (
+            <div className="bg-popover text-popover-foreground border rounded-xl p-4 shadow-xl text-xs space-y-2 max-w-[280px]">
+                <p className="font-extrabold text-sm border-b pb-1 text-foreground">{data.name}</p>
+                <div className="space-y-1">
+                    <p className="font-bold text-sm text-indigo-600 dark:text-indigo-400">Puntaje Integral: {data.score} / 100</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest pt-1">Desglose de Puntos:</p>
+                    <p className="flex justify-between gap-4 text-muted-foreground">• Rendimiento ({wAcad}%): <span className="font-medium text-foreground">{data.academic} pts ({data.gradesAvg > 0 ? data.gradesAvg.toFixed(2) : "N/A"})</span></p>
+                    <p className="flex justify-between gap-4 text-muted-foreground">• Asistencia ({wAtt}%): <span className="font-medium text-foreground">{data.attendance} pts ({data.absences} F / {data.lates} T / {data.leaveEarly || 0} R)</span></p>
+                    <p className="flex justify-between gap-4 text-muted-foreground">• Disciplina ({wDisc}%): <span className="font-medium text-foreground">{data.discipline} pts ({data.attentionCalls} LL / {data.commendations} F)</span></p>
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
+
+export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeacher, isLoading, analyticsData }: GroupAnalyticsPanelProps) {
+    const isTeacherView = isTeacher ?? inline;
+    
+    const [selectedCourseId, setSelectedCourseId] = useState<string>("all");
+    const [academicWeight, setAcademicWeight] = useState<number>(70);
+    const [attendanceWeight, setAttendanceWeight] = useState<number>(20);
+    const [disciplineWeight, setDisciplineWeight] = useState<number>(10);
+    const [showWeightsConfig, setShowWeightsConfig] = useState<boolean>(false);
+    const [showSourcesInfo, setShowSourcesInfo] = useState<boolean>(false);
+
+    const [improvementPlans, setImprovementPlans] = useState<any[]>([]);
+    const [plansLoading, setPlansLoading] = useState(false);
+    const [viewPlanDetail, setViewPlanDetail] = useState<any | null>(null);
+    const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+
+    const [disciplineStudentFilter, setDisciplineStudentFilter] = useState("all");
+    const [disciplineTypeFilter, setDisciplineTypeFilter] = useState("all");
+    const [disciplineSearch, setDisciplineSearch] = useState("");
+
+    const loadGroupPlans = async () => {
+        if (!analyticsData?.groupId) return;
+        setPlansLoading(true);
+        try {
+            const res = await getGroupImprovementPlans(analyticsData.groupId);
+            if (res.success && res.data) {
+                setImprovementPlans(res.data);
+            } else {
+                toast.error(res.error || "No se pudieron cargar los planes de mejoramiento");
+            }
+        } catch (error) {
+            console.error("Error al cargar planes:", error);
+        } finally {
+            setPlansLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (open && analyticsData?.groupId) {
+            loadGroupPlans();
+        }
+    }, [open, analyticsData?.groupId]);
+
+    const handleConfirmDelete = async () => {
+        if (!planToDelete) return;
+        const toastId = toast.loading("Eliminando plan de mejoramiento...");
+        try {
+            const res = await deleteImprovementPlan(planToDelete);
+            if (res.success) {
+                toast.success("Plan eliminado correctamente", { id: toastId });
+                setPlanToDelete(null);
+                loadGroupPlans();
+            } else {
+                toast.error(res.error || "Error al eliminar el plan", { id: toastId });
+            }
+        } catch (error: any) {
+            toast.error(error.message || "Error al eliminar el plan", { id: toastId });
+        }
+    };
+
+    const handleWeightChange = (type: "academic" | "attendance" | "discipline", value: number) => {
+        if (type === "academic") {
+            setAcademicWeight(value);
+        } else if (type === "attendance") {
+            setAttendanceWeight(value);
+        } else if (type === "discipline") {
+            setDisciplineWeight(value);
+        }
+    };
+
+
+
+    const groupDailyHours = useMemo(() => {
+        if (!analyticsData) return 0;
+        const gStart = analyticsData.startTime || "08:00";
+        const gEnd = analyticsData.endTime || "12:00";
+        const [gsh, gsm] = gStart.split(":").map(Number);
+        const [geh, gem] = gEnd.split(":").map(Number);
+        return Math.max(0, (geh * 60 + gem - (gsh * 60 + gsm)) / 60);
+    }, [analyticsData]);
+
+    const totalScheduledHours = useMemo(() => {
+        if (!analyticsData) return 0;
+        return analyticsData.totalCourseClasses * groupDailyHours;
+    }, [analyticsData, groupDailyHours]);
+
+    const detailedMetricsData = useMemo(() => {
+        if (!analyticsData || !analyticsData.studentMetrics) return [];
+        return analyticsData.studentMetrics.map(s => {
+            let absentCount = 0;
+            let lateCount = 0;
+            let leaveEarlyCount = 0;
+            let absentHours = 0;
+            let lateHours = 0;
+            let leaveEarlyHours = 0;
+            let totalClassDays = analyticsData.totalCourseClasses;
+
+            if (selectedCourseId === "all") {
+                absentCount = s.attendances.absent;
+                lateCount = s.attendances.late;
+                leaveEarlyCount = s.attendances.leaveEarly || 0;
+                absentHours = s.attendances.absentHours || (absentCount * groupDailyHours);
+                lateHours = s.attendances.lateHours || 0;
+                leaveEarlyHours = s.attendances.leaveEarlyHours || 0;
+            } else {
+                const cAtt = s.courseAttendances?.[selectedCourseId] || { absent: 0, late: 0, leaveEarly: 0, absentHours: 0, lateHours: 0, leaveEarlyHours: 0, totalClasses: 0 };
+                absentCount = cAtt.absent;
+                lateCount = cAtt.late;
+                leaveEarlyCount = cAtt.leaveEarly || 0;
+                absentHours = cAtt.absentHours || (absentCount * groupDailyHours);
+                lateHours = cAtt.lateHours || 0;
+                leaveEarlyHours = cAtt.leaveEarlyHours || 0;
+                totalClassDays = cAtt.totalClasses !== undefined ? cAtt.totalClasses : analyticsData.totalCourseClasses;
+            }
+            
+            const dynamicTotalScheduledHours = totalClassDays * groupDailyHours;
+
+            const attendanceDaysRate = totalClassDays > 0 
+                ? Math.max(0, Math.min(100, ((totalClassDays - absentCount) / totalClassDays) * 100))
+                : 100;
+            
+            const totalLostHours = absentHours + lateHours + leaveEarlyHours;
+            const attendanceHoursRate = dynamicTotalScheduledHours > 0
+                ? Math.max(0, Math.min(100, ((dynamicTotalScheduledHours - totalLostHours) / dynamicTotalScheduledHours) * 100))
+                : 100;
+
+            const lateDaysRate = totalClassDays > 0
+                ? Math.max(0, Math.min(100, (lateCount / totalClassDays) * 100))
+                : 0;
+
+            const lateHoursRate = dynamicTotalScheduledHours > 0
+                ? Math.max(0, Math.min(100, (lateHours / dynamicTotalScheduledHours) * 100))
+                : 0;
+
+            const leaveEarlyDaysRate = totalClassDays > 0
+                ? Math.max(0, Math.min(100, (leaveEarlyCount / totalClassDays) * 100))
+                : 0;
+                
+            const details: any[] = [];
+            if (selectedCourseId === "all") {
+                Object.keys(s.courseAttendances || {}).forEach(cId => {
+                    const ca = s.courseAttendances![cId];
+                    if (ca.absent > 0 || ca.late > 0 || (ca.leaveEarly || 0) > 0) {
+                        const cInfo = analyticsData.coursesList?.find(c => c.id === cId);
+                        details.push({
+                            courseName: cInfo?.title || "Desconocido",
+                            teacherName: cInfo?.teacherName || "No asignado",
+                            absent: ca.absent,
+                            late: ca.late,
+                            leaveEarly: ca.leaveEarly || 0
+                        });
+                    }
+                });
+            } else {
+                const ca = s.courseAttendances?.[selectedCourseId];
+                if (ca && (ca.absent > 0 || ca.late > 0 || (ca.leaveEarly || 0) > 0)) {
+                    const cInfo = analyticsData.coursesList?.find(c => c.id === selectedCourseId);
+                    details.push({
+                        courseName: cInfo?.title || "Desconocido",
+                        teacherName: cInfo?.teacherName || "No asignado",
+                        absent: ca.absent,
+                        late: ca.late,
+                        leaveEarly: ca.leaveEarly || 0
+                    });
+                }
+            }
+
+            return {
+                student: { id: s.id, name: s.name, profile: { identificacion: s.identificacion } },
+                absentCount,
+                absentHours,
+                lateCount,
+                lateHours,
+                leaveEarlyCount,
+                leaveEarlyHours,
+                attendanceDaysRate,
+                attendanceHoursRate,
+                lateDaysRate,
+                lateHoursRate,
+                leaveEarlyDaysRate,
+                totalClassDays,
+                totalScheduledHours: dynamicTotalScheduledHours,
+                details
+            };
+        }).sort((a, b) => a.student.name.localeCompare(b.student.name, 'es', { sensitivity: 'base' }));
+    }, [analyticsData, selectedCourseId, groupDailyHours]);
+
+    const filteredAttendancesCount = useMemo(() => {
+        if (!analyticsData) return 0;
+        if (selectedCourseId === "all") return analyticsData.attendances.length;
+        
+        let count = 0;
+        if (analyticsData.studentMetrics) {
+            analyticsData.studentMetrics.forEach(s => {
+                const cAtt = s.courseAttendances?.[selectedCourseId];
+                if (cAtt) {
+                    count += cAtt.absent + cAtt.late + (cAtt.leaveEarly || 0);
+                }
+            });
+        }
+        return count;
+    }, [analyticsData, selectedCourseId]);
+
+    // Asistencias Chart Data
+    const attendanceData = useMemo(() => {
+        if (!analyticsData) return [];
+        let absent = 0, late = 0, present = 0, leaveEarly = 0;
+        
+        if (selectedCourseId === "all" || !analyticsData.studentMetrics) {
+            analyticsData.attendances.forEach(att => {
+                if (att.status === "ABSENT") absent++;
+                else if (att.status === "LATE") late++;
+                else if (att.status === "LEAVE_EARLY") leaveEarly++;
+            });
+            const totalExpected = analyticsData.totalCourseClasses * analyticsData.students.active;
+            present = Math.max(0, totalExpected - absent - late - leaveEarly);
+        } else {
+            analyticsData.studentMetrics.forEach(s => {
+                if (s.courseAttendances && s.courseAttendances[selectedCourseId]) {
+                    absent += s.courseAttendances[selectedCourseId].absent;
+                    late += s.courseAttendances[selectedCourseId].late;
+                    present += s.courseAttendances[selectedCourseId].present;
+                    leaveEarly += s.courseAttendances[selectedCourseId].leaveEarly || 0;
+                }
+            });
+        }
+
+        return [
+            { name: "Presente", value: present },
+            { name: "Ausente", value: absent },
+            { name: "Llegada Tarde", value: late },
+            { name: "Retiro Temprano", value: leaveEarly },
+        ];
+    }, [analyticsData, selectedCourseId]);
+
+    // Remarks Chart Data
+    const remarksData = useMemo(() => {
+        if (!analyticsData) return [];
+        let attention = 0, commendation = 0;
+        
+        if (selectedCourseId === "all" || !analyticsData.studentMetrics) {
+            analyticsData.remarks.forEach(rem => {
+                if (rem.type === "ATTENTION") attention++;
+                if (rem.type === "COMMENDATION") commendation++;
+            });
+        } else {
+            analyticsData.studentMetrics.forEach(s => {
+                if (s.courseRemarks && s.courseRemarks[selectedCourseId]) {
+                    attention += s.courseRemarks[selectedCourseId].attention;
+                    commendation += s.courseRemarks[selectedCourseId].commendation;
+                }
+            });
+        }
+
+        return [
+            { name: "Llamados de Atención", value: attention, fill: '#ef4444' },
+            { name: "Felicitaciones", value: commendation, fill: '#3b82f6' },
+        ];
+    }, [analyticsData, selectedCourseId]);
+
+    // Filtered Remarks List for Discipline Feed
+    const filteredRemarks = useMemo(() => {
+        if (!analyticsData || !analyticsData.remarks) return [];
+        return analyticsData.remarks.filter(rem => {
+            // Student Filter
+            const matchesStudent = disciplineStudentFilter === "all" || rem.userId === disciplineStudentFilter;
+            // Type Filter
+            const matchesType = disciplineTypeFilter === "all" || rem.type === disciplineTypeFilter;
+            // Search filter (description, title, course, creator/teacher)
+            const searchLower = disciplineSearch.toLowerCase();
+            const studentName = rem.user?.name || "";
+            const studentProfileNombres = rem.user?.profile?.nombres || "";
+            const studentProfileApellido = rem.user?.profile?.apellido || "";
+            const studentFullName = `${studentName} ${studentProfileNombres} ${studentProfileApellido}`.toLowerCase();
+            
+            const teacherName = rem.teacher?.name || "";
+            const teacherProfileNombres = rem.teacher?.profile?.nombres || "";
+            const teacherProfileApellido = rem.teacher?.profile?.apellido || "";
+            const teacherFullName = `${teacherName} ${teacherProfileNombres} ${teacherProfileApellido}`.toLowerCase();
+
+            const courseTitle = (rem.course?.title || "").toLowerCase();
+            const title = (rem.title || "").toLowerCase();
+            const description = (rem.description || "").toLowerCase();
+
+            const matchesSearch = !disciplineSearch ||
+                studentFullName.includes(searchLower) ||
+                teacherFullName.includes(searchLower) ||
+                courseTitle.includes(searchLower) ||
+                title.includes(searchLower) ||
+                description.includes(searchLower);
+
+            return matchesStudent && matchesType && matchesSearch;
+        });
+    }, [analyticsData, disciplineStudentFilter, disciplineTypeFilter, disciplineSearch]);
+
+    // Missing Attendance calculation per teacher
+    const missingAttendanceList = useMemo(() => {
+        if (!analyticsData || !analyticsData.coursesList) return [];
+
+        const list: { courseId: string; title: string; teacherName: string; missingDates: string[] }[] = [];
+        
+        const rawStart = analyticsData.startDate ? new Date(analyticsData.startDate) : null;
+        const rawEnd = analyticsData.endDate ? new Date(analyticsData.endDate) : null;
+        
+        const today = new Date();
+        today.setHours(12, 0, 0, 0);
+        
+        const start = rawStart && !isNaN(rawStart.getTime()) ? new Date(rawStart) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        start.setHours(12, 0, 0, 0);
+        
+        const end = rawEnd && !isNaN(rawEnd.getTime()) && rawEnd < today ? new Date(rawEnd) : today;
+        end.setHours(12, 0, 0, 0);
+
+        const dayOfWeekNames = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+
+        const recordedDatesMap = new Map<string, Set<string>>();
+        (analyticsData.attendances || []).forEach(att => {
+            if (!att.date) return;
+            const dStr = new Date(att.date).toISOString().split('T')[0];
+            if (!recordedDatesMap.has(att.courseId)) {
+                recordedDatesMap.set(att.courseId, new Set());
+            }
+            recordedDatesMap.get(att.courseId)!.add(dStr);
+        });
+
+        analyticsData.coursesList.forEach(course => {
+            const schedules = course.schedules || [];
+            const scheduledDays = schedules.map((s: any) => s.dayOfWeek);
+            
+            const activeScheduledDays = scheduledDays.length > 0 
+                ? scheduledDays 
+                : ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+
+            const missing: string[] = [];
+            const cur = new Date(start);
+
+            while (cur <= end) {
+                const jsDay = cur.getDay();
+                const dayOfWeekName = dayOfWeekNames[jsDay];
+                
+                if (activeScheduledDays.includes(dayOfWeekName)) {
+                    const dateStr = cur.toISOString().split('T')[0];
+                    const courseRecs = recordedDatesMap.get(course.id);
+                    
+                    if (!courseRecs || !courseRecs.has(dateStr)) {
+                        missing.push(cur.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+                    }
+                }
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            if (missing.length > 0) {
+                list.push({
+                    courseId: course.id,
+                    title: course.title,
+                    teacherName: course.teacherName || "No asignado",
+                    missingDates: missing
+                });
+            }
+        });
+
+        return list;
+    }, [analyticsData]);
+
+    // Per Student Course Attendances
+    const studentAttendanceBarsData = useMemo(() => {
+        if (!analyticsData || !analyticsData.studentMetrics) return [];
+        return analyticsData.studentMetrics
+            .map(s => {
+                const att = selectedCourseId === "all" 
+                    ? { present: s.attendances.present, absent: s.attendances.absent, late: s.attendances.late, leaveEarly: s.attendances.leaveEarly || 0 }
+                    : {
+                        present: s.courseAttendances?.[selectedCourseId]?.present || 0,
+                        absent: s.courseAttendances?.[selectedCourseId]?.absent || 0,
+                        late: s.courseAttendances?.[selectedCourseId]?.late || 0,
+                        leaveEarly: s.courseAttendances?.[selectedCourseId]?.leaveEarly || 0
+                      };
+                
+                const details: any[] = [];
+                if (selectedCourseId === "all") {
+                    Object.keys(s.courseAttendances || {}).forEach(cId => {
+                        const ca = s.courseAttendances![cId];
+                        if (ca.absent > 0 || ca.late > 0 || (ca.leaveEarly || 0) > 0) {
+                            const cInfo = analyticsData.coursesList?.find(c => c.id === cId);
+                            details.push({
+                                courseName: cInfo?.title || "Desconocido",
+                                teacherName: cInfo?.teacherName || "No asignado",
+                                absent: ca.absent,
+                                late: ca.late,
+                                leaveEarly: ca.leaveEarly || 0
+                            });
+                        }
+                    });
+                } else {
+                    const ca = s.courseAttendances?.[selectedCourseId];
+                    if (ca && (ca.absent > 0 || ca.late > 0 || (ca.leaveEarly || 0) > 0)) {
+                        const cInfo = analyticsData.coursesList?.find(c => c.id === selectedCourseId);
+                        details.push({
+                            courseName: cInfo?.title || "Desconocido",
+                            teacherName: cInfo?.teacherName || "No asignado",
+                            absent: ca.absent,
+                            late: ca.late,
+                            leaveEarly: ca.leaveEarly || 0
+                        });
+                    }
+                }
+
+                return {
+                    name: s.name.split(' ')[0] + (s.name.split(' ').length > 1 ? ' ' + s.name.split(' ')[1] : ''),
+                    presente: att.present,
+                    ausente: att.absent,
+                    tarde: att.late,
+                    retiro: att.leaveEarly,
+                    fullName: s.name,
+                    details
+                };
+            })
+            .sort((a, b) => a.fullName.localeCompare(b.fullName, 'es', { sensitivity: 'base' }));
+    }, [analyticsData, selectedCourseId]);
+
+    // Courses Stats Data
+    const coursesData = useMemo(() => {
+        if (!analyticsData) return [];
+        return analyticsData.coursesStats.map(c => ({
+            name: c.title.length > 20 ? c.title.substring(0, 20) + "..." : c.title,
+            promedio: c.averageGrade,
+            totalNotas: c.totalGrades
+        }));
+    }, [analyticsData]);
+
+    // Per Student Course Grades
+    const studentGradesData = useMemo(() => {
+        if (!analyticsData || !analyticsData.studentMetrics || selectedCourseId === "all") return [];
+        
+        return analyticsData.studentMetrics
+            .filter(s => s.courseGrades && typeof s.courseGrades[selectedCourseId] === 'number')
+            .map(s => ({
+                name: s.name.split(' ')[0] + (s.name.split(' ').length > 1 ? ' ' + s.name.split(' ')[1] : ''),
+                nota: s.courseGrades![selectedCourseId],
+                fullName: s.name
+            }))
+            .sort((a, b) => a.fullName.localeCompare(b.fullName, 'es', { sensitivity: 'base' }));
+    }, [analyticsData, selectedCourseId]);
+
+    // Student Ranking Chart Data (Rank from best to worst based on Grades, Attendance, and Attention Calls)
+    const rankedStudentsData = useMemo(() => {
+        if (!analyticsData || !analyticsData.studentMetrics) return [];
+
+        const selectedCourse = analyticsData.coursesList?.find(c => c.id === selectedCourseId);
+        const selectedCourseTitle = selectedCourse?.title;
+        const stats = analyticsData.coursesStats.find(c => c.title === selectedCourseTitle);
+        const hasGrades = selectedCourseId === "all"
+            ? analyticsData.coursesStats.some(c => c.totalGrades > 0)
+            : (stats ? stats.totalGrades > 0 : false);
+
+        return analyticsData.studentMetrics.map(student => {
+            let gradesAvg = 0;
+            let absences = 0;
+            let lates = 0;
+            let leaveEarly = 0;
+            let attentionCalls = 0;
+            let commendations = 0;
+
+            if (selectedCourseId === "all") {
+                gradesAvg = student.gradesAvg;
+                absences = student.attendances?.absent || 0;
+                lates = student.attendances?.late || 0;
+                leaveEarly = student.attendances?.leaveEarly || 0;
+                attentionCalls = student.remarks?.attention || 0;
+                commendations = student.remarks?.commendation || 0;
+            } else {
+                gradesAvg = student.courseGrades?.[selectedCourseId] || 0;
+                const courseAtt = student.courseAttendances?.[selectedCourseId] || { present: 0, absent: 0, late: 0, leaveEarly: 0 };
+                absences = courseAtt.absent;
+                lates = courseAtt.late;
+                leaveEarly = courseAtt.leaveEarly || 0;
+                const courseRem = student.courseRemarks?.[selectedCourseId] || { attention: 0, commendation: 0 };
+                attentionCalls = courseRem.attention;
+                commendations = courseRem.commendation;
+            }
+
+            // 1. Academic Score: based on gradesAvg (0 to 5).
+            const academicScore = hasGrades ? (gradesAvg > 0 ? (gradesAvg / 5) * 100 : 0) : 100;
+
+            // 2. Attendance Score: 10 points penalty per absence, 4 points per late arrival, 4 points per early leave.
+            const attendanceScore = Math.max(0, 100 - (absences * 10) - (lates * 4) - (leaveEarly * 4));
+
+            // 3. Discipline Score: 15 points penalty per attention call, +5 points bonus per commendation.
+            const disciplineScore = Math.min(100, Math.max(0, 100 - (attentionCalls * 15) + (commendations * 5)));
+
+            // Normalized Weights
+            const totalWeight = academicWeight + attendanceWeight + disciplineWeight;
+            const normAcademic = totalWeight > 0 ? academicWeight / totalWeight : 0.7;
+            const normAttendance = totalWeight > 0 ? attendanceWeight / totalWeight : 0.2;
+            const normDiscipline = totalWeight > 0 ? disciplineWeight / totalWeight : 0.1;
+
+            // Composite Score
+            const compositeScore = parseFloat(
+                ((academicScore * normAcademic) + (attendanceScore * normAttendance) + (disciplineScore * normDiscipline)).toFixed(1)
+            );
+
+            return {
+                name: student.name,
+                score: compositeScore,
+                academic: parseFloat(academicScore.toFixed(1)),
+                attendance: parseFloat(attendanceScore.toFixed(1)),
+                discipline: parseFloat(disciplineScore.toFixed(1)),
+                gradesAvg,
+                absences,
+                lates,
+                leaveEarly,
+                attentionCalls,
+                commendations,
+                wAcademic: academicWeight,
+                wAttendance: attendanceWeight,
+                wDiscipline: disciplineWeight
+            };
+        }).sort((a, b) => b.score - a.score);
+    }, [analyticsData, selectedCourseId, groupDailyHours, academicWeight, attendanceWeight, disciplineWeight]);
+
+    // ── Group Integral Score (average of all students' composite scores) ──
+    const groupIntegralScore = useMemo(() => {
+        if (!rankedStudentsData || rankedStudentsData.length === 0) return null;
+        const total = rankedStudentsData.reduce((acc, s) => acc + s.score, 0);
+        const avg = total / rankedStudentsData.length;
+
+        // Breakdown averages
+        const avgAcademic = rankedStudentsData.reduce((acc, s) => acc + s.academic, 0) / rankedStudentsData.length;
+        const avgAttendance = rankedStudentsData.reduce((acc, s) => acc + s.attendance, 0) / rankedStudentsData.length;
+        const avgDiscipline = rankedStudentsData.reduce((acc, s) => acc + s.discipline, 0) / rankedStudentsData.length;
+
+        let label = "Excelente";
+        let color = "text-emerald-500";
+        let bgColor = "bg-emerald-500/10";
+        let borderColor = "border-emerald-300 dark:border-emerald-700";
+        let ringColor = "ring-emerald-400";
+        if (avg < 40) { label = "Crítico"; color = "text-red-500"; bgColor = "bg-red-500/10"; borderColor = "border-red-300 dark:border-red-700"; ringColor = "ring-red-400"; }
+        else if (avg < 60) { label = "Bajo"; color = "text-orange-500"; bgColor = "bg-orange-500/10"; borderColor = "border-orange-300 dark:border-orange-700"; ringColor = "ring-orange-400"; }
+        else if (avg < 75) { label = "Regular"; color = "text-amber-500"; bgColor = "bg-amber-500/10"; borderColor = "border-amber-300 dark:border-amber-700"; ringColor = "ring-amber-400"; }
+        else if (avg < 88) { label = "Bueno"; color = "text-blue-500"; bgColor = "bg-blue-500/10"; borderColor = "border-blue-300 dark:border-blue-700"; ringColor = "ring-blue-400"; }
+
+        return { score: parseFloat(avg.toFixed(1)), label, color, bgColor, borderColor, ringColor, avgAcademic: parseFloat(avgAcademic.toFixed(1)), avgAttendance: parseFloat(avgAttendance.toFixed(1)), avgDiscipline: parseFloat(avgDiscipline.toFixed(1)) };
+    }, [rankedStudentsData]);
+
+
+
+    if (!open && !inline) return null;
+
+    const content = (
+        <div className={`flex flex-col h-full ${inline ? 'w-full bg-transparent' : 'bg-slate-50 dark:bg-slate-950'}`}>
+            {!inline && (
+                <DialogHeader className="p-6 pb-2 shrink-0 border-b bg-white dark:bg-slate-900 shadow-sm">
+                    <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                        <BarChart className="w-6 h-6 text-primary" />
+                        Analítica del Grupo: {analyticsData?.groupName || "Cargando..."}
+                    </DialogTitle>
+                    <DialogDescription>
+                        Vista general de rendimiento, asistencia y comportamiento de todos los estudiantes.
+                    </DialogDescription>
+                </DialogHeader>
+            )}
+
+            <div className={`flex-1 min-h-0 overflow-y-auto ${inline ? 'p-0 bg-transparent' : 'p-6'}`}>
+                    {isLoading || !analyticsData ? (
+                        <div className="flex flex-col items-center justify-center h-[50vh]">
+                            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+                            <p className="text-muted-foreground animate-pulse">Analizando métricas del grupo...</p>
+                        </div>
+                    ) : (
+                        <div className={`w-full space-y-6 pb-20 ${inline ? 'px-0' : 'px-4 md:px-8'}`}>
+                            
+                            {/* Group Information (Solo en vista de modal) */}
+                            {!inline && (
+                                <Card className="bg-primary/5 border-primary/20 shadow-sm">
+                                    <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 justify-between items-start sm:items-center flex-wrap">
+                                        <div className="space-y-1">
+                                            <h4 className="font-semibold text-lg flex items-center gap-2 text-primary">
+                                                <GraduationCap className="w-5 h-5" />
+                                                {analyticsData.program || "Programa no asignado"}
+                                            </h4>
+                                            {analyticsData.groupDescription && (
+                                                <p className="text-sm text-muted-foreground">{analyticsData.groupDescription}</p>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 sm:gap-4 text-sm font-medium">
+                                            {analyticsData.period && (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border shadow-sm">
+                                                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                                                    <span>{analyticsData.period}</span>
+                                                </div>
+                                            )}
+                                            {analyticsData.environment && (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border shadow-sm">
+                                                    <BookOpen className="w-4 h-4 text-muted-foreground" />
+                                                    <span>{analyticsData.environment}</span>
+                                                </div>
+                                            )}
+                                            {(analyticsData.startTime || analyticsData.endTime) && (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border shadow-sm">
+                                                    <Clock className="w-4 h-4 text-muted-foreground" />
+                                                    <span>
+                                                        {analyticsData.startTime || "--:--"} - {analyticsData.endTime || "--:--"}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* KPI Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <Card>
+                                    <CardContent className="p-6 flex items-center gap-4">
+                                        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
+                                            <Users className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Total Estudiantes</p>
+                                            <h3 className="text-2xl font-bold">{analyticsData.students.total}</h3>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardContent className="p-6 flex items-center gap-4">
+                                        <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full">
+                                            <UserCheck className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Estudiantes Activos</p>
+                                            <h3 className="text-2xl font-bold">{analyticsData.students.active}</h3>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardContent className="p-6 flex items-center gap-4">
+                                        <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full">
+                                            <UserX className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Estudiantes Baneados</p>
+                                            <h3 className="text-2xl font-bold">{analyticsData.students.banned}</h3>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardContent className="p-6 flex items-center gap-4">
+                                        <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">
+                                            <BookOpen className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Inasistencias, Retardos y Retiros Reg.</p>
+                                            <h3 className="text-2xl font-bold">{filteredAttendancesCount}</h3>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* ── Group Integral Score Card ── */}
+                            {groupIntegralScore && (
+                                <Card className={`border-2 ${groupIntegralScore.borderColor} ${groupIntegralScore.bgColor} shadow-md overflow-hidden`}>
+                                    <CardContent className="p-0">
+                                        <div className="flex flex-col md:flex-row items-center gap-0">
+                                            {/* Big score circle */}
+                                            <div className="flex flex-col items-center justify-center p-8 md:p-10 shrink-0 border-b md:border-b-0 md:border-r border-inherit w-full md:w-auto">
+                                                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Puntaje Integral del Grupo</p>
+                                                <div className={`relative flex items-center justify-center w-32 h-32 rounded-full ring-4 ${groupIntegralScore.ringColor} bg-background shadow-lg`}>
+                                                    <div className="text-center">
+                                                        <span className={`text-4xl font-black ${groupIntegralScore.color} leading-none`}>
+                                                            {groupIntegralScore.score}
+                                                        </span>
+                                                        <span className="block text-[10px] text-muted-foreground font-semibold">/ 100</span>
+                                                    </div>
+                                                </div>
+                                                <span className={`mt-3 text-base font-extrabold tracking-wide ${groupIntegralScore.color}`}>
+                                                    {groupIntegralScore.label}
+                                                </span>
+                                                <p className="text-[10px] text-muted-foreground mt-0.5 text-center max-w-[160px]">
+                                                    Promedio integral de {analyticsData.studentMetrics?.length || 0} estudiantes activos
+                                                </p>
+                                            </div>
+
+                                            {/* Breakdown bars */}
+                                            <div className="flex-1 p-6 md:p-8 grid grid-cols-1 sm:grid-cols-3 gap-5 w-full">
+                                                {/* Academic */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                                            <span className="text-xs font-bold text-foreground">Rendimiento</span>
+                                                        </div>
+                                                        <span className="text-sm font-extrabold text-indigo-500">{groupIntegralScore.avgAcademic}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
+                                                    </div>
+                                                    <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-indigo-500 rounded-full transition-all duration-700"
+                                                            style={{ width: `${groupIntegralScore.avgAcademic}%` }}
+                                                        />
+                                                    </div>
+                                                    <p className="text-[10px] text-muted-foreground">Peso: {academicWeight}% — Basado en calificaciones promedio del grupo</p>
+                                                </div>
+
+                                                {/* Attendance */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Calendar className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                                            <span className="text-xs font-bold text-foreground">Asistencia</span>
+                                                        </div>
+                                                        <span className="text-sm font-extrabold text-emerald-500">{groupIntegralScore.avgAttendance}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
+                                                    </div>
+                                                    <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-emerald-500 rounded-full transition-all duration-700"
+                                                            style={{ width: `${groupIntegralScore.avgAttendance}%` }}
+                                                        />
+                                                    </div>
+                                                    <p className="text-[10px] text-muted-foreground">Peso: {attendanceWeight}% — Penaliza faltas, tardanzas y retiros tempranos</p>
+                                                </div>
+
+                                                {/* Discipline */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                                            <span className="text-xs font-bold text-foreground">Disciplina</span>
+                                                        </div>
+                                                        <span className="text-sm font-extrabold text-amber-500">{groupIntegralScore.avgDiscipline}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
+                                                    </div>
+                                                    <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-amber-500 rounded-full transition-all duration-700"
+                                                            style={{ width: `${groupIntegralScore.avgDiscipline}%` }}
+                                                        />
+                                                    </div>
+                                                    <p className="text-[10px] text-muted-foreground">Peso: {disciplineWeight}% — Llamados de atención y felicitaciones</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Global Course Selector */}
+                            <Card className="bg-background border shadow-sm">
+                                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <h4 className="font-semibold flex items-center gap-2">
+                                            <BarChart className="w-4 h-4 text-primary" />
+                                            Filtro de Analítica
+                                        </h4>
+                                        <p className="text-xs text-muted-foreground">Selecciona una materia para ver sus gráficos específicos, o "General" para ver el promedio global del grupo.</p>
+                                    </div>
+                                    <div className="w-full sm:w-[300px]">
+                                        <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                                            <SelectTrigger className="bg-muted/50 border-input">
+                                                <SelectValue placeholder="Seleccionar Materia" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all" className="font-bold">General (Promedios del Grupo)</SelectItem>
+                                                {analyticsData.coursesList && analyticsData.coursesList.map(c => (
+                                                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                             <Tabs defaultValue="rendimiento" className="w-full mt-6">
+                                <TabsList className="flex w-full p-1 bg-muted/60 rounded-xl mb-6 h-auto gap-1">
+                                    <TabsTrigger value="rendimiento" className="flex-1 py-2 px-2 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Rendimiento</TabsTrigger>
+                                    <TabsTrigger value="asistencia" className="flex-1 py-2 px-2 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Asistencia</TabsTrigger>
+                                    <TabsTrigger value="disciplina" className="flex-1 py-2 px-2 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Disciplina</TabsTrigger>
+                                    <TabsTrigger value="mejoramiento" className="flex-1 py-2 px-2 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Planes de Mejoramiento</TabsTrigger>
+                                </TabsList>
+
+                                <TabsContent value="rendimiento" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Student Ranking Chart (from best to worst) */}
+                                {rankedStudentsData.length > 0 && (
+                                <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                    <CardHeader>
+                                        <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                            <span className="flex items-center gap-2">
+                                                <GraduationCap className="w-5 h-5 text-indigo-500 shrink-0" />
+                                                <span className="text-base sm:text-lg font-black leading-tight">Ranking de Estudiantes (Rendimiento Integral)</span>
+                                            </span>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => setShowWeightsConfig(!showWeightsConfig)}
+                                                className="text-xs text-indigo-600 hover:text-indigo-700 font-bold hover:bg-indigo-50 dark:hover:bg-indigo-950/20 w-full sm:w-auto justify-center sm:justify-start"
+                                            >
+                                                <Settings className="w-3.5 h-3.5 mr-1" />
+                                                {showWeightsConfig ? "Ocultar Configuración" : "Configurar Ponderación"}
+                                            </Button>
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Estudiantes ordenados de mayor a menor puntaje integral. El cálculo pondera: Calificaciones ({academicWeight}%), Asistencia ({attendanceWeight}%) y Disciplina ({disciplineWeight}%).
+                                        </CardDescription>
+
+                                        {showWeightsConfig && (
+                                            <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800 space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[11px] font-extrabold text-foreground flex items-center justify-between">
+                                                            <span>Calificaciones</span>
+                                                            <span className="text-indigo-600 font-black">{academicWeight}%</span>
+                                                        </label>
+                                                        <input 
+                                                            type="range" 
+                                                            min="0" 
+                                                            max="100" 
+                                                            value={academicWeight} 
+                                                            onChange={e => handleWeightChange("academic", parseInt(e.target.value))}
+                                                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[11px] font-extrabold text-foreground flex items-center justify-between">
+                                                            <span>Asistencia</span>
+                                                            <span className="text-indigo-600 font-black">{attendanceWeight}%</span>
+                                                        </label>
+                                                        <input 
+                                                            type="range" 
+                                                            min="0" 
+                                                            max="100" 
+                                                            value={attendanceWeight} 
+                                                            onChange={e => handleWeightChange("attendance", parseInt(e.target.value))}
+                                                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[11px] font-extrabold text-foreground flex items-center justify-between">
+                                                            <span>Disciplina</span>
+                                                            <span className="text-indigo-600 font-black">{disciplineWeight}%</span>
+                                                        </label>
+                                                        <input 
+                                                            type="range" 
+                                                            min="0" 
+                                                            max="100" 
+                                                            value={disciplineWeight} 
+                                                            onChange={e => handleWeightChange("discipline", parseInt(e.target.value))}
+                                                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                                                    <div className="text-[10px] font-bold flex items-center gap-1.5">
+                                                        <span className="text-muted-foreground">Suma Total:</span>
+                                                        <span className={academicWeight + attendanceWeight + disciplineWeight === 100 ? "text-emerald-600 font-black" : "text-red-500 font-black"}>
+                                                            {academicWeight + attendanceWeight + disciplineWeight}%
+                                                        </span>
+                                                        {academicWeight + attendanceWeight + disciplineWeight !== 100 && (
+                                                            <span className="text-red-500/80 font-normal">(La suma debe ser exactamente 100%)</span>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <Button 
+                                                        variant="link" 
+                                                        size="sm" 
+                                                        onClick={() => setShowSourcesInfo(!showSourcesInfo)}
+                                                        className="text-[10px] text-muted-foreground hover:text-indigo-600 p-0 h-auto font-bold"
+                                                    >
+                                                        <Info className="w-3.5 h-3.5 mr-1" />
+                                                        ¿De dónde vienen estos datos?
+                                                    </Button>
+                                                </div>
+
+                                                {showSourcesInfo && (
+                                                    <div className="mt-3 p-3 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/20 text-[11px] text-muted-foreground space-y-2">
+                                                        <p className="font-extrabold text-foreground text-xs">Orígenes de Datos e Impacto:</p>
+                                                        <ul className="list-disc pl-4 space-y-1.5">
+                                                            <li>
+                                                                <strong className="text-foreground">Calificaciones:</strong> Promedio de notas de las actividades calificables creadas por el docente para el curso. Una nota de 5.0 representa 100 puntos académicos; calificaciones menores se ponderan proporcionalmente.
+                                                            </li>
+                                                            <li>
+                                                                <strong className="text-foreground">Asistencia:</strong> Calculado sobre el registro diario. Cada inasistencia (Falta) resta <span className="text-red-600 font-bold">-10 puntos</span>, cada llegada tarde resta <span className="text-amber-600 font-bold">-4 puntos</span>, y cada retiro temprano resta <span className="text-blue-600 font-bold">-4 puntos</span> de un máximo de 100 puntos.
+                                                            </li>
+                                                            <li>
+                                                                <strong className="text-foreground">Disciplina:</strong> Basado en observaciones registradas en el grupo. Cada llamado de atención resta <span className="text-red-600 font-bold">-15 puntos</span>, y cada felicitación añade <span className="text-emerald-600 font-bold">+5 puntos</span> de bonificación sobre una base de 100 puntos.
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </CardHeader>
+                                    <CardContent className="w-full" style={{ height: `${Math.max(400, rankedStudentsData.length * 38)}px` }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart 
+                                                data={rankedStudentsData} 
+                                                layout="vertical"
+                                                margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
+                                                <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} />
+                                                <YAxis 
+                                                    dataKey="name" 
+                                                    type="category" 
+                                                    axisLine={false} 
+                                                    tickLine={false} 
+                                                    fontSize={11} 
+                                                    width={130}
+                                                    tickFormatter={(name) => name.split(' ')[0] + (name.split(' ').length > 1 ? ' ' + name.split(' ')[1] : '')}
+                                                />
+                                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
+                                                <Bar dataKey="score" name="Puntaje Integral" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                                                    {rankedStudentsData.map((entry, index) => {
+                                                        let color = '#ef4444'; // Red (< 60)
+                                                        if (entry.score >= 80) color = '#10b981'; // Green (>= 80)
+                                                        else if (entry.score >= 60) color = '#f59e0b'; // Amber (>= 60)
+                                                        return <Cell key={`cell-${index}`} fill={color} />;
+                                                    })}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </CardContent>
+                                </Card>
+                                )}
+
+                                {/* Academic Performance Chart */}
+                                {selectedCourseId === "all" ? (
+                                <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <GraduationCap className="w-5 h-5 text-indigo-500" />
+                                            Rendimiento Académico Global
+                                        </CardTitle>
+                                        <CardDescription>Promedio de calificaciones ponderadas en las actividades de cada materia.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="h-[300px] w-full">
+                                        {coursesData.length > 0 && coursesData.some(c => c.totalNotas > 0) ? (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={coursesData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                                                    <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} />
+                                                    <YAxis domain={[0, 5]} axisLine={false} tickLine={false} />
+                                                    <Tooltip 
+                                                        cursor={{ fill: 'transparent' }}
+                                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                    />
+                                                    <Legend />
+                                                    <Bar dataKey="promedio" name="Nota Promedio" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed">
+                                                No hay suficientes calificaciones registradas
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                                ) : (
+                                /* Per-Student Course Performance */
+                                <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <BarChart className="w-5 h-5 text-indigo-500" />
+                                            Rendimiento Individual por Materia
+                                        </CardTitle>
+                                        <CardDescription>Visualiza las calificaciones de cada estudiante en la materia seleccionada.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="h-[350px] w-full">
+                                        {studentGradesData.length > 0 && studentGradesData.some(s => s.nota > 0) ? (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={studentGradesData} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                                                    <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={11} angle={-45} textAnchor="end" />
+                                                    <YAxis domain={[0, 5]} axisLine={false} tickLine={false} />
+                                                    <Tooltip 
+                                                        cursor={{ fill: 'transparent' }}
+                                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                        formatter={(value: number) => [value.toFixed(2), "Nota Promedio"]}
+                                                        labelFormatter={(label: string, payload: any[]) => payload[0]?.payload?.fullName || label}
+                                                    />
+                                                    <Bar dataKey="nota" name="Nota" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                                        {studentGradesData.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={entry.nota >= 3 ? '#10b981' : entry.nota > 0 ? '#ef4444' : '#d1d5db'} />
+                                                        ))}
+                                                    </Bar>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed">
+                                                No hay calificaciones para esta materia.
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                                )}
+
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="asistencia" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Attendance Chart */}
+                                <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                            Distribución de Asistencia
+                                        </CardTitle>
+                                        <CardDescription>Resumen de presencialidad y ausentismo del grupo.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="h-[300px] w-full">
+                                        {analyticsData.totalCourseClasses > 0 ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={attendanceData}
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={60}
+                                                            outerRadius={80}
+                                                            paddingAngle={5}
+                                                            dataKey="value"
+                                                        >
+                                                            {attendanceData.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={attendanceData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} />
+                                                        <YAxis axisLine={false} tickLine={false} />
+                                                        <Tooltip 
+                                                            cursor={{ fill: 'transparent' }}
+                                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                        />
+                                                        <Bar dataKey="value" name="Total" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                                                            {attendanceData.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Bar>
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed">
+                                                No hay registros de asistencia
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Student Attendance Bars */}
+                                <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                            Asistencia por Estudiante
+                                        </CardTitle>
+                                        <CardDescription>Visualiza las ausencias y llegadas tarde de cada estudiante.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="h-[350px] w-full">
+                                        {studentAttendanceBarsData.length > 0 && studentAttendanceBarsData.some(s => s.ausente > 0 || s.tarde > 0 || (s.retiro || 0) > 0) ? (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={studentAttendanceBarsData} margin={{ top: 20, right: 30, left: 0, bottom: 60 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                                                    <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={11} angle={-45} textAnchor="end" />
+                                                    <YAxis axisLine={false} tickLine={false} />
+                                                    <Tooltip 
+                                                        cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
+                                                        content={({ active, payload }) => {
+                                                            if (active && payload && payload.length) {
+                                                                const data = payload[0].payload;
+                                                                return (
+                                                                    <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 max-w-[280px]">
+                                                                        <p className="font-bold text-sm mb-2">{data.fullName}</p>
+                                                                        <div className="flex gap-3 mb-2 flex-wrap">
+                                                                            <span className="text-red-500 font-medium text-xs">Faltas: {data.ausente}</span>
+                                                                            <span className="text-amber-500 font-medium text-xs">Tardes: {data.tarde}</span>
+                                                                            <span className="text-blue-500 font-medium text-xs">Retiros: {data.retiro || 0}</span>
+                                                                        </div>
+                                                                        {data.details && data.details.length > 0 && (
+                                                                            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                                                                <p className="text-[11px] font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Detalle de Inasistencias:</p>
+                                                                                <ul className="space-y-2">
+                                                                                    {data.details.map((d: any, i: number) => (
+                                                                                        <li key={i} className="text-xs leading-tight">
+                                                                                            <span className="font-medium text-slate-800 dark:text-slate-200 block truncate">{d.courseName}</span>
+                                                                                            <span className="text-muted-foreground block text-[10px]">Prof: {d.teacherName}</span>
+                                                                                            <div className="mt-1 flex gap-2 flex-wrap">
+                                                                                                {d.absent > 0 && <span className="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded">Faltas: {d.absent}</span>}
+                                                                                                {d.late > 0 && <span className="text-[10px] bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">Tardes: {d.late}</span>}
+                                                                                                {d.leaveEarly > 0 && <span className="text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">Retiros: {d.leaveEarly}</span>}
+                                                                                            </div>
+                                                                                        </li>
+                                                                                    ))}
+                                                                                </ul>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        }}
+                                                    />
+                                                    <Legend verticalAlign="top" height={36} />
+                                                    <Bar dataKey="ausente" name="Ausente" stackId="a" fill="#ef4444" radius={[0, 0, 0, 0]} maxBarSize={40} />
+                                                    <Bar dataKey="tarde" name="Llegada Tarde" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} maxBarSize={40} />
+                                                    <Bar dataKey="retiro" name="Retiro Temprano" stackId="a" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed">
+                                                Excelente asistencia, no hay inasistencias registradas.
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+
+                                {/* Docentes sin Asistencia Registrada (Solo visible para Administradores) */}
+                                {!isTeacherView && (
+                                    <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="flex items-center gap-2 text-base font-black">
+                                                <AlertCircle className="w-5 h-5 text-red-500" />
+                                                Seguimiento de Asistencia Docente (Clases sin Registro)
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Muestra los días en que cada docente tenía clase programada pero no se registró asistencia de ningún estudiante.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {missingAttendanceList.length > 0 ? (
+                                                <div className="overflow-x-auto rounded-xl border border-border/50">
+                                                    <Table>
+                                                        <TableHeader className="bg-muted/30">
+                                                            <TableRow>
+                                                                <TableHead className="font-semibold text-xs py-3 pl-6">Materia</TableHead>
+                                                                <TableHead className="font-semibold text-xs py-3">Docente</TableHead>
+                                                                <TableHead className="font-semibold text-xs py-3 text-center w-[120px]">Días Pendientes</TableHead>
+                                                                <TableHead className="font-semibold text-xs py-3 pr-6">Fechas sin Asistencia</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {missingAttendanceList.map((item, index) => (
+                                                                <TableRow key={item.courseId} className="hover:bg-muted/10 transition-colors">
+                                                                    <TableCell className="font-bold text-xs py-3.5 pl-6">{item.title}</TableCell>
+                                                                    <TableCell className="font-medium text-xs py-3.5 text-muted-foreground">{item.teacherName}</TableCell>
+                                                                    <TableCell className="text-center py-3.5">
+                                                                        <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 font-extrabold text-[10px] px-2 py-0.5">
+                                                                            {item.missingDates.length} {item.missingDates.length === 1 ? "día" : "días"}
+                                                                        </Badge>
+                                                                    </TableCell>
+                                                                    <TableCell className="py-3.5 pr-6">
+                                                                        <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-2 scrollbar-thin">
+                                                                            {item.missingDates.map((date, idx) => (
+                                                                                <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-muted font-mono font-semibold text-muted-foreground border">
+                                                                                    {date}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center py-10 text-center space-y-3 rounded-xl border border-dashed bg-muted/5">
+                                                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-full text-emerald-600 dark:text-emerald-400">
+                                                        <CheckCircle2 className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-sm">¡Control al día!</h4>
+                                                        <p className="text-xs text-muted-foreground max-w-xs mt-0.5">
+                                                            Todos los docentes han registrado la asistencia de los estudiantes en todas sus fechas programadas.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                )}
+
+                                 {/* DETAILED ATTENDANCE METRICS SUB-TABS */}
+                                 <div className="col-span-1 lg:col-span-2 mt-6">
+                                     <Tabs defaultValue="faltas" className="w-full space-y-4">
+                                         <TabsList className="flex flex-wrap w-full p-1 bg-muted/60 rounded-xl h-auto gap-1 border">
+                                             <TabsTrigger value="faltas" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-red-600 dark:text-red-400">
+                                                 Registro de Inasistencias (Faltas)
+                                             </TabsTrigger>
+                                             <TabsTrigger value="tardanzas" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-amber-600 dark:text-amber-400">
+                                                 Registro de Llegadas Tarde (Tardanzas)
+                                             </TabsTrigger>
+                                             <TabsTrigger value="retiros" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-blue-600 dark:text-blue-400">
+                                                 Registro de Retiros Tempranos (Retiros)
+                                             </TabsTrigger>
+                                             <TabsTrigger value="efectiva" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-emerald-600 dark:text-emerald-400">
+                                                 Carga Horaria y Asistencia Efectiva
+                                             </TabsTrigger>
+                                         </TabsList>
+
+                                         {/* SUB-TAB 1: FALTAS */}
+                                         <TabsContent value="faltas" className="m-0 focus-visible:outline-none">
+                                             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+                                                 <CardHeader>
+                                                     <CardTitle className="text-base font-black flex items-center gap-2">
+                                                         <UserX className="w-5 h-5 text-red-500" />
+                                                         Registro de Inasistencias (Faltas)
+                                                     </CardTitle>
+                                                     <CardDescription>Total de días no asistidos por cada estudiante sobre el total de días programados.</CardDescription>
+                                                 </CardHeader>
+                                                 <CardContent className="space-y-4">
+                                                     {detailedMetricsData.map(({ student, absentCount, attendanceDaysRate, totalClassDays, details }: any) => {
+                                                         const absenceRate = 100 - attendanceDaysRate;
+                                                         return (
+                                                             <div key={student.id} className="space-y-1.5 pb-2 border-b border-border/30 last:border-0 last:pb-0">
+                                                                 <div className="flex items-center justify-between text-xs font-bold">
+                                                                     <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
+                                                                     <span className="text-red-600 shrink-0 font-extrabold">
+                                                                         {absentCount} {absentCount === 1 ? "Falta" : "Faltas"} / {totalClassDays} días ({absenceRate.toFixed(1)}%)
+                                                                     </span>
+                                                                 </div>
+                                                                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                                     <div 
+                                                                         className="h-full bg-red-500 dark:bg-red-600 rounded-full transition-all duration-500" 
+                                                                         style={{ width: `${absenceRate}%` }}
+                                                                     />
+                                                                 </div>
+                                                                 {details && details.some((d: any) => d.absent > 0) && (
+                                                                     <div className="flex flex-wrap gap-2 mt-1.5">
+                                                                         {details.filter((d: any) => d.absent > 0).map((d: any, idx: number) => (
+                                                                             <div key={idx} className="flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded px-2 py-1 text-[10px] text-muted-foreground">
+                                                                                 <span className="font-semibold text-slate-700 dark:text-slate-300 mr-1 truncate max-w-[120px]">{d.courseName}</span>
+                                                                                 <span className="mr-2 border-r border-slate-200 dark:border-slate-700 pr-2">({d.teacherName})</span>
+                                                                                 <span className="text-red-500 font-bold">{d.absent} {d.absent === 1 ? "falta" : "faltas"}</span>
+                                                                             </div>
+                                                                         ))}
+                                                                     </div>
+                                                                 )}
+                                                             </div>
+                                                         );
+                                                     })}
+                                                 </CardContent>
+                                             </Card>
+                                         </TabsContent>
+
+                                         {/* SUB-TAB 2: TARDANZAS */}
+                                         <TabsContent value="tardanzas" className="m-0 focus-visible:outline-none">
+                                             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+                                                 <CardHeader>
+                                                     <CardTitle className="text-base font-black flex items-center gap-2">
+                                                         <Clock className="w-5 h-5 text-amber-500" />
+                                                         Registro de Llegadas Tarde (Tardanzas)
+                                                     </CardTitle>
+                                                     <CardDescription>Cantidad de días en los que el estudiante registró ingreso tarde sobre los días programados.</CardDescription>
+                                                 </CardHeader>
+                                                 <CardContent className="space-y-4">
+                                                     {detailedMetricsData.map(({ student, lateCount, lateDaysRate, totalClassDays, details }: any) => (
+                                                         <div key={student.id} className="space-y-1.5 pb-2 border-b border-border/30 last:border-0 last:pb-0">
+                                                             <div className="flex items-center justify-between text-xs font-bold">
+                                                                 <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
+                                                                 <span className="text-amber-600 dark:text-amber-400 shrink-0 font-extrabold">
+                                                                     {lateCount} {lateCount === 1 ? "Tarde" : "Tardes"} / {totalClassDays} días ({lateDaysRate.toFixed(1)}%)
+                                                                 </span>
+                                                             </div>
+                                                             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                                 <div 
+                                                                     className="h-full bg-amber-500 rounded-full transition-all duration-500" 
+                                                                     style={{ width: `${lateDaysRate}%` }}
+                                                                 />
+                                                             </div>
+                                                             {details && details.some((d: any) => d.late > 0) && (
+                                                                 <div className="flex flex-wrap gap-2 mt-1.5">
+                                                                     {details.filter((d: any) => d.late > 0).map((d: any, idx: number) => (
+                                                                         <div key={idx} className="flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded px-2 py-1 text-[10px] text-muted-foreground">
+                                                                             <span className="font-semibold text-slate-700 dark:text-slate-300 mr-1 truncate max-w-[120px]">{d.courseName}</span>
+                                                                             <span className="mr-2 border-r border-slate-200 dark:border-slate-700 pr-2">({d.teacherName})</span>
+                                                                             <span className="text-amber-500 font-bold">{d.late} {d.late === 1 ? "tarde" : "tardes"}</span>
+                                                                         </div>
+                                                                     ))}
+                                                                 </div>
+                                                             )}
+                                                         </div>
+                                                     ))}
+                                                 </CardContent>
+                                             </Card>
+                                         </TabsContent>
+
+                                         {/* SUB-TAB 3: RETIROS */}
+                                         <TabsContent value="retiros" className="m-0 focus-visible:outline-none">
+                                             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+                                                 <CardHeader>
+                                                     <CardTitle className="text-base font-black flex items-center gap-2">
+                                                         <LogOut className="w-5 h-5 text-blue-500" />
+                                                         Registro de Retiros Tempranos (Retiros)
+                                                     </CardTitle>
+                                                     <CardDescription>Cantidad de días en los que el estudiante se retiró antes de finalizar la clase sobre los días programados.</CardDescription>
+                                                 </CardHeader>
+                                                 <CardContent className="space-y-4">
+                                                     {detailedMetricsData.map(({ student, leaveEarlyCount, leaveEarlyDaysRate, totalClassDays, details }: any) => (
+                                                         <div key={student.id} className="space-y-1.5 pb-2 border-b border-border/30 last:border-0 last:pb-0">
+                                                             <div className="flex items-center justify-between text-xs font-bold">
+                                                                 <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
+                                                                 <span className="text-blue-600 dark:text-blue-400 shrink-0 font-extrabold">
+                                                                     {leaveEarlyCount} {leaveEarlyCount === 1 ? "Retiro" : "Retiros"} / {totalClassDays} días ({leaveEarlyDaysRate.toFixed(1)}%)
+                                                                 </span>
+                                                             </div>
+                                                             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                                 <div 
+                                                                     className="h-full bg-blue-500 rounded-full transition-all duration-500" 
+                                                                     style={{ width: `${leaveEarlyDaysRate}%` }}
+                                                                 />
+                                                             </div>
+                                                             {details && details.some((d: any) => d.leaveEarly > 0) && (
+                                                                 <div className="flex flex-wrap gap-2 mt-1.5">
+                                                                     {details.filter((d: any) => d.leaveEarly > 0).map((d: any, idx: number) => (
+                                                                         <div key={idx} className="flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded px-2 py-1 text-[10px] text-muted-foreground">
+                                                                             <span className="font-semibold text-slate-700 dark:text-slate-300 mr-1 truncate max-w-[120px]">{d.courseName}</span>
+                                                                             <span className="mr-2 border-r border-slate-200 dark:border-slate-700 pr-2">({d.teacherName})</span>
+                                                                             <span className="text-blue-500 font-bold">{d.leaveEarly} {d.leaveEarly === 1 ? "retiro" : "retiros"}</span>
+                                                                         </div>
+                                                                     ))}
+                                                                 </div>
+                                                             )}
+                                                         </div>
+                                                     ))}
+                                                 </CardContent>
+                                             </Card>
+                                         </TabsContent>
+
+                                         {/* SUB-TAB 4: EFECTIVA */}
+                                         <TabsContent value="efectiva" className="m-0 focus-visible:outline-none">
+                                             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+                                                 <CardHeader>
+                                                     <CardTitle className="text-base font-black flex items-center gap-2">
+                                                         <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                                         Carga Horaria y Asistencia Efectiva (Horas Asistidas vs. Perdidas)
+                                                     </CardTitle>
+                                                     <CardDescription>Muestra la cantidad de horas acumuladas entre faltas, tardanzas y retiros, la diferencia (horas asistidas) y el porcentaje de asistencia efectiva con respecto a las horas totales.</CardDescription>
+                                                 </CardHeader>
+                                                 <CardContent className="space-y-5">
+                                                     {detailedMetricsData.map(({ student, absentHours, lateHours, leaveEarlyHours, attendanceHoursRate, totalScheduledHours }: any) => {
+                                                         const lostHours = absentHours + lateHours + (leaveEarlyHours || 0);
+                                                         const attendedHours = Math.max(0, totalScheduledHours - lostHours);
+                                                         return (
+                                                             <div key={student.id} className="space-y-2 border-b border-border/30 pb-3 last:border-0 last:pb-0">
+                                                                 <div className="flex flex-wrap items-center justify-between text-xs font-bold gap-2">
+                                                                     <span className="truncate text-foreground max-w-[280px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
+                                                                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-muted-foreground">
+                                                                         <span className="text-emerald-600 dark:text-emerald-400">Asistidas: {attendedHours.toFixed(2)} hs</span>
+                                                                         <span className="text-red-500">Perdidas: {lostHours.toFixed(2)} hs</span>
+                                                                         <span className="text-blue-600 dark:text-blue-400 font-extrabold">Efectiva: {attendanceHoursRate.toFixed(1)}%</span>
+                                                                     </div>
+                                                                 </div>
+                                                                 
+                                                                 <div className="space-y-1">
+                                                                     <div className="h-3 w-full bg-muted rounded-full overflow-hidden flex">
+                                                                         <div 
+                                                                             className="h-full bg-emerald-500 dark:bg-emerald-600 transition-all duration-500" 
+                                                                             style={{ width: `${attendanceHoursRate}%` }}
+                                                                             title={`Horas Asistidas: ${attendedHours.toFixed(2)} hs`}
+                                                                         />
+                                                                         {absentHours > 0 && (
+                                                                             <div 
+                                                                                 className="h-full bg-red-500 dark:bg-red-600 transition-all duration-500" 
+                                                                                 style={{ width: `${(absentHours / totalScheduledHours) * 100}%` }}
+                                                                                 title={`Horas de Faltas: ${absentHours.toFixed(2)} hs`}
+                                                                             />
+                                                                         )}
+                                                                         {lateHours > 0 && (
+                                                                             <div 
+                                                                                 className="h-full bg-amber-500 dark:bg-amber-500 transition-all duration-500" 
+                                                                                 style={{ width: `${(lateHours / totalScheduledHours) * 100}%` }}
+                                                                                 title={`Horas de Tardanzas: ${lateHours.toFixed(2)} hs`}
+                                                                             />
+                                                                         )}
+                                                                         {leaveEarlyHours > 0 && (
+                                                                             <div 
+                                                                                 className="h-full bg-blue-500 dark:bg-blue-500 transition-all duration-500" 
+                                                                                 style={{ width: `${(leaveEarlyHours / totalScheduledHours) * 100}%` }}
+                                                                                 title={`Horas de Retiros: ${leaveEarlyHours.toFixed(2)} hs`}
+                                                                             />
+                                                                         )}
+                                                                     </div>
+                                                                     
+                                                                     <div className="text-[10px] text-muted-foreground flex justify-between">
+                                                                         <span>{totalScheduledHours.toFixed(1)} hs totales del curso</span>
+                                                                         <span>Desglose de pérdida: {absentHours.toFixed(1)} hs Faltas + {lateHours.toFixed(1)} hs Tardanzas + {(leaveEarlyHours || 0).toFixed(1)} hs Retiros</span>
+                                                                     </div>
+                                                                 </div>
+                                                             </div>
+                                                         );
+                                                     })}
+                                                 </CardContent>
+                                             </Card>
+                                         </TabsContent>
+                                     </Tabs>
+                                 </div>
+                                    </div>
+                                </TabsContent>
+                                
+                                <TabsContent value="disciplina" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0 text-left">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Remarks Chart */}
+                                        <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                            <CardHeader>
+                                                <CardTitle className="flex items-center gap-2">
+                                                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                                                    Observaciones Disciplinarias
+                                                </CardTitle>
+                                                <CardDescription>Relación entre llamados de atención y felicitaciones.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="h-[250px] w-full">
+                                                {analyticsData.remarks.length > 0 ? (
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <BarChart data={remarksData} layout="vertical" margin={{ top: 20, right: 30, left: 40, bottom: 5 }}>
+                                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.3} />
+                                                            <XAxis type="number" axisLine={false} tickLine={false} />
+                                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} fontSize={12} width={100} />
+                                                            <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                                            <Bar dataKey="value" name="Total" radius={[0, 4, 4, 0]} maxBarSize={40}>
+                                                                {remarksData.map((entry, index) => (
+                                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                                ))}
+                                                            </Bar>
+                                                        </BarChart>
+                                                    </ResponsiveContainer>
+                                                ) : (
+                                                    <div className="flex items-center justify-center h-full text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed">
+                                                        No hay observaciones registradas
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+
+                                        {/* Feed of Observations */}
+                                        <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                            <CardHeader>
+                                                <CardTitle className="text-base font-bold text-foreground">Detalle de Observaciones</CardTitle>
+                                                <CardDescription>Filtra y revisa las observaciones disciplinarias individuales y grupales.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                {/* Filters */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground/70" />
+                                                        <Input
+                                                            placeholder="Buscar observaciones..."
+                                                            value={disciplineSearch}
+                                                            onChange={(e) => setDisciplineSearch(e.target.value)}
+                                                            className="pl-9 h-10 rounded-xl"
+                                                        />
+                                                    </div>
+
+                                                    <Select
+                                                        value={disciplineStudentFilter}
+                                                        onValueChange={setDisciplineStudentFilter}
+                                                    >
+                                                        <SelectTrigger className="h-10 rounded-xl">
+                                                            <SelectValue placeholder="Filtrar por estudiante" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">Todos los aprendices</SelectItem>
+                                                            {analyticsData.studentMetrics?.map((s) => (
+                                                                <SelectItem key={s.id} value={s.id}>
+                                                                    {s.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+
+                                                    <Select
+                                                        value={disciplineTypeFilter}
+                                                        onValueChange={setDisciplineTypeFilter}
+                                                    >
+                                                        <SelectTrigger className="h-10 rounded-xl">
+                                                            <SelectValue placeholder="Filtrar por tipo" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">Todos los tipos</SelectItem>
+                                                            <SelectItem value="ATTENTION">Llamados de Atención</SelectItem>
+                                                            <SelectItem value="COMMENDATION">Felicitaciones</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {/* Feed List */}
+                                                <div className="space-y-3 pt-2">
+                                                    {filteredRemarks.length > 0 ? (
+                                                        filteredRemarks.map((rem, remIdx) => {
+                                                            const isAttention = rem.type === "ATTENTION";
+                                                            return (
+                                                                <div 
+                                                                    key={rem.id ?? remIdx} 
+                                                                    className="p-4 rounded-xl border border-muted bg-card text-left transition-all hover:bg-muted/10 space-y-3"
+                                                                >
+                                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            {isAttention ? (
+                                                                                <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-none font-bold py-0.5 px-2">
+                                                                                    <AlertTriangle className="w-3.5 h-3.5 mr-1 shrink-0" />
+                                                                                    Llamado de Atención
+                                                                                </Badge>
+                                                                            ) : (
+                                                                                <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-none font-bold py-0.5 px-2">
+                                                                                    <Award className="w-3.5 h-3.5 mr-1 shrink-0" />
+                                                                                    Felicitación
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                        <span className="text-xs text-muted-foreground font-medium">
+                                                                            {rem.date ? format(new Date(rem.date), "dd/MM/yyyy") : "Sin fecha"}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div className="space-y-1">
+                                                                        <h4 className="text-sm font-bold text-foreground leading-snug">
+                                                                            {rem.title || "Observación Registrada"}
+                                                                        </h4>
+                                                                        <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/40">
+                                                                            {rem.description || "Sin descripción detallada."}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] text-muted-foreground pt-1 border-t border-dashed">
+                                                                        <div>
+                                                                            Aprendiz: <strong className="text-foreground/80">{rem.user ? formatName(rem.user.name, rem.user.profile) : "Desconocido"}</strong>
+                                                                        </div>
+                                                                        <div>
+                                                                            Instructor: <strong className="text-foreground/80">{rem.teacher ? formatName(rem.teacher.name, rem.teacher.profile) : "Desconocido"}</strong>
+                                                                        </div>
+                                                                        <div>
+                                                                            Asignatura: <strong className="text-primary/70">{rem.course?.title || "General"}</strong>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="flex flex-col items-center justify-center py-10 border border-dashed rounded-xl bg-muted/5 text-muted-foreground text-center">
+                                                            <AlertCircle className="w-10 h-10 mb-2 opacity-40" />
+                                                            <p className="font-semibold text-sm">Sin Resultados</p>
+                                                            <p className="text-xs mt-0.5">No hay observaciones que coincidan con los filtros aplicados.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="mejoramiento" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0">
+                                    {plansLoading ? (
+                                        <div className="flex flex-col items-center justify-center py-12">
+                                            <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+                                            <p className="text-xs text-muted-foreground">Cargando planes de mejoramiento del grupo...</p>
+                                        </div>
+                                    ) : improvementPlans.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-muted/5 text-muted-foreground">
+                                            <FileText className="w-12 h-12 mb-4 opacity-50 text-muted-foreground" />
+                                            <p className="font-semibold text-base">Sin Planes de Mejoramiento</p>
+                                            <p className="text-xs text-center mt-1">No se registran planes de mejoramiento asignados para los estudiantes en este grupo.</p>
+                                        </div>
+                                    ) : (() => {
+                                        // Group plans by student
+                                        const byStudent: Record<string, { student: any; plans: any[] }> = {};
+                                        for (const plan of improvementPlans) {
+                                            const sid = plan.student?.id || plan.studentId;
+                                            if (!byStudent[sid]) byStudent[sid] = { student: plan.student, plans: [] };
+                                            byStudent[sid].plans.push(plan);
+                                        }
+                                        return (
+                                            <div className="space-y-6 text-left">
+                                                {Object.values(byStudent)
+                                                    .sort((a, b) => (a.student?.name || "").localeCompare(b.student?.name || "", 'es', { sensitivity: 'base' }))
+                                                    .map(({ student, plans: sPlans }, bsIdx) => (
+                                                    <div key={student?.id ?? bsIdx} className="border border-border/60 rounded-xl overflow-hidden bg-background">
+                                                        {/* Student Header */}
+                                                        <div className="flex items-center gap-3 bg-muted/30 px-4 py-2.5 border-b border-border/60">
+                                                            <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+                                                            <div>
+                                                                <p className="font-semibold text-xs text-foreground">{formatName(student?.name, student?.profile)}</p>
+                                                                <p className="text-[10px] text-muted-foreground">{sPlans.length} plan{sPlans.length !== 1 ? "es" : ""}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="divide-y divide-border/40">
+                                                            {sPlans.map((plan: any) => {
+                                                                const step1Done = !!plan.teacherDocUrl;
+                                                                const step2Done = !!plan.signedDocUrl;
+                                                                const step3Done = !!plan.teacherSignedDocUrl;
+                                                                const isPastEnd = new Date() > fromUTC(plan.endDate);
+                                                                const step4Done = isPastEnd && (plan.planScore !== null || plan.finalGrade !== null || !!plan.evidenceUrl);
+
+                                                                const nowMs = Date.now();
+                                                                const startMs = fromUTC(plan.startDate).getTime();
+                                                                const endMs = fromUTC(plan.endDate).getTime();
+                                                                const datePct = Math.min(100, Math.max(0, Math.round(((nowMs - startMs) / (endMs - startMs)) * 100)));
+                                                                const daysTotal = Math.max(1, Math.round((endMs - startMs) / 86400000));
+                                                                const daysPassed = Math.max(0, Math.round((nowMs - startMs) / 86400000));
+
+                                                                const steps = [
+                                                                    { label: "Plan creado", sub: "Docente", done: step1Done, active: !step1Done, locked: false, desc: "El instructor crea el plan de mejoramiento académico detallando compromisos, fechas y subiendo el documento inicial." },
+                                                                    { label: "Est. firma", sub: "Aprendiz", done: step2Done, active: step1Done && !step2Done, locked: false, desc: "El aprendiz descarga el documento, lo firma digitalmente y sube la copia firmada como aceptación del plan." },
+                                                                    { label: "Doc. firma", sub: "Docente", done: step3Done, active: step2Done && !step3Done, locked: false, desc: "El instructor revisa la firma del aprendiz, realiza la contrafirma docente y sube el documento final firmado." },
+                                                                    { label: "Evaluación", sub: isPastEnd ? "Disponible" : "Al finalizar", done: !!step4Done, active: step3Done && isPastEnd && !step4Done, locked: !isPastEnd && !step4Done, desc: isPastEnd ? "El instructor califica el plan (0.0 a 5.0) evaluando las evidencias subidas por el aprendiz." : "La evaluación estará disponible una vez que el plan haya vencido y el aprendiz haya subido sus evidencias." },
+                                                                ];
+
+                                                                return (
+                                                                    <div key={plan.id} className="p-4 hover:bg-muted/10 transition-colors space-y-3">
+                                                                        <div className="flex items-start justify-between gap-3">
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                                    <span className="font-bold text-xs">Plan N° {plan.planNumber}</span>
+                                                                                    {plan.viewedAt ? (
+                                                                                        <Badge variant="outline" className="text-[9px] py-0 px-1 bg-emerald-500/10 text-emerald-600 border-emerald-300 gap-0.5"><Eye className="w-2.5 h-2.5" />Visto</Badge>
+                                                                                    ) : (
+                                                                                        <Badge variant="outline" className="text-[9px] py-0 px-1 bg-amber-500/10 text-amber-600 border-amber-300 gap-0.5"><EyeOff className="w-2.5 h-2.5" />No visto</Badge>
+                                                                                    )}
+                                                                                    {plan.finalGrade !== null && plan.finalGrade !== undefined && (
+                                                                                        <Badge className="text-[9px] py-0 px-1 bg-primary text-primary-foreground">Nota: {plan.finalGrade}</Badge>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="text-[10px] text-muted-foreground mt-0.5">
+                                                                                    {format(fromUTC(plan.startDate), "dd/MM/yyyy")} → {format(fromUTC(plan.endDate), "dd/MM/yyyy")} · Docente: {formatName(plan.teacher?.name, plan.teacher?.profile)}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-1 shrink-0">
+                                                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={() => setViewPlanDetail(plan)}><Eye className="w-3 h-3" />Ver Detalle</Button>
+                                                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => setPlanToDelete(plan.id)}><Trash2 className="w-3 h-3" />Eliminar</Button>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Progress bar */}
+                                                                        <div className="space-y-0.5">
+                                                                            <div className="flex items-center justify-between text-[9px] text-muted-foreground font-medium">
+                                                                                <span>Progreso temporal</span>
+                                                                                <span className={datePct >= 100 ? "text-red-500 font-bold" : "text-primary font-semibold"}>
+                                                                                    {datePct}% · {Math.min(daysPassed, daysTotal)}/{daysTotal} días
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                                                                <div
+                                                                                    className={`h-full rounded-full transition-all duration-500 ${datePct >= 100 ? "bg-red-500" : datePct >= 75 ? "bg-amber-500" : "bg-primary"}`}
+                                                                                    style={{ width: `${datePct}%` }}
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Stepper with tooltips */}
+                                                                        <UITooltipProvider>
+                                                                            <div className="relative grid grid-cols-4 gap-2 pt-1">
+                                                                                <div className="absolute top-3 left-[12.5%] right-[12.5%] h-0.5 bg-border z-0" />
+                                                                                {steps.map((step, idx) => (
+                                                                                    <UITooltip key={idx}>
+                                                                                        <UITooltipTrigger asChild>
+                                                                                            <div className="flex flex-col items-center gap-1 relative z-10 cursor-help">
+                                                                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border-2 transition-all ${
+                                                                                                    step.done
+                                                                                                        ? "bg-emerald-500 border-emerald-500 text-white"
+                                                                                                        : step.locked
+                                                                                                            ? "bg-muted border-border text-muted-foreground"
+                                                                                                            : step.active
+                                                                                                                ? "bg-primary border-primary text-primary-foreground ring-2 ring-primary/30"
+                                                                                                                : "bg-background border-muted text-muted-foreground"
+                                                                                                }`}>
+                                                                                                    {step.done ? (
+                                                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                                                                    ) : step.locked ? (
+                                                                                                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                                                                                                    ) : (
+                                                                                                        <span>{idx + 1}</span>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                                <div className="text-center">
+                                                                                                    <p className={`text-[9px] font-semibold leading-tight ${step.done ? "text-emerald-600" : step.active ? "text-primary" : "text-muted-foreground"}`}>{step.label}</p>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </UITooltipTrigger>
+                                                                                        <UITooltipContent side="bottom" className="max-w-[200px] p-3 text-xs rounded-xl shadow-lg bg-popover text-popover-foreground border border-border">
+                                                                                            <div className="space-y-1 text-left">
+                                                                                                <p className="font-bold text-primary">{step.label} <span className="font-normal text-muted-foreground">({step.sub})</span></p>
+                                                                                                <p className="text-muted-foreground leading-snug">{step.desc}</p>
+                                                                                            </div>
+                                                                                        </UITooltipContent>
+                                                                                    </UITooltip>
+                                                                                ))}
+                                                                            </div>
+                                                                        </UITooltipProvider>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
+                                </TabsContent>
+                            </Tabs>
+                        </div>
+                    )}
+                </div>
+        </div>
+    );
+
+    if (inline) {
+        return content;
+    }
+
+    return (
+        <>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="fixed inset-0 z-50 w-screen h-screen max-w-none sm:max-w-none md:max-w-none lg:max-w-none xl:max-w-none m-0 rounded-none p-0 flex flex-col bg-slate-50 dark:bg-slate-950 border-0 !translate-x-0 !translate-y-0 !left-0 !top-0">
+                    {content}
+                </DialogContent>
+            </Dialog>
+
+            {/* Read-only Plan Detail Dialog */}
+            <Dialog open={!!viewPlanDetail} onOpenChange={(o) => { if (!o) setViewPlanDetail(null); }}>
+                <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Detalle — Plan N° {viewPlanDetail?.planNumber}</DialogTitle>
+                    </DialogHeader>
+                    {viewPlanDetail && (
+                        <div className="space-y-4 text-xs text-left">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Aprendiz</p>
+                                    <p className="font-semibold text-sm">{formatName(viewPlanDetail.student?.name, viewPlanDetail.student?.profile)}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Docente</p>
+                                    <p className="font-semibold text-sm">{formatName(viewPlanDetail.teacher?.name, viewPlanDetail.teacher?.profile)}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Fecha Inicio</p>
+                                    <p className="font-medium text-sm">{format(fromUTC(viewPlanDetail.startDate), "dd/MM/yyyy")}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Fecha Fin</p>
+                                    <p className="font-medium text-sm">{format(fromUTC(viewPlanDetail.endDate), "dd/MM/yyyy")}</p>
+                                </div>
+                            </div>
+                            {viewPlanDetail.observations && (
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Observaciones</p>
+                                    <p className="bg-muted/40 rounded-lg p-3 whitespace-pre-wrap">{viewPlanDetail.observations}</p>
+                                </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                                {viewPlanDetail.teacherDocUrl && (
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paso 1 — Plan Docente</p>
+                                        <a href={viewPlanDetail.teacherDocUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5" /> Ver Documento</a>
+                                    </div>
+                                )}
+                                {viewPlanDetail.signedDocUrl && (
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paso 2 — Firma Aprendiz</p>
+                                        <a href={viewPlanDetail.signedDocUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline font-bold flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5" /> Ver Firmado</a>
+                                    </div>
+                                )}
+                                {viewPlanDetail.teacherSignedDocUrl && (
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paso 3 — Firma Docente</p>
+                                        <a href={viewPlanDetail.teacherSignedDocUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5" /> Ver Contrafirma</a>
+                                    </div>
+                                )}
+                                {viewPlanDetail.evidenceUrl && (
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paso 4 — Evidencias de Evaluación</p>
+                                        <a href={viewPlanDetail.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5" /> Ver Evidencia</a>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                                {viewPlanDetail.planScore !== null && viewPlanDetail.planScore !== undefined && (
+                                    <div className="space-y-1 bg-primary/5 p-3 rounded-lg border border-primary/20">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Calificación Plan</p>
+                                        <p className="text-base font-black text-primary">{viewPlanDetail.planScore}</p>
+                                    </div>
+                                )}
+                                {viewPlanDetail.finalGrade !== null && viewPlanDetail.finalGrade !== undefined && (
+                                    <div className="space-y-1 bg-blue-50/50 p-3 rounded-lg border border-blue-200">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Nota Final</p>
+                                        <p className="text-base font-black text-blue-700">{viewPlanDetail.finalGrade}</p>
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setViewPlanDetail(null)}>Cerrar</Button>
+                            </DialogFooter>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Confirm Delete Dialog */}
+            <AlertDialog open={!!planToDelete} onOpenChange={(o) => { if (!o) setPlanToDelete(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar Plan de Mejoramiento?</AlertDialogTitle>
+                        <AlertDialogDescription>Esta acción no se puede deshacer. Se eliminarán todos los documentos y notas asociados.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setPlanToDelete(null)}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Eliminar</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
+}
