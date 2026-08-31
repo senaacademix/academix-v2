@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScheduleNoveltiesModal } from "./ScheduleNoveltiesModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,14 +63,16 @@ import { toast } from "sonner";
 import { AcademicScheduleItem, AvailableGroupOption } from "../types";
 import { ScheduleBasicModal } from "./ScheduleBasicModal";
 import { ScheduleGroupSlotsModal } from "./ScheduleGroupSlotsModal";
+import { ScheduleTeacherConfigModal } from "./ScheduleTeacherConfigModal";
 import { ScheduleWeekPreview } from "./ScheduleWeekPreview";
 import {
   deleteScheduleAction,
   setActiveScheduleAction,
   togglePublishScheduleAction,
 } from "../actions/scheduleManagerActions";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { formatCalendarDate } from "@/lib/dateUtils";
 
 interface ScheduleManagerViewProps {
   initialSchedules: AcademicScheduleItem[];
@@ -82,6 +85,9 @@ export function ScheduleManagerView({
 }: ScheduleManagerViewProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const programIdParam = searchParams.get("programId");
+
   const schedulesBaseUrl = pathname?.startsWith("/dashboard/gestor")
     ? "/dashboard/gestor/schedules"
     : "/dashboard/admin/schedules";
@@ -90,7 +96,13 @@ export function ScheduleManagerView({
   const [schedules, setSchedules] = useState<AcademicScheduleItem[]>(initialSchedules);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  const [selectedProgramId, setSelectedProgramId] = useState<string>("all");
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(programIdParam || "all");
+
+  useEffect(() => {
+    if (programIdParam) {
+      setSelectedProgramId(programIdParam);
+    }
+  }, [programIdParam]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -140,8 +152,17 @@ export function ScheduleManagerView({
   const [isGroupSlotsModalOpen, setIsGroupSlotsModalOpen] = useState<boolean>(false);
   const [activeSlotsSchedule, setActiveSlotsSchedule] = useState<AcademicScheduleItem | null>(null);
 
+  // Teacher Config Modal State (Availability & Subjects per schedule)
+  const [teacherModalOpen, setTeacherModalOpen] = useState<boolean>(false);
+  const [selectedScheduleForTeacherModal, setSelectedScheduleForTeacherModal] = useState<string | null>(null);
+
+  // Novelties Modal State
+  const [showNoveltiesModal, setShowNoveltiesModal] = useState<boolean>(false);
+  const [selectedScheduleForNovelties, setSelectedScheduleForNovelties] = useState<AcademicScheduleItem | null>(null);
+
   // Delete Alert State
   const [scheduleToDelete, setScheduleToDelete] = useState<AcademicScheduleItem | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState<string>("");
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Toggle Publication State
@@ -150,8 +171,13 @@ export function ScheduleManagerView({
   // Expanded Preview State (Schedule ID expanded for week preview - collapsed by default)
   const [expandedScheduleId, setExpandedScheduleId] = useState<string | null>(null);
 
+  useEffect(() => {
+    setSchedules(initialSchedules);
+  }, [initialSchedules]);
+
   const handleRefresh = () => {
     router.refresh();
+    window.location.reload();
   };
 
   // Toggle Public / Draft status (Only allowed on active schedule)
@@ -222,6 +248,7 @@ export function ScheduleManagerView({
     return schedules
       .filter((s) => {
         const matchesSearch =
+          !searchQuery ||
           s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (s.description && s.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
           s.groupSlots.some(
@@ -232,11 +259,12 @@ export function ScheduleManagerView({
 
         const startYear = new Date(s.startDate).getUTCFullYear().toString();
         const endYear = new Date(s.endDate).getUTCFullYear().toString();
-        const matchesYear = startYear === selectedYear || endYear === selectedYear;
+        const matchesYear = selectedYear === "ALL" || startYear === selectedYear || endYear === selectedYear;
 
         const matchesProgram =
           selectedProgramId === "all" ||
-          s.groupSlots.some((slot) => slot.group.program.id === selectedProgramId);
+          s.groupSlots.length === 0 ||
+          s.groupSlots.some((slot) => slot.group.program?.id === selectedProgramId);
 
         return matchesSearch && matchesYear && matchesProgram;
       })
@@ -256,13 +284,7 @@ export function ScheduleManagerView({
 
   const formatDate = (isoString: string) => {
     if (!isoString) return "";
-    const date = new Date(isoString);
-    return date.toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    });
+    return formatCalendarDate(isoString, "dd MMM yyyy");
   };
 
   return (
@@ -288,7 +310,7 @@ export function ScheduleManagerView({
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
             <Button
               onClick={handleOpenCreateBasic}
               className="rounded-2xl gap-2 font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-[1.02]"
@@ -300,50 +322,38 @@ export function ScheduleManagerView({
         </div>
       </div>
 
-      {/* Stats Summary Widgets */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-card border border-border/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <Calendar className="w-6 h-6" />
+      {/* Stats Summary Widgets (3 Columns - No text overlap) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-2xs flex items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider truncate">Horarios</span>
           </div>
-          <div>
-            <span className="text-2xl font-black text-foreground">{totalSchedules}</span>
-            <span className="text-xs text-muted-foreground block font-medium">Horarios Registrados</span>
-          </div>
+          <span className="text-xl font-black text-foreground tracking-tight shrink-0">{totalSchedules}</span>
         </div>
 
-        <div className="p-5 rounded-2xl bg-card border border-border/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <ShieldCheck className="w-6 h-6" />
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-2xs flex items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">Horario Vigente:</span>
           </div>
-          <div className="min-w-0">
-            <span className="text-sm font-black text-foreground truncate block max-w-[150px]" title={activeSchedule?.name || "Sin horario activo"}>
-              {activeSchedule ? activeSchedule.name : "Sin activo"}
-            </span>
-            <span className="text-xs text-emerald-600 dark:text-emerald-400 block font-medium">
-              {activeSchedule ? "Horario Vigente Activo" : "Ninguno Activo"}
-            </span>
-          </div>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 truncate text-right min-w-0" title={activeSchedule?.name || "Sin horario activo"}>
+            {activeSchedule ? activeSchedule.name : "Ninguno"}
+          </span>
         </div>
 
-        <div className="p-5 rounded-2xl bg-card border border-border/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400">
-            <Users className="w-6 h-6" />
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-2xs flex items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider truncate">Grupos Vigentes</span>
           </div>
-          <div>
-            <span className="text-2xl font-black text-foreground">{activeScheduleGroupsCount}</span>
-            <span className="text-xs text-muted-foreground block font-medium">Grupos en Horario Vigente</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-card border border-border/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-2xl font-black text-foreground">{activeScheduleSlotsCount}</span>
-            <span className="text-xs text-muted-foreground block font-medium">Franjas Activas</span>
-          </div>
+          <span className="text-xl font-black text-foreground tracking-tight shrink-0">{activeScheduleGroupsCount}</span>
         </div>
       </div>
 
@@ -360,8 +370,8 @@ export function ScheduleManagerView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
-          {/* Program Filter */}
-          {isMounted && availablePrograms.length > 0 && (
+          {/* Program Filter (Only shown if more than 1 program) */}
+          {isMounted && availablePrograms.length > 1 && (
             <Select value={selectedProgramId} onValueChange={setSelectedProgramId}>
               <SelectTrigger className="w-full sm:w-[220px] rounded-2xl text-xs bg-card border-border/80 h-9 font-semibold px-3 gap-2 shadow-xs">
                 <FolderKanban className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -388,6 +398,9 @@ export function ScheduleManagerView({
                 <SelectValue placeholder="Año" />
               </SelectTrigger>
               <SelectContent className="rounded-2xl text-xs">
+                <SelectItem value="ALL" className="cursor-pointer font-bold text-primary">
+                  Todos los Años
+                </SelectItem>
                 {availableYears.map((yr) => (
                   <SelectItem key={yr} value={yr} className="cursor-pointer font-medium">
                     Año {yr}
@@ -462,108 +475,182 @@ export function ScheduleManagerView({
             const scheduleGroups = Array.from(scheduleGroupsMap.values());
             const schedulePrograms = Array.from(scheduleProgramsMap.entries()).map(([id, name]) => ({ id, name }));
 
+            const isFuture = !schedule.isActive && new Date(schedule.startDate) > new Date();
+
             return (
               <Card
                 key={schedule.id}
-                className={`overflow-hidden rounded-3xl transition-all ${
+                className={`relative overflow-hidden rounded-2xl transition-all duration-300 ${
                   schedule.isActive
                     ? isExpanded
-                      ? "border-2 border-emerald-500/80 shadow-xl bg-card ring-4 ring-emerald-500/10"
-                      : "border-2 border-emerald-500/70 shadow-lg hover:shadow-xl bg-card ring-2 ring-emerald-500/15"
-                    : "border border-border/70 bg-muted/20 opacity-80 hover:opacity-100"
+                      ? "border-2 border-emerald-500/80 border-l-[6px] border-l-emerald-500 shadow-md shadow-emerald-500/15 bg-gradient-to-r from-emerald-500/12 via-emerald-500/[0.04] to-card ring-2 ring-emerald-500/15"
+                      : "border border-emerald-500/50 border-l-[6px] border-l-emerald-500 shadow-xs hover:shadow-md hover:border-emerald-500/80 bg-gradient-to-r from-emerald-500/10 via-emerald-500/[0.03] to-card"
+                    : isFuture
+                    ? "border border-sky-500/50 border-l-[6px] border-l-sky-500 shadow-xs shadow-sky-500/5 hover:shadow-md hover:border-sky-500/70 bg-gradient-to-r from-sky-500/10 via-sky-500/[0.02] to-card"
+                    : "border border-border/80 border-l-[6px] border-l-slate-400 dark:border-l-slate-600 bg-gradient-to-r from-slate-500/5 via-slate-500/[0.01] to-card opacity-95 hover:opacity-100 hover:shadow-xs hover:border-border"
                 }`}
               >
-                {/* Card Top Section: Identity & Metadata */}
-                <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Background ambient glow matching validity */}
+                {schedule.isActive && (
+                  <div className="absolute top-0 left-0 w-72 h-full bg-gradient-to-r from-emerald-500/15 via-emerald-500/[0.04] to-transparent pointer-events-none" />
+                )}
+                {isFuture && (
+                  <div className="absolute top-0 left-0 w-72 h-full bg-gradient-to-r from-sky-500/15 via-sky-500/[0.03] to-transparent pointer-events-none" />
+                )}
+
+                {/* Card Top Section: Identity & Actions */}
+                <div className="relative z-10 p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  {/* Left Block: Avatar, Title, Badges, and Meta Chips */}
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                     <div
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-xs transition-colors ${
+                      className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all duration-300 ${
                         schedule.isActive
-                          ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400"
-                          : "bg-muted border-border text-muted-foreground"
+                          ? "bg-emerald-600 text-white shadow-emerald-500/30"
+                          : isFuture
+                          ? "bg-sky-500 text-white shadow-sky-500/30"
+                          : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300/80 dark:border-slate-700"
                       }`}
                     >
-                      <CalendarClock className="w-6 h-6" />
+                      <CalendarClock className="w-5.5 h-5.5" />
                     </div>
 
-                    <div className="space-y-1 min-w-0">
+                    <div className="space-y-1.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-extrabold text-lg sm:text-xl text-foreground tracking-tight truncate">
+                        <h3 className="font-extrabold text-base sm:text-lg text-foreground tracking-tight truncate">
                           {schedule.name}
                         </h3>
 
                         {schedule.isActive ? (
-                          <Badge className="bg-emerald-600 text-white hover:bg-emerald-600 border-transparent text-[11px] gap-1 font-extrabold px-2.5 py-0.5 shadow-2xs tracking-wide">
+                          <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white border-transparent text-[11px] gap-1 font-black px-2.5 py-0.5 shadow-2xs tracking-wide rounded-xl">
                             <Star className="w-3 h-3 fill-white" /> VIGENTE
                           </Badge>
+                        ) : isFuture ? (
+                          <Badge variant="outline" className="bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/35 text-[11px] gap-1 font-extrabold px-2.5 py-0.5 rounded-xl">
+                            <Clock className="w-3 h-3 text-sky-600 dark:text-sky-400" /> Vigencia Futura
+                          </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-muted-foreground text-[11px] gap-1 bg-muted/40 font-medium">
-                            <Calendar className="w-3 h-3" /> Fuera de Vigencia
+                          <Badge variant="outline" className="bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-400/30 text-[11px] gap-1 font-bold px-2.5 py-0.5 rounded-xl">
+                            <Calendar className="w-3 h-3 text-slate-500" /> Vigencia Pasada
                           </Badge>
                         )}
 
                         {schedule.isPublished ? (
-                          <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[11px] gap-1 font-bold px-2 py-0.5">
-                            <Globe className="w-3 h-3 text-blue-600 dark:text-blue-400" /> Público
+                          <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[10px] gap-1 font-bold px-2 py-0.5 rounded-xl">
+                            <Globe className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" /> Público
                           </Badge>
                         ) : (
-                          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[11px] gap-1 font-bold px-2 py-0.5">
-                            <FileEdit className="w-3 h-3 text-amber-600 dark:text-amber-400" /> Borrador
+                          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[10px] gap-1 font-bold px-2 py-0.5 rounded-xl">
+                            <FileEdit className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" /> Borrador
                           </Badge>
                         )}
                       </div>
 
-                      {/* Metadata row */}
-                      <div className="flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground font-medium">
-                        <span className="flex items-center gap-1 font-mono">
-                          <Calendar className="w-3.5 h-3.5 text-primary" />
-                          {formatDate(schedule.startDate)} — {formatDate(schedule.endDate)}
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-primary" />
-                          {scheduleGroups.length} {scheduleGroups.length === 1 ? "grupo asignado" : "grupos asignados"}
-                        </span>
-                      </div>
-
-                      {/* Program pills */}
-                      {schedulePrograms.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                          {schedulePrograms.map((prog) => (
-                            <Badge 
-                              key={prog.id} 
-                              variant="secondary" 
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all ${
-                                selectedProgramId === prog.id
-                                  ? "bg-primary text-primary-foreground border-primary"
-                                  : "bg-primary/10 text-primary border-primary/20"
-                              }`}
-                            >
-                              <FolderKanban className="w-2.5 h-2.5 mr-1" />
-                              {prog.name}
-                            </Badge>
-                          ))}
+                      {/* Metadata row with pill chips */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-background/80 border border-border/60 text-foreground font-mono text-[11px] shadow-2xs font-semibold">
+                          <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span>{formatDate(schedule.startDate)} — {formatDate(schedule.endDate)}</span>
                         </div>
-                      )}
+
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-background/80 border border-border/60 text-foreground font-bold text-[11px] shadow-2xs">
+                          <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span>{scheduleGroups.length} {scheduleGroups.length === 1 ? "grupo" : "grupos"}</span>
+                        </div>
+
+                        {schedulePrograms.map((prog) => (
+                          <Badge 
+                            key={prog.id} 
+                            variant="secondary" 
+                            className="text-[11px] font-bold px-2.5 py-1 rounded-xl border bg-primary/10 text-primary border-primary/20 shadow-2xs"
+                          >
+                            {prog.name}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Top Right Options Menu & Actions */}
-                  <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
+                  {/* Right Actions Row */}
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-end xl:self-center flex-wrap">
+                    {schedule.groupSlots.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExpandedScheduleId(isExpanded ? null : schedule.id)}
+                        className={`rounded-xl text-xs gap-1.5 h-9 px-3.5 font-bold transition-all ${
+                          isExpanded 
+                            ? "bg-primary/10 border-primary/40 text-primary shadow-xs" 
+                            : "border-border/80 bg-background hover:bg-muted/70 text-foreground shadow-2xs"
+                        }`}
+                      >
+                        <Eye className="w-3.5 h-3.5 text-primary" />
+                        <span>{isExpanded ? "Ocultar" : "Cronograma"}</span>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </Button>
+                    )}
+
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleOpenConfigureSlots(schedule)}
-                      className="rounded-xl text-xs gap-1.5 font-bold border-border shadow-2xs h-8 px-3"
+                      className="rounded-xl text-xs gap-1.5 font-bold border-border/80 bg-background hover:bg-muted/80 text-foreground shadow-2xs h-9 px-3.5 transition-all"
                     >
                       <Users className="w-3.5 h-3.5 text-primary" />
-                      Configurar Grupos
+                      <span>Grupos</span>
                     </Button>
 
-                    {isMounted ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedScheduleForTeacherModal(schedule.id);
+                        setTeacherModalOpen(true);
+                      }}
+                      className="rounded-xl text-xs gap-1.5 font-bold border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 bg-blue-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                    >
+                      <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>Profesores</span>
+                    </Button>
+
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs gap-1.5 font-bold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 bg-purple-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                    >
+                      <Link href={`${schedulesBaseUrl}/${schedule.id}/events`}>
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                        <span>Eventos</span>
+                      </Link>
+                    </Button>
+
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs gap-1.5 font-bold border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 bg-amber-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                    >
+                      <Link href={`${schedulesBaseUrl}/${schedule.id}/novelties`}>
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>Novedades</span>
+                      </Link>
+                    </Button>
+
+                    <Button
+                      asChild
+                      size="sm"
+                      className="rounded-xl text-xs gap-2 font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] h-9 px-4 transition-all"
+                    >
+                      <Link href={`${schedulesBaseUrl}/${schedule.id}`}>
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        <span>Horario</span>
+                      </Link>
+                    </Button>
+
+                    {isMounted && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="rounded-xl w-8 h-8 hover:bg-muted/80">
+                          <Button variant="ghost" size="icon" className="rounded-xl w-9 h-9 hover:bg-muted/80 border border-border/60 bg-background shadow-2xs">
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -602,33 +689,6 @@ export function ScheduleManagerView({
 
                           <DropdownMenuSeparator className="my-1" />
 
-                          {/* Section: Quick Links */}
-                          <div className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground/80 uppercase tracking-wider">
-                            Vistas y Módulos
-                          </div>
-
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`${schedulesBaseUrl}/${schedule.id}`}
-                              className="gap-2.5 cursor-pointer flex items-center w-full rounded-xl font-medium py-2"
-                            >
-                              <CalendarDays className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                              <span>Horario de Grupos</span>
-                            </Link>
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`${schedulesBaseUrl}/${schedule.id}/events`}
-                              className="gap-2.5 cursor-pointer flex items-center w-full rounded-xl font-medium py-2"
-                            >
-                              <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                              <span>Calendario de Eventos</span>
-                            </Link>
-                          </DropdownMenuItem>
-
-                          <DropdownMenuSeparator className="my-1" />
-
                           {/* Section: Delete */}
                           <DropdownMenuItem
                             onClick={() => setScheduleToDelete(schedule)}
@@ -639,59 +699,7 @@ export function ScheduleManagerView({
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    ) : null}
-                  </div>
-                </div>
-
-                {/* Card Bottom Section: Dedicated Action Toolbar */}
-                <div className="border-t border-border/60 bg-muted/20 px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  {/* Left: Chronogram preview toggle */}
-                  <div>
-                    {schedule.groupSlots.length > 0 ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setExpandedScheduleId(isExpanded ? null : schedule.id)}
-                        className="rounded-xl text-xs gap-1.5 h-8 font-semibold text-muted-foreground hover:text-foreground"
-                      >
-                        <Eye className="w-3.5 h-3.5 text-primary" />
-                        {isExpanded ? "Ocultar Cronograma" : "Vista Previa Cronograma"}
-                        {isExpanded ? (
-                          <ChevronUp className="w-3.5 h-3.5 ml-0.5" />
-                        ) : (
-                          <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
-                        )}
-                      </Button>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground/70 italic">
-                        Sin franjas horarias configuradas
-                      </span>
                     )}
-                  </div>
-
-                  {/* Right: Key Management Action Buttons */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Link href={`${schedulesBaseUrl}/${schedule.id}/events`}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl text-xs gap-1.5 font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 bg-purple-500/5 shadow-2xs h-8 px-3"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                        Gestionar Eventos
-                      </Button>
-                    </Link>
-
-                    <Link href={`${schedulesBaseUrl}/${schedule.id}`}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl text-xs gap-1.5 font-bold border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 bg-blue-500/5 shadow-2xs h-8 px-3.5"
-                      >
-                        <CalendarDays className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        Gestionar Horario
-                      </Button>
-                    </Link>
                   </div>
                 </div>
 
@@ -739,33 +747,71 @@ export function ScheduleManagerView({
             onSuccess={handleRefresh}
           />
 
-          {/* 3. Confirm Delete Alert Dialog */}
+          {/* 3. Modal for Managing Teacher Availability & Qualified Subjects */}
+          <ScheduleTeacherConfigModal
+            open={teacherModalOpen}
+            onOpenChange={setTeacherModalOpen}
+            schedules={schedules}
+            defaultScheduleId={selectedScheduleForTeacherModal}
+          />
+
+          {/* 4. Confirm Delete Alert Dialog */}
           <AlertDialog
             open={!!scheduleToDelete}
-            onOpenChange={(open) => !open && setScheduleToDelete(null)}
+            onOpenChange={(open) => {
+              if (!open) {
+                setScheduleToDelete(null);
+                setDeleteConfirmText("");
+              }
+            }}
           >
-            <AlertDialogContent className="rounded-3xl border-border bg-background shadow-2xl">
+            <AlertDialogContent className="rounded-3xl border-border bg-background shadow-2xl max-w-md">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-lg font-bold text-foreground">
-                  ¿Eliminar Horario Académico?
+                <AlertDialogTitle className="text-lg font-bold text-destructive flex items-center gap-2">
+                  <Trash2 className="w-5 h-5" /> ¿Eliminar Horario Académico?
                 </AlertDialogTitle>
-                <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
-                  Esta acción eliminará el horario{" "}
-                  <strong className="text-foreground">"{scheduleToDelete?.name}"</strong> y todas las
-                  franjas horarias configuradas para sus grupos. Esta acción no se puede deshacer.
+                <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed space-y-2">
+                  <p>
+                    Esta acción eliminará permanentemente el horario{" "}
+                    <strong className="text-foreground">"{scheduleToDelete?.name}"</strong> y todas las
+                    franjas horarias configuradas para sus grupos. Esta acción <span className="text-destructive font-semibold">no se puede deshacer</span>.
+                  </p>
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isDeleting} className="rounded-xl text-xs">
+
+              <div className="py-2 space-y-2">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Para confirmar, escribe <span className="text-destructive font-extrabold">"ELIMINAR"</span> abajo:
+                </label>
+                <Input
+                  placeholder='Escribe "ELIMINAR" para habilitar el botón'
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  className="rounded-xl text-xs bg-muted/40 border-border/80 h-9 font-semibold"
+                  disabled={isDeleting}
+                  autoFocus
+                />
+              </div>
+
+              <AlertDialogFooter className="gap-2">
+                <AlertDialogCancel 
+                  disabled={isDeleting} 
+                  onClick={() => setDeleteConfirmText("")}
+                  className="rounded-xl text-xs font-semibold"
+                >
                   Cancelar
                 </AlertDialogCancel>
-                <AlertDialogAction
+                <Button
                   onClick={handleConfirmDelete}
-                  disabled={isDeleting}
-                  className="rounded-xl text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold"
+                  disabled={
+                    isDeleting ||
+                    (deleteConfirmText.trim().toUpperCase() !== "ELIMINAR" &&
+                      deleteConfirmText.trim().toLowerCase() !== scheduleToDelete?.name.trim().toLowerCase())
+                  }
+                  className="rounded-xl text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold h-9 px-4 disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-destructive/20"
                 >
-                  {isDeleting ? "Eliminando..." : "Sí, Eliminar"}
-                </AlertDialogAction>
+                  {isDeleting ? "Eliminando..." : "Eliminar Definitivamente"}
+                </Button>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

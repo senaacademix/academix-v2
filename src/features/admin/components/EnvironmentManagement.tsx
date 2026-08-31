@@ -457,100 +457,97 @@ export function EnvironmentManagement({ initialEnvironments, programId, onAction
 
  return (
  <div className="space-y-6">
- {/* ── Header ── */}
- <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
- <div className="flex items-center gap-3">
- <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary shadow-lg shadow-primary/30">
- <Building2 className="w-5 h-5 text-white" />
- </div>
- <div>
- <h1 className="text-2xl font-bold tracking-tight">Ambientes de Formación</h1>
- <p className="text-sm text-muted-foreground">
- {environments.length} ambiente{environments.length !== 1 ? "s" : ""} registrado{environments.length !== 1 ? "s" : ""}
- </p>
- </div>
- </div>
-  <div className="flex flex-wrap items-center gap-2">
-    <Button onClick={handleExportJSON} variant="outline" className="gap-2 border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
-      <Download className="w-4 h-4" />
-      Exportar JSON
-    </Button>
-    {!isObserver && (
-      <>
-        <div className="relative">
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleImportJSON}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
-          <Button variant="outline" className="gap-2 border-amber-500/20 text-amber-600 hover:text-amber-700 hover:bg-amber-500/5 dark:text-amber-400">
-            <Upload className="w-4 h-4" />
-            Importar JSON
+  {/* ── Header ── */}
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-center gap-3">
+      <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary shadow-md shadow-primary/20 shrink-0">
+        <Building2 className="w-4.5 h-4.5 text-primary-foreground" />
+      </div>
+      <div>
+        <h2 className="text-xl font-black tracking-tight text-foreground">Ambientes de Formación</h2>
+        <p className="text-xs text-muted-foreground font-medium">
+          {environments.length} ambiente{environments.length !== 1 ? "s" : ""} registrado{environments.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+    </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button onClick={handleExportJSON} variant="outline" size="sm" className="h-8 text-xs font-bold gap-1.5 rounded-xl border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
+        <Download className="w-3.5 h-3.5" />
+        Exportar JSON
+      </Button>
+      {!isObserver && (
+        <>
+          <div className="relative">
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportJSON}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <Button variant="outline" size="sm" className="h-8 text-xs font-bold gap-1.5 rounded-xl border-amber-500/20 text-amber-600 hover:text-amber-700 hover:bg-amber-500/5 dark:text-amber-400">
+              <Upload className="w-3.5 h-3.5" />
+              Importar JSON
+            </Button>
+          </div>
+          <Button
+            id="btn-create-environment"
+            onClick={openCreate}
+            size="sm"
+            className="h-8 text-xs font-bold gap-1.5 bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 text-primary-foreground border-0 rounded-xl"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nuevo Ambiente
           </Button>
-        </div>
-        <Button
-          id="btn-create-environment"
-          onClick={openCreate}
-          className="gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 text-white border-0"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo Ambiente
-        </Button>
-      </>
-    )}
+        </>
+      )}
+    </div>
   </div>
- </div>
 
- {/* ── Stats Strip ── */}
- <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
- {[
- {
- label: "Total",
- value: environments.length,
- color: "bg-primary",
- bg: "bg-primary/10",
- border: "border-primary/20",
- text: "text-primary",
- },
- {
- label: "Activos",
- value: environments.filter((e) => e.isActive).length,
- color: "from-emerald-500 to-teal-600",
- bg: "bg--50 dark:bg--950/20 dark:bg-emerald-950/30",
- border: "border--200 dark:border--800/50 dark:border-emerald-800",
- text: "text--700 dark:text--300 dark:text-emerald-300",
- },
- {
- label: "Inactivos",
- value: environments.filter((e) => !e.isActive).length,
- color: "from-slate-400 to-slate-500",
- bg: "bg-slate-50 dark:bg-slate-800/30",
- border: "border-slate-200 dark:border-slate-700",
- text: "text-slate-600 dark:text-slate-400",
- },
- {
- label: "Cap. Total",
- value: environments.reduce((a, e) => a + e.capacity, 0),
- color: "from-amber-500 to-orange-500",
- bg: "bg--50 dark:bg--950/20 dark:bg-amber-950/30",
- border: "border--200 dark:border--800/50 dark:border-amber-800",
- text: "text--700 dark:text--300 dark:text-amber-300",
- },
- ].map(({ label, value, bg, border, text }) => (
- <div
- key={label}
- className={cn(
- "rounded-xl border p-4 flex flex-col gap-1",
- bg,
- border
- )}
- >
- <span className={cn("text-2xl font-bold", text)}>{value}</span>
- <span className="text-xs text-muted-foreground">{label}</span>
- </div>
- ))}
- </div>
+  {/* ── Stats Strip (Compact Pill Cards) ── */}
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    {[
+      {
+        label: "Total",
+        value: environments.length,
+        bg: "bg-primary/10",
+        border: "border-primary/20",
+        text: "text-primary",
+      },
+      {
+        label: "Activos",
+        value: environments.filter((e) => e.isActive).length,
+        bg: "bg-emerald-500/10",
+        border: "border-emerald-500/20",
+        text: "text-emerald-600 dark:text-emerald-400",
+      },
+      {
+        label: "Inactivos",
+        value: environments.filter((e) => !e.isActive).length,
+        bg: "bg-muted/30",
+        border: "border-border/60",
+        text: "text-muted-foreground",
+      },
+      {
+        label: "Cap. Total",
+        value: environments.reduce((a, e) => a + e.capacity, 0),
+        bg: "bg-amber-500/10",
+        border: "border-amber-500/20",
+        text: "text-amber-600 dark:text-amber-400",
+      },
+    ].map(({ label, value, bg, border, text }) => (
+      <div
+        key={label}
+        className={cn(
+          "rounded-2xl border p-2.5 sm:p-3 flex items-center justify-between gap-2 shadow-2xs transition-all",
+          bg,
+          border
+        )}
+      >
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{label}</span>
+        <span className={cn("text-xl font-black tracking-tight", text)}>{value}</span>
+      </div>
+    ))}
+  </div>
 
  {/* ── Filters ── */}
  <div className="flex flex-col sm:flex-row gap-3">

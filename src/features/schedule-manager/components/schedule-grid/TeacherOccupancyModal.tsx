@@ -38,7 +38,16 @@ import {
   BarChart3,
   Percent,
   Sparkles,
+  User,
+  Search,
+  ChevronRight,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { DayOfWeek } from "@/generated/prisma/client";
 import { ScheduleBuilderData } from "../../actions/scheduleBuilderActions";
@@ -141,6 +150,9 @@ export function TeacherOccupancyModal({
 }: TeacherOccupancyModalProps) {
   const [activeTab, setActiveTab] = useState<"schedule" | "availability" | "courses">("schedule");
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
+  const [teacherViewMode, setTeacherViewMode] = useState<"single" | "all" | "chart">("single");
+  const [maxHoursThreshold, setMaxHoursThreshold] = useState<number>(40);
+  const [teacherSearch, setTeacherSearch] = useState("");
   const [isExporting, setIsExporting] = useState(false);
 
   // Extract all teacher assignments and total hours across all groups
@@ -249,6 +261,18 @@ export function TeacherOccupancyModal({
       return a.cleanName.localeCompare(b.cleanName);
     });
   }, [teachers, groups]);
+
+  const filteredTeachersWithMetrics = useMemo(() => {
+    if (!teacherSearch) return teachersWithMetrics;
+    const q = teacherSearch.toLowerCase();
+    return teachersWithMetrics.filter((t) => {
+      const matchName = t.cleanName.toLowerCase().includes(q);
+      const matchEmail = (t.teacher.email || "").toLowerCase().includes(q);
+      const matchGroup = Array.from(t.distinctGroups).some((g) => g.toLowerCase().includes(q));
+      const matchCourse = Array.from(t.distinctCourses).some((c) => c.toLowerCase().includes(q));
+      return matchName || matchEmail || matchGroup || matchCourse;
+    });
+  }, [teachersWithMetrics, teacherSearch]);
 
   // Sync selected teacher when opening modal
   React.useEffect(() => {
@@ -497,13 +521,30 @@ export function TeacherOccupancyModal({
   }, [currentTeacherData]);
 
   const handleExportCurrentTeacherPdf = async () => {
-    if (!currentTeacherData) return;
+    if (teacherViewMode === "single" && !currentTeacherData) return;
     setIsExporting(true);
     try {
-      toast.info(`Generando PDF de ${currentTeacherData.cleanName}...`);
-      const allTeachersData = extractTeachersExportData([currentTeacherData.teacher], groups);
-      await generateAndDownloadTeacherSchedulePdf(schedule, allTeachersData);
-      toast.success("PDF de docente descargado");
+      const targetTeachers =
+        teacherViewMode === "single" && currentTeacherData
+          ? [currentTeacherData.teacher]
+          : teachers;
+      const label =
+        teacherViewMode === "single"
+          ? currentTeacherData?.cleanName || "Docente"
+          : teacherViewMode === "all"
+          ? "Todos_Los_Instructores"
+          : "Reporte_Carga_Instructores";
+
+      toast.info(`Generando PDF de ${label.replace(/_/g, " ")}...`);
+      const allTeachersData = extractTeachersExportData(targetTeachers, groups);
+      await generateAndDownloadTeacherSchedulePdf(
+        schedule,
+        allTeachersData,
+        teacherViewMode,
+        `Horario_Docente_${label.replace(/\s+/g, "_")}.pdf`,
+        maxHoursThreshold
+      );
+      toast.success("PDF generado y descargado correctamente");
     } catch (err: any) {
       toast.error(err.message || "Error al exportar PDF");
     } finally {
@@ -512,13 +553,29 @@ export function TeacherOccupancyModal({
   };
 
   const handleExportCurrentTeacherExcel = async () => {
-    if (!currentTeacherData) return;
+    if (teacherViewMode === "single" && !currentTeacherData) return;
     setIsExporting(true);
     try {
-      toast.info(`Generando Excel de ${currentTeacherData.cleanName}...`);
-      const allTeachersData = extractTeachersExportData([currentTeacherData.teacher], groups);
-      await generateAndDownloadTeacherScheduleExcel(schedule, allTeachersData);
-      toast.success("Excel de docente descargado");
+      const targetTeachers =
+        teacherViewMode === "single" && currentTeacherData
+          ? [currentTeacherData.teacher]
+          : teachers;
+      const label =
+        teacherViewMode === "single"
+          ? currentTeacherData?.cleanName || "Docente"
+          : teacherViewMode === "all"
+          ? "Todos_Los_Instructores"
+          : "Reporte_Carga_Instructores";
+
+      toast.info(`Generando Excel de ${label.replace(/_/g, " ")}...`);
+      const allTeachersData = extractTeachersExportData(targetTeachers, groups);
+      await generateAndDownloadTeacherScheduleExcel(
+        schedule,
+        allTeachersData,
+        teacherViewMode,
+        `Horario_Docente_${label.replace(/\s+/g, "_")}.xlsx`
+      );
+      toast.success("Excel generado y descargado correctamente");
     } catch (err: any) {
       toast.error(err.message || "Error al exportar Excel");
     } finally {
@@ -542,273 +599,743 @@ export function TeacherOccupancyModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl lg:max-w-6xl p-0 overflow-hidden rounded-3xl border-border bg-background shadow-2xl">
+      <DialogContent className="max-w-[95vw] lg:max-w-6xl xl:max-w-7xl p-0 overflow-hidden rounded-3xl border-border bg-background shadow-2xl">
         <div className="flex flex-col">
           {/* Header */}
           <DialogHeader className="p-6 pb-4 border-b border-border/80 bg-muted/20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 font-bold">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 font-bold shrink-0">
                   <GraduationCap className="w-5 h-5" />
                 </div>
-                <div>
-                  <DialogTitle className="text-lg font-black text-foreground">
+                <div className="min-w-0">
+                  <DialogTitle className="text-lg font-black text-foreground truncate">
                     Matriz de Horario y Carga por Instructor
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  <DialogDescription className="text-xs text-muted-foreground mt-0.5 truncate">
                     {schedule.name} • Disponibilidad reportada, materias habilitadas y distribución horaria.
                   </DialogDescription>
                 </div>
               </div>
 
-              {/* Teacher Selector Dropdown */}
-              <div className="flex items-center gap-2">
-                <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
-                  <SelectTrigger className="h-8 text-xs font-bold rounded-xl w-64 bg-background border-border/80">
-                    <SelectValue placeholder="Seleccionar instructor..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl text-xs max-h-60">
-                    {teachersWithMetrics.map((t) => (
-                      <SelectItem key={t.teacher.id} value={t.teacher.id} className="text-xs">
-                        <div className="flex items-center justify-between w-full gap-2">
-                          <span className="truncate">{t.cleanName}</span>
-                          <span className="font-mono text-[10px] text-muted-foreground font-bold shrink-0">
-                            ({t.totalHours}h/sem)
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Mode Switcher & Teacher Selector */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {/* View Mode Toggle Button */}
+                <div className="flex items-center gap-0.5 bg-muted/60 p-0.5 rounded-xl border border-border/80 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setTeacherViewMode("single")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      teacherViewMode === "single"
+                        ? "bg-background text-indigo-600 shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Por Instructor</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTeacherViewMode("all")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      teacherViewMode === "all"
+                        ? "bg-background text-indigo-600 shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Todos los Instructores</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTeacherViewMode("chart")}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      teacherViewMode === "chart"
+                        ? "bg-background text-indigo-600 shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Gráfico de Horas</span>
+                  </button>
+                </div>
+
+                {/* Teacher Dropdown (Only in single mode) */}
+                {teacherViewMode === "single" && (
+                  <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                    <SelectTrigger className="h-8 text-xs font-bold rounded-xl w-60 bg-background border-border/80">
+                      <SelectValue placeholder="Seleccionar instructor..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl text-xs max-h-60">
+                      {teachersWithMetrics.map((t) => (
+                        <SelectItem key={t.teacher.id} value={t.teacher.id} className="text-xs">
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span className="truncate">{t.cleanName}</span>
+                            <span className="font-mono text-[10px] text-muted-foreground font-bold shrink-0">
+                              ({t.totalHours}h/sem)
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </DialogHeader>
 
-          {/* Teacher Summary Metrics Bar with Total Period Hours */}
-          {currentTeacherData && (
-            <div className="px-6 py-2 bg-indigo-500/5 border-b border-indigo-500/20 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-1.5 font-bold text-foreground">
-                  <GraduationCap className="w-4 h-4 text-indigo-600" />
-                  <span>{currentTeacherData.cleanName}</span>
-                  <span className="text-muted-foreground font-normal">
-                    ({currentTeacherData.teacher.email || "Sin correo"})
+          {/* Body Content depending on View Mode */}
+          {teacherViewMode === "chart" ? (
+            <div className="p-6 flex flex-col space-y-5 max-h-[70vh] overflow-y-auto scrollbar-thin">
+              {/* Executive Summary KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
+                <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-1">
+                  <span className="text-[11px] font-bold text-indigo-600 uppercase flex items-center justify-between">
+                    <span>Total Instructores</span>
+                    <GraduationCap className="w-4 h-4 text-indigo-600" />
                   </span>
+                  <p className="text-2xl font-black text-foreground">
+                    {teachersWithMetrics.length}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-medium">
+                    Docentes registrados en la sede
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Users className="w-3.5 h-3.5 text-primary" />
-                  <span>
-                    Fichas: <strong>{currentTeacherData.distinctGroups.size}</strong> (
-                    {Array.from(currentTeacherData.distinctGroups).join(", ") || "Ninguna"})
+                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+                  <span className="text-[11px] font-bold text-emerald-600 uppercase flex items-center justify-between">
+                    <span>Con Carga Activa</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   </span>
+                  <p className="text-2xl font-black text-foreground">
+                    {teachersWithMetrics.filter((t) => t.totalHours > 0).length} / {teachersWithMetrics.length}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-medium">
+                    Docentes con horas asignadas
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-1">
+                  <span className="text-[11px] font-bold text-purple-600 uppercase flex items-center justify-between">
+                    <span>Total Horas Asignadas</span>
+                    <Clock className="w-4 h-4 text-purple-600" />
+                  </span>
+                  <p className="text-2xl font-black text-foreground">
+                    {Math.round(teachersWithMetrics.reduce((acc, t) => acc + t.totalHours, 0) * 10) / 10}h / sem
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-medium">
+                    En todos los grupos y materias
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+                  <span className="text-[11px] font-bold text-amber-600 uppercase flex items-center justify-between">
+                    <span>Promedio de Carga</span>
+                    <Percent className="w-4 h-4 text-amber-600" />
+                  </span>
+                  <p className="text-2xl font-black text-foreground">
+                    {teachersWithMetrics.length > 0
+                      ? Math.round(
+                          (teachersWithMetrics.reduce((acc, t) => acc + t.totalHours, 0) /
+                            (teachersWithMetrics.length * maxHoursThreshold)) *
+                            100
+                        )
+                      : 0}%
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-medium truncate">
+                    Basado en máximo de {maxHoursThreshold}h/sem
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Time of Day Legend */}
-                <div className="hidden lg:flex items-center gap-2.5 bg-background/80 px-2.5 py-1 rounded-xl border border-border/60 text-[10px] font-semibold text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Cloud className="w-3 h-3 text-sky-500" /> Mañana
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Sun className="w-3 h-3 text-orange-500" /> Tarde
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Moon className="w-3 h-3 text-purple-600 dark:text-purple-400" /> Noche
-                  </span>
-                </div>
-
-                {/* Weekly Hours Badge */}
-                <Badge className="bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-bold text-xs px-2.5 py-1">
-                  <Clock className="w-3.5 h-3.5 mr-1 text-indigo-600" />
-                  <span>{currentTeacherData.totalHours} Horas / Semana</span>
-                </Badge>
-
-                {/* Total Period Hours Badge */}
-                <Badge className="bg-indigo-600 text-white font-bold text-xs px-2.5 py-1 shadow-2xs">
-                  <span>📊 {totalPeriodHours}h Totales Periodo ({totalWeeks} sem)</span>
-                </Badge>
-              </div>
-            </div>
-          )}
-
-          {/* 3 Interactive Tabs: Horario Semanal, Disponibilidad, Materias */}
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as any)}
-            className="w-full flex flex-col"
-          >
-            <div className="px-6 pt-3 pb-2 border-b border-border/60 bg-muted/10 flex items-center justify-between">
-              <TabsList className="inline-flex w-auto h-auto rounded-xl bg-muted/60 p-1 gap-1">
-                <TabsTrigger
-                  value="schedule"
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs"
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>Horario Semanal</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="availability"
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs"
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Disponibilidad Reportada</span>
-                  {availabilityAnalysis.outsideAvailabilitySlots.length > 0 && (
-                    <span className="ml-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] flex items-center justify-center font-bold shrink-0">
-                      !
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="courses"
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs"
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>Materias Reportadas ({reportedCoursesCount})</span>
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            {/* TAB 1: HORARIO SEMANAL */}
-            <TabsContent value="schedule" className="p-4 m-0 overflow-y-auto max-h-[54vh] scrollbar-thin">
-              <div className="border border-border/80 rounded-2xl overflow-hidden bg-card shadow-xs">
-                {/* Days Header */}
-                <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border/70 bg-muted/90 backdrop-blur-xs sticky top-0 z-20">
-                  <div className="py-2 px-1 text-center text-[10px] font-extrabold text-muted-foreground uppercase border-r border-border/60">
-                    Hora
+              {/* Teacher Hours Bar Chart List */}
+              <div className="border border-border/80 rounded-2xl p-5 bg-card space-y-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-foreground flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-indigo-600" />
+                      <span>Gráficos de Carga Horaria por Instructor</span>
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Comparativa visual de horas semanales asignadas frente al límite delimitable.
+                    </p>
                   </div>
-                  {DAYS_ES.map((d) => {
-                    const dayClasses = currentTeacherData?.classesByDay[d.key] || [];
+
+                  {/* Delimiter Threshold Control & Color Legend */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 bg-muted/60 p-1.5 px-3 rounded-xl border border-border/80 text-xs">
+                      <span className="font-extrabold text-foreground">Límite Máximo:</span>
+                      <Input
+                        type="number"
+                        min={10}
+                        max={60}
+                        value={maxHoursThreshold}
+                        onChange={(e) =>
+                          setMaxHoursThreshold(Math.max(1, Number(e.target.value) || 40))
+                        }
+                        className="w-16 h-7 rounded-lg border-border bg-background px-2 text-center font-mono font-black text-indigo-600 text-xs focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                      <span className="font-bold text-muted-foreground">h / sem</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-[10px] font-bold">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Normal
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Límite (100%)
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" /> Exceso (&gt; {maxHoursThreshold}h)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {teachersWithMetrics.map((t) => {
+                    const hours = t.totalHours;
+                    const limit = maxHoursThreshold;
+                    const hasExcess = hours > limit;
+                    const excessHours = Math.max(0, Math.round((hours - limit) * 10) / 10);
+                    const baseHours = Math.min(hours, limit);
+
+                    // Dynamic scale: track total scale is max(limit * 1.25, hours)
+                    const scaleMax = Math.max(limit * 1.25, hours);
+                    const basePercent = Math.min((baseHours / scaleMax) * 100, 100);
+                    const excessPercent = Math.min((excessHours / scaleMax) * 100, 100);
+                    const limitMarkerPercent = (limit / scaleMax) * 100;
+
+                    const periodHours = Math.round(hours * totalWeeks * 10) / 10;
+                    const hasCollisions = Object.values(t.classesByDay).some((arr) =>
+                      arr.some((c) => c.hasCollision)
+                    );
+
+                    const baseFillColor =
+                      hours <= limit * 0.8
+                        ? "bg-emerald-500"
+                        : "bg-amber-500";
+
+                    const percentOfLimit = Math.round((hours / limit) * 100);
+
                     return (
                       <div
-                        key={d.key}
-                        className="py-1.5 px-2 text-center border-r last:border-r-0 border-border/60"
+                        key={t.teacher.id}
+                        className="p-4 rounded-2xl border border-border/70 bg-background hover:bg-muted/20 transition-all space-y-2.5 group"
                       >
-                        <span className="font-extrabold text-xs text-foreground uppercase block">
-                          {d.label}
-                        </span>
-                        <span className="text-[9px] text-muted-foreground font-semibold">
-                          {dayClasses.length} {dayClasses.length === 1 ? "sesión" : "sesiones"}
-                        </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="font-extrabold text-foreground text-sm group-hover:text-indigo-600 transition-colors truncate">
+                              👨‍🏫 {t.cleanName}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              ({t.teacher.email || "Sin correo"})
+                            </span>
+
+                            {hasExcess && (
+                              <Badge className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30 text-[9.5px] font-extrabold shrink-0 animate-pulse">
+                                ⚠️ Exceso: +{excessHours}h del límite
+                              </Badge>
+                            )}
+
+                            {hasCollisions && (
+                              <Badge className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30 text-[9px] font-bold shrink-0">
+                                Cruces detectados
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-xs text-foreground">
+                              {hours}h / {limit}h max
+                            </span>
+                            <Badge className="font-mono font-bold text-[10px] bg-indigo-500/10 text-indigo-600 border-indigo-500/30">
+                              {periodHours}h periodo
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedTeacherId(t.teacher.id);
+                                setTeacherViewMode("single");
+                              }}
+                              className="h-6 px-2 rounded-lg text-[10px] font-bold text-indigo-600 border-indigo-500/30 hover:bg-indigo-500/10 gap-1"
+                            >
+                              <span>Ver Horario</span>
+                              <ChevronRight className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Multi-Tone Visual Progress Bar with Threshold Indicator */}
+                        <div className="space-y-1">
+                          <div className="w-full h-4 rounded-full bg-muted overflow-hidden relative border border-border/60 flex">
+                            {/* Base Portion (Up to Limit) */}
+                            <div
+                              className={`h-full transition-all duration-500 ${baseFillColor}`}
+                              style={{ width: `${basePercent}%` }}
+                            />
+                            {/* Excess Portion (Hours Exceeding Limit - Painted Red/Rose) */}
+                            {hasExcess && (
+                              <div
+                                className="h-full bg-gradient-to-r from-red-600 to-rose-600 transition-all duration-500 border-l border-white/50 animate-pulse"
+                                style={{ width: `${excessPercent}%` }}
+                                title={`Exceso de ${excessHours} horas sobre el límite de ${limit}h`}
+                              />
+                            )}
+
+                            {/* Dashed vertical marker for the limit */}
+                            <div
+                              className="absolute top-0 bottom-0 w-0.5 bg-foreground/80 z-10 pointer-events-none"
+                              style={{ left: `${limitMarkerPercent}%` }}
+                              title={`Límite delimitador: ${limit} horas`}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10.5px] text-muted-foreground font-semibold pt-0.5">
+                            <span className="truncate">
+                              Fichas a cargo: {t.distinctGroups.size}{" "}
+                              {t.distinctGroups.size > 0
+                                ? `(${Array.from(t.distinctGroups).join(", ")})`
+                                : ""}
+                            </span>
+                            <span
+                              className={`font-bold font-mono shrink-0 ml-2 ${
+                                hasExcess ? "text-red-600 font-extrabold" : "text-foreground"
+                              }`}
+                            >
+                              {percentOfLimit}% Ocupación ({hours}h de {limit}h)
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          ) : teacherViewMode === "all" ? (
+            <div className="p-5 flex flex-col space-y-3">
+              {/* Controls & Search */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 pb-2 border-b border-border/70">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-indigo-600 text-white font-bold text-xs px-2.5 py-1">
+                    {teachersWithMetrics.length} Instructores Registrados
+                  </Badge>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    (Matriz completa de ocupación por profesor, una fila por docente)
+                  </span>
+                </div>
 
-                {/* Timeline Matrix */}
-                <div
-                  className="grid grid-cols-[56px_repeat(7,1fr)] relative bg-background"
-                  style={{ height: totalGridHeight }}
-                >
-                  {/* Time Scale Column */}
-                  <div className="border-r border-border/60 bg-muted/20 relative select-none">
-                    {timeLabels.map((h, i) => (
-                      <div
-                        key={h}
-                        className="absolute left-0 right-0 text-center text-[9px] font-mono text-muted-foreground -translate-y-1/2 font-bold px-0.5 truncate"
-                        style={{ top: i * ROW_HEIGHT }}
-                      >
-                        {formatHourLabel(h)}
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={teacherSearch}
+                    onChange={(e) => setTeacherSearch(e.target.value)}
+                    placeholder="Buscar por profesor, email, materia o ficha..."
+                    className="pl-8 text-xs h-8 rounded-xl bg-background border-border/80 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* All Teachers Table Matrix */}
+              <div className="overflow-auto max-h-[58vh] border border-border/80 rounded-2xl bg-background shadow-2xs relative scrollbar-thin">
+                <div className="min-w-[1100px]">
+                  {/* Table Header with Solid Background */}
+                  <div className="grid grid-cols-12 divide-x divide-border/80 border-b border-border/80 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 sticky top-0 z-30 text-[11px] font-black shadow-xs">
+                    <div className="col-span-3 p-3 flex items-center justify-between bg-slate-100 dark:bg-slate-900">
+                      <span>Instructor / Docente</span>
+                      <span className="text-[10px] font-normal text-muted-foreground">Horas & Fichas</span>
+                    </div>
+                    {DAYS_ES.map((d) => (
+                      <div key={d.key} className="col-span-1 p-2 text-center flex items-center justify-center font-extrabold uppercase bg-slate-100 dark:bg-slate-900">
+                        {d.label}
                       </div>
                     ))}
                   </div>
 
-                  {/* Day Columns with Absolute Positioned Classes */}
-                  {DAYS_ES.map((d) => {
-                    const classes = currentTeacherData?.classesByDay[d.key] || [];
+                  {/* Table Body (One Teacher Per Row) */}
+                  <div className="divide-y divide-border/60">
+                    {filteredTeachersWithMetrics.length === 0 ? (
+                      <div className="p-8 text-center text-xs text-muted-foreground italic">
+                        No se encontraron instructores con el criterio de búsqueda.
+                      </div>
+                    ) : (
+                      filteredTeachersWithMetrics.map((t) => {
+                        const periodHours = Math.round(t.totalHours * totalWeeks * 10) / 10;
+                        const hasAnyCollision = Object.values(t.classesByDay).some((arr) =>
+                          arr.some((c) => c.hasCollision)
+                        );
 
-                    return (
-                      <div
-                        key={d.key}
-                        className="relative border-r last:border-r-0 border-border/60 h-full"
-                      >
-                        {/* Hour Guideline Horizontal Rules */}
-                        {timeLabels.map((_, i) => (
+                        return (
                           <div
-                            key={i}
-                            className="absolute left-0 right-0 border-b border-border/30"
-                            style={{ top: i * ROW_HEIGHT }}
-                          />
-                        ))}
-
-                        {/* Class Slots Positioned Vertically */}
-                        {classes.map((c) => {
-                          const [sh, sm] = c.startTime.split(":").map(Number);
-                          const [eh, em] = c.endTime.split(":").map(Number);
-
-                          const startMinutes = (sh - earliestHour) * 60 + sm;
-                          const durationMinutes = eh * 60 + em - (sh * 60 + sm);
-
-                          const topPx = (startMinutes / 60) * ROW_HEIGHT;
-                          const heightPx = Math.max(
-                            (durationMinutes / 60) * ROW_HEIGHT - 3,
-                            34
-                          );
-
-                          return (
-                            <div
-                              key={c.id}
-                              onClick={() => handleGroupClick(c.groupId)}
-                              style={{
-                                top: `${topPx}px`,
-                                height: `${heightPx}px`,
-                              }}
-                              className={`absolute left-1 right-1 rounded-xl p-1.5 border flex flex-col justify-between transition-all cursor-pointer select-none shadow-2xs overflow-hidden ${
-                                c.hasCollision
-                                  ? "bg-red-500/15 border-red-500/50 text-red-950 dark:text-red-100 hover:bg-red-500/25 ring-2 ring-red-500/30"
-                                  : "bg-indigo-500/15 border-indigo-500/30 text-indigo-950 dark:text-indigo-100 hover:bg-indigo-500/25"
-                              }`}
-                              title={`Ficha ${c.groupName}: ${c.courseTitle} (${toFormat12h(c.startTime)} a ${toFormat12h(c.endTime)}) en ${c.environmentName}`}
-                            >
-                              <div className="space-y-0.5 min-w-0">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
-                                    {c.groupName}
+                            key={t.teacher.id}
+                            className="grid grid-cols-12 divide-x divide-border/60 hover:bg-muted/20 transition-colors group"
+                          >
+                            {/* Column 1: Teacher Metadata */}
+                            <div className="col-span-3 p-3 flex flex-col justify-between gap-2 bg-card/60">
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="font-extrabold text-xs text-foreground group-hover:text-indigo-600 transition-colors truncate">
+                                    {t.cleanName}
                                   </span>
-
-                                  {/* Sun / CloudSun / Moon Icon Indicator */}
-                                  {renderTimeOfDayIcon(c.startTime, c.endTime)}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedTeacherId(t.teacher.id);
+                                      setTeacherViewMode("single");
+                                    }}
+                                    className="h-5 px-1.5 rounded-md text-[10px] gap-1 font-bold text-indigo-600 border-indigo-500/30 hover:bg-indigo-500/10 shrink-0"
+                                    title="Ver horario detallado de este instructor"
+                                  >
+                                    <span>Ver</span>
+                                    <ChevronRight className="w-3 h-3" />
+                                  </Button>
                                 </div>
 
-                                <p className="text-[9px] font-bold text-foreground line-clamp-1 leading-tight">
-                                  {c.courseTitle}
-                                </p>
-                              </div>
+                                <div className="text-[10px] text-muted-foreground truncate font-medium">
+                                  ✉️ {t.teacher.email || "Sin correo"}
+                                </div>
 
-                              <div className="flex items-center justify-between text-[8.5px] text-muted-foreground pt-0.5 border-t border-border/40 font-mono mt-auto">
-                                <span className="truncate">
-                                  {toFormat12h(c.startTime)} - {toFormat12h(c.endTime)}
-                                </span>
-                                <span className="font-bold text-indigo-600 shrink-0 ml-1">
-                                  {c.durationHours}h
-                                </span>
+                                <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                                  <Badge variant="outline" className="text-[9px] font-mono font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30">
+                                    {t.totalHours}h/sem
+                                  </Badge>
+                                  <Badge variant="outline" className="text-[9px] font-mono font-semibold bg-muted/50">
+                                    {periodHours}h periodo
+                                  </Badge>
+                                  <span className="text-[10px] text-muted-foreground font-semibold">
+                                    Fichas: {t.distinctGroups.size}
+                                  </span>
+                                </div>
+
+                                {hasAnyCollision && (
+                                  <Badge className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30 text-[9px] gap-1 font-bold mt-1">
+                                    <AlertTriangle className="w-2.5 h-2.5 text-red-600" />
+                                    <span>Cruces de Horario</span>
+                                  </Badge>
+                                )}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </TabsContent>
 
-            {/* TAB 2: DISPONIBILIDAD REPORTADA */}
-            <TabsContent value="availability" className="p-5 m-0 overflow-y-auto max-h-[54vh] space-y-4 scrollbar-thin">
-              {/* Availability KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-4 rounded-2xl border border-border/80 bg-card space-y-1">
-                  <span className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-primary" /> Horas Reportadas Disponibles
-                  </span>
-                  <div className="flex items-baseline gap-1.5">
-                    <p className="text-xl font-black text-foreground">
-                      {availabilityAnalysis.totalAvailableHoursDeclared}
-                    </p>
-                    <span className="text-xs font-normal text-muted-foreground">h declaradas en perfil</span>
+                            {/* Columns 2-8: Monday to Sunday Slots */}
+                            {DAYS_ES.map((d) => {
+                              const dayClasses = t.classesByDay[d.key] || [];
+
+                              return (
+                                <div
+                                  key={d.key}
+                                  className="col-span-1 p-1.5 space-y-1.5 min-h-[90px] flex flex-col justify-start bg-background/50 hover:bg-background transition-colors"
+                                >
+                                  {dayClasses.length > 0 ? (
+                                    dayClasses.map((cls, idx) => (
+                                      <Tooltip key={idx}>
+                                        <TooltipTrigger asChild>
+                                          <div
+                                            onClick={() => {
+                                              setSelectedTeacherId(t.teacher.id);
+                                              setTeacherViewMode("single");
+                                            }}
+                                            className={`p-1.5 rounded-lg border cursor-pointer transition-all text-[10px] space-y-0.5 shadow-2xs group/card ${
+                                              cls.hasCollision
+                                                ? "bg-red-500/15 border-red-500/40 text-red-950 dark:text-red-100"
+                                                : "bg-indigo-500/10 border-indigo-500/30 text-foreground hover:bg-indigo-500/20"
+                                            }`}
+                                          >
+                                            <div className="flex items-center justify-between gap-1">
+                                              <span className="font-extrabold text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
+                                                Ficha {cls.groupName}
+                                              </span>
+                                              {cls.hasCollision && (
+                                                <AlertTriangle className="w-3 h-3 text-red-600 shrink-0" />
+                                              )}
+                                            </div>
+
+                                            <div className="font-bold text-foreground line-clamp-1 leading-tight group-hover/card:text-indigo-600 transition-colors">
+                                              {cls.courseTitle}
+                                            </div>
+
+                                            <div className="text-[9px] font-mono text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5">
+                                              <Clock className="w-2.5 h-2.5 shrink-0" />
+                                              <span>{toFormat12h(cls.startTime)} - {toFormat12h(cls.endTime)}</span>
+                                            </div>
+
+                                            {cls.environmentName && (
+                                              <div className="text-[9px] text-muted-foreground truncate font-medium">
+                                                📍 {cls.environmentName}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="rounded-2xl p-3 max-w-xs space-y-1.5 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                                          <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
+                                            <Badge className="bg-indigo-600 text-white font-bold text-[10px]">
+                                              Docente: {t.cleanName}
+                                            </Badge>
+                                            <span className="text-[10px] font-mono text-muted-foreground font-semibold">
+                                              {d.label}
+                                            </span>
+                                          </div>
+
+                                          <p className="font-extrabold text-xs text-foreground leading-tight">{cls.courseTitle}</p>
+
+                                          <div className="space-y-1 text-[11px] text-muted-foreground font-medium pt-1">
+                                            <p className="flex items-center gap-1.5 text-indigo-600 font-semibold">
+                                              <Clock className="w-3 h-3 text-indigo-600 shrink-0" />
+                                              <span>{toFormat12h(cls.startTime)} a {toFormat12h(cls.endTime)} ({cls.durationHours}h)</span>
+                                            </p>
+
+                                            <p className="flex items-center gap-1.5 text-foreground">
+                                              <Users className="w-3 h-3 text-primary shrink-0" />
+                                              <span>Ficha: {cls.groupName} ({cls.programName})</span>
+                                            </p>
+
+                                            {cls.environmentName && (
+                                              <p className="flex items-center gap-1.5">
+                                                <Building className="w-3 h-3 text-indigo-500 shrink-0" />
+                                                <span>Ambiente: {cls.environmentName}</span>
+                                              </p>
+                                            )}
+                                          </div>
+
+                                          <p className="text-[10px] text-indigo-600 font-bold pt-1.5 border-t border-border/40 flex items-center justify-between">
+                                            <span>Ver horario detallado de este instructor</span>
+                                            <ChevronRight className="w-3 h-3" />
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ))
+                                  ) : (
+                                    <div className="h-full flex items-center justify-center text-[10px] text-muted-foreground/40 italic p-1">
+                                      -
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {/* Single Teacher Metrics Bar */}
+              {currentTeacherData && (
+                <div className="px-6 py-2 bg-indigo-500/5 border-b border-indigo-500/20 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-1.5 font-bold text-foreground">
+                      <GraduationCap className="w-4 h-4 text-indigo-600" />
+                      <span>{currentTeacherData.cleanName}</span>
+                      <span className="text-muted-foreground font-normal">
+                        ({currentTeacherData.teacher.email || "Sin correo"})
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Users className="w-3.5 h-3.5 text-primary" />
+                      <span>
+                        Fichas: <strong>{currentTeacherData.distinctGroups.size}</strong> (
+                        {Array.from(currentTeacherData.distinctGroups).join(", ") || "Ninguna"})
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Weekly Hours Badge */}
+                    <Badge className="bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 font-bold text-xs px-2.5 py-1">
+                      <Clock className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                      <span>{currentTeacherData.totalHours} Horas / Semana</span>
+                    </Badge>
+
+                    {/* Total Period Hours Badge */}
+                    <Badge className="bg-indigo-600 text-white font-bold text-xs px-2.5 py-1 shadow-2xs">
+                      <span>📊 {totalPeriodHours}h Totales Periodo ({totalWeeks} sem)</span>
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
+              {/* 3 Interactive Tabs */}
+              <Tabs
+                value={activeTab}
+                onValueChange={(v) => setActiveTab(v as any)}
+                className="w-full flex flex-col"
+              >
+                <div className="px-6 pt-3 pb-2 border-b border-border/60 bg-muted/10 flex items-center justify-between">
+                  <TabsList className="inline-flex w-auto h-auto rounded-xl bg-muted/60 p-1 gap-1">
+                    <TabsTrigger
+                      value="schedule"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Horario Semanal</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="availability"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs"
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Disponibilidad Reportada</span>
+                      {availabilityAnalysis.outsideAvailabilitySlots.length > 0 && (
+                        <span className="ml-1 w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] flex items-center justify-center font-bold shrink-0">
+                          !
+                        </span>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="courses"
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-xs"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Materias Reportadas ({reportedCoursesCount})</span>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                {/* TAB 1: HORARIO SEMANAL */}
+                <TabsContent value="schedule" className="p-4 m-0 overflow-y-auto max-h-[54vh] scrollbar-thin">
+                  <div className="border border-border/80 rounded-2xl overflow-hidden bg-card shadow-xs">
+                    {/* Days Header */}
+                    <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border/70 bg-muted/90 backdrop-blur-xs sticky top-0 z-20">
+                      <div className="py-2 px-1 text-center text-[10px] font-extrabold text-muted-foreground uppercase border-r border-border/60">
+                        Hora
+                      </div>
+                      {DAYS_ES.map((d) => {
+                        const dayClasses = currentTeacherData?.classesByDay[d.key] || [];
+                        return (
+                          <div
+                            key={d.key}
+                            className="py-1.5 px-2 text-center border-r last:border-r-0 border-border/60"
+                          >
+                            <span className="font-extrabold text-xs text-foreground uppercase block">
+                              {d.label}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground font-semibold">
+                              {dayClasses.length} {dayClasses.length === 1 ? "sesión" : "sesiones"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Timeline Matrix */}
+                    <div
+                      className="grid grid-cols-[56px_repeat(7,1fr)] relative bg-background"
+                      style={{ height: totalGridHeight }}
+                    >
+                      {/* Time Scale Column */}
+                      <div className="flex flex-col divide-y divide-border/30 text-[9px] font-mono text-muted-foreground bg-muted/20 select-none border-r border-border/60">
+                        {Array.from({ length: totalCanvasHours }, (_, i) => earliestHour + i).map((h) => (
+                          <div
+                            key={h}
+                            style={{ height: `${ROW_HEIGHT}px` }}
+                            className="px-0.5 pt-1.5 flex items-start justify-center font-bold text-[9px] text-muted-foreground truncate"
+                          >
+                            {formatHourLabel(h)}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Day Columns with Absolute Positioned Classes */}
+                      {DAYS_ES.map((d) => {
+                        const classes = currentTeacherData?.classesByDay[d.key] || [];
+
+                        return (
+                          <div
+                            key={d.key}
+                            className="relative border-r last:border-r-0 border-border/60 h-full"
+                          >
+                            {/* Hour Guideline Horizontal Rules */}
+                            {timeLabels.map((_, i) => (
+                              <div
+                                key={i}
+                                className="absolute left-0 right-0 border-b border-border/30"
+                                style={{ top: i * ROW_HEIGHT }}
+                              />
+                            ))}
+
+                            {/* Class Slots Positioned Vertically */}
+                            {classes.map((c) => {
+                              const [sh, sm] = c.startTime.split(":").map(Number);
+                              const [eh, em] = c.endTime.split(":").map(Number);
+
+                              const startMinutes = (sh - earliestHour) * 60 + sm;
+                              const durationMinutes = eh * 60 + em - (sh * 60 + sm);
+
+                              const topPx = (startMinutes / 60) * ROW_HEIGHT;
+                              const heightPx = Math.max(
+                                (durationMinutes / 60) * ROW_HEIGHT - 3,
+                                34
+                              );
+
+                              return (
+                                <div
+                                  key={c.id}
+                                  onClick={() => handleGroupClick(c.groupId)}
+                                  style={{
+                                    top: `${topPx}px`,
+                                    height: `${heightPx}px`,
+                                  }}
+                                  className={`absolute left-1 right-1 rounded-xl p-1.5 border flex flex-col justify-between transition-all cursor-pointer select-none shadow-2xs overflow-hidden ${
+                                    c.hasCollision
+                                      ? "bg-red-500/15 border-red-500/50 text-red-950 dark:text-red-100 hover:bg-red-500/25 ring-2 ring-red-500/30"
+                                      : "bg-indigo-500/15 border-indigo-500/30 text-indigo-950 dark:text-indigo-100 hover:bg-indigo-500/25"
+                                  }`}
+                                  title={`Ficha ${c.groupName}: ${c.courseTitle} (${toFormat12h(c.startTime)} a ${toFormat12h(c.endTime)}) en ${c.environmentName}`}
+                                >
+                                  <div className="space-y-0.5 min-w-0">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
+                                        {c.groupName}
+                                      </span>
+
+                                      <div className="shrink-0">
+                                        {renderTimeOfDayIcon(c.startTime, c.endTime)}
+                                      </div>
+                                    </div>
+
+                                    <p className="text-[9px] font-bold text-foreground line-clamp-1 leading-tight">
+                                      {c.courseTitle}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[8.5px] text-muted-foreground pt-0.5 border-t border-border/40 font-mono mt-auto">
+                                    <span className="truncate">
+                                      {toFormat12h(c.startTime)} - {toFormat12h(c.endTime)}
+                                    </span>
+                                    <span className="font-bold text-indigo-600 shrink-0 ml-1">
+                                      {c.durationHours}h
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                {/* TAB 2: DISPONIBILIDAD REPORTADA */}
+                <TabsContent value="availability" className="p-5 m-0 overflow-y-auto max-h-[54vh] space-y-4 scrollbar-thin">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-4 rounded-2xl border border-border/80 bg-card space-y-1">
+                      <span className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-primary" /> Horas Reportadas Disponibles
+                      </span>
+                      <div className="flex items-baseline gap-1.5">
+                        <p className="text-xl font-black text-foreground">
+                          {availabilityAnalysis.totalAvailableHoursDeclared}
+                        </p>
+                        <span className="text-xs font-normal text-muted-foreground">h declaradas en perfil</span>
+                      </div>
+                    </div>
 
                 <div className="p-4 rounded-2xl border border-border/80 bg-card space-y-1">
                   <span className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5">
@@ -1090,6 +1617,8 @@ export function TeacherOccupancyModal({
               </div>
             </TabsContent>
           </Tabs>
+            </div>
+          )}
 
           {/* Footer */}
           <DialogFooter className="p-4 border-t border-border/80 bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -1103,16 +1632,22 @@ export function TeacherOccupancyModal({
                 variant="outline"
                 size="sm"
                 onClick={handleExportCurrentTeacherPdf}
-                disabled={isExporting || !currentTeacherData}
+                disabled={isExporting || (teacherViewMode === "single" && !currentTeacherData)}
                 className="rounded-xl text-xs font-bold gap-1.5 h-8 bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30 hover:bg-red-500/20"
-                title="Exportar horario de este docente a PDF"
+                title="Exportar a PDF según la pestaña activa"
               >
                 {isExporting ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
                   <FileText className="w-3 h-3 text-red-600" />
                 )}
-                <span>Exportar PDF</span>
+                <span>
+                  {teacherViewMode === "single"
+                    ? `PDF (${currentTeacherData?.cleanName || "Docente"})`
+                    : teacherViewMode === "all"
+                    ? "PDF (Todos los Instructores)"
+                    : "PDF (Reporte Carga Horaria)"}
+                </span>
               </Button>
 
               <Button
@@ -1120,16 +1655,22 @@ export function TeacherOccupancyModal({
                 variant="outline"
                 size="sm"
                 onClick={handleExportCurrentTeacherExcel}
-                disabled={isExporting || !currentTeacherData}
+                disabled={isExporting || (teacherViewMode === "single" && !currentTeacherData)}
                 className="rounded-xl text-xs font-bold gap-1.5 h-8 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
-                title="Exportar horario de este docente a Excel"
+                title="Exportar a Excel según la pestaña activa"
               >
                 {isExporting ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
                 ) : (
                   <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
                 )}
-                <span>Exportar Excel</span>
+                <span>
+                  {teacherViewMode === "single"
+                    ? `Excel (${currentTeacherData?.cleanName || "Docente"})`
+                    : teacherViewMode === "all"
+                    ? "Excel (Todos los Instructores)"
+                    : "Excel (Reporte Carga Horaria)"}
+                </span>
               </Button>
 
               <Button

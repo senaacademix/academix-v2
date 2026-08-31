@@ -27,7 +27,7 @@ async function requireAdmin() {
 }
 
 // 1. Get teacher availability
-export async function getTeacherAvailabilityAction() {
+export async function getTeacherAvailabilityAction(academicScheduleId?: string) {
     const session = await requireTeacher();
     const userId = session.user.id;
 
@@ -42,12 +42,29 @@ export async function getTeacherAvailabilityAction() {
         }
     });
 
-    const slots = await prisma.teacherAvailability.findMany({
-        where: { teacherId: userId },
+    const activeSchedule = await prisma.academicSchedule.findFirst({ where: { isActive: true }, select: { id: true } }) 
+        || await prisma.academicSchedule.findFirst({ select: { id: true } });
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : activeSchedule?.id || null;
+
+    let slots = await prisma.teacherAvailability.findMany({
+        where: { 
+            teacherId: userId,
+            ...(targetScheduleId ? { academicScheduleId: targetScheduleId } : {})
+        },
+        include: {
+            createdBy: {
+                select: { id: true, name: true, role: true }
+            }
+        },
         orderBy: [
             { dayOfWeek: "asc" },
             { startTime: "asc" }
         ]
+    });
+
+    const schedules = await prisma.academicSchedule.findMany({
+        orderBy: { startDate: "desc" },
+        select: { id: true, name: true, isActive: true, isPublished: true }
     });
 
     return {
@@ -57,17 +74,26 @@ export async function getTeacherAvailabilityAction() {
             role: user.availabilityLastModifiedBy.role
         } : null,
         updatedAt: user?.availabilityUpdatedAt,
+        schedules,
         slots: slots.map(s => ({
             id: s.id,
             dayOfWeek: s.dayOfWeek as DayOfWeek,
             startTime: s.startTime,
-            endTime: s.endTime
+            endTime: s.endTime,
+            createdBy: s.createdBy ? {
+                id: s.createdBy.id,
+                name: s.createdBy.name,
+                role: s.createdBy.role
+            } : null
         }))
     };
 }
 
 // 2. Save teacher availability (draft)
-export async function saveTeacherAvailabilityAction(slots: { dayOfWeek: DayOfWeek; startTime: string; endTime: string }[]) {
+export async function saveTeacherAvailabilityAction(
+    slots: { dayOfWeek: DayOfWeek; startTime: string; endTime: string }[],
+    academicScheduleId?: string
+) {
     const session = await requireTeacher();
     const userId = session.user.id;
 
@@ -81,11 +107,16 @@ export async function saveTeacherAvailabilityAction(slots: { dayOfWeek: DayOfWee
         throw new Error("Tu disponibilidad está bloqueada y no puede ser modificada.");
     }
 
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
     // Save in transaction
     await prisma.$transaction(async (tx) => {
-        // Delete all existing slots
+        // Delete existing slots for this scope
         await tx.teacherAvailability.deleteMany({
-            where: { teacherId: userId }
+            where: { 
+                teacherId: userId,
+                ...(targetScheduleId ? { academicScheduleId: targetScheduleId } : { academicScheduleId: null })
+            }
         });
 
         // Create new slots
@@ -93,6 +124,8 @@ export async function saveTeacherAvailabilityAction(slots: { dayOfWeek: DayOfWee
             await tx.teacherAvailability.createMany({
                 data: slots.map(s => ({
                     teacherId: userId,
+                    academicScheduleId: targetScheduleId,
+                    createdById: userId,
                     dayOfWeek: s.dayOfWeek,
                     startTime: s.startTime,
                     endTime: s.endTime
@@ -126,7 +159,7 @@ export async function publishTeacherAvailabilityAction() {
     });
 
     if (user?.availabilityLocked) {
-        throw new Error("La disponibilidad ya se encuentra publicada y bloqueada.");
+        throw new Error("Tu disponibilidad ya está publicada.");
     }
 
     await prisma.user.update({
@@ -143,7 +176,7 @@ export async function publishTeacherAvailabilityAction() {
 }
 
 // 4. Get availability for admin
-export async function getTeacherAvailabilityForAdminAction(teacherId: string) {
+export async function getTeacherAvailabilityForAdminAction(teacherId: string, academicScheduleId?: string) {
     await requireAdmin();
 
     const user = await prisma.user.findUnique({
@@ -163,12 +196,24 @@ export async function getTeacherAvailabilityForAdminAction(teacherId: string) {
         throw new Error("Profesor no encontrado");
     }
 
-    const slots = await prisma.teacherAvailability.findMany({
-        where: { teacherId },
+    const activeSchedule = await prisma.academicSchedule.findFirst({ where: { isActive: true }, select: { id: true } }) 
+        || await prisma.academicSchedule.findFirst({ select: { id: true } });
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : activeSchedule?.id || null;
+
+    let slots = await prisma.teacherAvailability.findMany({
+        where: { 
+            teacherId,
+            ...(targetScheduleId ? { academicScheduleId: targetScheduleId } : {})
+        },
         orderBy: [
             { dayOfWeek: "asc" },
             { startTime: "asc" }
         ]
+    });
+
+    const schedules = await prisma.academicSchedule.findMany({
+        orderBy: { startDate: "desc" },
+        select: { id: true, name: true, isActive: true, isPublished: true }
     });
 
     return {
@@ -180,6 +225,7 @@ export async function getTeacherAvailabilityForAdminAction(teacherId: string) {
             role: user.availabilityLastModifiedBy.role
         } : null,
         updatedAt: user.availabilityUpdatedAt,
+        schedules,
         slots: slots.map(s => ({
             id: s.id,
             dayOfWeek: s.dayOfWeek as DayOfWeek,
@@ -249,7 +295,11 @@ export async function adminLockTeacherAvailabilityAction(teacherId: string) {
 }
 
 // 6. Save availability by admin
-export async function adminSaveTeacherAvailabilityAction(teacherId: string, slots: { dayOfWeek: DayOfWeek; startTime: string; endTime: string }[]) {
+export async function adminSaveTeacherAvailabilityAction(
+    teacherId: string, 
+    slots: { dayOfWeek: DayOfWeek; startTime: string; endTime: string }[],
+    academicScheduleId?: string
+) {
     const session = await requireAdmin();
 
     // Check if the user is a teacher
@@ -262,11 +312,16 @@ export async function adminSaveTeacherAvailabilityAction(teacherId: string, slot
         throw new Error("El usuario especificado no es un profesor válido.");
     }
 
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
     // Save in transaction
     await prisma.$transaction(async (tx) => {
-        // Delete all existing slots
+        // Delete existing slots for this scope
         await tx.teacherAvailability.deleteMany({
-            where: { teacherId }
+            where: { 
+                teacherId,
+                ...(targetScheduleId ? { academicScheduleId: targetScheduleId } : { academicScheduleId: null })
+            }
         });
 
         // Create new slots
@@ -274,6 +329,8 @@ export async function adminSaveTeacherAvailabilityAction(teacherId: string, slot
             await tx.teacherAvailability.createMany({
                 data: slots.map(s => ({
                     teacherId,
+                    academicScheduleId: targetScheduleId,
+                    createdById: session.user.id,
                     dayOfWeek: s.dayOfWeek,
                     startTime: s.startTime,
                     endTime: s.endTime

@@ -21,17 +21,15 @@ export function AppIdentity() {
   const getRoleBadge = () => {
     switch (role) {
       case "admin":
-        return { label: "Coordinador Académico", color: "bg-primary/10 text-primary border-primary/20" };
+        return { label: "Administrador", color: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 shadow-2xs" };
       case "gestor":
-        return { label: "Gestor Académico", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" };
+        return { label: "Gestor Académico", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 shadow-2xs" };
       case "teacher":
-        return { label: "Docente / Instructor", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" };
+        return { label: "Docente / Instructor", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 shadow-2xs" };
       case "student":
-        return { label: "Estudiante / Aprendiz", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" };
-      case "observer":
-        return { label: "Observador / Auditor", color: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20" };
+        return { label: "Estudiante / Aprendiz", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs" };
       default:
-        return { label: "AcademiX", color: "bg-primary/10 text-primary border-primary/20" };
+        return { label: "AcademiX", color: "bg-primary/15 text-primary border-primary/30 shadow-2xs" };
     }
   };
 
@@ -40,58 +38,44 @@ export function AppIdentity() {
   const isCollapsed = state === "collapsed";
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
+    <SidebarMenu className="group-data-[collapsible=icon]:items-center">
+      <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
         <div
           className={cn(
-            "flex items-center transition-all duration-300 ease-in-out w-full border-b border-sidebar-border/60",
+            "flex items-center transition-all duration-200 ease-in-out w-full border-b border-sidebar-border/60 h-14",
             isCollapsed
-              ? "justify-center h-14 py-2"
-              : "justify-start h-20 px-4 py-3 bg-sidebar/50 backdrop-blur-md"
+              ? "justify-center px-0"
+              : "justify-start px-3.5 bg-sidebar/50 backdrop-blur-md"
           )}
         >
-          <div className="flex items-center gap-3">
+          <div className={cn("flex items-center gap-3", isCollapsed && "justify-center w-full")}>
             {/* Logo Container con Glow */}
             <div
               className={cn(
-                "relative flex items-center justify-center shrink-0 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 shadow-md shadow-primary/10 transition-transform duration-300 hover:scale-105",
-                isCollapsed ? "h-9 w-9" : "h-11 w-11"
+                "relative flex items-center justify-center shrink-0 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 shadow-md shadow-primary/10 transition-transform duration-300 hover:scale-105 aspect-square",
+                isCollapsed ? "h-8.5 w-8.5" : "h-9 w-9"
               )}
             >
               <Image
                 src="/logo.png"
                 alt="Logo"
-                width={isCollapsed ? 26 : 32}
-                height={isCollapsed ? 26 : 32}
-                className="object-contain"
+                width={22}
+                height={22}
+                className="object-contain aspect-square"
                 priority
               />
             </div>
 
             {!isCollapsed && (
               isMounted && !isPending ? (
-                <div className="flex flex-col items-start min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base font-black tracking-tight text-sidebar-foreground leading-tight">
-                      Academi<span className="text-primary">X</span>
-                    </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  </div>
-                  <span
-                    className={cn(
-                      "mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                      badgeInfo.color
-                    )}
-                  >
-                    <Sparkles className="w-2.5 h-2.5" />
-                    <span>{badgeInfo.label}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[17px] font-extrabold tracking-tight text-sidebar-foreground leading-tight">
+                    Academi<span className="text-primary">X</span>
                   </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 </div>
               ) : (
-                <div className="flex flex-col gap-1.5">
-                  <span className="h-4 w-24 animate-pulse rounded-lg bg-sidebar-accent" />
-                  <span className="h-3 w-16 animate-pulse rounded-lg bg-sidebar-accent" />
-                </div>
+                <span className="h-4 w-24 animate-pulse rounded-lg bg-sidebar-accent" />
               )
             )}
           </div>

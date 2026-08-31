@@ -112,6 +112,7 @@ export async function getAdminDashboardStatsAction() {
                 id: true,
                 name: true,
                 description: true,
+                allowPastAttendanceEdit: true,
                 _count: {
                     select: {
                         groups: true,
@@ -586,6 +587,97 @@ export async function createUserAction(data: {
     return user;
 }
 
+export async function updateTeacherUserAction(data: {
+    userId: string;
+    nombres: string;
+    apellido: string;
+    identificacion: string;
+    email: string;
+    telefono?: string;
+    password?: string;
+}) {
+    const session = await requireAdmin();
+
+    const existingUser = await prisma.user.findUnique({
+        where: { id: data.userId },
+        include: { profile: true }
+    });
+
+    if (!existingUser) {
+        throw new Error("Docente no encontrado");
+    }
+
+    const cleanEmail = data.email.trim().toLowerCase();
+    const cleanDoc = data.identificacion.trim();
+
+    // Check duplicate email if changed
+    if (cleanEmail !== existingUser.email.toLowerCase()) {
+        const duplicateEmail = await prisma.user.findUnique({
+            where: { email: cleanEmail }
+        });
+        if (duplicateEmail) {
+            throw new Error("Ya existe otro usuario registrado con este correo electrónico");
+        }
+    }
+
+    // Check duplicate doc if changed
+    if (cleanDoc && cleanDoc !== existingUser.profile?.identificacion) {
+        const duplicateDoc = await prisma.profile.findFirst({
+            where: { identificacion: cleanDoc, userId: { not: data.userId } }
+        });
+        if (duplicateDoc) {
+            throw new Error(`Ya existe otro perfil registrado con el número de documento: ${cleanDoc}`);
+        }
+    }
+
+    const fullName = `${data.nombres.trim()} ${data.apellido.trim()}`.trim();
+
+    // Update password if provided
+    if (data.password && data.password.trim().length > 0) {
+        const { hashPassword } = await import("better-auth/crypto");
+        const hashedPassword = await hashPassword(data.password.trim());
+        await prisma.account.updateMany({
+            where: { userId: data.userId },
+            data: { password: hashedPassword }
+        });
+    }
+
+    // Update User and Profile
+    const updatedUser = await prisma.user.update({
+        where: { id: data.userId },
+        data: {
+            name: fullName,
+            email: cleanEmail,
+            profile: {
+                upsert: {
+                    create: {
+                        identificacion: cleanDoc,
+                        nombres: data.nombres.trim(),
+                        apellido: data.apellido.trim(),
+                        telefono: data.telefono?.trim() || null,
+                        dataProcessingConsent: true,
+                        dataProcessingConsentDate: new Date(),
+                    },
+                    update: {
+                        identificacion: cleanDoc,
+                        nombres: data.nombres.trim(),
+                        apellido: data.apellido.trim(),
+                        telefono: data.telefono?.trim() || null,
+                    }
+                }
+            }
+        },
+        include: {
+            profile: true
+        }
+    });
+
+    revalidatePath("/dashboard/gestor/users");
+    revalidatePath("/dashboard/admin/users");
+
+    return updatedUser;
+}
+
 export async function updateStudentAction(userId: string, data: {
     email: string;
     identificacion: string;
@@ -629,6 +721,11 @@ export async function updateStudentAction(userId: string, data: {
 
     const fullName = `${data.nombres.trim()} ${data.apellido.trim()}`;
     const groupId = data.groupId === undefined ? user.groupId : ((data.groupId && data.groupId !== "none" && data.groupId !== "all") ? data.groupId : null);
+
+    if (user.groupId !== groupId) {
+        const { syncUserGroupChange } = await import("@/features/student/actions/studentGroupHistoryActions");
+        await syncUserGroupChange(userId, user.groupId, groupId, "Traslado de ficha desde la edición del estudiante");
+    }
 
     const updatedUser = await prisma.user.update({
         where: { id: userId },
@@ -1192,10 +1289,12 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
         where: { id: groupId },
         include: {
             program: true,
-            period: true,
             environment: true,
+            scheduleSlots: {
+                include: { period: true }
+            },
             students: {
-                select: { id: true, name: true, banned: true, profile: { select: { identificacion: true } } }
+                select: { id: true, name: true, email: true, banned: true, profile: { select: { identificacion: true } } }
             },
             courses: {
                 select: {
@@ -1430,6 +1529,7 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
         return {
             id: student.id,
             name: student.name,
+            email: student.email,
             identificacion: student.profile?.identificacion || 'N/A',
             banned: student.banned,
             gradesAvg,
@@ -1441,14 +1541,19 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
         };
     });
 
+    const firstSlot = group.scheduleSlots?.[0];
+    const periodName = firstSlot?.period?.name || null;
+
     return {
         groupId: group.id,
         studentMetrics,
         groupName: group.name,
         groupDescription: group.description,
         program: group.program?.name,
-        period: group.period?.name,
+        period: periodName,
         environment: group.environment?.name,
+        startTime: firstSlot?.startTime || null,
+        endTime: firstSlot?.endTime || null,
         startDate: group.startDate,
         endDate: group.endDate,
         students: {

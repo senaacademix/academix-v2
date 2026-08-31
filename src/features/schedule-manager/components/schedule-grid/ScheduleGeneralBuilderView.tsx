@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
 import {
   ArrowLeft,
   Calendar,
+  Clock,
   Globe,
   FileEdit,
   Star,
@@ -28,6 +29,9 @@ import {
   ShieldAlert,
   Building,
   GraduationCap,
+  Sparkles,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DayOfWeek } from "@/generated/prisma/client";
@@ -41,6 +45,7 @@ import { GroupSelectorSidebar } from "./GroupSelectorSidebar";
 import { GroupTrimesterCurriculumPanel } from "./GroupTrimesterCurriculumPanel";
 import { InteractiveWeeklyCalendarGrid } from "./InteractiveWeeklyCalendarGrid";
 import { ScheduleClassModal } from "./ScheduleClassModal";
+import { SchedulePanoramicView } from "./SchedulePanoramicView";
 import { ScheduleExportModal } from "./ScheduleExportModal";
 import { ScheduleAuditModal } from "./ScheduleAuditModal";
 import { EnvironmentOccupancyModal } from "./EnvironmentOccupancyModal";
@@ -67,7 +72,8 @@ export function ScheduleGeneralBuilderView({
     initialData.groups.length > 0 ? initialData.groups[0].id : ""
   );
 
-  // Modals State
+  // Modals & View Mode State
+  const [builderViewMode, setBuilderViewMode] = useState<"detail" | "panoramic">("detail");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportDefaultFormat, setExportDefaultFormat] = useState<"pdf" | "excel">("pdf");
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
@@ -91,6 +97,23 @@ export function ScheduleGeneralBuilderView({
   // Delete Slot State
   const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Fullscreen State (Full Viewport Z-40 Overlay)
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
 
   const selectedGroup =
     data.groups.find((g) => g.id === selectedGroupId) || data.groups[0] || null;
@@ -224,7 +247,13 @@ export function ScheduleGeneralBuilderView({
   };
 
   return (
-    <div className="h-[calc(100vh-4.25rem)] flex flex-col gap-2 animate-in fade-in-50 duration-300 overflow-hidden min-h-0">
+    <div
+      className={`flex flex-col gap-2 animate-in fade-in-50 duration-300 overflow-hidden min-h-0 ${
+        isFullscreen
+          ? "fixed inset-0 z-40 bg-background p-3.5 h-screen w-screen space-y-2"
+          : "h-[calc(100vh-5.5rem)] sm:h-[calc(100vh-6rem)] md:h-[calc(100vh-6.5rem)]"
+      }`}
+    >
       {/* Sleek Compact Header Bar */}
       <div className="shrink-0 rounded-2xl px-4 py-2 bg-card border border-border/80 shadow-2xs flex flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -247,9 +276,13 @@ export function ScheduleGeneralBuilderView({
               <Badge className="bg-emerald-600 text-white border-transparent text-[10px] gap-1 font-bold px-1.5 py-0 h-4 shadow-2xs shrink-0">
                 <Star className="w-2.5 h-2.5 fill-white" /> VIGENTE
               </Badge>
+            ) : new Date(data.schedule.startDate) > new Date() ? (
+              <Badge variant="outline" className="bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30 text-[10px] gap-1 font-bold h-4 shrink-0">
+                <Clock className="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" /> Vigencia Futura
+              </Badge>
             ) : (
-              <Badge variant="outline" className="text-muted-foreground text-[10px] gap-1 font-semibold h-4 shrink-0">
-                <Calendar className="w-2.5 h-2.5" /> Fuera de Vigencia
+              <Badge variant="outline" className="bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/30 text-[10px] gap-1 font-bold h-4 shrink-0">
+                <Calendar className="w-2.5 h-2.5 text-slate-500" /> Vigencia Pasada
               </Badge>
             )}
 
@@ -259,8 +292,34 @@ export function ScheduleGeneralBuilderView({
           </div>
         </div>
 
-        {/* Header Actions: Audit + Environments + Exports + Toggle Publish + Refresh */}
+        {/* Header Actions: View Switcher + Audit + Environments + Exports + Toggle Publish + Refresh */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Single Compact View Toggle Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setBuilderViewMode((prev) => (prev === "detail" ? "panoramic" : "detail"))}
+            className="rounded-xl text-xs gap-1.5 h-7 px-2.5 font-bold transition-all border-border/80 hover:bg-accent shrink-0"
+            title={
+              builderViewMode === "detail"
+                ? "Cambiar a Vista Panorámica (matriz de ocupación de todas las fichas)"
+                : "Cambiar a Vista por Ficha (malla interactiva individual)"
+            }
+          >
+            {builderViewMode === "detail" ? (
+              <>
+                <Calendar className="w-3.5 h-3.5 text-primary" />
+                <span>Por Ficha</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Panorámica</span>
+              </>
+            )}
+          </Button>
+
+          <div className="h-4 w-px bg-border hidden sm:block shrink-0" />
           {/* Audit Conflicts Button */}
           <Button
             variant="outline"
@@ -372,15 +431,27 @@ export function ScheduleGeneralBuilderView({
             </Badge>
           )}
 
+          <div className="h-4 w-px bg-border hidden sm:block shrink-0" />
+
+          {/* Fullscreen Toggle Button */}
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="rounded-xl text-xs gap-1.5 h-7 px-2.5"
+            onClick={toggleFullscreen}
+            className="rounded-xl text-xs gap-1.5 h-7 px-2.5 font-bold transition-all border-border/80 hover:bg-accent shrink-0"
+            title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
           >
-            <RefreshCw className={`w-3 h-3 ${isRefreshing ? "animate-spin text-primary" : ""}`} />
-            {isRefreshing ? "Actualizando..." : "Actualizar"}
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5 text-primary" />
+                <span className="hidden sm:inline">Salir</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5 text-primary" />
+                <span className="hidden sm:inline">Pantalla Completa</span>
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -401,6 +472,18 @@ export function ScheduleGeneralBuilderView({
             </Button>
           </Link>
         </div>
+      ) : builderViewMode === "panoramic" ? (
+        <SchedulePanoramicView
+          data={data}
+          onSelectGroupAndEdit={(groupId) => {
+            setSelectedGroupId(groupId);
+            setBuilderViewMode("detail");
+          }}
+          onOpenScheduleModal={(groupId, courseTitle) => {
+            setSelectedGroupId(groupId);
+            handleOpenScheduleModal(courseTitle);
+          }}
+        />
       ) : (
         <div className="flex-1 min-h-0 flex flex-row gap-2.5 overflow-hidden items-stretch">
           {/* Left Sidebar: Groups Selector */}
@@ -411,24 +494,26 @@ export function ScheduleGeneralBuilderView({
             onSelectGroup={setSelectedGroupId}
           />
 
-          {/* Right Workspace */}
+          {/* Center & Right Workspace */}
           {selectedGroup && (
-            <div className="flex-1 min-w-0 h-full flex flex-col gap-2 overflow-hidden">
-              {/* 1. Trimester Curriculum Panel (Materias del Trimestre Actual) */}
+            <div className="flex-1 min-w-0 h-full flex flex-row gap-2.5 overflow-hidden">
+              {/* Visual Weekly Interactive Calendar Grid */}
+              <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+                <InteractiveWeeklyCalendarGrid
+                  schedule={data.schedule}
+                  group={selectedGroup}
+                  onOpenScheduleModal={(day, start, end, editingSlot) =>
+                    handleOpenScheduleModal(undefined, day, start, end, editingSlot)
+                  }
+                  onDeleteClassSlot={(id) => setSlotToDelete(id)}
+                />
+              </div>
+
+              {/* Right Sidebar: Trimester Curriculum Panel (Materias del Periodo) */}
               <GroupTrimesterCurriculumPanel
                 group={selectedGroup}
                 teachers={data.teachers}
                 onSelectCourseToSchedule={(courseTitle) => handleOpenScheduleModal(courseTitle)}
-              />
-
-              {/* 2. Visual Weekly Interactive Calendar Grid (Fills full remaining height) */}
-              <InteractiveWeeklyCalendarGrid
-                schedule={data.schedule}
-                group={selectedGroup}
-                onOpenScheduleModal={(day, start, end, editingSlot) =>
-                  handleOpenScheduleModal(undefined, day, start, end, editingSlot)
-                }
-                onDeleteClassSlot={(id) => setSlotToDelete(id)}
               />
             </div>
           )}

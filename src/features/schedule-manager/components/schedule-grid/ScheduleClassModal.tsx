@@ -258,7 +258,7 @@ export function ScheduleClassModal({
         groupId: group.id,
         courseTitle: selectedCourseTitle,
         description: selectedCourse?.description || undefined,
-        periodId: group.period?.id || undefined,
+        periodId: undefined,
         teacherId: selectedTeacherId !== "NONE" ? selectedTeacherId : null,
         environmentId: selectedEnvironmentId !== "NONE" ? selectedEnvironmentId : null,
         dayOfWeek,

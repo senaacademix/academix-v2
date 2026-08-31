@@ -34,6 +34,7 @@ export default async function GestorScheduleEventsPage({ params }: GestorSchedul
   return (
     <ScheduleEventsManagerView
       schedule={data.schedule}
+      groups={data.groups || []}
       initialEvents={data.events}
     />
   );

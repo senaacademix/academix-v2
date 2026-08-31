@@ -77,13 +77,14 @@ export function ScheduleWeekPreview({ schedule }: ScheduleWeekPreviewProps) {
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>("ALL");
 
   // Get unique groups in this schedule
-  const uniqueGroupsMap = new Map<string, { id: string; name: string; programName: string }>();
+  const uniqueGroupsMap = new Map<string, { id: string; name: string; programName: string; periodName?: string }>();
   schedule.groupSlots.forEach((slot) => {
     if (!uniqueGroupsMap.has(slot.groupId)) {
       uniqueGroupsMap.set(slot.groupId, {
         id: slot.groupId,
         name: slot.group.name,
         programName: slot.group.program?.name || "Sin programa",
+        periodName: slot.period?.name || undefined,
       });
     }
   });
@@ -148,13 +149,13 @@ export function ScheduleWeekPreview({ schedule }: ScheduleWeekPreviewProps) {
                 key={g.id}
                 type="button"
                 onClick={() => setSelectedGroupFilter(g.id)}
-                className={`px-2.5 py-1 rounded-full border transition-all truncate max-w-[180px] ${
+                className={`px-2.5 py-1 rounded-full border transition-all truncate max-w-[220px] ${
                   selectedGroupFilter === g.id
                     ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
                     : "bg-background hover:bg-muted text-muted-foreground border-border"
                 }`}
               >
-                {g.name}
+                {g.name} {g.periodName ? `• ${g.periodName}` : ""}
               </button>
             ))}
           </div>
@@ -231,9 +232,14 @@ export function ScheduleWeekPreview({ schedule }: ScheduleWeekPreviewProps) {
                           )}
                         </div>
 
-                        {/* Program Name */}
-                        <div className="text-[10px] text-muted-foreground truncate font-medium">
-                          {slot.group.program?.name}
+                        {/* Program Name & Period Badge */}
+                        <div className="text-[10px] text-muted-foreground flex items-center justify-between gap-1 font-medium">
+                          <span className="truncate">{slot.group.program?.name}</span>
+                          {slot.period?.name && (
+                            <span className="font-bold text-[9px] px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20 shrink-0">
+                              {slot.period.name}
+                            </span>
+                          )}
                         </div>
 
                         {/* Time Franja with Clock Icon */}

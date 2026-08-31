@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 import { AcademicManagement } from "@/features/admin/components/AcademicManagement";
 import { getAllCoursesAdminAction, getAllUsersAction, getSystemSettingsAction } from "@/features/admin/actions/adminActions";
 
+export const metadata = {
+    title: "Programas de Formación | AcademiX",
+    description: "Crea y gestiona los Programas de Formación de la institución.",
+};
+
 export default async function AdminCoursesPage() {
     const session = await auth.api.getSession({ headers: await headers() });
 

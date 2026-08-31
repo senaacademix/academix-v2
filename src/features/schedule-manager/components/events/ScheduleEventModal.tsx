@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Calendar,
   Clock,
@@ -44,6 +45,7 @@ interface ScheduleEventModalProps {
     startDate: string; // YYYY-MM-DD or ISO
     endDate: string;   // YYYY-MM-DD or ISO
   };
+  groupsList?: Array<{ id: string; name: string }>;
   eventToEdit?: ScheduleEventItem | null;
   defaultDate?: string | null;
   onSuccess: (event: ScheduleEventItem, isEdit: boolean) => void;
@@ -62,6 +64,7 @@ export function ScheduleEventModal({
   open,
   onOpenChange,
   schedule,
+  groupsList = [],
   eventToEdit,
   defaultDate,
   onSuccess,
@@ -75,6 +78,7 @@ export function ScheduleEventModal({
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("10:00");
   const [targetAudience, setTargetAudience] = useState<EventAudience>("PUBLIC");
+  const [groupId, setGroupId] = useState<string>("");
   const [location, setLocation] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [color, setColor] = useState("blue");
@@ -89,6 +93,7 @@ export function ScheduleEventModal({
         setStartTime(eventToEdit.startTime);
         setEndTime(eventToEdit.endTime);
         setTargetAudience(eventToEdit.targetAudience);
+        setGroupId(eventToEdit.groupId || groupsList[0]?.id || "");
         setLocation(eventToEdit.location || "");
         setLinkUrl(eventToEdit.linkUrl || "");
         setColor(eventToEdit.color || "blue");
@@ -103,12 +108,13 @@ export function ScheduleEventModal({
         setStartTime("08:00");
         setEndTime("10:00");
         setTargetAudience("PUBLIC");
+        setGroupId(groupsList[0]?.id || "");
         setLocation("");
         setLinkUrl("");
         setColor("blue");
       }
     }
-  }, [open, eventToEdit, defaultDate, minDate, maxDate]);
+  }, [open, eventToEdit, defaultDate, minDate, maxDate, groupsList]);
 
   // Validation
   const isDateOutOfRange = Boolean(date && (date < minDate || date > maxDate));
@@ -124,6 +130,11 @@ export function ScheduleEventModal({
 
     if (!date) {
       toast.error("Por favor selecciona la fecha del evento.");
+      return;
+    }
+
+    if (targetAudience === "GROUP" && !groupId) {
+      toast.error("Por favor selecciona la ficha a la que se asigna el evento.");
       return;
     }
 
@@ -150,6 +161,8 @@ export function ScheduleEventModal({
         startTime,
         endTime,
         targetAudience,
+        isGeneral: targetAudience !== "GROUP",
+        groupId: targetAudience === "GROUP" ? groupId : null,
         location: location.trim() || null,
         linkUrl: linkUrl.trim() || null,
         color,
@@ -220,55 +233,91 @@ export function ScheduleEventModal({
             <Label className="text-xs sm:text-sm font-bold flex items-center gap-1">
               Público Objetivo / Dirigido a <span className="text-rose-500">*</span>
             </Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <button
                 type="button"
                 onClick={() => setTargetAudience("PUBLIC")}
-                className={`p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all text-center ${
+                className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all text-center ${
                   targetAudience === "PUBLIC"
                     ? "bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-500/20"
                     : "bg-background hover:bg-muted/70 text-muted-foreground border-border"
                 }`}
               >
-                <div className="flex items-center gap-1.5 text-sm">
-                  <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center gap-1 text-xs">
+                  <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   <span>🌐 Público General</span>
                 </div>
-                <span className="text-[11px] font-normal opacity-80">Toda la comunidad educativa</span>
+                <span className="text-[10px] font-normal opacity-80">Toda la comunidad</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTargetAudience("TEACHERS")}
-                className={`p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all text-center ${
+                className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all text-center ${
                   targetAudience === "TEACHERS"
                     ? "bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-sm ring-2 ring-emerald-500/20"
                     : "bg-background hover:bg-muted/70 text-muted-foreground border-border"
                 }`}
               >
-                <div className="flex items-center gap-1.5 text-sm">
-                  <School className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <div className="flex items-center gap-1 text-xs">
+                  <School className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>👨‍🏫 Solo Profesores</span>
                 </div>
-                <span className="text-[11px] font-normal opacity-80">Docentes, comités y claustro</span>
+                <span className="text-[10px] font-normal opacity-80">Docentes y claustro</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTargetAudience("STUDENTS")}
-                className={`p-3.5 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all text-center ${
+                className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all text-center ${
                   targetAudience === "STUDENTS"
                     ? "bg-purple-500/15 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm ring-2 ring-purple-500/20"
                     : "bg-background hover:bg-muted/70 text-muted-foreground border-border"
                 }`}
               >
-                <div className="flex items-center gap-1.5 text-sm">
-                  <GraduationCap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <div className="flex items-center gap-1 text-xs">
+                  <GraduationCap className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                   <span>🎓 Solo Estudiantes</span>
                 </div>
-                <span className="text-[11px] font-normal opacity-80">Aprendices, grupos y talleres</span>
+                <span className="text-[10px] font-normal opacity-80">Todos los aprendices</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTargetAudience("GROUP")}
+                className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all text-center ${
+                  targetAudience === "GROUP"
+                    ? "bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-300 shadow-sm ring-2 ring-amber-500/20"
+                    : "bg-background hover:bg-muted/70 text-muted-foreground border-border"
+                }`}
+              >
+                <div className="flex items-center gap-1 text-xs">
+                  <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>🎯 Ficha Específica</span>
+                </div>
+                <span className="text-[10px] font-normal opacity-80">Grupo / Ficha puntual</span>
               </button>
             </div>
+
+            {targetAudience === "GROUP" && (
+              <div className="space-y-1.5 p-3 rounded-2xl bg-amber-500/5 border border-amber-500/20 mt-2">
+                <Label className="text-xs font-bold flex items-center gap-1 text-amber-700 dark:text-amber-300">
+                  <Users className="w-3.5 h-3.5" /> Selecciona la Ficha del Evento <span className="text-rose-500">*</span>
+                </Label>
+                <Select value={groupId} onValueChange={setGroupId}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl bg-background">
+                    <SelectValue placeholder="Selecciona una Ficha" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groupsList.map((g) => (
+                      <SelectItem key={g.id} value={g.id} className="text-xs font-medium">
+                        Ficha {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {/* Fila: Fecha y Horarios (3 Columnas en desktop) */}

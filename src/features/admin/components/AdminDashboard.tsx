@@ -93,6 +93,8 @@ interface AdminDashboardProps {
     userName?: string;
 }
 
+import { useGestorProgram } from "@/features/gestor/context/GestorProgramContext";
+
 export function AdminDashboard({ 
     stats, 
     recentActivity, 
@@ -102,6 +104,7 @@ export function AdminDashboard({
 }: AdminDashboardProps) {
     const isGestor = currentUserRole === "gestor";
     const managedPrograms = stats.managedProgramsList || [];
+    const { selectProgram } = useGestorProgram();
 
     // Selected Program State for Gestor
     const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
@@ -155,40 +158,40 @@ export function AdminDashboard({
         }
     ] : [
         {
-            title: "Usuarios Registrados",
-            value: stats.users.total,
-            description: `${stats.users.student} estudiantes, ${stats.users.teacher} docentes`,
+            title: "Equipo de Gestión",
+            value: stats.users.admin + ((stats.users as any).gestor || 0),
+            description: `${stats.users.admin} administradores, ${(stats.users as any).gestor || 0} gestores`,
             icon: Users,
             color: "text-blue-500",
             bg: "bg-blue-500/10",
             link: "/dashboard/admin/users"
         },
         {
-            title: "Fichas / Grupos",
-            value: (stats as any).groups?.total ?? 0,
-            description: "Grupos de formación activos",
-            icon: Layers,
-            color: "text-emerald-500",
-            bg: "bg-emerald-500/10",
-            link: "/dashboard/admin/courses"
-        },
-        {
-            title: "Materias / Cursos",
-            value: stats.courses.total,
-            description: `${stats.courses.active} materias activas`,
-            icon: BookOpen,
-            color: "text-indigo-500",
-            bg: "bg-indigo-500/10",
-            link: "/dashboard/admin/courses"
-        },
-        {
             title: "Programas de Formación",
             value: (stats as any).programs?.total ?? 0,
-            description: "Estructura institucional",
+            description: "Programas activos registrados",
             icon: FolderKanban,
             color: "text-purple-500",
             bg: "bg-purple-500/10",
             link: "/dashboard/admin/courses"
+        },
+        {
+            title: "Gestores Académicos",
+            value: (stats.users as any).gestor || 0,
+            description: "Gestores asignados a programas",
+            icon: UserCheck,
+            color: "text-emerald-500",
+            bg: "bg-emerald-500/10",
+            link: "/dashboard/admin/users"
+        },
+        {
+            title: "Administradores",
+            value: stats.users.admin,
+            description: "Usuarios con rol administrador",
+            icon: ShieldCheck,
+            color: "text-indigo-500",
+            bg: "bg-indigo-500/10",
+            link: "/dashboard/admin/users"
         }
     ];
 
@@ -196,30 +199,29 @@ export function AdminDashboard({
         { label: "Aprendices", value: currentProgram.studentsCount ?? 0, icon: GraduationCap, color: "bg-blue-500" },
         { label: "Docentes", value: currentProgram.teachersCount ?? 0, icon: UserCheck, color: "bg-indigo-500" },
     ] : [
-        { label: "Estudiantes", value: stats.users.student, icon: GraduationCap, color: "bg-blue-500" },
-        { label: "Profesores", value: stats.users.teacher, icon: UserCheck, color: "bg-indigo-500" },
-        { label: "Administradores", value: stats.users.admin, icon: ShieldCheck, color: "bg-purple-500" },
+        { label: "Administradores", value: stats.users.admin, icon: ShieldCheck, color: "bg-blue-500" },
+        { label: "Gestores Académicos", value: (stats.users as any).gestor || 0, icon: UserCheck, color: "bg-indigo-500" },
     ];
 
     // Operational modules for the selected program
     const operationalModules = isGestor && currentProgram ? [
         {
-            title: "Gestión y Matrícula",
-            description: "Matrícula de aprendices, importación en Excel, traslados de ficha y planes de mejoramiento.",
+            title: "Gestión de Usuarios",
+            description: "Administración de aprendices, instructores, fichas e importación masiva.",
             link: `/dashboard/admin/users?programId=${currentProgram.id}`,
             icon: Users,
             color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
         },
         {
-            title: "Estructura y Ambientes",
-            description: "Administra fichas, trimestres, competencias y asignación de aulas para este programa.",
+            title: "Estructura Curricular",
+            description: "Administra el programa de formación, trimestres, competencias y asignación de ambientes.",
             link: `/dashboard/admin/courses?programId=${currentProgram.id}`,
             icon: BookOpen,
             color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
         },
         {
-            title: "Malla de Horarios",
-            description: "Diseño y publicación de franjas horarias por ficha e instructores del programa.",
+            title: "Programación Horaria",
+            description: "Gestión de franjas horarias, eventos institucionales y novedades por horario.",
             link: `/dashboard/admin/schedules?programId=${currentProgram.id}`,
             icon: CalendarClock,
             color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20"
@@ -342,7 +344,7 @@ export function AdminDashboard({
                                         </div>
 
                                         <Button 
-                                            onClick={() => setSelectedProgramId(prog.id)}
+                                            onClick={() => selectProgram(prog.id, prog)}
                                             className="w-full rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 gap-2 group/btn"
                                         >
                                             <span>Ingresar al Panel</span>
@@ -403,7 +405,7 @@ export function AdminDashboard({
                         </h1>
                         <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed font-medium">
                             {isGestor && currentProgram 
-                                ? `Métricas en tiempo real, administración de matrícula, fichas y malla de horarios para ${currentProgram.name}.`
+                                ? `Métricas en tiempo real, gestión de usuarios, estructura curricular y programación horaria para ${currentProgram.name}.`
                                 : "Métricas globales, monitoreo en tiempo real de actividad y gestión de la plataforma AcademiX."
                             }
                         </p>
@@ -425,7 +427,7 @@ export function AdminDashboard({
                                 <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
                                     <Link href={currentProgram ? `/dashboard/admin/users?programId=${currentProgram.id}` : "/dashboard/admin/users"}>
                                         <UserPlus className="h-4 w-4 mr-2" />
-                                        Matrícula de Aprendices
+                                        Gestión de Usuarios
                                     </Link>
                                 </Button>
                             </>
@@ -437,14 +439,12 @@ export function AdminDashboard({
                                         Configuración
                                     </Link>
                                 </Button>
-                                {!isObserver && (
-                                    <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
-                                        <Link href="/dashboard/admin/users">
-                                            <UserPlus className="h-4 w-4 mr-2" />
-                                            Nuevo Usuario
-                                        </Link>
-                                    </Button>
-                                )}
+                                <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
+                                    <Link href="/dashboard/admin/users">
+                                        <UserPlus className="h-4 w-4 mr-2" />
+                                        Gestión de Usuarios
+                                    </Link>
+                                </Button>
                             </>
                         )}
                     </div>
@@ -526,12 +526,12 @@ export function AdminDashboard({
                     <CardHeader>
                         <CardTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
                             <TrendingUp className="h-5 w-5 text-primary" />
-                            {isGestor ? "Comunidad del Programa" : "Distribución de Usuarios"}
+                            {isGestor ? "Comunidad del Programa" : "Equipo de Gestión"}
                         </CardTitle>
                         <CardDescription className="text-muted-foreground text-xs">
                             {isGestor 
                                 ? `Aprendices e instructores en ${currentProgram?.name}` 
-                                : "Composición de la comunidad educativa"
+                                : "Composición de administradores y gestores académicos"
                             }
                         </CardDescription>
                     </CardHeader>
@@ -540,7 +540,7 @@ export function AdminDashboard({
                             {userDistribution.map((dist, i) => {
                                 const total = isGestor && currentProgram
                                     ? ((currentProgram.studentsCount ?? 0) + (currentProgram.teachersCount ?? 0)) || 1
-                                    : stats.users.total || 1;
+                                    : (stats.users.admin + ((stats.users as any).gestor || 0)) || 1;
                                 const percentage = ((dist.value / total) * 100).toFixed(1);
                                 return (
                                     <div key={i} className="space-y-2">
@@ -578,24 +578,35 @@ export function AdminDashboard({
                         <div>
                             <CardTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
                                 <Clock className="h-5 w-5 text-primary" />
-                                {isGestor ? "Actividad Reciente del Programa" : "Actividad Global Reciente"}
+                                {isGestor ? "Actividad Reciente del Programa" : "Actividad Reciente del Sistema"}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs">
                                 {isGestor 
                                     ? `Últimas interacciones registradas en ${currentProgram?.name}` 
-                                    : "Últimas interacciones registradas en el sistema"
+                                    : "Últimas interacciones y registros de administración"
                                 }
                             </CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-3">
-                            {filteredRecentActivity.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl border-dashed border border-border/60 text-xs font-medium">
-                                    No se ha registrado actividad reciente en este programa.
-                                </div>
-                            ) : (
-                                filteredRecentActivity.slice(0, 5).map((activity, idx) => (
+                            {(() => {
+                                const displayActivities = !isGestor 
+                                    ? filteredRecentActivity.filter(a => a.type !== "grade" && a.type !== "attendance" && a.type !== "remark")
+                                    : filteredRecentActivity;
+
+                                if (displayActivities.length === 0) {
+                                    return (
+                                        <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl border-dashed border border-border/60 text-xs font-medium">
+                                            {isGestor 
+                                                ? "No se ha registrado actividad reciente en este programa."
+                                                : "No se ha registrado actividad reciente de administración."
+                                            }
+                                        </div>
+                                    );
+                                }
+
+                                return displayActivities.slice(0, 5).map((activity, idx) => (
                                     <div key={idx} className="group flex items-start gap-4 p-3.5 hover:bg-muted/40 rounded-2xl transition-all duration-200 border border-transparent hover:border-border/60">
                                         <div className="p-2 bg-primary/10 text-primary border border-primary/20 rounded-xl group-hover:scale-105 transition-transform shrink-0">
                                             <Activity className="h-4 w-4" />
@@ -610,18 +621,12 @@ export function AdminDashboard({
                                                 </span>
                                             </div>
                                             <p className="text-xs text-muted-foreground leading-relaxed">
-                                                {activity.type === "grade" ? (
-                                                    <>Actualizó calificación en <span className="font-bold text-primary">{activity.details?.activity}</span> ({activity.details?.course})</>
-                                                ) : activity.type === "remark" ? (
-                                                    <>Registró una observación: <span className="font-bold text-primary">{activity.details?.activity}</span></>
-                                                ) : (
-                                                    <>Novedad de asistencia: <span className="font-bold text-primary">{activity.details?.activity}</span> en {activity.details?.course}</>
-                                                )}
+                                                {activity.description || "Acción registrada en la plataforma"}
                                             </p>
                                         </div>
                                     </div>
-                                ))
-                            )}
+                                ));
+                            })()}
                         </div>
                     </CardContent>
                 </Card>

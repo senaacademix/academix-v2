@@ -65,6 +65,13 @@ export async function getProgramsAction() {
         where: whereClause,
         orderBy: { createdAt: "desc" },
         include: {
+            gestores: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true
+                }
+            },
             teachers: {
                 select: {
                     id: true,
@@ -126,13 +133,6 @@ export async function getProgramsAction() {
                             icon: true
                         }
                     },
-                    period: {
-                        include: {
-                            courses: {
-                                where: { groupId: null }
-                            }
-                        }
-                    },
                     courses: {
                         include: {
                             group: true,
@@ -156,7 +156,20 @@ export async function getProgramsAction() {
     });
 }
 
-export async function createProgramAction(data: { name: string; description?: string; startDate?: Date | null; endDate?: Date | null; scheduleTitle?: string | null; maxTeacherHours?: number | null }) {
+export async function getGestoresAction() {
+    const session = await requireAdmin();
+    return await prisma.user.findMany({
+        where: { role: "gestor" },
+        select: {
+            id: true,
+            name: true,
+            email: true
+        },
+        orderBy: { name: "asc" }
+    });
+}
+
+export async function createProgramAction(data: { name: string; description?: string; startDate?: Date | null; endDate?: Date | null; scheduleTitle?: string | null; maxTeacherHours?: number | null; gestorIds?: string[] }) {
     const session = await requireAdmin();
     if (!data.name || data.name.trim().length < 2) {
         throw new Error("El nombre del programa debe tener al menos 2 caracteres");
@@ -170,6 +183,9 @@ export async function createProgramAction(data: { name: string; description?: st
             endDate: data.endDate || null,
             scheduleTitle: data.scheduleTitle || null,
             maxTeacherHours: data.maxTeacherHours ?? 40,
+            gestores: data.gestorIds && data.gestorIds.length > 0 ? {
+                connect: data.gestorIds.map(id => ({ id }))
+            } : undefined
         }
     });
 
@@ -190,7 +206,7 @@ export async function createProgramAction(data: { name: string; description?: st
     return program;
 }
 
-export async function updateProgramAction(id: string, data: { name: string; description?: string; startDate?: Date | null; endDate?: Date | null; scheduleTitle?: string | null; maxTeacherHours?: number | null }) {
+export async function updateProgramAction(id: string, data: { name: string; description?: string; startDate?: Date | null; endDate?: Date | null; scheduleTitle?: string | null; maxTeacherHours?: number | null; allowPastAttendanceEdit?: boolean; gestorIds?: string[] }) {
     const session = await requireAdmin();
     if (!data.name || data.name.trim().length < 2) {
         throw new Error("El nombre del programa debe tener al menos 2 caracteres");
@@ -205,6 +221,10 @@ export async function updateProgramAction(id: string, data: { name: string; desc
             endDate: data.endDate !== undefined ? data.endDate : undefined,
             scheduleTitle: data.scheduleTitle !== undefined ? data.scheduleTitle : undefined,
             maxTeacherHours: data.maxTeacherHours !== undefined ? (data.maxTeacherHours ?? 40) : undefined,
+            allowPastAttendanceEdit: data.allowPastAttendanceEdit !== undefined ? data.allowPastAttendanceEdit : undefined,
+            gestores: data.gestorIds !== undefined ? {
+                set: data.gestorIds.map(id => ({ id }))
+            } : undefined
         }
     });
 
@@ -222,6 +242,20 @@ export async function updateProgramAction(id: string, data: { name: string; desc
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor");
+    return program;
+}
+
+export async function toggleProgramPastAttendanceEditAction(programId: string, allowPastAttendanceEdit: boolean) {
+    const session = await requireAdmin();
+
+    const program = await prisma.program.update({
+        where: { id: programId },
+        data: { allowPastAttendanceEdit }
+    });
+
+    revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor");
     return program;
 }
 
@@ -393,7 +427,7 @@ export async function getGroupsAction() {
     });
 }
 
-export async function createGroupAction(data: { name: string; description?: string; programId: string; periodId?: string; categoria?: string }) {
+export async function createGroupAction(data: { name: string; description?: string; programId: string; categoria?: string }) {
     const session = await requireAdmin();
     if (!data.name || data.name.trim().length < 2) {
         throw new Error("El nombre del grupo debe tener al menos 2 caracteres");
@@ -407,7 +441,6 @@ export async function createGroupAction(data: { name: string; description?: stri
             name: data.name,
             description: data.description || null,
             programId: data.programId,
-            periodId: data.periodId || null,
             categoria: data.categoria || "LECTIVA",
         }
     });
@@ -429,7 +462,7 @@ export async function createGroupAction(data: { name: string; description?: stri
     return group;
 }
 
-export async function updateGroupAction(id: string, data: { name: string; description?: string; periodId?: string; categoria?: string }) {
+export async function updateGroupAction(id: string, data: { name: string; description?: string; categoria?: string }) {
     const session = await requireAdmin();
     if (!data.name || data.name.trim().length < 2) {
         throw new Error("El nombre del grupo debe tener al menos 2 caracteres");
@@ -440,7 +473,6 @@ export async function updateGroupAction(id: string, data: { name: string; descri
         data: {
             name: data.name,
             description: data.description || null,
-            periodId: data.periodId || null,
             categoria: data.categoria || "LECTIVA",
         }
     });
@@ -491,43 +523,6 @@ export async function deleteGroupAction(id: string) {
     return result;
 }
 
-export async function updateGroupPeriodAction(groupId: string, periodId: string | null) {
-    const session = await requireAdmin();
-
-    await prisma.$transaction(async (tx) => {
-        // Update the group's period
-        await tx.group.update({
-            where: { id: groupId },
-            data: { periodId }
-        });
-
-        // Update all courses associated with this group to belong to the new period
-        // This ensures we only keep ONE schedule per group, moving it to the active period
-        if (periodId) {
-            await tx.course.updateMany({
-                where: { groupId },
-                data: { periodId }
-            });
-        }
-    });
-
-    const { auditLogger } = await import("../services/auditLogger");
-    await auditLogger.log({
-        action: "UPDATE",
-        entity: "GROUP",
-        entityId: groupId,
-        userId: session.user.id,
-        userName: session.user.name || "Admin",
-        userRole: "admin",
-        description: `Período del grupo actualizado a: ${periodId || "Ninguno"}`,
-        metadata: { periodId },
-        success: true,
-    });
-
-    revalidatePath("/dashboard/admin/courses");
-    return { success: true };
-}
-
 // ============ STUDENT ASSIGNMENT TO GROUP ============
 
 export async function assignStudentToGroupAction(studentId: string, groupId: string | null) {
@@ -535,8 +530,17 @@ export async function assignStudentToGroupAction(studentId: string, groupId: str
 
     const student = await prisma.user.findUnique({
         where: { id: studentId },
-        select: { name: true }
+        select: { name: true, groupId: true }
     });
+
+    if (!student) {
+        throw new Error("Estudiante no encontrado");
+    }
+
+    if (student.groupId !== groupId) {
+        const { syncUserGroupChange } = await import("@/features/student/actions/studentGroupHistoryActions");
+        await syncUserGroupChange(studentId, student.groupId, groupId, "Traslado / Asignación de ficha");
+    }
 
     const targetGroup = groupId ? await prisma.group.findUnique({
         where: { id: groupId },
@@ -1927,6 +1931,7 @@ export async function checkScheduleConflictsAction(data: {
     courseId?: string;
     groupId: string;
     teacherId?: string;
+    academicScheduleId?: string;
     schedules: Array<{
         dayOfWeek: DayOfWeek;
         startTime: string;
@@ -2022,9 +2027,17 @@ export async function checkScheduleConflictsAction(data: {
             }
         }
 
-        // 5. Check if slot is within teacher availability
+        // 5. Check if slot is within teacher availability for THIS schedule
+        const activeSchedule = data.academicScheduleId 
+            ? null 
+            : await prisma.academicSchedule.findFirst({ where: { isActive: true }, select: { id: true } });
+        const targetSchedId = data.academicScheduleId || activeSchedule?.id || null;
+
         const teacherAvailabilities = await prisma.teacherAvailability.findMany({
-            where: { teacherId: data.teacherId }
+            where: { 
+                teacherId: data.teacherId,
+                ...(targetSchedId ? { academicScheduleId: targetSchedId } : {})
+            }
         });
 
         if (teacherAvailabilities.length > 0) {
@@ -2295,7 +2308,6 @@ export async function importGroupsAndStudentsAction(programId: string, data: any
                     description: groupItem.description || null,
                     categoria: groupItem.categoria || "LECTIVA",
                     programId: programId,
-                    periodId: periodId,
                 }
             });
             successGroups++;
@@ -2433,7 +2445,6 @@ export async function createOrGetGroupForImportAction(programId: string, groupIt
                     description: groupItem.description || null,
                     categoria: groupItem.categoria || "LECTIVA",
                     programId: programId,
-                    periodId: periodId,
                 }
             });
         }
@@ -2488,7 +2499,6 @@ export async function importSingleGroupAndStudentsAction(programId: string, grou
                     description: groupItem.description || null,
                     categoria: groupItem.categoria || "LECTIVA",
                     programId: programId,
-                    periodId: periodId,
                 }
             });
         }

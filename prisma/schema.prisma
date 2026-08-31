@@ -45,6 +45,9 @@ model User {
   availabilityLocked     Boolean                @default(false)
   qualifiedCoursesLocked Boolean                @default(false)
   availabilities         TeacherAvailability[]
+  availabilitiesCreated  TeacherAvailability[]          @relation("AvailabilityCreatedBy")
+  teacherScheduleQualifications TeacherScheduleQualification[] @relation("TeacherScheduleQualifications")
+  qualificationsCreated        TeacherScheduleQualification[] @relation("QualificationCreatedBy")
   groupsTaught          Group[]                @relation("GroupTeachers")
   qualifiedCourses      Course[]               @relation("TeacherQualifiedCourses")
   coursesTaught         Course[]               @relation("CourseTeacher")
@@ -55,6 +58,7 @@ model User {
 
   groupId                     String?
   group                       Group?            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupEnrollments            GroupEnrollment[]
 
   availabilityLastModifiedById String?
   availabilityLastModifiedBy   User?            @relation("AvailabilityModifier", fields: [availabilityLastModifiedById], references: [id], onDelete: SetNull)
@@ -72,6 +76,7 @@ model User {
   workGroups                   CourseWorkGroup[] @relation("StudentWorkGroups")
   studentAccessLogs            StudentAccessLog[]
   managedPrograms              Program[]         @relation("GestorPrograms")
+  reportedScheduleNovelties    ScheduleNovelty[] @relation("ReportedNovelties")
 
   @@unique([email])
   @@map("user")
@@ -164,6 +169,7 @@ model Course {
   gradeCategories    GradeCategory[]
   gradeGroups        GradeGroup[]
   qualifiedTeachers  User[]            @relation("TeacherQualifiedCourses")
+  scheduleQualifications TeacherScheduleQualification[] @relation("CourseScheduleQualifications")
   teacherId          String?
   teacher            User?             @relation("CourseTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
 
@@ -172,7 +178,10 @@ model Course {
   period             Period?   @relation(fields: [periodId], references: [id], onDelete: Cascade)
   groupId            String?
   group              Group?    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  academicScheduleId String?
+  academicSchedule   AcademicSchedule? @relation(fields: [academicScheduleId], references: [id], onDelete: Cascade)
   workGroups         CourseWorkGroup[]
+  scheduleNovelties  ScheduleNovelty[]
 
   @@map("course")
 }
@@ -306,6 +315,7 @@ model SystemSettings {
   scheduleEndDate             DateTime?
   maxTeacherHours             Int               @default(40)
   studentDailyLimit           Int               @default(2)
+  studentAccessEnabled        Boolean           @default(true)
   limitAttendanceToCurrentWeek Boolean           @default(false)
   
   updatedAt             DateTime         @updatedAt
@@ -393,6 +403,7 @@ model Program {
   endDate         DateTime?
   scheduleTitle   String?
   maxTeacherHours Int        @default(40)
+  allowPastAttendanceEdit Boolean @default(false)
   periods         Period[]
   groups          Group[]
   teachers        User[]     @relation("ProgramTeachers")
@@ -413,7 +424,7 @@ model Period {
   programId   String
   program     Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
   courses     Course[]
-  groups      Group[]
+  scheduleGroupSlots ScheduleGroupSlot[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -435,29 +446,49 @@ model Group {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  periodId    String?
-  period      Period?    @relation(fields: [periodId], references: [id], onDelete: Cascade)
-
   environmentId String?
   environment   TrainingEnvironment? @relation(fields: [environmentId], references: [id], onDelete: SetNull)
 
   scheduleSlots ScheduleGroupSlot[]
+  scheduleNovelties ScheduleNovelty[]
+  scheduleEvents ScheduleEvent[]
+  groupEnrollments GroupEnrollment[]
 
   @@map("group")
 }
 
 model TeacherAvailability {
-  id          String    @id @default(cuid())
-  teacherId   String
-  teacher     User      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  dayOfWeek   DayOfWeek
-  startTime   String    // Format: "HH:mm" (e.g., "08:00")
-  endTime     String    // Format: "HH:mm" (e.g., "14:00")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                 String            @id @default(cuid())
+  teacherId          String
+  teacher            User              @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  academicScheduleId String?
+  academicSchedule   AcademicSchedule? @relation(fields: [academicScheduleId], references: [id], onDelete: Cascade)
+  createdById        String?
+  createdBy          User?             @relation("AvailabilityCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  dayOfWeek          DayOfWeek
+  startTime          String            // Format: "HH:mm" (e.g., "08:00")
+  endTime            String            // Format: "HH:mm" (e.g., "14:00")
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
-  @@unique([teacherId, dayOfWeek, startTime, endTime])
   @@map("teacher_availability")
+}
+
+model TeacherScheduleQualification {
+  id                 String           @id @default(cuid())
+  teacherId          String
+  teacher            User             @relation("TeacherScheduleQualifications", fields: [teacherId], references: [id], onDelete: Cascade)
+  academicScheduleId String
+  academicSchedule   AcademicSchedule @relation(fields: [academicScheduleId], references: [id], onDelete: Cascade)
+  courseId           String
+  course             Course           @relation("CourseScheduleQualifications", fields: [courseId], references: [id], onDelete: Cascade)
+  createdById        String?
+  createdBy          User?            @relation("QualificationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@unique([teacherId, academicScheduleId, courseId])
+  @@map("teacher_schedule_qualification")
 }
 
 model CourseWorkGroup {
@@ -485,6 +516,7 @@ model TrainingEnvironment {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   groups      Group[]
+  scheduleNovelties ScheduleNovelty[]
 
   programId   String?
   program     Program?  @relation(fields: [programId], references: [id], onDelete: Cascade)
@@ -610,6 +642,9 @@ model AcademicSchedule {
   updatedAt   DateTime            @updatedAt
   groupSlots  ScheduleGroupSlot[]
   events      ScheduleEvent[]
+  courses     Course[]
+  teacherAvailabilities TeacherAvailability[]
+  teacherQualifications TeacherScheduleQualification[]
 
   @@map("academic_schedule")
 }
@@ -620,6 +655,8 @@ model ScheduleGroupSlot {
   academicSchedule   AcademicSchedule @relation(fields: [academicScheduleId], references: [id], onDelete: Cascade)
   groupId            String
   group              Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  periodId           String?
+  period             Period?          @relation(fields: [periodId], references: [id], onDelete: SetNull)
   dayOfWeek          DayOfWeek
   startTime          String           // Formato "HH:mm", ej: "08:00"
   endTime            String           // Formato "HH:mm", ej: "12:00"
@@ -639,7 +676,10 @@ model ScheduleEvent {
   date               DateTime         // Fecha del evento (restringida a [startDate, endDate])
   startTime          String           // Formato "HH:mm", ej: "08:00"
   endTime            String           // Formato "HH:mm", ej: "10:00"
-  targetAudience     String           @default("PUBLIC") // "PUBLIC", "TEACHERS", "STUDENTS"
+  targetAudience     String           @default("PUBLIC") // "PUBLIC", "TEACHERS", "STUDENTS", "GROUP"
+  isGeneral          Boolean          @default(true)
+  groupId            String?
+  group              Group?           @relation(fields: [groupId], references: [id], onDelete: Cascade)
   location           String?          // Opcional: "Auditorio Principal", "Aula Virtual", etc.
   linkUrl            String?          // Opcional: Enlace a reunión virtual o recurso web
   color              String?          // Opcional: Color de personalización
@@ -648,6 +688,70 @@ model ScheduleEvent {
   updatedAt          DateTime         @updatedAt
 
   @@map("schedule_event")
+}
+
+model ScheduleNovelty {
+  id                 String               @id @default(cuid())
+  type               ScheduleNoveltyType
+  title              String
+  description        String?
+  startDate          DateTime
+  endDate            DateTime
+  isGeneral          Boolean              @default(false)
+
+  groupId            String?
+  group              Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  courseId           String?
+  course             Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  newEnvironmentId   String?
+  newEnvironment     TrainingEnvironment? @relation(fields: [newEnvironmentId], references: [id], onDelete: SetNull)
+
+  reportedById       String?
+  reportedBy         User?                @relation("ReportedNovelties", fields: [reportedById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@map("schedule_novelty")
+}
+
+enum ScheduleNoveltyType {
+  SCHEDULE_SUSPENSION
+  ROOM_CHANGE
+  CLASS_RESCHEDULE
+  TECHNICAL_OUTAGE
+  INSTITUTIONAL_EVENT
+  VIRTUAL_SESSION
+  OTHER
+}
+
+enum GroupEnrollmentStatus {
+  ACTIVE
+  TRANSFERRED
+  COMPLETED
+  WITHDRAWN
+}
+
+model GroupEnrollment {
+  id          String                @id @default(cuid())
+  studentId   String
+  groupId     String
+  status      GroupEnrollmentStatus @default(ACTIVE)
+  isCurrent   Boolean               @default(true)
+  joinedAt    DateTime              @default(now())
+  leftAt      DateTime?
+  notes       String?
+
+  student     User                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group       Group                 @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@unique([studentId, groupId])
+  @@map("group_enrollment")
 }
 
 

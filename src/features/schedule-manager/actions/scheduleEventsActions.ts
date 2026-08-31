@@ -28,6 +28,7 @@ export interface ScheduleEventsPageData {
     isActive: boolean;
     isPublished: boolean;
   };
+  groups: Array<{ id: string; name: string }>;
   events: ScheduleEventItem[];
 }
 
@@ -42,6 +43,9 @@ export async function getScheduleEventsDataAction(scheduleId: string): Promise<S
       where: { id: scheduleId },
       include: {
         events: {
+          include: {
+            group: { select: { id: true, name: true } },
+          },
           orderBy: [
             { date: "asc" },
             { startTime: "asc" }
@@ -51,6 +55,11 @@ export async function getScheduleEventsDataAction(scheduleId: string): Promise<S
     });
 
     if (!schedule) return null;
+
+    const groups = await prisma.group.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
 
     return {
       schedule: {
@@ -62,6 +71,7 @@ export async function getScheduleEventsDataAction(scheduleId: string): Promise<S
         isActive: schedule.isActive,
         isPublished: schedule.isPublished,
       },
+      groups: groups.map((g) => ({ id: g.id, name: g.name })),
       events: schedule.events.map((e) => ({
         id: e.id,
         academicScheduleId: e.academicScheduleId,
@@ -71,6 +81,9 @@ export async function getScheduleEventsDataAction(scheduleId: string): Promise<S
         startTime: e.startTime,
         endTime: e.endTime,
         targetAudience: (e.targetAudience as any) || "PUBLIC",
+        isGeneral: e.isGeneral,
+        groupId: e.groupId,
+        group: e.group ? { id: e.group.id, name: e.group.name } : null,
         location: e.location,
         linkUrl: e.linkUrl,
         color: e.color,
@@ -135,6 +148,7 @@ export async function createScheduleEventAction(
       };
     }
 
+    const isGroupAudience = payload.targetAudience === "GROUP";
     const created = await prisma.scheduleEvent.create({
       data: {
         academicScheduleId: payload.academicScheduleId,
@@ -144,9 +158,14 @@ export async function createScheduleEventAction(
         startTime: payload.startTime,
         endTime: payload.endTime,
         targetAudience: payload.targetAudience || "PUBLIC",
+        isGeneral: !isGroupAudience,
+        groupId: isGroupAudience ? payload.groupId || null : null,
         location: payload.location?.trim() || null,
         linkUrl: payload.linkUrl?.trim() || null,
         color: payload.color || "blue",
+      },
+      include: {
+        group: { select: { id: true, name: true } },
       },
     });
 
@@ -164,6 +183,9 @@ export async function createScheduleEventAction(
         startTime: created.startTime,
         endTime: created.endTime,
         targetAudience: created.targetAudience as any,
+        isGeneral: created.isGeneral,
+        groupId: created.groupId,
+        group: created.group ? { id: created.group.id, name: created.group.name } : null,
         location: created.location,
         linkUrl: created.linkUrl,
         color: created.color,
@@ -230,6 +252,7 @@ export async function updateScheduleEventAction(
       };
     }
 
+    const isGroupAudience = payload.targetAudience === "GROUP";
     const updated = await prisma.scheduleEvent.update({
       where: { id: payload.id },
       data: {
@@ -239,9 +262,14 @@ export async function updateScheduleEventAction(
         startTime: payload.startTime,
         endTime: payload.endTime,
         targetAudience: payload.targetAudience || "PUBLIC",
+        isGeneral: !isGroupAudience,
+        groupId: isGroupAudience ? payload.groupId || null : null,
         location: payload.location?.trim() || null,
         linkUrl: payload.linkUrl?.trim() || null,
         color: payload.color || "blue",
+      },
+      include: {
+        group: { select: { id: true, name: true } },
       },
     });
 
@@ -259,6 +287,9 @@ export async function updateScheduleEventAction(
         startTime: updated.startTime,
         endTime: updated.endTime,
         targetAudience: updated.targetAudience as any,
+        isGeneral: updated.isGeneral,
+        groupId: updated.groupId,
+        group: updated.group ? { id: updated.group.id, name: updated.group.name } : null,
         location: updated.location,
         linkUrl: updated.linkUrl,
         color: updated.color,

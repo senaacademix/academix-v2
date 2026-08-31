@@ -287,30 +287,51 @@ export async function getStudentGrades(userId: string) {
         });
         const directCourses = enrollments.map((e: any) => e.course);
 
-        // ── 2. Materias del grupo al que pertenece el estudiante ──────────────
+        // ── 2. Materias de TODAS las fichas (históricas y activa) del estudiante ────
         const user = await prisma.user.findUnique({
             where: { id: userId },
+            select: { groupId: true }
+        });
+
+        const groupEnrollments = await prisma.groupEnrollment.findMany({
+            where: { studentId: userId },
+            select: { groupId: true }
+        });
+
+        const allGroupIds = new Set<string>();
+        if (user?.groupId) allGroupIds.add(user.groupId);
+        groupEnrollments.forEach(ge => allGroupIds.add(ge.groupId));
+
+        const gradeRecords = await prisma.studentGrade.findMany({
+            where: { userId },
+            select: { activity: { select: { course: { select: { groupId: true } } } } }
+        });
+        gradeRecords.forEach(g => {
+            if (g.activity?.course?.groupId) allGroupIds.add(g.activity.course.groupId);
+        });
+
+        const groups = await prisma.group.findMany({
+            where: { id: { in: Array.from(allGroupIds) } },
             select: {
-                groupId: true,
-                group: {
-                    select: {
-                        courses: {
+                id: true,
+                name: true,
+                courses: {
+                    include: {
+                        group: { select: { id: true, name: true } },
+                        teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
+                        schedules: { orderBy: { dayOfWeek: 'asc' } },
+                        activities: {
+                            orderBy: { createdAt: 'asc' },
                             include: {
-                                teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
-                                schedules: { orderBy: { dayOfWeek: 'asc' } },
-                                activities: {
-                                    orderBy: { createdAt: 'asc' },
-                                    include: {
-                                        grades: { where: { userId } }
-                                    }
-                                }
+                                grades: { where: { userId } }
                             }
                         }
                     }
                 }
             }
         });
-        const groupCourses: any[] = user?.group?.courses ?? [];
+
+        const groupCourses: any[] = groups.flatMap(g => g.courses);
 
         // ── 3. Unir y deduplicar por id ───────────────────────────────────────
         const allCourses = [...directCourses];

@@ -25,7 +25,8 @@ export {
     updateAdminOrObserverAction,
     deleteAdminOrObserverAction,
     updateStudentNovedadAction,
-    updateStudentAction
+    updateStudentAction,
+    updateTeacherUserAction
 } from "@/features/admin/actions/adminActions";
 
 export { assignStudentToGroupAction } from "@/features/admin/actions/academicActions";

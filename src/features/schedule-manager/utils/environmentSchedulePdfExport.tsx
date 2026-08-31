@@ -116,6 +116,91 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     color: "#065f46",
   },
+  kpiRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 12,
+  },
+  kpiCard: {
+    flex: 1,
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    backgroundColor: "#f8fafc",
+  },
+  kpiTitle: {
+    fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    color: "#64748b",
+    textTransform: "uppercase",
+    marginBottom: 3,
+  },
+  kpiValue: {
+    fontSize: 14,
+    fontFamily: "Helvetica-Bold",
+    color: "#0f172a",
+  },
+  kpiSub: {
+    fontSize: 6.5,
+    color: "#94a3b8",
+    marginTop: 2,
+  },
+  barChartCard: {
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 8,
+    backgroundColor: "#ffffff",
+  },
+  barChartHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  barChartName: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: "#0f172a",
+  },
+  barChartStats: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#059669",
+  },
+  progressBarTrack: {
+    width: "100%",
+    height: 8,
+    backgroundColor: "#e2e8f0",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginTop: 3,
+    marginBottom: 4,
+  },
+  progressBarFillGreen: {
+    height: "100%",
+    backgroundColor: "#10b981",
+    borderRadius: 4,
+  },
+  progressBarFillAmber: {
+    height: "100%",
+    backgroundColor: "#f59e0b",
+    borderRadius: 4,
+  },
+  progressBarFillRed: {
+    height: "100%",
+    backgroundColor: "#ef4444",
+    borderRadius: 4,
+  },
+  barChartMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    fontSize: 7,
+    color: "#64748b",
+  },
   sectionTitle: {
     fontSize: 10,
     fontFamily: "Helvetica-Bold",
@@ -260,6 +345,11 @@ export interface EnvironmentExportData {
   totalPeriodHours: number;
   totalWeeks: number;
   distinctGroups: string[];
+  distinctCourses: string[];
+  totalStudents: number;
+  capacityRatio: number;
+  isStudentOverCapacity: boolean;
+  studentExcess: number;
   classesByDay: Record<
     DayOfWeek,
     Array<{
@@ -320,12 +410,14 @@ export function extractEnvironmentsExportData(
     };
 
     const distinctGroups = new Set<string>();
+    const distinctCourses = new Set<string>();
     const allAssignments: EnvironmentExportData["allAssignments"] = [];
     let weeklyHours = 0;
 
     groups.forEach((g) => {
       if (g.environment?.id === env.id) {
         g.scheduledClasses.forEach((c) => {
+          distinctCourses.add(c.title);
           c.schedules.forEach((s) => {
             const [sh, sm] = s.startTime.split(":").map(Number);
             const [eh, em] = s.endTime.split(":").map(Number);
@@ -386,12 +478,24 @@ export function extractEnvironmentsExportData(
       periodHours = weeklyHours * 10;
     }
 
+    const assignedGroupsList = groups.filter((g) => g.environment?.id === env.id);
+    const totalStudents = assignedGroupsList.reduce((acc, g) => acc + (g.studentCount || 25), 0);
+    const roomCap = env.capacity || 20;
+    const capacityRatio = roomCap > 0 ? Math.round((totalStudents / roomCap) * 100) : 0;
+    const isStudentOverCapacity = totalStudents > roomCap;
+    const studentExcess = Math.max(0, totalStudents - roomCap);
+
     return {
       environment: env,
       totalWeeklyHours: Math.round(weeklyHours * 10) / 10,
       totalPeriodHours: Math.round(periodHours * 10) / 10,
       totalWeeks: weeks,
       distinctGroups: Array.from(distinctGroups),
+      distinctCourses: Array.from(distinctCourses),
+      totalStudents,
+      capacityRatio,
+      isStudentOverCapacity,
+      studentExcess,
       classesByDay,
       allAssignments,
     };
@@ -401,13 +505,218 @@ export function extractEnvironmentsExportData(
 export function EnvironmentSchedulePdfDocument({
   schedule,
   environmentsData,
+  exportMode = "single",
 }: {
   schedule: ScheduleBuilderData["schedule"];
   environmentsData: EnvironmentExportData[];
+  exportMode?: "single" | "all" | "chart";
 }) {
   return (
     <Document title={`Matriz_Ambientes_${schedule.name}`} author="Academix">
-      {environmentsData.map((data) => (
+      {/* 1. CHART MODE PAGE: REPORTE ANALÍTICO Y GRÁFICOS VISUALES */}
+      {exportMode === "chart" && (
+        <Page size="A4" orientation="landscape" style={styles.page}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.institutionTitle}>ACADEMIX - REPORTE DE OCUPACIÓN Y GRÁFICOS DE CARGA</Text>
+              <Text style={styles.scheduleSubtitle}>
+                {schedule.name} - ANÁLISIS DE CAPACIDAD Y PORCENTAJE DE OCUPACIÓN DE AMBIENTES
+              </Text>
+              <Text style={styles.scheduleDates}>
+                Vigencia: {formatDate(schedule.startDate)} hasta {formatDate(schedule.endDate)}
+              </Text>
+            </View>
+            <View style={styles.badgeContainer}>
+              <Text style={[styles.badge, { backgroundColor: "#4f46e5" }]}>
+                REPORTE ANALÍTICO DE OCUPACIÓN
+              </Text>
+            </View>
+          </View>
+
+          {/* KPI Cards Row */}
+          <View style={styles.kpiRow}>
+            <View style={styles.kpiCard}>
+              <Text style={styles.kpiTitle}>TOTAL AMBIENTES</Text>
+              <Text style={styles.kpiValue}>{environmentsData.length}</Text>
+              <Text style={styles.kpiSub}>Salas registradas</Text>
+            </View>
+
+            <View style={styles.kpiCard}>
+              <Text style={styles.kpiTitle}>AMBIENTES ACTIVOS</Text>
+              <Text style={[styles.kpiValue, { color: "#059669" }]}>
+                {environmentsData.filter((e) => e.totalWeeklyHours > 0).length} / {environmentsData.length}
+              </Text>
+              <Text style={styles.kpiSub}>Con horas asignadas</Text>
+            </View>
+
+            <View style={styles.kpiCard}>
+              <Text style={styles.kpiTitle}>TOTAL HORAS OCUPADAS</Text>
+              <Text style={[styles.kpiValue, { color: "#4f46e5" }]}>
+                {Math.round(environmentsData.reduce((acc, e) => acc + e.totalWeeklyHours, 0) * 10) / 10}h/sem
+              </Text>
+              <Text style={styles.kpiSub}>En todas las fichas</Text>
+            </View>
+
+            <View style={styles.kpiCard}>
+              <Text style={styles.kpiTitle}>PROMEDIO OCUPACIÓN</Text>
+              <Text style={[styles.kpiValue, { color: "#7c3aed" }]}>
+                {environmentsData.length > 0
+                  ? Math.round(
+                      (environmentsData.reduce((acc, e) => acc + e.totalWeeklyHours, 0) /
+                        (environmentsData.length * 40)) *
+                        100
+                    )
+                  : 0}%
+              </Text>
+              <Text style={styles.kpiSub}>Capacidad 40h/sem por sala</Text>
+            </View>
+          </View>
+
+          {/* Bar Charts Section */}
+          <Text style={styles.sectionTitle}>
+            Gráficos de Carga y Ocupación Semanal por Ambiente
+          </Text>
+
+          {environmentsData.map((data) => {
+            const capacityHours = 40;
+            const percent = Math.min(
+              Math.round((data.totalWeeklyHours / capacityHours) * 100),
+              100
+            );
+
+            const fillStyle =
+              percent > 90
+                ? styles.progressBarFillRed
+                : percent > 70
+                ? styles.progressBarFillAmber
+                : styles.progressBarFillGreen;
+
+            const roomCap = data.environment.capacity || 20;
+            const isStudentOver = data.isStudentOverCapacity;
+
+            return (
+              <View key={data.environment.id} style={styles.barChartCard}>
+                <View style={styles.barChartHeader}>
+                  <Text style={styles.barChartName}>
+                    Ambiente: {data.environment.name} ({data.environment.location || "Sede Principal"} - Cap: {roomCap} puestos)
+                    {isStudentOver ? ` - ⚠️ SOBRECUPO: +${data.studentExcess} aprendices` : ""}
+                  </Text>
+                  <Text style={[styles.barChartStats, isStudentOver ? { color: "#dc2626" } : {}]}>
+                    {data.totalWeeklyHours}h / 40h sem ({percent}% Carga) | Aforo: {data.totalStudents}/{roomCap} ({data.capacityRatio}%)
+                  </Text>
+                </View>
+
+                {/* Progress Bar Track & Fill */}
+                <View style={styles.progressBarTrack}>
+                  <View style={[fillStyle, { width: `${Math.max(percent, 2)}%` }]}></View>
+                </View>
+
+                <View style={styles.barChartMeta}>
+                  <Text>
+                    Fichas asignadas ({data.distinctGroups.length}): {data.distinctGroups.join(", ") || "Ninguna"}
+                  </Text>
+                  <Text style={isStudentOver ? { color: "#dc2626", fontFamily: "Helvetica-Bold" } : {}}>
+                    Aprendices: {data.totalStudents} / {roomCap} puestos {isStudentOver ? `(+${data.studentExcess} exceso)` : ""}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Generado automáticamente por Academix • {new Date().toLocaleDateString("es-CO")}
+            </Text>
+            <Text style={styles.footerText}>Reporte de Ocupación y Gráficos Visuales de Ambientes</Text>
+          </View>
+        </Page>
+      )}
+
+      {/* 2. ALL MODE PAGE: MATRIZ DE TABLA HORIZONTAL DE TODOS LOS AMBIENTES */}
+      {exportMode === "all" && (
+        <Page size="A4" orientation="landscape" style={styles.page}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.institutionTitle}>ACADEMIX - MATRIZ DE TODOS LOS AMBIENTES</Text>
+              <Text style={styles.scheduleSubtitle}>
+                {schedule.name} - MATRIZ GENERAL DE OCUPACIÓN POR SALAS Y DÍAS
+              </Text>
+              <Text style={styles.scheduleDates}>
+                Vigencia: {formatDate(schedule.startDate)} hasta {formatDate(schedule.endDate)}
+              </Text>
+            </View>
+            <View style={styles.badgeContainer}>
+              <Text style={[styles.badge, { backgroundColor: "#059669" }]}>
+                MATRIZ MACRO DE SALAS
+              </Text>
+            </View>
+          </View>
+
+          {/* Matrix Table */}
+          <Text style={styles.sectionTitle}>Programación Semanal por Ambiente</Text>
+          <View style={styles.table}>
+            <View style={styles.tableRowHeader}>
+              <Text style={[styles.colGroup, styles.th, { width: "20%" }]}>Ambiente / Sala</Text>
+              {DAYS_ES.map((d) => (
+                <Text key={d.key} style={[styles.th, { width: "11.4%", textAlign: "center" }]}>
+                  {d.short}
+                </Text>
+              ))}
+            </View>
+
+            {environmentsData.map((data) => (
+              <View key={data.environment.id} style={styles.tableRow}>
+                <View style={{ width: "20%", paddingRight: 4 }}>
+                  <Text style={{ fontSize: 8.5, fontFamily: "Helvetica-Bold", color: "#0f172a" }}>
+                    {data.environment.name}
+                  </Text>
+                  <Text style={{ fontSize: 7, color: "#64748b" }}>
+                    {data.environment.location || "Sede"} | Cap: {data.environment.capacity || "N/A"}
+                  </Text>
+                  <Text style={{ fontSize: 7, color: "#059669", fontFamily: "Helvetica-Bold" }}>
+                    {data.totalWeeklyHours}h/sem ({data.distinctGroups.length} fichas)
+                  </Text>
+                </View>
+
+                {DAYS_ES.map((d) => {
+                  const dayClasses = data.classesByDay[d.key] || [];
+                  return (
+                    <View key={d.key} style={{ width: "11.4%", padding: 2 }}>
+                      {dayClasses.length === 0 ? (
+                        <Text style={{ fontSize: 6.5, color: "#cbd5e1", textAlign: "center" }}>-</Text>
+                      ) : (
+                        dayClasses.map((c, i) => (
+                          <View key={i} style={{ backgroundColor: "#f0fdf4", borderWidth: 0.5, borderColor: "#a7f3d0", padding: 2, marginBottom: 2, borderRadius: 2 }}>
+                            <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#065f46" }}>
+                              {c.groupName}
+                            </Text>
+                            <Text style={{ fontSize: 6, color: "#1e293b" }}>{c.courseTitle}</Text>
+                            <Text style={{ fontSize: 5.5, color: "#047857" }}>
+                              {toFormat12h(c.startTime)}-{toFormat12h(c.endTime)}
+                            </Text>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Generado automáticamente por Academix • {new Date().toLocaleDateString("es-CO")}
+            </Text>
+            <Text style={styles.footerText}>Matriz Macro de Todos los Ambientes</Text>
+          </View>
+        </Page>
+      )}
+
+      {/* 3. INDIVIDUAL PAGES (RENDERED ONLY IN SINGLE MODE OR AS INDIVIDUAL SCHEDULES) */}
+      {(exportMode === "single" ? environmentsData : environmentsData).map((data) => (
         <Page key={data.environment.id} size="A4" orientation="landscape" style={styles.page}>
           {/* Header */}
           <View style={styles.header}>
@@ -520,10 +829,15 @@ export function EnvironmentSchedulePdfDocument({
 export async function exportEnvironmentsToPdf(
   schedule: ScheduleBuilderData["schedule"],
   environmentsData: EnvironmentExportData[],
+  exportMode: "single" | "all" | "chart" = "single",
   filename = `Horarios_Ambientes_${schedule.name}.pdf`
 ) {
   const blob = await pdf(
-    <EnvironmentSchedulePdfDocument schedule={schedule} environmentsData={environmentsData} />
+    <EnvironmentSchedulePdfDocument
+      schedule={schedule}
+      environmentsData={environmentsData}
+      exportMode={exportMode}
+    />
   ).toBlob();
 
   const url = URL.createObjectURL(blob);

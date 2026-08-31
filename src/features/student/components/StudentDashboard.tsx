@@ -15,8 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useWebPush } from "@/hooks/useWebPush";
-import { Bell, BellOff, Loader2, Sparkles } from "lucide-react";
+import { Bell, BellOff, Loader2, Sparkles, History } from "lucide-react";
 import { getFormattedTodayDate } from "@/lib/dateUtils";
+import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
 
 export function StudentDashboard({
     availableCourses,
@@ -87,6 +88,7 @@ export function StudentDashboard({
     const [passwordError, setPasswordError] = useState("");
     const [passwordSuccess, setPasswordSuccess] = useState("");
     const [changingPassword, setChangingPassword] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     useEffect(() => {
         const checkPassword = async () => {
@@ -188,9 +190,19 @@ export function StudentDashboard({
                             </p>
                         </div>
 
-                        {/* Botón de Notificaciones para el Estudiante */}
-                        {mounted && permission !== "unsupported" && (
-                            <div className="shrink-0">
+                        <div className="shrink-0 flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowHistoryModal(true)}
+                                className="gap-2 rounded-2xl h-11 px-4 text-xs font-bold border-purple-500/30 text-purple-700 dark:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 shadow-sm"
+                            >
+                                <History className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                <span>Mi Histórico de Fichas</span>
+                            </Button>
+
+                            {/* Botón de Notificaciones para el Estudiante */}
+                            {mounted && permission !== "unsupported" && (
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -217,8 +229,8 @@ export function StudentDashboard({
                                         </>
                                     )}
                                 </Button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </motion.div>
             )}
@@ -389,6 +401,14 @@ export function StudentDashboard({
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Modal: Histórico de Fichas para el Estudiante */}
+            <StudentGroupHistoryModal
+                open={showHistoryModal}
+                onOpenChange={setShowHistoryModal}
+                studentId="me"
+                isStaffManager={false}
+            />
         </div>
     );
 }

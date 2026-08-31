@@ -9,7 +9,7 @@ async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
 }
 
-export async function getTeacherQualificationsAction(teacherId: string) {
+export async function getTeacherQualificationsAction(teacherId: string, academicScheduleId?: string) {
     const session = await getSession();
     if (!session) {
         throw new Error("Unauthorized");
@@ -60,6 +60,27 @@ export async function getTeacherQualificationsAction(teacherId: string) {
         throw new Error("Teacher not found");
     }
 
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    let schedQualCourseIds: string[] = [];
+    let qualificationsCreatedBy: Record<string, { id: string; name: string | null; role: string }> = {};
+    if (targetScheduleId) {
+        const schedQuals = await prisma.teacherScheduleQualification.findMany({
+            where: { teacherId, academicScheduleId: targetScheduleId },
+            include: { createdBy: { select: { id: true, name: true, role: true } } }
+        });
+        schedQualCourseIds = schedQuals.map(q => q.courseId);
+        schedQuals.forEach(q => {
+            if (q.createdBy) {
+                qualificationsCreatedBy[q.courseId] = {
+                    id: q.createdBy.id,
+                    name: q.createdBy.name || null,
+                    role: String(q.createdBy.role)
+                };
+            }
+        });
+    }
+
     const masterCourses = (teacher.programs || []).flatMap((p: any) => 
         (p.periods || []).flatMap((per: any) => per.courses || [])
     );
@@ -71,16 +92,26 @@ export async function getTeacherQualificationsAction(teacherId: string) {
     );
 
     const normalQualifiedCourses = masterCourses
-        .filter((mc: any) => 
-            qualifiedTitles.has(mc.title?.trim().toLowerCase()) ||
-            (teacher.qualifiedCourses || []).some((qc: any) => qc.id === mc.id)
-        )
+        .filter((mc: any) => {
+            if (targetScheduleId && schedQualCourseIds.length > 0) {
+                return schedQualCourseIds.includes(mc.id);
+            }
+            return qualifiedTitles.has(mc.title?.trim().toLowerCase()) ||
+                (teacher.qualifiedCourses || []).some((qc: any) => qc.id === mc.id);
+        })
         .map((mc: any) => ({ id: mc.id, title: mc.title }));
+
+    const schedules = await prisma.academicSchedule.findMany({
+        orderBy: { startDate: "desc" },
+        select: { id: true, name: true, isActive: true, isPublished: true }
+    });
 
     return {
         programs: teacher.programs || [],
         qualifiedCourses: normalQualifiedCourses,
-        locked: teacher.qualifiedCoursesLocked,
+        qualificationsCreatedBy,
+        locked: teacher.qualifiedCoursesLocked || false,
+        schedules,
         lastModifiedBy: teacher.qualificationsLastModifiedBy ? {
             name: teacher.qualificationsLastModifiedBy.name,
             role: teacher.qualificationsLastModifiedBy.role
@@ -89,7 +120,7 @@ export async function getTeacherQualificationsAction(teacherId: string) {
     };
 }
 
-export async function updateTeacherQualificationsAction(teacherId: string, courseIds: string[]) {
+export async function updateTeacherQualificationsAction(teacherId: string, courseIds: string[], academicScheduleId?: string) {
     const session = await getSession();
     if (!session) {
         throw new Error("Unauthorized");
@@ -105,6 +136,26 @@ export async function updateTeacherQualificationsAction(teacherId: string, cours
 
     if (teacher?.qualifiedCoursesLocked && session.user.role !== "admin" && session.user.role !== "gestor") {
         throw new Error("La configuración de materias está bloqueada y no se puede modificar.");
+    }
+
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    if (targetScheduleId) {
+        await prisma.$transaction(async (tx) => {
+            await tx.teacherScheduleQualification.deleteMany({
+                where: { teacherId, academicScheduleId: targetScheduleId }
+            });
+            if (courseIds.length > 0) {
+                await tx.teacherScheduleQualification.createMany({
+                    data: courseIds.map(courseId => ({
+                        teacherId,
+                        academicScheduleId: targetScheduleId,
+                        courseId,
+                        createdById: session.user.id
+                    }))
+                });
+            }
+        });
     }
 
     await prisma.user.update({

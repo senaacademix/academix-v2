@@ -17,7 +17,8 @@ export async function getStudentRecords(targetStudentId?: string) {
 
     let studentId = session.user.id;
     if (targetStudentId) {
-        if (session.user.role !== "teacher" && session.user.role !== "admin" && session.user.id !== targetStudentId) {
+        const allowedRoles = ["admin", "gestor", "coordinador", "manager", "teacher", "observer"];
+        if (!allowedRoles.includes(session.user.role || "") && session.user.id !== targetStudentId) {
             throw new Error("Unauthorized");
         }
         studentId = targetStudentId;
@@ -31,6 +32,8 @@ export async function getStudentRecords(targetStudentId?: string) {
                 select: {
                     id: true,
                     title: true,
+                    groupId: true,
+                    group: { select: { id: true, name: true } },
                     teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
                     schedules: { orderBy: { dayOfWeek: 'asc' } },
                 }
@@ -47,6 +50,8 @@ export async function getStudentRecords(targetStudentId?: string) {
                 select: {
                     id: true,
                     title: true,
+                    groupId: true,
+                    group: { select: { id: true, name: true } },
                     teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
                 }
             },
@@ -167,7 +172,8 @@ export async function deleteJustificationAction(attendanceId: string) {
         throw new Error("Unauthorized");
     }
 
-    if (session.user.role !== "teacher" && session.user.role !== "admin") {
+    const allowedRoles = ["admin", "gestor", "coordinador", "manager", "teacher"];
+    if (!allowedRoles.includes(session.user.role || "")) {
         throw new Error("No autorizado para realizar esta acción");
     }
 
@@ -215,11 +221,8 @@ export async function getStudentDocumentation(targetStudentId?: string) {
 
     let studentId = session.user.id;
     if (targetStudentId) {
-        if (
-            session.user.role !== "teacher" &&
-            session.user.role !== "admin" &&
-            session.user.id !== targetStudentId
-        ) {
+        const allowedRoles = ["admin", "gestor", "coordinador", "manager", "teacher", "observer"];
+        if (!allowedRoles.includes(session.user.role || "") && session.user.id !== targetStudentId) {
             throw new Error("Unauthorized");
         }
         studentId = targetStudentId;

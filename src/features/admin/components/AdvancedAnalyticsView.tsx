@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getStudentBehaviorAnalyticsAction } from "@/app/admin-actions";
+import { useSearchParams } from "next/navigation";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -67,10 +68,19 @@ function getHours(start: string, end: string) {
 }
 
 export function AdvancedAnalyticsView({ programs, environments, isObserver = false }: AdvancedAnalyticsViewProps) {
-    const [selectedProgramId, setSelectedProgramId] = useState<string>("ALL");
+    const searchParams = useSearchParams();
+    const programIdParam = searchParams?.get("programId");
+
+    const [selectedProgramId, setSelectedProgramId] = useState<string>(programIdParam || "ALL");
     const [selectedGroupId, setSelectedGroupId] = useState<string>("ALL");
     const [studentStats, setStudentStats] = useState<any>(null);
     const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (programIdParam) {
+            setSelectedProgramId(programIdParam);
+        }
+    }, [programIdParam]);
 
     useEffect(() => {
         const fetchStudentStats = async () => {

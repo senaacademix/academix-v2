@@ -2,6 +2,7 @@ export interface GestorManagedProgram {
     id: string;
     name: string;
     description?: string | null;
+    allowPastAttendanceEdit?: boolean;
     studentsCount?: number;
     teachersCount?: number;
     coursesCount?: number;

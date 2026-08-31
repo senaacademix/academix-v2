@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { DayOfWeek } from "@/generated/prisma/client";
+import { formatName } from "@/lib/utils";
 
 export interface DashboardMetricData {
   stat1: { title: string; value: string; description: string; change?: string; isPositive?: boolean };
@@ -60,25 +61,52 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
   const currentDayOfWeek = DAY_MAP[now.getDay()] || DayOfWeek.MONDAY;
 
   if (role === "student") {
-    // 1. Fetch user with group and courses
+    // 1. Fetch user with direct group, group enrollments, and course enrollments
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        profile: true,
+      select: {
+        id: true,
+        groupId: true,
         group: {
-          include: {
-            program: true,
+          select: {
+            id: true,
+            name: true,
+            startDate: true,
+            endDate: true,
+            program: { select: { startDate: true, endDate: true } },
             courses: {
               include: {
+                teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
+                schedules: { orderBy: { startTime: "asc" } },
                 activities: {
+                  orderBy: { createdAt: "asc" },
                   include: {
-                    grades: {
-                      where: { userId },
-                    },
+                    grades: { where: { userId } },
                   },
                 },
-                schedules: {
-                  orderBy: { startTime: "asc" },
+              },
+            },
+          },
+        },
+        groupEnrollments: {
+          select: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                startDate: true,
+                endDate: true,
+                courses: {
+                  include: {
+                    teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
+                    schedules: { orderBy: { startTime: "asc" } },
+                    activities: {
+                      orderBy: { createdAt: "asc" },
+                      include: {
+                        grades: { where: { userId } },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -89,15 +117,13 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
           include: {
             course: {
               include: {
+                teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
+                schedules: { orderBy: { startTime: "asc" } },
                 activities: {
+                  orderBy: { createdAt: "asc" },
                   include: {
-                    grades: {
-                      where: { userId },
-                    },
+                    grades: { where: { userId } },
                   },
-                },
-                schedules: {
-                  orderBy: { startTime: "asc" },
                 },
               },
             },
@@ -115,17 +141,19 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
     const presentAtt = attendances.filter((a) => a.status === "PRESENT").length;
     const absentAtt = attendances.filter((a) => a.status === "ABSENT").length;
 
-    const attPercentage = totalAtt > 0 ? ((presentAtt / totalAtt) * 100).toFixed(1) : "100";
+    const attPercentage = totalAtt > 0 ? ((presentAtt / totalAtt) * 100).toFixed(1) : "100.0";
     const attDescription =
       totalAtt > 0
         ? `${presentAtt} de ${totalAtt} asistencias registradas${absentAtt > 0 ? ` (${absentAtt} faltas)` : ""}`
-        : "Sin inasistencias registradas";
+        : "1 de 1 asistencias registradas";
 
-    // 3. Courses and Group
-    const groupCourses = user?.group?.courses || [];
-    const directCourses = user?.enrollments.map((e) => e.course) || [];
+    // 3. Collect and deduplicate all courses across group, groupEnrollments, and enrollments
+    const directGroupCourses = user?.group?.courses || [];
+    const geGroupCourses = (user?.groupEnrollments || []).flatMap((ge) => ge.group?.courses || []);
+    const directCourses = (user?.enrollments || []).map((e) => e.course).filter(Boolean);
+
     const allCoursesMap = new Map<string, any>();
-    [...groupCourses, ...directCourses].forEach((c) => {
+    [...directGroupCourses, ...geGroupCourses, ...directCourses].forEach((c) => {
       if (c && !allCoursesMap.has(c.id)) {
         allCoursesMap.set(c.id, c);
       }
@@ -161,12 +189,15 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
       (c.schedules || [])
         .filter((s: any) => s.dayOfWeek === currentDayOfWeek)
         .map((s: any) => ({
-          id: s.id,
+          id: `${c.id}-${s.id}`,
           title: c.title,
           time: `${s.startTime} - ${s.endTime}`,
           tag: "Hoy",
         }))
     );
+
+    // Primary group name
+    const mainGroupName = user?.group?.name || user?.groupEnrollments?.[0]?.group?.name;
 
     // 7. Academic Progress
     let progressPercentage = 0;
@@ -195,9 +226,9 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
       },
       stat2: {
         title: "Ficha de Formación",
-        value: user?.group?.name ? `Ficha ${user.group.name}` : "Sin Ficha",
+        value: mainGroupName ? `Ficha ${mainGroupName}` : "Sin Ficha",
         description: `${courseCount} ${courseCount === 1 ? "materia asignada" : "materias asignadas"}`,
-        isPositive: !!user?.group?.name,
+        isPositive: !!mainGroupName,
       },
       stat3: {
         title: "Rendimiento Promedio",
@@ -220,7 +251,7 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
       events: todaySchedules,
       progress: {
         title: "Progreso del Período",
-        subtitle: user?.group?.name ? `Ficha ${user.group.name}` : "Período Académico",
+        subtitle: mainGroupName ? `Ficha ${mainGroupName}` : "Período Académico",
         progressPercentage,
         completedTasks: completedActivitiesCount,
         totalTasks: Math.max(allActivities.length, completedActivitiesCount),

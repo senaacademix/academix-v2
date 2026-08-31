@@ -39,6 +39,10 @@ export async function updateSettingsAction(formData: FormData) {
         const limitRaw = formData.get("studentDailyLimit");
         data.studentDailyLimit = limitRaw ? parseInt(limitRaw as string, 10) : null;
     }
+    if (formData.has("studentAccessEnabled")) {
+        const studentAccessRaw = formData.get("studentAccessEnabled");
+        data.studentAccessEnabled = studentAccessRaw === "true";
+    }
     if (formData.has("limitAttendanceToCurrentWeek")) {
         const limitWeekRaw = formData.get("limitAttendanceToCurrentWeek");
         data.limitAttendanceToCurrentWeek = limitWeekRaw === "true";
@@ -81,6 +85,21 @@ export async function updateSettingsAction(formData: FormData) {
     revalidatePath("/");
     revalidatePath("/dashboard/admin/settings");
     return result;
+}
+
+export async function toggleStudentAccessAction(enabled: boolean) {
+    const session = await getSession();
+    if (!session || session.user.role !== "admin") {
+        throw new Error("Unauthorized");
+    }
+
+    const settings = await settingsService.updateSettings({
+        studentAccessEnabled: enabled
+    });
+
+    revalidatePath("/dashboard/admin/settings");
+    revalidatePath("/dashboard/student");
+    return settings;
 }
 
 

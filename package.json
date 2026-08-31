@@ -8,9 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "create-coordinator": "tsx src/scripts/create-coordinator.ts",
-    "create-coordinador": "tsx src/scripts/create-coordinator.ts",
-    "create-admin": "tsx src/scripts/create-coordinator.ts"
+    "create-coordinator": "tsx src/scripts/create-admin.ts",
+    "create-coordinador": "tsx src/scripts/create-admin.ts",
+    "create-admin": "tsx src/scripts/create-admin.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

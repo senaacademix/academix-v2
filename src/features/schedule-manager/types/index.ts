@@ -1,6 +1,6 @@
 import { DayOfWeek } from "@/generated/prisma/client";
 
-export type EventAudience = "PUBLIC" | "TEACHERS" | "STUDENTS";
+export type EventAudience = "PUBLIC" | "TEACHERS" | "STUDENTS" | "GROUP";
 
 export interface DaySlotConfig {
   dayOfWeek: DayOfWeek;
@@ -25,6 +25,12 @@ export interface ScheduleEventItem {
   startTime: string; // "08:00"
   endTime: string;   // "12:00"
   targetAudience: EventAudience;
+  isGeneral?: boolean;
+  groupId?: string | null;
+  group?: {
+    id: string;
+    name: string;
+  } | null;
   location?: string | null;
   linkUrl?: string | null;
   color?: string | null;
@@ -41,6 +47,8 @@ export interface SaveScheduleEventPayload {
   startTime: string; // "08:00"
   endTime: string;   // "12:00"
   targetAudience: EventAudience;
+  isGeneral?: boolean;
+  groupId?: string | null;
   location?: string | null;
   linkUrl?: string | null;
   color?: string | null;
@@ -60,6 +68,11 @@ export interface AcademicScheduleItem {
     id: string;
     academicScheduleId: string;
     groupId: string;
+    periodId?: string | null;
+    period?: {
+      id: string;
+      name: string;
+    } | null;
     dayOfWeek: DayOfWeek;
     startTime: string;
     endTime: string;
@@ -95,6 +108,7 @@ export interface SaveGroupSlotsPayload {
   scheduleId: string;
   groupsConfig: {
     groupId: string;
+    periodId?: string | null;
     slots: GroupSlotItemPayload[];
   }[];
 }
@@ -107,4 +121,9 @@ export interface AvailableGroupOption {
   programName: string;
   periodName?: string | null;
   environmentName?: string | null;
+  availablePeriods?: {
+    id: string;
+    name: string;
+    esEspecial?: boolean;
+  }[];
 }

@@ -15,7 +15,7 @@ const question = (query: string): Promise<string> => {
 
 async function main() {
   console.log("\n=========================================================");
-  console.log("   🎓 Creación de Usuario Coordinador Académico Inicial   ");
+  console.log("   👑 Creación de Usuario Administrador Inicial   ");
   console.log("=========================================================\n");
   
   const name = await question("Nombre Completo: ");
@@ -53,7 +53,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("\n⚙️  Registrando Coordinador Académico en la base de datos...");
+  console.log("\n⚙️  Registrando Administrador en la base de datos...");
 
   const hashedPassword = await hashPassword(password);
   const userId = crypto.randomUUID();
@@ -64,7 +64,7 @@ async function main() {
         id: userId,
         email: emailNorm,
         name: name.trim(),
-        role: "admin", // Rol superior con privilegios de Coordinación General
+        role: "admin", // Rol superior con privilegios de Administración General
         emailVerified: true,
         accounts: {
           create: {
@@ -78,8 +78,8 @@ async function main() {
     });
 
     const nameParts = name.trim().split(/\s+/);
-    const nombres = nameParts[0] || "Coordinador";
-    const apellido = nameParts.slice(1).join(" ") || "Académico";
+    const nombres = nameParts[0] || "Administrador";
+    const apellido = nameParts.slice(1).join(" ") || "General";
 
     await tx.profile.create({
       data: {
@@ -95,17 +95,17 @@ async function main() {
   });
 
   console.log("\n=========================================================");
-  console.log(`✅ ¡Éxito! Coordinador Académico creado correctamente:`);
+  console.log(`✅ ¡Éxito! Administrador creado correctamente:`);
   console.log(`👤 Nombre:         ${name.trim()}`);
   console.log(`📧 Correo:         ${emailNorm}`);
   console.log(`🆔 Identificación: ${identificacion.trim()}`);
-  console.log(`👑 Rol:            Coordinador Académico (admin)`);
+  console.log(`👑 Rol:            Administrador (admin)`);
   console.log("=========================================================\n");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error inesperado al crear el coordinador:", e);
+    console.error("❌ Error inesperado al crear el administrador:", e);
     process.exit(1);
   })
   .finally(async () => {

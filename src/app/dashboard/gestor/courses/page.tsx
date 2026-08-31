@@ -1,19 +1,41 @@
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AcademicManagement } from "@/features/admin/components/AcademicManagement";
 import { getAllCoursesAdminAction, getAllUsersAction, getSystemSettingsAction } from "@/features/admin/actions/adminActions";
+
+import { gestorService } from "@/features/gestor/services/gestorService";
 
 export const metadata = {
     title: "Estructura y Ambientes | AcademiX",
     description: "Gestión de fichas, competencias curriculares y asignación de ambientes.",
 };
 
-export default async function GestorCoursesPage() {
+export default async function GestorCoursesPage({
+    searchParams,
+}: {
+    searchParams?: Promise<{ programId?: string }>;
+}) {
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (!session || (session.user.role !== "gestor" && session.user.role !== "admin")) {
         redirect("/dashboard/student");
+    }
+
+    const resolvedSearchParams = searchParams ? await searchParams : undefined;
+    const programIdParam = resolvedSearchParams?.programId;
+
+    const cookieStore = await cookies();
+    const cookieProgramId = cookieStore.get("academix_gestor_program_id")?.value;
+    let effectiveProgramId = programIdParam || cookieProgramId;
+
+    if (session.user.role === "gestor" && !effectiveProgramId) {
+        const gestorPrograms = await gestorService.getManagedPrograms(session.user.id);
+        if (gestorPrograms.length === 1) {
+            effectiveProgramId = gestorPrograms[0].id;
+        } else {
+            redirect("/dashboard/gestor");
+        }
     }
 
     const [{ courses, total }, { users: allUsers }, settings] = await Promise.all([

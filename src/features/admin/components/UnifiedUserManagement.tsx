@@ -58,6 +58,8 @@ export function UnifiedUserManagement({
     rawSubTab ? currentSubTabFromUrl : defaultSubTab
   );
 
+  const basePath = currentUserRole === "gestor" ? "/dashboard/gestor/users" : "/dashboard/admin/users";
+
   const updateUrl = (tab: string, subtab?: string) => {
     const params = new URLSearchParams(searchParams.toString());
     if (tab === "teachers") {
@@ -75,7 +77,7 @@ export function UnifiedUserManagement({
       }
     }
     const queryString = params.toString();
-    router.replace(`/dashboard/admin/users${queryString ? `?${queryString}` : ""}`, {
+    router.replace(`${basePath}${queryString ? `?${queryString}` : ""}`, {
       scroll: false,
     });
   };
@@ -89,6 +91,19 @@ export function UnifiedUserManagement({
     setActiveStudentSubTab(subVal);
     updateUrl("students", subVal);
   };
+
+  if (currentUserRole === "admin") {
+    return (
+      <div className="space-y-6">
+        <AdminUsersManagement
+          initialUsers={adminData.initialUsers}
+          programs={adminData.programs}
+          currentUserId={adminData.currentUserId}
+          hideMainHeader={false}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -111,11 +126,11 @@ export function UnifiedUserManagement({
             </div>
           </div>
 
-          <TabsList className="inline-flex w-auto h-auto rounded-2xl bg-muted/60 p-1.5 gap-1.5 self-start md:self-auto border border-border/50 shadow-xs">
+          <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-2xl bg-muted/60 p-1.5 gap-1.5 self-start md:self-auto border border-border/50 shadow-xs">
             {/* Tab 1: Estudiantes */}
             <TabsTrigger
               value="students"
-              className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all"
+              className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all shrink-0"
             >
               <GraduationCap className="w-4 h-4" />
               <span>Estudiantes</span>
@@ -130,7 +145,7 @@ export function UnifiedUserManagement({
             {/* Tab 2: Docentes */}
             <TabsTrigger
               value="teachers"
-              className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm transition-all"
+              className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm transition-all shrink-0"
             >
               <School className="w-4 h-4 text-indigo-600" />
               <span>Docentes</span>
@@ -142,14 +157,14 @@ export function UnifiedUserManagement({
               </Badge>
             </TabsTrigger>
 
-            {/* Tab 3: Coordinación y Gestores (Solo Coordinador Académico) */}
+            {/* Tab 3: Administradores y Gestores */}
             {currentUserRole === "admin" && (
               <TabsTrigger
                 value="admins"
-                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm transition-all"
+                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm transition-all shrink-0"
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Coordinación y Gestores</span>
+                <span>Administradores y Gestores</span>
                 <Badge
                   variant="secondary"
                   className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 rounded-lg"
@@ -168,11 +183,11 @@ export function UnifiedUserManagement({
             onValueChange={handleStudentSubTabChange}
             className="w-full space-y-5"
           >
-            <div className="flex items-center justify-between">
-              <TabsList className="inline-flex w-auto h-auto rounded-xl bg-muted/50 p-1 gap-1 border border-border/40">
+            <div className="flex items-center justify-between w-full overflow-x-auto scrollbar-none">
+              <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-xl bg-muted/50 p-1 gap-1 border border-border/40">
                 <TabsTrigger
                   value="directory"
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs"
+                  className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs shrink-0"
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>Directorio y Matrícula ({studentData.totalCount})</span>
@@ -180,7 +195,7 @@ export function UnifiedUserManagement({
 
                 <TabsTrigger
                   value="plans"
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-rose-600 data-[state=active]:shadow-xs"
+                  className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-rose-600 data-[state=active]:shadow-xs shrink-0"
                 >
                   <ClipboardList className="w-3.5 h-3.5 text-rose-600" />
                   <span>Planes de Mejoramiento ({studentData.plans.length})</span>

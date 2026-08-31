@@ -53,9 +53,6 @@ export async function getGestorGroupsAction(programId?: string) {
             program: {
                 select: { id: true, name: true }
             },
-            period: {
-                select: { id: true, name: true }
-            },
             environment: {
                 select: { id: true, name: true }
             },

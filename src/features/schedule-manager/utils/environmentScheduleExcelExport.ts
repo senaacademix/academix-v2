@@ -35,16 +35,19 @@ const formatDate = (d: Date | string) => {
 export async function exportEnvironmentsToExcel(
   schedule: ScheduleBuilderData["schedule"],
   environmentsData: EnvironmentExportData[],
+  exportMode: "single" | "all" | "chart" = "single",
   filename = `Horarios_Ambientes_${schedule.name}.xlsx`
 ) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Academix";
   workbook.created = new Date();
 
-  // 1. CONSOLIDATED SUMMARY SHEET
-  const summarySheet = workbook.addWorksheet("Consolidado Ambientes", {
-    views: [{ showGridLines: true }],
-  });
+  // 1. CONSOLIDATED SUMMARY SHEET (Only for all or chart mode)
+  if (exportMode !== "single") {
+    const summarySheet = workbook.addWorksheet(
+      exportMode === "chart" ? "Reporte Ocupación" : "Matriz General Ambientes",
+      { views: [{ showGridLines: true }] }
+    );
 
   // Title
   summarySheet.mergeCells("A1:G1");
@@ -70,11 +73,13 @@ export async function exportEnvironmentsToExcel(
   const summaryHeaders = [
     "Ambiente de Aprendizaje",
     "Ubicación / Sede",
-    "Capacidad",
+    "Capacidad Puestos",
+    "Aprendices a Atender",
+    "Aforo Físico (%)",
     "Fichas Atendidas",
     "Horas / Semana",
-    "Semanas",
     "Horas Totales del Periodo",
+    "Estado Aforo",
   ];
   const headerRow = summarySheet.addRow(summaryHeaders);
   headerRow.height = 24;
@@ -92,14 +97,20 @@ export async function exportEnvironmentsToExcel(
 
   // Data rows
   environmentsData.forEach((env, idx) => {
+    const statusText = env.isStudentOverCapacity
+      ? `SOBRECUPO (+${env.studentExcess})`
+      : "Aforo Óptimo";
+
     const row = summarySheet.addRow([
       env.environment.name,
       env.environment.location || "Sede Principal",
-      env.environment.capacity ? `${env.environment.capacity} aprendices` : "N/A",
+      env.environment.capacity ? `${env.environment.capacity} puestos` : "N/A",
+      `${env.totalStudents} aprendices`,
+      `${env.capacityRatio}%`,
       env.distinctGroups.length,
       env.totalWeeklyHours,
-      env.totalWeeks,
       env.totalPeriodHours,
+      statusText,
     ]);
     row.height = 20;
 
@@ -155,6 +166,7 @@ export async function exportEnvironmentsToExcel(
     { width: 12 },
     { width: 26 },
   ];
+  }
 
   // 2. INDIVIDUAL SHEETS PER ENVIRONMENT
   environmentsData.forEach((envData) => {

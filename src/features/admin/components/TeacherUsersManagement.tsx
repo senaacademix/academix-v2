@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ import {
   GraduationCap,
   Calendar,
   Key,
+  Pencil,
   Trash2,
   Phone,
   Mail,
@@ -47,7 +49,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { createUserAction, deleteUserAction, resetUserPasswordToDocAction } from "@/app/admin-actions";
+import { createUserAction, deleteUserAction, resetUserPasswordToDocAction, updateTeacherUserAction } from "@/app/admin-actions";
 import { TeacherAvailabilityView } from "@/features/schedule/components/TeacherAvailabilityView";
 import { TeacherQualificationsView } from "@/features/teacher/components/TeacherQualificationsView";
 
@@ -101,6 +103,75 @@ export function TeacherUsersManagement({
   const [newEmail, setNewEmail] = useState("");
   const [newTelefono, setNewTelefono] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editIdentificacion, setEditIdentificacion] = useState("");
+  const [editNombres, setEditNombres] = useState("");
+  const [editApellido, setEditApellido] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editTelefono, setEditTelefono] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+
+  const handleOpenEditTeacher = (teacher: TeacherUser) => {
+    setSelectedTeacher(teacher);
+    const names = (teacher.name || "").split(" ");
+    setEditNombres(teacher.profile?.nombres || names[0] || "");
+    setEditApellido(teacher.profile?.apellido || names.slice(1).join(" ") || "");
+    setEditIdentificacion(teacher.profile?.identificacion || "");
+    setEditEmail(teacher.email || "");
+    setEditTelefono(teacher.profile?.telefono || "");
+    setEditPassword("");
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateTeacher = async () => {
+    if (!selectedTeacher) return;
+    if (!editIdentificacion.trim() || !editNombres.trim() || !editApellido.trim() || !editEmail.trim()) {
+      toast.error("Documento, nombres, apellidos y correo son obligatorios.");
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const updated = await updateTeacherUserAction({
+          userId: selectedTeacher.id,
+          identificacion: editIdentificacion.trim(),
+          nombres: editNombres.trim(),
+          apellido: editApellido.trim(),
+          email: editEmail.trim().toLowerCase(),
+          telefono: editTelefono.trim() || undefined,
+          password: editPassword.trim() || undefined,
+        });
+
+        setTeachers((prev) =>
+          prev.map((t) =>
+            t.id === selectedTeacher.id
+              ? {
+                  ...t,
+                  name: updated.name,
+                  email: updated.email,
+                  profile: {
+                    identificacion: editIdentificacion.trim(),
+                    nombres: editNombres.trim(),
+                    apellido: editApellido.trim(),
+                    telefono: editTelefono.trim() || null,
+                  },
+                }
+              : t
+          )
+        );
+
+        toast.success("Información del docente actualizada exitosamente");
+        setEditDialogOpen(false);
+        router.refresh();
+      } catch (error: any) {
+        toast.error("Error al actualizar docente", {
+          description: error.message || "Ocurrió un error inesperado",
+        });
+      }
+    });
+  };
 
   const resetForm = () => {
     setNewIdentificacion("");
@@ -237,6 +308,8 @@ export function TeacherUsersManagement({
         </Button>
       </div>
 
+
+
       {/* Search Filter */}
       <Card className="border-border bg-card shadow-xs">
         <CardContent className="pt-6">
@@ -312,32 +385,15 @@ export function TeacherUsersManagement({
 
                   <TableCell className="text-right pr-6">
                     <div className="flex items-center justify-end gap-1.5">
-                      {/* Availability button */}
+                      {/* Edit Teacher Information */}
                       <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs font-semibold gap-1 hover:bg-indigo-500/10 hover:text-indigo-600 border-border/80"
-                        onClick={() => {
-                          setSelectedTeacher(teacher);
-                          setAvailabilityDialogOpen(true);
-                        }}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-indigo-600 hover:bg-indigo-500/10"
+                        title="Editar información del docente"
+                        onClick={() => handleOpenEditTeacher(teacher)}
                       >
-                        <Calendar className="h-3.5 w-3.5 text-indigo-600" />
-                        <span>Disponibilidad</span>
-                      </Button>
-
-                      {/* Qualifications button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs font-semibold gap-1 hover:bg-emerald-500/10 hover:text-emerald-600 border-border/80"
-                        onClick={() => {
-                          setSelectedTeacher(teacher);
-                          setQualificationsDialogOpen(true);
-                        }}
-                      >
-                        <BookOpen className="h-3.5 w-3.5 text-emerald-600" />
-                        <span>Habilitaciones</span>
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
 
                       {/* Reset password */}
@@ -376,9 +432,97 @@ export function TeacherUsersManagement({
         </Table>
       </Card>
 
+      {/* Edit Teacher Modal */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-indigo-600" />
+              <span>Editar Información del Docente</span>
+            </DialogTitle>
+            <DialogDescription>
+              Modifica los datos personales y de acceso del instructor.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Nombres *</Label>
+                <Input
+                  placeholder="Ej: Carlos"
+                  value={editNombres}
+                  onChange={(e) => setEditNombres(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Apellidos *</Label>
+                <Input
+                  placeholder="Ej: Gómez"
+                  value={editApellido}
+                  onChange={(e) => setEditApellido(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Número de Identificación *</Label>
+              <Input
+                placeholder="Ej: 1020304050"
+                value={editIdentificacion}
+                onChange={(e) => setEditIdentificacion(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Correo Electrónico *</Label>
+              <Input
+                type="email"
+                placeholder="carlos.gomez@misena.edu.co"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Teléfono</Label>
+                <Input
+                  placeholder="Ej: 3001234567"
+                  value={editTelefono}
+                  onChange={(e) => setEditTelefono(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Nueva Contraseña</Label>
+                <Input
+                  type="password"
+                  placeholder="(Dejar en blanco para mantener)"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
+              disabled={isPending}
+              onClick={handleUpdateTeacher}
+            >
+              {isPending ? "Guardando..." : "Actualizar Docente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Teacher Modal */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-indigo-600" />

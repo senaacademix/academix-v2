@@ -1801,46 +1801,26 @@ const handleOpenAnalytics = async () => {
                         </h1>
                     </div>
 
-                    {/* Right Section: Group Selector & Selected Group Metadata */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-background/80 dark:bg-card/70 p-2.5 px-3.5 rounded-2xl border border-border backdrop-blur-md shadow-xs">
-                        <div className="flex items-center gap-2.5 shrink-0">
-                            <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 border border-primary/20">
-                                <Users className="w-4 h-4" />
-                            </div>
-                            <Select value={selectedGroupId} onValueChange={handleGroupChangeAttempt}>
-                                <SelectTrigger className="w-full sm:w-[230px] h-10 text-xs sm:text-sm font-extrabold border-border bg-background shadow-xs rounded-xl focus:ring-2 focus:ring-primary/20">
-                                    <SelectValue placeholder="Selecciona un Grupo" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-2xl shadow-xl">
-                                    {groups.map(g => (
-                                        <SelectItem key={g.id} value={g.id} className="py-2.5 font-bold text-xs sm:text-sm cursor-pointer rounded-xl">
-                                            {g.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                    {/* Right Section: Active Group Metadata */}
+                    {selectedGroup && (
+                        <div className="flex flex-wrap items-center gap-2 bg-background/80 dark:bg-card/70 p-2.5 px-3.5 rounded-2xl border border-border backdrop-blur-md shadow-xs">
+                            <Badge variant="secondary" className="text-xs font-black py-1 px-3 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0">
+                                {selectedGroup.program?.name || selectedGroup.name}
+                                {selectedGroup.period?.name ? ` (${selectedGroup.period.name})` : ""}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border">
+                                <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                                {selectedGroup.students?.length || 0} Estudiantes
+                            </Badge>
+                            {groupScheduleInfo && (
+                                <div className="w-full sm:w-auto flex items-center gap-1.5 text-xs bg-muted/60 px-3 py-1 rounded-xl border border-border/70 font-medium">
+                                    <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    <span className="font-extrabold text-foreground">{groupScheduleInfo.days}</span>
+                                    <span className="text-muted-foreground font-mono text-[11px] truncate">{groupScheduleInfo.time}</span>
+                                </div>
+                            )}
                         </div>
-
-                        {selectedGroup && (
-                            <div className="flex flex-wrap items-center gap-2 sm:border-l sm:border-border sm:pl-3.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/60 w-full sm:w-auto">
-                                <Badge variant="secondary" className="text-xs font-black py-1 px-3 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0">
-                                    {selectedGroup.program?.name || selectedGroup.name}
-                                    {selectedGroup.period?.name ? ` (${selectedGroup.period.name})` : ""}
-                                </Badge>
-                                <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border">
-                                    <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                                    {selectedGroup.students?.length || 0} Estudiantes
-                                </Badge>
-                                {groupScheduleInfo && (
-                                    <div className="w-full sm:w-auto flex items-center gap-1.5 text-xs bg-muted/60 px-3 py-1 rounded-xl border border-border/70 font-medium">
-                                        <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                                        <span className="font-extrabold text-foreground">{groupScheduleInfo.days}</span>
-                                        <span className="text-muted-foreground font-mono text-[11px] truncate">{groupScheduleInfo.time}</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    )}
                 </div>
             </motion.div>
 
@@ -1848,68 +1828,99 @@ const handleOpenAnalytics = async () => {
             <Card className="flex-1 w-full min-w-0 border border-border/80 shadow-md rounded-3xl overflow-hidden bg-card">
                 {selectedGroup ? (
                     <Tabs value={activeTab} onValueChange={handleTabChangeAttempt} className="flex-1 flex flex-col h-full min-h-[600px]">
-                        <div className="p-3 sm:p-4 border-b bg-muted/20 w-full">
-                            <TabsList className="flex flex-wrap sm:inline-flex items-center justify-start h-auto p-1.5 bg-muted/60 rounded-2xl gap-1.5 backdrop-blur-md w-full sm:w-auto border border-border/50">
-                                {/* ── ESTUDIANTES ── */}
-                                <TabsTrigger value="students" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:border-border/60 shrink-0 flex-grow sm:flex-grow-0 transition-all">
-                                    <span className="flex items-center gap-2 justify-center">
-                                        <Users className="w-4 h-4 text-primary shrink-0" />
-                                        <span>Estudiantes</span>
-                                    </span>
-                                </TabsTrigger>
+                        <div className="p-3 sm:p-4 border-b bg-muted/20 w-full flex flex-col gap-3">
+                            {/* FILA SUPERIOR: Selección de Fichas (ENCIMA DE LAS PESTAÑAS) */}
+                            <div className="flex items-center gap-2.5 p-2 px-3 bg-background/80 dark:bg-card/70 rounded-2xl border border-border/70 backdrop-blur-md w-full flex-wrap shadow-2xs">
+                                <span className="text-xs font-black text-muted-foreground uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                    FICHAS:
+                                </span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {groups.map((g) => {
+                                        const isActive = selectedGroupId === g.id;
+                                        return (
+                                            <Button
+                                                key={g.id}
+                                                type="button"
+                                                variant={isActive ? "default" : "outline"}
+                                                size="sm"
+                                                onClick={() => handleGroupChangeAttempt(g.id)}
+                                                className={`h-8 text-xs font-black rounded-xl transition-all ${
+                                                    isActive
+                                                        ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md ring-2 ring-purple-500/20"
+                                                        : "hover:bg-purple-50 dark:hover:bg-purple-950/30 text-foreground border-border/80"
+                                                }`}
+                                            >
+                                                {g.name}
+                                            </Button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
-                                {/* ── ASISTENCIA ── */}
-                                <TabsTrigger value="attendance" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 flex-grow sm:flex-grow-0 transition-all">
-                                    <span className="flex items-center gap-2 justify-center">
-                                        <ClipboardList className="w-4 h-4 text-primary shrink-0" />
-                                        <span>Asistencia</span>
-                                    </span>
-                                </TabsTrigger>
+                            {/* FILA INFERIOR: Pestañas de Navegación Desplazables en Móvil */}
+                            <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center">
+                                <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 rounded-2xl gap-1.5 backdrop-blur-md w-max border border-border/50">
+                                    {/* ── ESTUDIANTES ── */}
+                                    <TabsTrigger value="students" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:border-border/60 shrink-0 transition-all">
+                                        <span className="flex items-center gap-2 justify-center">
+                                            <Users className="w-4 h-4 text-primary shrink-0" />
+                                            <span>Estudiantes</span>
+                                        </span>
+                                    </TabsTrigger>
 
-                                {/* ── OBSERVACIONES ── */}
-                                <TabsTrigger value="remarks" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 flex-grow sm:flex-grow-0 transition-all">
-                                    <span className="flex items-center gap-2 justify-center">
-                                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                                        <span>Observaciones</span>
-                                    </span>
-                                </TabsTrigger>
+                                    {/* ── ASISTENCIA ── */}
+                                    <TabsTrigger value="attendance" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                        <span className="flex items-center gap-2 justify-center">
+                                            <ClipboardList className="w-4 h-4 text-primary shrink-0" />
+                                            <span>Asistencia</span>
+                                        </span>
+                                    </TabsTrigger>
 
-                                {/* ── PLANES DE MEJORAMIENTO ── */}
-                                <TabsTrigger value="improvement" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 flex-grow sm:flex-grow-0 transition-all">
-                                    <span className="flex items-center gap-2 justify-center">
-                                        <FileText className="w-4 h-4 text-primary shrink-0" />
-                                        <span className="sm:hidden">Planes</span>
-                                        <span className="hidden sm:inline">Planes de Mejoramiento</span>
-                                    </span>
-                                </TabsTrigger>
+                                    {/* ── OBSERVACIONES ── */}
+                                    <TabsTrigger value="remarks" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                        <span className="flex items-center gap-2 justify-center">
+                                            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                                            <span>Observaciones</span>
+                                        </span>
+                                    </TabsTrigger>
 
-                                {/* ── CALIFICACIONES ── */}
-                                <TabsTrigger value="grades" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 flex-grow sm:flex-grow-0 transition-all">
-                                    <span className="flex items-center gap-2 justify-center">
-                                        <GraduationCap className="w-4 h-4 text-primary shrink-0" />
-                                        <span>Calificaciones</span>
-                                    </span>
-                                </TabsTrigger>
+                                    {/* ── PLANES DE MEJORAMIENTO ── */}
+                                    <TabsTrigger value="improvement" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                        <span className="flex items-center gap-2 justify-center">
+                                            <FileText className="w-4 h-4 text-primary shrink-0" />
+                                            <span>Planes de Mejoramiento</span>
+                                        </span>
+                                    </TabsTrigger>
 
-                                {/* ── DOCUMENTACIÓN ── */}
-                                <TabsTrigger value="documentation" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 flex-grow sm:flex-grow-0 transition-all">
-                                    <span className="flex items-center gap-2 justify-center">
-                                        <BookOpen className="w-4 h-4 text-primary shrink-0" />
-                                        <span>Documentación</span>
-                                    </span>
-                                </TabsTrigger>
+                                    {/* ── CALIFICACIONES ── */}
+                                    <TabsTrigger value="grades" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                        <span className="flex items-center gap-2 justify-center">
+                                            <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+                                            <span>Calificaciones</span>
+                                        </span>
+                                    </TabsTrigger>
 
-                                {/* ── ANALÍTICA ── */}
-                                <TabsTrigger value="analytics" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 flex-grow sm:flex-grow-0 transition-all">
-                                    <span className="flex items-center gap-2 justify-center">
-                                        <BarChart3 className="w-4 h-4 text-primary shrink-0" />
-                                        <span>Analítica</span>
-                                    </span>
-                                </TabsTrigger>
-                            </TabsList>
+                                    {/* ── DOCUMENTACIÓN ── */}
+                                    <TabsTrigger value="documentation" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                        <span className="flex items-center gap-2 justify-center">
+                                            <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                                            <span>Documentación</span>
+                                        </span>
+                                    </TabsTrigger>
+
+                                    {/* ── ANALÍTICA ── */}
+                                    <TabsTrigger value="analytics" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                        <span className="flex items-center gap-2 justify-center">
+                                            <BarChart3 className="w-4 h-4 text-primary shrink-0" />
+                                            <span>Analítica</span>
+                                        </span>
+                                    </TabsTrigger>
+                                </TabsList>
+                            </div>
                         </div>
 
-                        <div className="flex-1 p-3 sm:p-6 overflow-y-auto overflow-x-hidden w-full min-w-0">
+                        <div className="flex-1 p-3 sm:p-6 overflow-y-auto overflow-x-auto w-full min-w-0 max-w-full touch-pan-x">
                             {/* TAB 1: STUDENTS */}
                             <TabsContent value="students" className="m-0 space-y-4 outline-none">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-muted/30 p-3.5 rounded-2xl border border-border/70">
@@ -3617,11 +3628,11 @@ const handleOpenAnalytics = async () => {
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/40 mb-4">
-                                                <div className="flex items-center gap-2">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border/40 mb-4 w-full">
+                                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
                                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest shrink-0">Filtrar Estudiante:</span>
                                                     <Select value={historyStudentFilter} onValueChange={setHistoryStudentFilter}>
-                                                        <SelectTrigger className="h-9 rounded-lg border-muted-foreground/20 font-semibold bg-background text-xs w-[250px]">
+                                                        <SelectTrigger className="h-9 rounded-lg border-muted-foreground/20 font-semibold bg-background text-xs w-full sm:w-[250px]">
                                                             <SelectValue placeholder="Seleccionar Estudiante" />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -4002,11 +4013,11 @@ const handleOpenAnalytics = async () => {
                                                     </div>
                                                 ) : (
                                                     <TooltipProvider>
-                                                        <div id="matrix-table-container" className="overflow-auto rounded-2xl border border-border/60 shadow-sm bg-background">
+                                                        <div id="matrix-table-container" className="overflow-x-auto w-full max-w-full touch-pan-x rounded-2xl border border-border/60 shadow-sm bg-background scrollbar-thin">
                                                         <table className="text-xs border-collapse min-w-max w-full">
                                                             <thead>
                                                                 <tr className="print-avoid-break bg-muted/40 sticky top-0 z-10">
-                                                                    <th className="sticky left-0 z-20 bg-muted text-left px-4 py-3 font-bold text-foreground min-w-[180px] border-b border-r border-border/60">
+                                                                    <th className="sm:sticky sm:left-0 z-20 bg-muted text-left px-4 py-3 font-bold text-foreground min-w-[180px] border-b border-r border-border/60">
                                                                         Estudiante
                                                                     </th>
                                                                     {displayedDays.map(d => {
@@ -4021,7 +4032,7 @@ const handleOpenAnalytics = async () => {
                                                                             </th>
                                                                         );
                                                                     })}
-                                                                    <th className="sticky right-0 z-20 bg-muted px-3 py-3 text-center font-bold text-muted-foreground border-b border-l border-border/60 min-w-[80px]">
+                                                                    <th className="sm:sticky sm:right-0 z-20 bg-muted px-3 py-3 text-center font-bold text-muted-foreground border-b border-l border-border/60 min-w-[80px]">
                                                                         F / T / R
                                                                     </th>
                                                                 </tr>
@@ -4034,7 +4045,7 @@ const handleOpenAnalytics = async () => {
                                                                     const leaves = Object.values(uLookup).filter(v => v.status === "LEAVE_EARLY").length;
                                                                     return (
                                                                         <tr key={s.id} className={`print-avoid-break group/row transition-colors ${i % 2 === 0 ? "bg-background" : "bg-muted/10"} hover:bg-primary/5`}>
-                                                                            <td className={`sticky left-0 z-10 px-4 py-2 font-semibold text-foreground border-r border-border/40 whitespace-nowrap transition-colors ${
+                                                                            <td className={`sm:sticky sm:left-0 z-10 px-4 py-2 font-semibold text-foreground border-r border-border/40 whitespace-nowrap transition-colors ${
                                                                                 i % 2 === 0 ? "bg-background" : "bg-neutral-50 dark:bg-zinc-900"
                                                                             } group-hover/row:bg-muted`}>
                                                                                 <div className="flex items-center gap-2">
@@ -4081,7 +4092,7 @@ const handleOpenAnalytics = async () => {
                                                                                     </td>
                                                                                 );
                                                                             })}
-                                                                            <td className={`sticky right-0 z-10 px-3 py-2 text-center border-l border-border/40 border-b transition-colors ${
+                                                                            <td className={`sm:sticky sm:right-0 z-10 px-3 py-2 text-center border-l border-border/40 border-b transition-colors ${
                                                                                 i % 2 === 0 ? "bg-background" : "bg-neutral-50 dark:bg-zinc-900"
                                                                             } group-hover/row:bg-muted`}>
                                                                                 <span className="font-black text-red-600">{absences}</span>

@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function StudentRecordsPage() {
     return (
-        <div className="flex flex-col gap-6 w-full min-w-0 max-w-7xl mx-auto pb-12">
+        <div className="flex flex-col gap-6 w-full min-w-0 max-w-full pb-12">
             {/* Header Hero Banner Estilo AI Canvas Adaptativo */}
             <div className="relative rounded-3xl bg-card border border-border/80 p-6 sm:p-8 backdrop-blur-2xl shadow-sm overflow-hidden transition-colors">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />

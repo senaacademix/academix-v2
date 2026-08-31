@@ -42,6 +42,7 @@ export const adminService = {
 
         const roleCounts = {
             admin: userCounts.find(u => u.role === 'admin')?._count || 0,
+            gestor: userCounts.find(u => u.role === 'gestor')?._count || 0,
             teacher: userCounts.find(u => u.role === 'teacher')?._count || 0,
             student: userCounts.find(u => u.role === 'student')?._count || 0,
             total: userCounts.reduce((acc, curr) => acc + curr._count, 0)

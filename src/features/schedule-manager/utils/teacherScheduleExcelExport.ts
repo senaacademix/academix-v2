@@ -32,7 +32,9 @@ const formatDate = (isoString: string) => {
 
 export async function generateAndDownloadTeacherScheduleExcel(
   schedule: ScheduleBuilderData["schedule"],
-  teachersData: TeacherExportData[]
+  teachersData: TeacherExportData[],
+  exportMode: "single" | "all" | "chart" = "single",
+  filename = `Horario_Docentes_${schedule.name}.xlsx`
 ) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "AcademiX";
@@ -41,11 +43,13 @@ export async function generateAndDownloadTeacherScheduleExcel(
   workbook.modified = new Date();
 
   // =========================================================================
-  // 1. SHEET: CONSOLIDADO DE CARGA DOCENTE
+  // 1. SHEET: CONSOLIDADO DE CARGA DOCENTE (Only for all or chart mode)
   // =========================================================================
-  const summarySheet = workbook.addWorksheet("Consolidado Docentes", {
-    views: [{ showGridLines: true }],
-  });
+  if (exportMode !== "single") {
+    const summarySheet = workbook.addWorksheet(
+      exportMode === "chart" ? "Reporte Carga Docente" : "Consolidado Docentes",
+      { views: [{ showGridLines: true }] }
+    );
 
   // Banner
   summarySheet.mergeCells("A1:G1");
@@ -136,6 +140,7 @@ export async function generateAndDownloadTeacherScheduleExcel(
     { width: 26 },
     { width: 24 },
   ];
+  }
 
   // =========================================================================
   // 2. INDIVIDUAL SHEETS PER TEACHER (Weekly Matrix)

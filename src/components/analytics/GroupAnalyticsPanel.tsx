@@ -37,7 +37,7 @@ import {
     LineChart,
     Line
 } from "recharts";
-import { Users, GraduationCap, UserX, UserCheck, BookOpen, AlertTriangle, CheckCircle2, Clock, Calendar, AlertCircle, Settings, Info, Eye, EyeOff, Trash2, ExternalLink, FileText, Mail, Loader2, Search, Award, LogOut } from "lucide-react";
+import { Users, GraduationCap, UserX, UserCheck, BookOpen, AlertTriangle, CheckCircle2, Clock, Calendar, AlertCircle, Settings, Info, Eye, EyeOff, Trash2, ExternalLink, FileText, FileSpreadsheet, Mail, Loader2, Search, Award, LogOut, History } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,17 @@ import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { getGroupImprovementPlans, deleteImprovementPlan } from "@/features/student/actions/improvementPlanActions";
 import { fromUTC } from "@/lib/dateUtils";
+import {
+  generateAndDownloadGroupPdf,
+  GroupExportPayload,
+  GroupExportScheduleSlot,
+  GroupExportStudent,
+  GroupExportCourse,
+  GroupExportRemark,
+  GroupExportImprovementPlan,
+} from "@/features/schedule-manager/utils/groupExportPdf";
+import { generateAndDownloadGroupExcel } from "@/features/schedule-manager/utils/groupExportExcel";
+import { StudentGroupHistoryModal } from "@/features/student/components/StudentGroupHistoryModal";
 
 interface GroupAnalyticsPanelProps {
     open?: boolean;
@@ -144,6 +155,217 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
     const [disciplineStudentFilter, setDisciplineStudentFilter] = useState("all");
     const [disciplineTypeFilter, setDisciplineTypeFilter] = useState("all");
     const [disciplineSearch, setDisciplineSearch] = useState("");
+
+    const [isExportingPdf, setIsExportingPdf] = useState(false);
+    const [isExportingExcel, setIsExportingExcel] = useState(false);
+    const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
+
+    const prepareExportPayload = (): GroupExportPayload | null => {
+        if (!analyticsData) return null;
+
+        const scheduleSlots: GroupExportScheduleSlot[] = [];
+        (analyticsData.coursesList || []).forEach((c) => {
+            (c.schedules || []).forEach((s: any) => {
+                scheduleSlots.push({
+                    dayOfWeek: s.dayOfWeek,
+                    startTime: s.startTime || "08:00",
+                    endTime: s.endTime || "12:00",
+                    courseTitle: c.title,
+                    teacherName: c.teacherName || "No asignado",
+                    environmentName: analyticsData.environment || "Aula General",
+                });
+            });
+        });
+
+        const studentsList: GroupExportStudent[] = (analyticsData.studentMetrics || []).map((s) => {
+            const totalAtt = s.attendances ? s.attendances.present + s.attendances.absent + s.attendances.late : 0;
+            const attRate = totalAtt > 0 ? ((s.attendances.present + s.attendances.late) / totalAtt) * 100 : 100;
+
+            const acadPts = Math.min(100, Math.max(0, s.gradesAvg || 0)) * (academicWeight / 100);
+            const attPts = attRate * (attendanceWeight / 100);
+            const discCalls = s.remarks?.attention || 0;
+            const discPts = Math.max(0, 100 - discCalls * 15) * (disciplineWeight / 100);
+            const integralScore = Math.round(acadPts + attPts + discPts);
+
+            const studentRemarks = (analyticsData.remarks || [])
+                .filter((r) => r.userId === s.id || r.user?.profile?.identificacion === s.identificacion)
+                .map((rem) => ({
+                    date: rem.date ? format(fromUTC(new Date(rem.date)), "dd/MM/yyyy p", { locale: es }) : "",
+                    type: rem.type === "ATTENTION" ? "Llamado de Atención" : rem.type === "COMMENDATION" ? "Felicitación" : rem.type,
+                    courseTitle: rem.course?.title || "General",
+                    teacherName: rem.teacher?.name || formatName(rem.teacher?.profile?.nombres, rem.teacher?.profile?.apellido) || "Sistema",
+                    title: rem.title || "Sin título",
+                    description: rem.description || "",
+                }));
+
+            const studentPlans = (improvementPlans || [])
+                .filter((p) => p.studentId === s.id || p.student?.id === s.id || p.student?.profile?.identificacion === s.identificacion)
+                .map((p) => ({
+                    planNumber: p.planNumber || `PLAN-${p.id.slice(-4)}`,
+                    teacherName: p.teacher?.name || formatName(p.teacher?.profile?.nombres, p.teacher?.profile?.apellido) || "Docente",
+                    status: p.status || "PENDIENTE",
+                    startDate: p.startDate ? format(fromUTC(new Date(p.startDate)), "dd/MM/yyyy", { locale: es }) : undefined,
+                    endDate: p.endDate ? format(fromUTC(new Date(p.endDate)), "dd/MM/yyyy", { locale: es }) : undefined,
+                    observations: p.observations || "",
+                    finalGrade: p.finalGrade,
+                }));
+
+            return {
+                id: s.id,
+                name: s.name,
+                identificacion: s.identificacion || "S/I",
+                email: (s as any).email || "",
+                banned: s.banned,
+                gradesAvg: s.gradesAvg || 0,
+                attendanceRate: attRate,
+                remarksCount: (s.remarks?.attention || 0) + (s.remarks?.commendation || 0),
+                integralScore,
+                absentCount: s.attendances?.absent || 0,
+                absentHours: s.attendances?.absentHours || 0,
+                lateCount: s.attendances?.late || 0,
+                lateHours: s.attendances?.lateHours || 0,
+                leaveEarlyCount: s.attendances?.leaveEarly || 0,
+                leaveEarlyHours: s.attendances?.leaveEarlyHours || 0,
+                attentionCalls: s.remarks?.attention || 0,
+                commendations: s.remarks?.commendation || 0,
+                courseGrades: s.courseGrades || {},
+                courseAttendances: s.courseAttendances || {},
+                studentRemarks,
+                studentPlans,
+            };
+        });
+
+        const totalStudents = analyticsData.students.total || studentsList.length;
+        const activeStudents = analyticsData.students.active;
+        const bannedStudents = analyticsData.students.banned;
+
+        const gradesSum = studentsList.reduce((acc, st) => acc + st.gradesAvg, 0);
+        const avgGrade = studentsList.length > 0 ? gradesSum / studentsList.length : 0;
+        const attRateSum = studentsList.reduce((acc, st) => acc + st.attendanceRate, 0);
+        const overallAttRate = studentsList.length > 0 ? attRateSum / studentsList.length : 100;
+        const integralSum = studentsList.reduce((acc, st) => acc + (st.integralScore || 0), 0);
+        const overallIntegralScore = studentsList.length > 0 ? Math.round(integralSum / studentsList.length) : 100;
+
+        const coursesList: GroupExportCourse[] = (analyticsData.coursesList || []).map((c) => {
+            const stat = (analyticsData.coursesStats || []).find((cs) => cs.title === c.title);
+            return {
+                id: c.id,
+                title: c.title,
+                teacherName: c.teacherName || "No asignado",
+                averageGrade: stat?.averageGrade || 0,
+                totalGrades: stat?.totalGrades || 0,
+            };
+        });
+
+        const remarksList: GroupExportRemark[] = (analyticsData.remarks || []).map((rem) => {
+            const dateStr = rem.date ? format(fromUTC(new Date(rem.date)), "dd/MM/yyyy p", { locale: es }) : "";
+            const studentName = rem.user?.name || formatName(rem.user?.profile?.nombres, rem.user?.profile?.apellido) || "Estudiante";
+            const studentDoc = rem.user?.profile?.identificacion || "S/I";
+            const teacherName = rem.teacher?.name || formatName(rem.teacher?.profile?.nombres, rem.teacher?.profile?.apellido) || "Sistema";
+
+            return {
+                id: rem.id,
+                date: dateStr,
+                studentName,
+                studentDoc,
+                type: rem.type === "ATTENTION" ? "Llamado de Atención" : rem.type === "COMMENDATION" ? "Felicitación" : rem.type,
+                courseTitle: rem.course?.title || "General",
+                teacherName,
+                title: rem.title || "Sin título",
+                description: rem.description || "",
+            };
+        });
+
+        const improvementPlansList: GroupExportImprovementPlan[] = (improvementPlans || []).map((p) => {
+            const studentName = p.student?.name || formatName(p.student?.profile?.nombres, p.student?.profile?.apellido) || "Estudiante";
+            const studentDoc = p.student?.profile?.identificacion || "S/I";
+            const teacherName = p.teacher?.name || formatName(p.teacher?.profile?.nombres, p.teacher?.profile?.apellido) || "Docente";
+
+            return {
+                id: p.id,
+                planNumber: p.planNumber || `PLAN-${p.id.slice(-4)}`,
+                studentName,
+                studentDoc,
+                teacherName,
+                status: p.status || "PENDIENTE",
+                startDate: p.startDate ? format(fromUTC(new Date(p.startDate)), "dd/MM/yyyy", { locale: es }) : undefined,
+                endDate: p.endDate ? format(fromUTC(new Date(p.endDate)), "dd/MM/yyyy", { locale: es }) : undefined,
+                observations: p.observations || "",
+                planScore: p.planScore,
+                finalGrade: p.finalGrade,
+            };
+        });
+
+        const missingAttExport = (missingAttendanceList || []).map((m) => ({
+            courseTitle: m.title,
+            teacherName: m.teacherName,
+            missingDatesCount: m.missingDates.length,
+            missingDates: m.missingDates,
+        }));
+
+        const startDateStr = analyticsData.startDate
+            ? format(fromUTC(new Date(analyticsData.startDate)), "dd/MM/yyyy", { locale: es })
+            : undefined;
+        const endDateStr = analyticsData.endDate
+            ? format(fromUTC(new Date(analyticsData.endDate)), "dd/MM/yyyy", { locale: es })
+            : undefined;
+
+        return {
+            groupName: analyticsData.groupName,
+            program: analyticsData.program || "Programa no asignado",
+            period: analyticsData.period || "Actual",
+            environment: analyticsData.environment || "No asignado",
+            startDate: analyticsData.startDate ? new Date(analyticsData.startDate).toISOString() : undefined,
+            endDate: analyticsData.endDate ? new Date(analyticsData.endDate).toISOString() : undefined,
+            startDateStr,
+            endDateStr,
+            startTime: analyticsData.startTime,
+            endTime: analyticsData.endTime,
+            totalStudents,
+            activeStudents,
+            bannedStudents,
+            averageGrade: avgGrade,
+            attendanceRate: overallAttRate,
+            overallIntegralScore,
+            totalClassesScheduled: analyticsData.totalCourseClasses,
+            coursesList,
+            scheduleSlots,
+            studentsList,
+            remarksList,
+            improvementPlans: improvementPlansList,
+            missingAttendanceList: missingAttExport,
+        };
+    };
+
+    const handleExportPdf = async () => {
+        const payload = prepareExportPayload();
+        if (!payload) return;
+        setIsExportingPdf(true);
+        try {
+            await generateAndDownloadGroupPdf(payload);
+            toast.success("Reporte PDF del grupo descargado correctamente");
+        } catch (err: any) {
+            console.error(err);
+            toast.error("Error al exportar PDF del grupo");
+        } finally {
+            setIsExportingPdf(false);
+        }
+    };
+
+    const handleExportExcel = async () => {
+        const payload = prepareExportPayload();
+        if (!payload) return;
+        setIsExportingExcel(true);
+        try {
+            await generateAndDownloadGroupExcel(payload);
+            toast.success("Reporte Excel del grupo descargado correctamente");
+        } catch (err: any) {
+            console.error(err);
+            toast.error("Error al exportar Excel del grupo");
+        } finally {
+            setIsExportingExcel(false);
+        }
+    };
 
     const loadGroupPlans = async () => {
         if (!analyticsData?.groupId) return;
@@ -696,171 +918,185 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                     ) : (
                         <div className={`w-full space-y-6 pb-20 ${inline ? 'px-0' : 'px-4 md:px-8'}`}>
                             
-                            {/* Group Information (Solo en vista de modal) */}
+                            {/* Ultra-Compact Top Bar (Info + Horario + Exportaciones) */}
                             {!inline && (
-                                <Card className="bg-primary/5 border-primary/20 shadow-sm">
-                                    <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 justify-between items-start sm:items-center flex-wrap">
-                                        <div className="space-y-1">
-                                            <h4 className="font-semibold text-lg flex items-center gap-2 text-primary">
-                                                <GraduationCap className="w-5 h-5" />
-                                                {analyticsData.program || "Programa no asignado"}
-                                            </h4>
-                                            {analyticsData.groupDescription && (
-                                                <p className="text-sm text-muted-foreground">{analyticsData.groupDescription}</p>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-wrap gap-2 sm:gap-4 text-sm font-medium">
-                                            {analyticsData.period && (
-                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border shadow-sm">
-                                                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                                                    <span>{analyticsData.period}</span>
-                                                </div>
-                                            )}
+                                <Card className="bg-card border border-border/80 shadow-2xs rounded-xl overflow-hidden">
+                                    <CardContent className="p-2.5 px-3.5 flex flex-col md:flex-row gap-2 justify-between items-start md:items-center">
+                                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                            <Badge className="bg-primary text-primary-foreground font-extrabold text-[11px] px-2 py-0.5 rounded-md shrink-0">
+                                                Ficha {analyticsData.groupName}
+                                            </Badge>
+                                            <span className="font-bold text-xs flex items-center gap-1 text-foreground truncate">
+                                                <GraduationCap className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                <span className="truncate">{analyticsData.program || "Programa de Formación"}</span>
+                                            </span>
                                             {analyticsData.environment && (
-                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border shadow-sm">
-                                                    <BookOpen className="w-4 h-4 text-muted-foreground" />
-                                                    <span>{analyticsData.environment}</span>
-                                                </div>
+                                                <span className="text-[11px] text-muted-foreground flex items-center gap-1 border-l pl-2 border-border/60">
+                                                    <BookOpen className="w-3 h-3 text-primary shrink-0" />
+                                                    {analyticsData.environment}
+                                                </span>
                                             )}
                                             {(analyticsData.startTime || analyticsData.endTime) && (
-                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background border shadow-sm">
-                                                    <Clock className="w-4 h-4 text-muted-foreground" />
-                                                    <span>
-                                                        {analyticsData.startTime || "--:--"} - {analyticsData.endTime || "--:--"}
-                                                    </span>
-                                                </div>
+                                                <span className="text-[11px] text-muted-foreground flex items-center gap-1 border-l pl-2 border-border/60">
+                                                    <Clock className="w-3 h-3 text-primary shrink-0" />
+                                                    {analyticsData.startTime || "--:--"} - {analyticsData.endTime || "--:--"}
+                                                </span>
                                             )}
+                                        </div>
+
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={handleExportPdf}
+                                              disabled={isExportingPdf}
+                                              className="h-7 px-2.5 rounded-lg border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1 font-bold text-[11px]"
+                                            >
+                                              {isExportingPdf ? (
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                              ) : (
+                                                <FileText className="w-3 h-3 text-red-600" />
+                                              )}
+                                              <span>PDF Ficha y Horario</span>
+                                            </Button>
+
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={handleExportExcel}
+                                              disabled={isExportingExcel}
+                                              className="h-7 px-2.5 rounded-lg border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 gap-1 font-bold text-[11px]"
+                                            >
+                                              {isExportingExcel ? (
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                              ) : (
+                                                <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
+                                              )}
+                                              <span>Excel Ficha y Horario</span>
+                                            </Button>
                                         </div>
                                     </CardContent>
                                 </Card>
                             )}
 
-                            {/* KPI Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <Card>
-                                    <CardContent className="p-6 flex items-center gap-4">
-                                        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
-                                            <Users className="w-6 h-6" />
+                            {/* Ultra-Compact KPI Row */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
+                                    <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="p-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg shrink-0">
+                                                <Users className="w-3.5 h-3.5" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Total</span>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-muted-foreground">Total Estudiantes</p>
-                                            <h3 className="text-2xl font-bold">{analyticsData.students.total}</h3>
-                                        </div>
+                                        <span className="text-lg font-black text-foreground">{analyticsData.students.total}</span>
                                     </CardContent>
                                 </Card>
-                                <Card>
-                                    <CardContent className="p-6 flex items-center gap-4">
-                                        <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full">
-                                            <UserCheck className="w-6 h-6" />
+
+                                <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
+                                    <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="p-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg shrink-0">
+                                                <UserCheck className="w-3.5 h-3.5" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Activos</span>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-muted-foreground">Estudiantes Activos</p>
-                                            <h3 className="text-2xl font-bold">{analyticsData.students.active}</h3>
-                                        </div>
+                                        <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{analyticsData.students.active}</span>
                                     </CardContent>
                                 </Card>
-                                <Card>
-                                    <CardContent className="p-6 flex items-center gap-4">
-                                        <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full">
-                                            <UserX className="w-6 h-6" />
+
+                                <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
+                                    <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <div className="p-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg shrink-0">
+                                                <UserX className="w-3.5 h-3.5" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Inactivos</span>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-muted-foreground">Estudiantes Baneados</p>
-                                            <h3 className="text-2xl font-bold">{analyticsData.students.banned}</h3>
-                                        </div>
+                                        <span className="text-lg font-black text-foreground">{analyticsData.students.banned}</span>
                                     </CardContent>
                                 </Card>
-                                <Card>
-                                    <CardContent className="p-6 flex items-center gap-4">
-                                        <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full">
-                                            <BookOpen className="w-6 h-6" />
+
+                                <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
+                                    <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <div className="p-1.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0">
+                                                <Clock className="w-3.5 h-3.5" />
+                                            </div>
+                                            <UITooltipProvider>
+                                                <UITooltip>
+                                                    <UITooltipTrigger asChild>
+                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate cursor-help flex items-center gap-0.5">
+                                                            <span>Novedades</span>
+                                                            <Info className="w-2.5 h-2.5 text-muted-foreground/70 shrink-0" />
+                                                        </span>
+                                                    </UITooltipTrigger>
+                                                    <UITooltipContent>
+                                                        <p className="text-xs">Suma total de inasistencias, tardanzas y retiros tempranos registrados.</p>
+                                                    </UITooltipContent>
+                                                </UITooltip>
+                                            </UITooltipProvider>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-muted-foreground">Inasistencias, Retardos y Retiros Reg.</p>
-                                            <h3 className="text-2xl font-bold">{filteredAttendancesCount}</h3>
-                                        </div>
+                                        <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{filteredAttendancesCount}</span>
                                     </CardContent>
                                 </Card>
                             </div>
 
-                            {/* ── Group Integral Score Card ── */}
+                            {/* ── Ultra-Slim Group Integral Score Bar ── */}
                             {groupIntegralScore && (
-                                <Card className={`border-2 ${groupIntegralScore.borderColor} ${groupIntegralScore.bgColor} shadow-md overflow-hidden`}>
-                                    <CardContent className="p-0">
-                                        <div className="flex flex-col md:flex-row items-center gap-0">
-                                            {/* Big score circle */}
-                                            <div className="flex flex-col items-center justify-center p-8 md:p-10 shrink-0 border-b md:border-b-0 md:border-r border-inherit w-full md:w-auto">
-                                                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Puntaje Integral del Grupo</p>
-                                                <div className={`relative flex items-center justify-center w-32 h-32 rounded-full ring-4 ${groupIntegralScore.ringColor} bg-background shadow-lg`}>
-                                                    <div className="text-center">
-                                                        <span className={`text-4xl font-black ${groupIntegralScore.color} leading-none`}>
-                                                            {groupIntegralScore.score}
-                                                        </span>
-                                                        <span className="block text-[10px] text-muted-foreground font-semibold">/ 100</span>
-                                                    </div>
-                                                </div>
-                                                <span className={`mt-3 text-base font-extrabold tracking-wide ${groupIntegralScore.color}`}>
-                                                    {groupIntegralScore.label}
+                                <Card className="bg-card border border-border/80 shadow-2xs rounded-xl overflow-hidden">
+                                    <CardContent className="py-2 px-3.5 flex flex-col md:flex-row items-center gap-3">
+                                        {/* Score Badge */}
+                                        <div className="flex items-center gap-2.5 shrink-0 border-b md:border-b-0 md:border-r border-border/60 pb-2 md:pb-0 md:pr-4 w-full md:w-auto justify-between md:justify-start">
+                                            <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Puntaje Integral</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className={`text-xl font-black ${groupIntegralScore.color}`}>
+                                                    {groupIntegralScore.score} <span className="text-[10px] text-muted-foreground font-semibold">/ 100</span>
                                                 </span>
-                                                <p className="text-[10px] text-muted-foreground mt-0.5 text-center max-w-[160px]">
-                                                    Promedio integral de {analyticsData.studentMetrics?.length || 0} estudiantes activos
-                                                </p>
+                                                <Badge className={`${groupIntegralScore.bgColor} ${groupIntegralScore.color} border border-current font-extrabold text-[10px] px-2 py-0`}>
+                                                    {groupIntegralScore.label}
+                                                </Badge>
+                                            </div>
+                                        </div>
+
+                                        {/* Breakdown Mini Bars */}
+                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                                            {/* Academic */}
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center justify-between text-[11px]">
+                                                    <span className="font-bold text-foreground flex items-center gap-1">
+                                                        <BookOpen className="w-3 h-3 text-indigo-500" /> Rendimiento
+                                                    </span>
+                                                    <span className="font-extrabold text-indigo-500">{groupIntegralScore.avgAcademic}%</span>
+                                                </div>
+                                                <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${groupIntegralScore.avgAcademic}%` }} />
+                                                </div>
                                             </div>
 
-                                            {/* Breakdown bars */}
-                                            <div className="flex-1 p-6 md:p-8 grid grid-cols-1 sm:grid-cols-3 gap-5 w-full">
-                                                {/* Academic */}
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                                                            <span className="text-xs font-bold text-foreground">Rendimiento</span>
-                                                        </div>
-                                                        <span className="text-sm font-extrabold text-indigo-500">{groupIntegralScore.avgAcademic}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
-                                                    </div>
-                                                    <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-                                                            style={{ width: `${groupIntegralScore.avgAcademic}%` }}
-                                                        />
-                                                    </div>
-                                                    <p className="text-[10px] text-muted-foreground">Peso: {academicWeight}% — Basado en calificaciones promedio del grupo</p>
+                                            {/* Attendance */}
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center justify-between text-[11px]">
+                                                    <span className="font-bold text-foreground flex items-center gap-1">
+                                                        <Calendar className="w-3 h-3 text-emerald-500" /> Asistencia
+                                                    </span>
+                                                    <span className="font-extrabold text-emerald-500">{groupIntegralScore.avgAttendance}%</span>
                                                 </div>
-
-                                                {/* Attendance */}
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Calendar className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                                                            <span className="text-xs font-bold text-foreground">Asistencia</span>
-                                                        </div>
-                                                        <span className="text-sm font-extrabold text-emerald-500">{groupIntegralScore.avgAttendance}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
-                                                    </div>
-                                                    <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-emerald-500 rounded-full transition-all duration-700"
-                                                            style={{ width: `${groupIntegralScore.avgAttendance}%` }}
-                                                        />
-                                                    </div>
-                                                    <p className="text-[10px] text-muted-foreground">Peso: {attendanceWeight}% — Penaliza faltas, tardanzas y retiros tempranos</p>
+                                                <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${groupIntegralScore.avgAttendance}%` }} />
                                                 </div>
+                                            </div>
 
-                                                {/* Discipline */}
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                                            <span className="text-xs font-bold text-foreground">Disciplina</span>
-                                                        </div>
-                                                        <span className="text-sm font-extrabold text-amber-500">{groupIntegralScore.avgDiscipline}<span className="text-[10px] text-muted-foreground font-normal">/100</span></span>
-                                                    </div>
-                                                    <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-amber-500 rounded-full transition-all duration-700"
-                                                            style={{ width: `${groupIntegralScore.avgDiscipline}%` }}
-                                                        />
-                                                    </div>
-                                                    <p className="text-[10px] text-muted-foreground">Peso: {disciplineWeight}% — Llamados de atención y felicitaciones</p>
+                                            {/* Discipline */}
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center justify-between text-[11px]">
+                                                    <span className="font-bold text-foreground flex items-center gap-1">
+                                                        <AlertTriangle className="w-3 h-3 text-amber-500" /> Disciplina
+                                                    </span>
+                                                    <span className="font-extrabold text-amber-500">{groupIntegralScore.avgDiscipline}%</span>
+                                                </div>
+                                                <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-amber-500 rounded-full" style={{ width: `${groupIntegralScore.avgDiscipline}%` }} />
                                                 </div>
                                             </div>
                                         </div>
@@ -895,12 +1131,14 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                             </Card>
 
                              <Tabs defaultValue="rendimiento" className="w-full mt-6">
-                                <TabsList className="flex w-full p-1 bg-muted/60 rounded-xl mb-6 h-auto gap-1">
-                                    <TabsTrigger value="rendimiento" className="flex-1 py-2 px-2 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Rendimiento</TabsTrigger>
-                                    <TabsTrigger value="asistencia" className="flex-1 py-2 px-2 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Asistencia</TabsTrigger>
-                                    <TabsTrigger value="disciplina" className="flex-1 py-2 px-2 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Disciplina</TabsTrigger>
-                                    <TabsTrigger value="mejoramiento" className="flex-1 py-2 px-2 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">Planes de Mejoramiento</TabsTrigger>
-                                </TabsList>
+                                <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center mb-6">
+                                    <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1 bg-muted/60 rounded-xl gap-1 w-max border border-border/40">
+                                        <TabsTrigger value="rendimiento" className="rounded-lg py-2 px-3 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">Rendimiento</TabsTrigger>
+                                        <TabsTrigger value="asistencia" className="rounded-lg py-2 px-3 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">Asistencia</TabsTrigger>
+                                        <TabsTrigger value="disciplina" className="rounded-lg py-2 px-3 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">Disciplina</TabsTrigger>
+                                        <TabsTrigger value="mejoramiento" className="rounded-lg py-2 px-3 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">Planes de Mejoramiento</TabsTrigger>
+                                    </TabsList>
+                                </div>
 
                                 <TabsContent value="rendimiento" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0">
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1133,47 +1371,51 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                         </CardTitle>
                                         <CardDescription>Resumen de presencialidad y ausentismo del grupo.</CardDescription>
                                     </CardHeader>
-                                    <CardContent className="h-[300px] w-full">
+                                     <CardContent className="h-auto min-h-[300px] w-full p-4 sm:p-6">
                                         {analyticsData.totalCourseClasses > 0 ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full w-full">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart>
-                                                        <Pie
-                                                            data={attendanceData}
-                                                            cx="50%"
-                                                            cy="50%"
-                                                            innerRadius={60}
-                                                            outerRadius={80}
-                                                            paddingAngle={5}
-                                                            dataKey="value"
-                                                        >
-                                                            {attendanceData.map((entry, index) => (
-                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                            ))}
-                                                        </Pie>
-                                                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                                        <Legend />
-                                                    </PieChart>
-                                                </ResponsiveContainer>
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <BarChart data={attendanceData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                                                        <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} />
-                                                        <YAxis axisLine={false} tickLine={false} />
-                                                        <Tooltip 
-                                                            cursor={{ fill: 'transparent' }}
-                                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                                        />
-                                                        <Bar dataKey="value" name="Total" radius={[4, 4, 0, 0]} maxBarSize={60}>
-                                                            {attendanceData.map((entry, index) => (
-                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                            ))}
-                                                        </Bar>
-                                                    </BarChart>
-                                                </ResponsiveContainer>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                                                <div className="h-[280px] w-full">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <PieChart>
+                                                            <Pie
+                                                                data={attendanceData}
+                                                                cx="50%"
+                                                                cy="42%"
+                                                                innerRadius={45}
+                                                                outerRadius={68}
+                                                                paddingAngle={5}
+                                                                dataKey="value"
+                                                            >
+                                                                {attendanceData.map((entry, index) => (
+                                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                                ))}
+                                                            </Pie>
+                                                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                                                            <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }} />
+                                                        </PieChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                                <div className="h-[280px] w-full">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <BarChart data={attendanceData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                                                            <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={11} />
+                                                            <YAxis axisLine={false} tickLine={false} />
+                                                            <Tooltip 
+                                                                cursor={{ fill: 'transparent' }}
+                                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                            />
+                                                            <Bar dataKey="value" name="Total" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                                                                {attendanceData.map((entry, index) => (
+                                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                                ))}
+                                                            </Bar>
+                                                        </BarChart>
+                                                    </ResponsiveContainer>
+                                                </div>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center justify-center h-full text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed">
+                                            <div className="flex items-center justify-center h-[200px] text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed">
                                                 No hay registros de asistencia
                                             </div>
                                         )}
@@ -1940,6 +2182,14 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Student Group History Modal for Teachers, Gestores & Admins */}
+            <StudentGroupHistoryModal
+                open={!!historyStudentId}
+                onOpenChange={(open) => { if (!open) setHistoryStudentId(null); }}
+                studentId={historyStudentId}
+                isStaffManager={!isTeacherView}
+            />
         </>
     );
 }

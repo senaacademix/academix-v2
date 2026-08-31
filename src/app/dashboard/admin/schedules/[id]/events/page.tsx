@@ -34,6 +34,7 @@ export default async function ScheduleEventsPage({ params }: ScheduleEventsPageP
   return (
     <ScheduleEventsManagerView
       schedule={data.schedule}
+      groups={data.groups || []}
       initialEvents={data.events}
     />
   );

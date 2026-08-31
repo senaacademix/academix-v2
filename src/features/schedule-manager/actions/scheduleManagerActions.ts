@@ -24,6 +24,28 @@ async function requireAdmin() {
 }
 
 /**
+ * Obtener todos los profesores registrados para gestión en el panel de horarios
+ */
+export async function getTeachersListAction() {
+  await requireAdmin();
+  const teachers = await prisma.user.findMany({
+    where: { role: "teacher", banned: { not: true } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      profile: {
+        select: {
+          identificacion: true
+        }
+      }
+    },
+    orderBy: { name: "asc" }
+  });
+  return teachers;
+}
+
+/**
  * Obtener todos los horarios académicos registrados
  */
 export async function getSchedulesAction(): Promise<AcademicScheduleItem[]> {
@@ -35,6 +57,12 @@ export async function getSchedulesAction(): Promise<AcademicScheduleItem[]> {
       include: {
         groupSlots: {
           include: {
+            period: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
             group: {
               select: {
                 id: true,
@@ -76,6 +104,8 @@ export async function getSchedulesAction(): Promise<AcademicScheduleItem[]> {
           id: slot.id,
           academicScheduleId: slot.academicScheduleId,
           groupId: slot.groupId,
+          periodId: slot.periodId,
+          period: slot.period,
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.startTime,
           endTime: slot.endTime,
@@ -203,13 +233,15 @@ export async function getAvailableGroupsAction(): Promise<AvailableGroupOption[]
         program: {
           select: {
             id: true,
-            name: true
-          }
-        },
-        period: {
-          select: {
-            id: true,
-            name: true
+            name: true,
+            periods: {
+              select: {
+                id: true,
+                name: true,
+                esEspecial: true
+              },
+              orderBy: { order: "asc" }
+            }
           }
         },
         environment: {
@@ -227,12 +259,53 @@ export async function getAvailableGroupsAction(): Promise<AvailableGroupOption[]
       categoria: g.categoria || "LECTIVA",
       programId: g.programId,
       programName: g.program.name,
-      periodName: g.period?.name || null,
-      environmentName: g.environment?.name || null
+      periodName: null,
+      environmentName: g.environment?.name || null,
+      availablePeriods: (g.program as any).periods || []
     }));
   } catch (error) {
     console.error("Error al obtener grupos disponibles:", error);
     return [];
+  }
+}
+
+/**
+ * Helper para validar traslape de rangos de fechas de horarios
+ */
+async function validateNoScheduleDateConflict(startDate: Date, endDate: Date, excludeScheduleId?: string) {
+  // Dos rangos [A_start, A_end] y [B_start, B_end] se traslapan si: A_start <= B_end AND A_end >= B_start
+  const conflictingSchedule = await prisma.academicSchedule.findFirst({
+    where: {
+      ...(excludeScheduleId ? { id: { not: excludeScheduleId } } : {}),
+      startDate: { lte: endDate },
+      endDate: { gte: startDate },
+    },
+    select: {
+      id: true,
+      name: true,
+      startDate: true,
+      endDate: true,
+    },
+  });
+
+  if (conflictingSchedule) {
+    const formatDate = (d: Date) => {
+      return d.toLocaleDateString("es-CO", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+    };
+
+    const startFmt = formatDate(startDate);
+    const endFmt = formatDate(endDate);
+    const confStartFmt = formatDate(conflictingSchedule.startDate);
+    const confEndFmt = formatDate(conflictingSchedule.endDate);
+
+    throw new Error(
+      `Conflicto de Fechas: El rango propuesto (${startFmt} a ${endFmt}) se traslapa con el horario existente "${conflictingSchedule.name}" (${confStartFmt} a ${confEndFmt}). Ningún horario puede traslaparse en fechas.`
+    );
   }
 }
 
@@ -259,6 +332,9 @@ export async function createBasicScheduleAction(data: BasicSchedulePayload) {
   if (startDate > endDate) {
     throw new Error("La fecha de inicio no puede ser posterior a la fecha de fin");
   }
+
+  // Validar conflicto de rango de fechas con otros horarios existentes
+  await validateNoScheduleDateConflict(startDate, endDate);
 
   const now = new Date();
   const shouldBeActive = now >= startDate && now <= endDate;
@@ -324,6 +400,9 @@ export async function updateBasicScheduleAction(id: string, data: BasicScheduleP
     throw new Error("La fecha de inicio no puede ser posterior a la fecha de fin");
   }
 
+  // Validar conflicto de rango de fechas excluyendo el horario actual
+  await validateNoScheduleDateConflict(startDate, endDate, id);
+
   const now = new Date();
   const newIsActive = now >= startDate && now <= endDate;
 
@@ -382,6 +461,7 @@ export async function saveScheduleGroupSlotsAction(payload: SaveGroupSlotsPayloa
       const slotsToCreate: {
         academicScheduleId: string;
         groupId: string;
+        periodId?: string | null;
         dayOfWeek: any;
         startTime: string;
         endTime: string;
@@ -393,6 +473,7 @@ export async function saveScheduleGroupSlotsAction(payload: SaveGroupSlotsPayloa
             slotsToCreate.push({
               academicScheduleId: scheduleId,
               groupId: groupConf.groupId,
+              periodId: groupConf.periodId || null,
               dayOfWeek: slot.dayOfWeek,
               startTime: slot.startTime,
               endTime: slot.endTime

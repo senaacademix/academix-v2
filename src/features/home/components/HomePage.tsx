@@ -216,7 +216,7 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
   const getRoleLabel = () => {
     switch (role) {
       case "admin":
-        return "Coordinador Académico";
+        return "Administrador";
       case "gestor":
         return "Gestor Académico";
       case "teacher":

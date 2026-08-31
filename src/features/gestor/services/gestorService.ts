@@ -77,6 +77,7 @@ export class GestorService {
                     id: true,
                     name: true,
                     description: true,
+                    allowPastAttendanceEdit: true,
                     _count: {
                         select: {
                             groups: true,

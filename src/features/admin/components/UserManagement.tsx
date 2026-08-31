@@ -58,10 +58,11 @@ import {
 import {
     Search, Trash2, Eye, UserCog, Users as UsersIcon, UserPlus, ChevronLeft, ChevronRight,
     BookOpen, Calendar, MessageSquare, FileText, CheckCircle2, AlertCircle, X, GraduationCap,
-    Key, RefreshCw, Bookmark, MoreVertical, Pencil, ArrowRightLeft, ShieldAlert, Loader2
+    Key, RefreshCw, Bookmark, MoreVertical, Pencil, ArrowRightLeft, ShieldAlert, Loader2, History
 } from "lucide-react";
 import { toast } from "sonner";
 import { updateUserRoleAction, deleteUserAction, createUserAction, toggleUserBanAction, getAllUsersAction, resetUserPasswordToDocAction, getComprehensiveGroupAnalyticsAction, getAllFilteredUserIdsAction, getUserEmailsAction, updateStudentNovedadAction, updateStudentAction, assignStudentToGroupAction } from "@/app/admin-actions";
+import { StudentGroupHistoryModal } from "@/features/student/components/StudentGroupHistoryModal";
 import { format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -241,42 +242,8 @@ export function UserManagement({
     const usersPerPage = 20;
     const totalPages = Math.ceil(currentTotal / usersPerPage);
 
-    // Group transfer dialog state
-    const [transferDialogOpen, setTransferDialogOpen] = useState(false);
-    const [userForGroupTransfer, setUserForGroupTransfer] = useState<User | null>(null);
-    const [transferNewGroupId, setTransferNewGroupId] = useState<string>("none");
-
-    const handleConfirmGroupTransfer = async () => {
-        if (!userForGroupTransfer) return;
-        const targetGroupId = transferNewGroupId !== "none" ? transferNewGroupId : null;
-
-        startTransition(async () => {
-            try {
-                const updated = await assignStudentToGroupAction(userForGroupTransfer.id, targetGroupId);
-                const newGroupObj = groupsList.find(g => g.id === targetGroupId);
-
-                setUsers(prev => prev.map(u => u.id === userForGroupTransfer.id ? {
-                    ...u,
-                    groupId: targetGroupId,
-                    group: newGroupObj ? { id: newGroupObj.id, name: newGroupObj.name } : null
-                } : u));
-
-                toast.success("Estudiante trasladado de ficha", {
-                    description: targetGroupId 
-                        ? `Se trasladó a ${formatName(userForGroupTransfer.name, userForGroupTransfer.profile)} a la ficha ${newGroupObj?.name || ""}` 
-                        : `Se desasignó de la ficha a ${formatName(userForGroupTransfer.name, userForGroupTransfer.profile)}`
-                });
-
-                setTransferDialogOpen(false);
-                setUserForGroupTransfer(null);
-                setTransferNewGroupId("none");
-            } catch (error: any) {
-                toast.error("Error al trasladar estudiante", {
-                    description: error.message || "No se pudo realizar el traslado"
-                });
-            }
-        });
-    };
+    // Group transfer and history modal state
+    const [historyModalStudentId, setHistoryModalStudentId] = useState<string | null>(null);
 
     // Role change dialog state
     const [roleChangeDialogOpen, setRoleChangeDialogOpen] = useState(false);
@@ -761,13 +728,13 @@ export function UserManagement({
 
             {/* Filters */}
             <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                     <CardTitle>Filtros</CardTitle>
-                    <CardDescription>Busca y filtra estudiantes</CardDescription>
+                    <CardDescription>Busca y filtra estudiantes por ficha o etapa</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col md:flex-row gap-4">
-                        <div className="flex-1 relative">
+                <CardContent className="space-y-3">
+                    <div className="flex flex-col md:flex-row gap-3 items-center">
+                        <div className="flex-1 w-full relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Buscar por nombre o email..."
@@ -776,53 +743,85 @@ export function UserManagement({
                                 className="pl-10"
                             />
                         </div>
-                        <Select value={programFilter} onValueChange={(val) => onFilterChange('program', val)}>
-                            <SelectTrigger className="w-full md:w-[200px]">
-                                <SelectValue placeholder="Filtrar por programa" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {programsList.map((program) => (
-                                    <SelectItem key={program.id} value={program.id}>
-                                        {program.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+
+                        {/* Omit training program filter if user is Gestor / has 1 program */}
+                        {programsList.length > 1 && (
+                            <Select value={programFilter} onValueChange={(val) => onFilterChange('program', val)}>
+                                <SelectTrigger className="w-full md:w-[180px]">
+                                    <SelectValue placeholder="Filtrar por programa" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos los programas</SelectItem>
+                                    {programsList.map((program) => (
+                                        <SelectItem key={program.id} value={program.id}>
+                                            {program.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+
                         <Select value={categoriaFilter} onValueChange={(val) => onFilterChange('categoria', val)}>
-                            <SelectTrigger className="w-full md:w-[200px]">
+                            <SelectTrigger className="w-full md:w-[180px]">
                                 <SelectValue placeholder="Filtrar por etapa" />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="all">Todas las etapas</SelectItem>
                                 <SelectItem value="LECTIVA">Etapa Lectiva</SelectItem>
                                 <SelectItem value="PRODUCTIVA">Etapa Productiva</SelectItem>
                                 <SelectItem value="EGRESADOS">Egresados</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Select value={groupFilter} onValueChange={(val) => onFilterChange('group', val)}>
-                            <SelectTrigger className="w-full md:w-[200px]">
-                                <SelectValue placeholder="Filtrar por grupo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {groupsList
-                                    .filter((g) => 
-                                        (programFilter === "all" || g.programId === programFilter) &&
-                                        (categoriaFilter === "all" || g.categoria === categoriaFilter)
-                                    )
-                                    .map((group) => (
-                                        <SelectItem key={group.id} value={group.id}>
-                                            {group.name}
-                                        </SelectItem>
-                                    ))
-                                }
-                            </SelectContent>
-                        </Select>
+
                         <Button 
                             variant="outline" 
                             onClick={() => setShowGroupAnalytics(!showGroupAnalytics)}
-                            className={showGroupAnalytics ? "bg-primary/10 text-primary border-primary/20" : ""}
+                            className={showGroupAnalytics ? "bg-primary/10 text-primary border-primary/20 shrink-0" : "shrink-0"}
                         >
                             {showGroupAnalytics ? "Ocultar Analítica" : "Ver Analítica de Grupo"}
                         </Button>
+                    </div>
+
+                    {/* Fichas Buttons Bar */}
+                    <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1 scrollbar-none flex-wrap">
+                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
+                            Fichas:
+                        </span>
+                        <Button
+                            variant={groupFilter === "all" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => onFilterChange('group', 'all')}
+                            className={`h-8 text-xs font-bold rounded-xl transition-all ${
+                                groupFilter === "all"
+                                    ? "bg-primary text-primary-foreground shadow-2xs"
+                                    : "hover:bg-muted"
+                            }`}
+                        >
+                            Todas
+                        </Button>
+                        {groupsList
+                            .filter((g) => 
+                                (programFilter === "all" || g.programId === programFilter) &&
+                                (categoriaFilter === "all" || g.categoria === categoriaFilter)
+                            )
+                            .map((group) => {
+                                const isActive = groupFilter === group.id;
+                                return (
+                                    <Button
+                                        key={group.id}
+                                        variant={isActive ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => onFilterChange('group', group.id)}
+                                        className={`h-8 text-xs font-bold rounded-xl transition-all ${
+                                            isActive
+                                                ? "bg-purple-600 hover:bg-purple-700 text-white shadow-2xs"
+                                                : "hover:bg-purple-50 dark:hover:bg-purple-950/20 text-foreground border-border/80"
+                                        }`}
+                                    >
+                                        {group.name}
+                                    </Button>
+                                );
+                            })}
                     </div>
                 </CardContent>
             </Card>
@@ -974,15 +973,9 @@ export function UserManagement({
                                                                         <Pencil className="mr-2 h-4 w-4 text-blue-600" />
                                                                         <span>Editar estudiante</span>
                                                                     </DropdownMenuItem>
-                                                                    <DropdownMenuItem
-                                                                        onClick={() => {
-                                                                            setUserForGroupTransfer(user);
-                                                                            setTransferNewGroupId(user.groupId || user.group?.id || "none");
-                                                                            setTransferDialogOpen(true);
-                                                                        }}
-                                                                    >
-                                                                        <ArrowRightLeft className="mr-2 h-4 w-4 text-purple-600" />
-                                                                        <span>Trasladar de ficha / grupo</span>
+                                                                    <DropdownMenuItem onClick={() => setHistoryModalStudentId(user.id)}>
+                                                                        <History className="mr-2 h-4 w-4 text-purple-600" />
+                                                                        <span>Histórico y Traslado de Fichas</span>
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}
@@ -1435,110 +1428,7 @@ export function UserManagement({
                 </DialogContent>
             </Dialog>
 
-            {/* Modal Exclusivo: Trasladar Estudiante de Ficha / Grupo */}
-            <Dialog open={transferDialogOpen} onOpenChange={(open) => {
-                setTransferDialogOpen(open);
-                if (!open) {
-                    setUserForGroupTransfer(null);
-                    setTransferNewGroupId("none");
-                }
-            }}>
-                <DialogContent className="sm:max-w-[480px] p-6 rounded-2xl">
-                    <DialogHeader className="space-y-2">
-                        <DialogTitle className="flex items-center gap-2 text-base font-black text-foreground">
-                            <ArrowRightLeft className="h-5 w-5 text-purple-600" />
-                            Trasladar Estudiante de Ficha
-                        </DialogTitle>
-                        <DialogDescription className="text-xs">
-                            Selecciona la nueva ficha o grupo de formación de destino.
-                        </DialogDescription>
-                    </DialogHeader>
 
-                    {userForGroupTransfer && (
-                        <div className="space-y-4 py-2">
-                            {/* Card Resumen de Estudiante */}
-                            <div className="p-3.5 rounded-xl bg-muted/40 border flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-3">
-                                    <UserAvatar 
-                                        src={userForGroupTransfer.image} 
-                                        alt={formatName(userForGroupTransfer.name, userForGroupTransfer.profile)}
-                                        fallbackText={formatName(userForGroupTransfer.name, userForGroupTransfer.profile)}
-                                        size="sm"
-                                    />
-                                    <div>
-                                        <p className="text-xs font-bold text-foreground">
-                                            {formatName(userForGroupTransfer.name, userForGroupTransfer.profile)}
-                                        </p>
-                                        <p className="text-[11px] text-muted-foreground font-mono">
-                                            Doc: {userForGroupTransfer.profile?.identificacion || "—"}
-                                        </p>
-                                    </div>
-                                </div>
-                                <Badge variant="outline" className="text-[10px] font-bold bg-background">
-                                    {userForGroupTransfer.group?.name ? `Actual: ${userForGroupTransfer.group.name}` : "Sin Ficha"}
-                                </Badge>
-                            </div>
-
-                            {/* Banner Informativo de Protección de Histórico */}
-                            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-300 space-y-1">
-                                <div className="flex items-center gap-1.5 font-bold">
-                                    <ShieldAlert className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                                    Conservación de Historial Académico
-                                </div>
-                                <p className="text-[11px] text-purple-700 dark:text-purple-400 leading-normal">
-                                    El traslado **NO altera ni elimina** asistencias anteriores, observaciones disciplinarias ni notas. Todo el histórico permanece 100% conservado en la hoja de vida del estudiante.
-                                </p>
-                            </div>
-
-                            {/* Selector de Nueva Ficha */}
-                            <div className="space-y-2 pt-1">
-                                <Label htmlFor="transferGroupId" className="text-xs font-bold text-foreground uppercase tracking-wider">
-                                    Ficha / Grupo de Destino *
-                                </Label>
-                                <Select value={transferNewGroupId} onValueChange={setTransferNewGroupId} disabled={isPending}>
-                                    <SelectTrigger id="transferGroupId" className="h-10 rounded-xl font-medium">
-                                        <SelectValue placeholder="Seleccionar nueva ficha" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60">
-                                        <SelectItem value="none" className="font-semibold text-muted-foreground">
-                                            🚫 Sin grupo asignado
-                                        </SelectItem>
-                                        {groupsList.map((g) => (
-                                            <SelectItem key={g.id} value={g.id} className="font-semibold text-xs">
-                                                {g.name} {g.id === (userForGroupTransfer.groupId || userForGroupTransfer.group?.id) ? "(Ficha Actual)" : ""}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                    )}
-
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button
-                            variant="outline"
-                            className="rounded-xl font-bold"
-                            onClick={() => setTransferDialogOpen(false)}
-                            disabled={isPending}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            className="rounded-xl font-bold bg-purple-600 hover:bg-purple-700 text-white gap-2"
-                            onClick={handleConfirmGroupTransfer}
-                            disabled={isPending}
-                        >
-                            {isPending ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" /> Trasladando...
-                                </>
-                            ) : (
-                                "Confirmar Traslado"
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
 
             {/* Edit Student Dialog */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -1607,7 +1497,7 @@ export function UserManagement({
                                 className="bg-muted/60 cursor-not-allowed font-bold text-foreground text-xs"
                             />
                             <p className="text-[11px] text-muted-foreground italic pt-0.5">
-                                Para trasladar este estudiante a otra ficha, utiliza la opción dedicada <strong>"Trasladar de ficha / grupo"</strong> en el menú de acciones `⋮`.
+                                La ficha / grupo asignado al aprendiz es fijo y no se puede trasladar.
                             </p>
                         </div>
                     </div>
@@ -1697,6 +1587,18 @@ export function UserManagement({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Modal: Histórico de Fichas del Estudiante */}
+            <StudentGroupHistoryModal
+                open={!!historyModalStudentId}
+                onOpenChange={(open) => {
+                    if (!open) setHistoryModalStudentId(null);
+                }}
+                studentId={historyModalStudentId}
+                isStaffManager={!isObserver}
+                groupsList={groupsList}
+                onSuccess={() => refreshUsers(currentPage)}
+            />
         </div>
     );
 }

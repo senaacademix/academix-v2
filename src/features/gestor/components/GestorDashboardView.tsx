@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 import { 
     Users, 
     BookOpen, 
@@ -25,7 +28,13 @@ import {
     RotateCcw,
     ChevronRight,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    Search,
+    X,
+    Briefcase,
+    Compass,
+    Building2,
+    CalendarDays
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -34,6 +43,7 @@ import { Button } from "@/components/ui/button";
 import { formatName } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { GestorDashboardStats, GestorActivityItem } from "../types/gestorTypes";
+import { useGestorProgram } from "../context/GestorProgramContext";
 
 interface GestorDashboardViewProps {
     stats: GestorDashboardStats;
@@ -47,13 +57,45 @@ export function GestorDashboardView({
     userName
 }: GestorDashboardViewProps) {
     const managedPrograms = stats.managedProgramsList || [];
+    const isSingleProgram = managedPrograms.length === 1;
+    const hasMultiplePrograms = managedPrograms.length > 1;
 
-    // Selected Program State
-    const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
-    const currentProgram = selectedProgramId 
-        ? managedPrograms.find((p) => p.id === selectedProgramId) || null 
+    const { 
+        selectedProgramId, 
+        selectProgram, 
+        clearProgram, 
+        setManagedPrograms 
+    } = useGestorProgram();
+
+    // Auto-select if there is only 1 program assigned
+    useEffect(() => {
+        if (isSingleProgram && selectedProgramId !== managedPrograms[0].id) {
+            selectProgram(managedPrograms[0].id, managedPrograms[0]);
+        }
+    }, [isSingleProgram, managedPrograms, selectedProgramId, selectProgram]);
+
+    // Sync managed programs to context
+    useEffect(() => {
+        if (managedPrograms.length > 0) {
+            setManagedPrograms(managedPrograms);
+        }
+    }, [managedPrograms, setManagedPrograms]);
+
+    const activeProgramId = selectedProgramId || (managedPrograms.length > 0 ? managedPrograms[0].id : null);
+
+    const currentProgram = activeProgramId 
+        ? managedPrograms.find((p) => p.id === activeProgramId) || (managedPrograms.length > 0 ? managedPrograms[0] : null)
         : null;
+
+    const [allowPastAttendanceEdit, setAllowPastAttendanceEdit] = useState<boolean>(
+        (currentProgram as any)?.allowPastAttendanceEdit ?? false
+    );
+
+    useEffect(() => {
+        setAllowPastAttendanceEdit((currentProgram as any)?.allowPastAttendanceEdit ?? false);
+    }, [currentProgram?.id, (currentProgram as any)?.allowPastAttendanceEdit]);
 
     // Filter activity by selected program
     const filteredRecentActivity = currentProgram
@@ -108,163 +150,46 @@ export function GestorDashboardView({
     // Operational modules for the selected program
     const operationalModules = currentProgram ? [
         {
-            title: "Gestión y Matrícula",
-            description: "Matrícula de aprendices, importación en Excel, traslados de ficha y planes de mejoramiento.",
+            title: "Gestión de Usuarios",
+            description: "Administración de aprendices, instructores, fichas e importación masiva.",
             link: `/dashboard/gestor/users?programId=${currentProgram.id}`,
             icon: Users,
             color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
         },
         {
-            title: "Estructura y Ambientes",
-            description: "Administra fichas, trimestres, competencias y asignación de aulas para este programa.",
+            title: "Estructura Curricular",
+            description: "Administra el programa de formación, trimestres, competencias y asignación de ambientes.",
             link: `/dashboard/gestor/courses?programId=${currentProgram.id}`,
             icon: BookOpen,
             color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
         },
         {
-            title: "Malla de Horarios",
-            description: "Diseño y publicación de franjas horarias por ficha e instructores del programa.",
+            title: "Programación Horaria",
+            description: "Gestión de franjas horarias, eventos institucionales y novedades por horario.",
             link: `/dashboard/gestor/schedules?programId=${currentProgram.id}`,
             icon: CalendarClock,
             color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20"
-        },
-        {
-            title: "Reportes y Analítica",
-            description: "Control de asistencia, seguimiento académico y novedades de los aprendices.",
-            link: `/dashboard/gestor/analytics?programId=${currentProgram.id}`,
-            icon: BarChart3,
-            color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
         }
     ] : [];
 
-    // =========================================================================
-    // VISTA 1: PANTALLA DE SELECCIÓN DE PROGRAMA DE FORMACIÓN
-    // =========================================================================
-    if (!selectedProgramId) {
+    if (!currentProgram) {
         return (
-            <div className="space-y-8 animate-in fade-in duration-500 pb-12">
-                {/* Hero Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="relative rounded-3xl bg-card border border-border/80 p-6 sm:p-8 backdrop-blur-2xl shadow-sm overflow-hidden transition-colors"
-                >
-                    <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
-
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="space-y-2">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold shadow-2xs">
-                                <Sparkles className="w-3.5 h-3.5 text-primary" />
-                                <span>Panel del Gestor Académico</span>
-                            </div>
-                            <h1 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
-                                Selecciona tu{" "}
-                                <span className="bg-gradient-to-r from-foreground via-foreground/80 to-primary bg-clip-text text-transparent">
-                                    Programa de Formación
-                                </span>
-                            </h1>
-                            <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed font-medium">
-                                {userName ? `Bienvenido ${userName}. ` : ""}
-                                Selecciona uno de los programas de formación asignados por la Coordinación Académica para ingresar a su panel de gestión curricular.
-                            </p>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Si no tiene programas asignados */}
-                {managedPrograms.length === 0 ? (
-                    <div className="p-8 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center text-center gap-4">
-                        <div className="w-16 h-16 rounded-3xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                            <AlertCircle className="w-8 h-8" />
-                        </div>
-                        <div className="space-y-1 max-w-md">
-                            <h3 className="text-base font-bold text-amber-900 dark:text-amber-200">
-                                Sin programas de formación asignados
-                            </h3>
-                            <p className="text-xs text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
-                                Aún no tienes programas vinculados a tu perfil. Solicita al Coordinador Académico que te asigne tus programas de formación para poder ingresar.
-                            </p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-lg font-black text-foreground tracking-tight flex items-center gap-2">
-                                    <School className="w-5 h-5 text-primary" />
-                                    Tus Programas Asignados ({managedPrograms.length})
-                                </h2>
-                                <p className="text-xs text-muted-foreground font-medium">
-                                    Haz clic en el programa que deseas gestionar para abrir su panel de control.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {managedPrograms.map((prog) => (
-                                <Card 
-                                    key={prog.id} 
-                                    className="group rounded-3xl border border-border/80 shadow-xs bg-card hover:border-primary/50 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 overflow-hidden flex flex-col justify-between"
-                                >
-                                    <CardHeader className="pb-3">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="p-3.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 shrink-0 group-hover:scale-110 transition-transform">
-                                                <School className="w-6 h-6" />
-                                            </div>
-                                            <Badge variant="outline" className="text-xs font-bold px-2.5 py-1 rounded-xl bg-muted/40 border-border/80">
-                                                {prog.groupsCount ?? prog._count?.groups ?? 0} {(prog.groupsCount ?? prog._count?.groups ?? 0) === 1 ? "Ficha" : "Fichas"}
-                                            </Badge>
-                                        </div>
-
-                                        <CardTitle className="text-lg font-bold text-foreground mt-4 leading-snug group-hover:text-primary transition-colors">
-                                            {prog.name}
-                                        </CardTitle>
-                                        
-                                        {prog.description && (
-                                            <CardDescription className="text-xs line-clamp-2 mt-1">
-                                                {prog.description}
-                                            </CardDescription>
-                                        )}
-                                    </CardHeader>
-
-                                    <CardContent className="pt-0 space-y-4">
-                                        {/* Subcounts Grid */}
-                                        <div className="grid grid-cols-3 gap-2 text-xs py-3 px-3 rounded-2xl bg-muted/40 border border-border/50 text-center">
-                                            <div>
-                                                <span className="text-muted-foreground block text-[10px] font-semibold uppercase">Aprendices</span>
-                                                <span className="font-bold text-foreground text-sm">{prog.studentsCount ?? 0}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground block text-[10px] font-semibold uppercase">Materias</span>
-                                                <span className="font-bold text-foreground text-sm">{prog.coursesCount ?? 0}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-muted-foreground block text-[10px] font-semibold uppercase">Docentes</span>
-                                                <span className="font-bold text-foreground text-sm">{prog.teachersCount ?? 0}</span>
-                                            </div>
-                                        </div>
-
-                                        <Button 
-                                            onClick={() => setSelectedProgramId(prog.id)}
-                                            className="w-full rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 gap-2 group/btn"
-                                        >
-                                            <span>Ingresar al Panel</span>
-                                            <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                )}
+            <div className="p-10 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center text-center gap-4 my-8">
+                <div className="w-16 h-16 rounded-3xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-inner">
+                    <AlertCircle className="w-8 h-8" />
+                </div>
+                <div className="space-y-1.5 max-w-md">
+                    <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200">
+                        Sin programas de formación asignados
+                    </h3>
+                    <p className="text-xs sm:text-sm text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
+                        Aún no tienes programas vinculados a tu perfil. Solicita a la Administración que te asigne tus programas de formación para poder ingresar a gestionar.
+                    </p>
+                </div>
             </div>
         );
     }
 
-    // =========================================================================
-    // VISTA 2: PANEL DE CONTROL DEL PROGRAMA SELECCIONADO
-    // =========================================================================
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-12">
             {/* Header Hero Banner */}
@@ -272,7 +197,7 @@ export function GestorDashboardView({
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
-                className="relative rounded-3xl bg-card border border-border/80 p-6 sm:p-8 backdrop-blur-2xl shadow-sm overflow-hidden transition-colors"
+                className="relative rounded-3xl bg-gradient-to-br from-card via-card/95 to-primary/5 border border-border/80 p-6 sm:p-8 backdrop-blur-2xl shadow-sm overflow-hidden transition-colors"
             >
                 <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
 
@@ -289,52 +214,40 @@ export function GestorDashboardView({
                             </span>
                         </h1>
                         <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed font-medium">
-                            Métricas en tiempo real, administración de matrícula, fichas y malla de horarios para {currentProgram?.name}.
+                            Métricas en tiempo real, gestión de usuarios, estructura curricular y programación horaria para {currentProgram?.name}.
                         </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
-                        <Button 
-                            variant="outline" 
-                            onClick={() => setSelectedProgramId(null)}
-                            className="rounded-2xl h-11 border-border/80 bg-background/80 text-foreground hover:bg-muted text-xs font-bold shadow-xs gap-2"
-                        >
-                            <RotateCcw className="h-4 w-4 text-primary" />
-                            Cambiar Programa
-                        </Button>
-
                         <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
                             <Link href={`/dashboard/gestor/users?programId=${currentProgram?.id}`}>
                                 <UserPlus className="h-4 w-4 mr-2" />
-                                Matrícula de Aprendices
+                                Gestión de Usuarios
                             </Link>
                         </Button>
                     </div>
                 </div>
             </motion.div>
 
-            {/* 4 KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* 4 KPI Cards (Compactas) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map((kpi, idx) => (
                     <Link href={kpi.link} key={idx} className="block group">
-                        <Card className="h-full border border-border/80 shadow-xs bg-card overflow-hidden hover:scale-[1.02] hover:border-primary/40 hover:shadow-md transition-all duration-300 relative rounded-3xl">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+                        <Card className="h-full border border-border/80 shadow-2xs bg-card hover:border-primary/40 hover:shadow-xs transition-all duration-300 relative rounded-2xl p-3.5 flex flex-col justify-between gap-1">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                                     {kpi.title}
-                                </CardTitle>
-                                <div className={`p-2.5 rounded-2xl ${kpi.bg} ${kpi.color}`}>
-                                    <kpi.icon className="h-5 w-5" />
+                                </span>
+                                <div className={`p-1.5 rounded-xl ${kpi.bg} ${kpi.color}`}>
+                                    <kpi.icon className="h-4 w-4" />
                                 </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-black text-foreground">{kpi.value}</div>
-                                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 font-medium">
-                                    <span>{kpi.description}</span>
-                                    <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-primary font-bold flex items-center gap-0.5">
-                                        Gestionar <ArrowUpRight className="h-3 w-3" />
-                                    </span>
-                                </p>
-                            </CardContent>
+                            </div>
+                            <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-2xl font-black text-foreground tracking-tight">{kpi.value}</span>
+                                <span className="text-[11px] text-muted-foreground font-medium truncate">
+                                    {kpi.description}
+                                </span>
+                            </div>
                         </Card>
                     </Link>
                 ))}
@@ -379,6 +292,41 @@ export function GestorDashboardView({
                         ))}
                     </div>
                 </div>
+            )}
+
+            {/* Configuración de Asistencia por Programa */}
+            {currentProgram && (
+                <Card className="rounded-3xl border border-border/80 shadow-xs bg-card p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                <CalendarDays className="w-4 h-4 text-primary" />
+                                <span>Permitir edición de fechas anteriores</span>
+                            </h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                                Si está activo, los docentes del programa <strong className="text-foreground font-bold">{currentProgram.name}</strong> pueden registrar o modificar asistencias de semanas anteriores libremente.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <Switch
+                                id="program-allow-past-attendance"
+                                checked={allowPastAttendanceEdit}
+                                onCheckedChange={async (checked) => {
+                                    setAllowPastAttendanceEdit(checked);
+                                    try {
+                                        const { toggleProgramPastAttendanceEditAction } = await import("@/features/admin/actions/academicActions");
+                                        await toggleProgramPastAttendanceEditAction(currentProgram.id, checked);
+                                        toast.success(checked ? "Edición de fechas anteriores permitida para este programa" : "Edición de fechas anteriores restringida a la semana actual");
+                                    } catch (err: any) {
+                                        toast.error("Error al actualizar la configuración del programa");
+                                        setAllowPastAttendanceEdit(!checked);
+                                    }
+                                }}
+                                className="data-[state=checked]:bg-primary"
+                            />
+                        </div>
+                    </div>
+                </Card>
             )}
 
             {/* Activity & User Distribution Section */}

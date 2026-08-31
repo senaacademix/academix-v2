@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck } from "lucide-react";
+import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
@@ -15,6 +15,9 @@ import { formatName, cn } from "@/lib/utils";
 import { fromUTC } from "@/lib/dateUtils";
 import { getStudentRecords, justifyAttendanceAction, markRemarkViewed, getStudentDocumentation, deleteJustificationAction } from "../actions/studentActions";
 import { getStudentGrades, submitStudentSubmissionLink } from "@/features/teacher/actions/gradeActions";
+import { getStudentGroupHistoryAction } from "../actions/studentGroupHistoryActions";
+import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
+import { exportStudentRecordExcel, exportStudentRecordPDF } from "../utils/studentExportUtils";
 import { notifyEmailSentBatchAction } from "@/features/teacher/actions/groupActions";
 import {
     getImprovementPlans,
@@ -390,11 +393,88 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         notifyEmailSentBatchAction([plan.studentId], "PLAN");
     };
 
+    // Multi-Ficha Group History State
+    const [groupHistory, setGroupHistory] = useState<any[]>([]);
+    const [selectedGroupId, setSelectedGroupId] = useState<string>("ALL");
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
+
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExportExcel = async () => {
+        const toastId = toast.loading("Generando expediente completo en Excel...");
+        try {
+            setIsExporting(true);
+            const data = {
+                student: {
+                    id: studentId || records?.targetUser?.id || "",
+                    name: records?.targetUser?.name || "Estudiante",
+                    email: records?.targetUser?.email || "",
+                    identificacion: records?.targetUser?.profile?.identificacion || "S/I",
+                    currentGroup: records?.targetUser?.groupName || "Sin Ficha Activa",
+                },
+                groupHistory: groupHistory || [],
+                attendances: rawAttendances || [],
+                remarks: rawRemarks || [],
+                courses: courses || [],
+                improvementPlans: improvementPlans || [],
+            };
+            await exportStudentRecordExcel(data);
+            toast.success("Expediente exportado exitosamente a Excel.", { id: toastId });
+        } catch (error: any) {
+            console.error("Error al exportar Excel:", error);
+            toast.error("Error al generar el archivo Excel.", { id: toastId });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleExportPDF = async () => {
+        const toastId = toast.loading("Generando expediente completo en PDF...");
+        try {
+            setIsExporting(true);
+            const data = {
+                student: {
+                    id: studentId || records?.targetUser?.id || "",
+                    name: records?.targetUser?.name || "Estudiante",
+                    email: records?.targetUser?.email || "",
+                    identificacion: records?.targetUser?.profile?.identificacion || "S/I",
+                    currentGroup: records?.targetUser?.groupName || "Sin Ficha Activa",
+                },
+                groupHistory: groupHistory || [],
+                attendances: rawAttendances || [],
+                remarks: rawRemarks || [],
+                courses: courses || [],
+                improvementPlans: improvementPlans || [],
+            };
+            exportStudentRecordPDF(data);
+            toast.success("Expediente exportado exitosamente a PDF.", { id: toastId });
+        } catch (error: any) {
+            console.error("Error al exportar PDF:", error);
+            toast.error("Error al generar el documento PDF.", { id: toastId });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+    const loadGroupHistory = async () => {
+        try {
+            const targetId = studentId || (await authClient.getSession())?.data?.user?.id;
+            if (targetId) {
+                const res = await getStudentGroupHistoryAction(targetId);
+                if (res.success && res.data?.history) {
+                    setGroupHistory(res.data.history);
+                }
+            }
+        } catch (err) {
+            console.error("Error loading student group history:", err);
+        }
+    };
+
     useEffect(() => {
         loadRecords();
         loadGrades();
         loadDocumentation();
         loadImprovementPlans();
+        loadGroupHistory();
     }, [studentId]);
 
     const loadRecords = () => {
@@ -512,7 +592,23 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         return teacher.name || "Sin asignar";
     };
 
-    const { attendances = [], remarks = [] } = records || {};
+    const rawAttendances = records?.attendances || [];
+    const rawRemarks = records?.remarks || [];
+
+    const attendances = useMemo(() => {
+        if (selectedGroupId === "ALL") return rawAttendances;
+        return rawAttendances.filter((a: any) => a.course?.groupId === selectedGroupId);
+    }, [rawAttendances, selectedGroupId]);
+
+    const remarks = useMemo(() => {
+        if (selectedGroupId === "ALL") return rawRemarks;
+        return rawRemarks.filter((r: any) => r.course?.groupId === selectedGroupId);
+    }, [rawRemarks, selectedGroupId]);
+
+    const filteredCourses = useMemo(() => {
+        if (selectedGroupId === "ALL") return courses;
+        return courses.filter((c: any) => c.groupId === selectedGroupId);
+    }, [courses, selectedGroupId]);
 
     const gradesAvgChartData = useMemo(() => {
         const labels = courses.map(c => c.title);
@@ -975,57 +1071,114 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
     );
 
     return (
-        <div className="space-y-8">
-            {/* Summary cards */}
+        <div className="space-y-4">
+            {/* Multi-Ficha Group Selector & Full Export Controls Banner */}
             {!onlyImprovement && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 p-3.5 rounded-2xl border border-border/70 bg-card/80 backdrop-blur-md shadow-2xs">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                            <Layers className="w-4 h-4" />
+                        </div>
+                        <div className="space-y-0.5 min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Filtrar Vista por Ficha de Formación</p>
+                            <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                                <SelectTrigger className="h-8 rounded-xl text-xs font-bold bg-background border-border/80 min-w-[240px] max-w-[380px]">
+                                    <SelectValue placeholder="Seleccionar ficha..." />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-60">
+                                    <SelectItem value="ALL" className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                        🌐 Histórico Consolidado (Todas las Fichas)
+                                    </SelectItem>
+                                    {groupHistory.map((g) => (
+                                        <SelectItem key={g.groupId} value={g.groupId} className="text-xs font-bold">
+                                            {g.isCurrent ? "🟢" : "🟣"} Ficha {g.groupName} ({g.programName}) {g.isCurrent ? "— FICHA ACTIVA" : "— TRASLADADO"}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap shrink-0 self-end lg:self-auto">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExportExcel}
+                            disabled={isExporting}
+                            className="h-8 text-xs font-bold rounded-xl border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-1.5 shadow-2xs"
+                        >
+                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Exportar Excel</span>
+                        </Button>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleExportPDF}
+                            disabled={isExporting}
+                            className="h-8 text-xs font-bold rounded-xl border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/10 gap-1.5 shadow-2xs"
+                        >
+                            <FileText className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                            <span>Exportar PDF</span>
+                        </Button>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setHistoryModalOpen(true)}
+                            className="h-8 text-xs font-bold rounded-xl border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10 gap-1.5 shadow-2xs"
+                        >
+                            <History className="w-3.5 h-3.5" />
+                            <span>Línea de Tiempo</span>
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Summary cards (Ultra Compact) */}
+            {!onlyImprovement && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Faltas */}
-                    <Card className="rounded-3xl border border-border/80 bg-card shadow-xs hover:border-destructive/40 transition-all">
-                        <CardHeader className="p-5 pb-2 flex flex-row items-center justify-between">
-                            <CardDescription className="uppercase font-extrabold tracking-wider text-xs text-muted-foreground">
-                                Inasistencias
-                            </CardDescription>
-                            <div className="p-2.5 rounded-2xl bg-destructive/10 text-destructive">
-                                <UserX className="w-5 h-5" />
+                    <div className="p-3.5 rounded-2xl border border-border/70 bg-card/70 backdrop-blur-md flex items-center justify-between gap-3 shadow-2xs hover:border-destructive/40 transition-all">
+                        <div className="space-y-0.5 min-w-0">
+                            <p className="uppercase font-black text-[10px] tracking-wider text-muted-foreground">Inasistencias</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-2xl font-black text-foreground leading-none">{absentCount}</span>
+                                <span className="text-[11px] text-muted-foreground font-medium truncate">Faltas acumuladas</span>
                             </div>
-                        </CardHeader>
-                        <CardContent className="p-5 pt-0">
-                            <div className="text-3xl font-black text-foreground">{absentCount}</div>
-                            <div className="text-xs text-muted-foreground font-medium mt-1">Faltas acumuladas en el período</div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+                            <UserX className="w-4 h-4" />
+                        </div>
+                    </div>
 
                     {/* Tardanzas */}
-                    <Card className="rounded-3xl border border-border/80 bg-card shadow-xs hover:border-amber-500/40 transition-all">
-                        <CardHeader className="p-5 pb-2 flex flex-row items-center justify-between">
-                            <CardDescription className="uppercase font-extrabold tracking-wider text-xs text-muted-foreground">
-                                Llegadas Tarde
-                            </CardDescription>
-                            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                <Clock className="w-5 h-5" />
+                    <div className="p-3.5 rounded-2xl border border-border/70 bg-card/70 backdrop-blur-md flex items-center justify-between gap-3 shadow-2xs hover:border-amber-500/40 transition-all">
+                        <div className="space-y-0.5 min-w-0">
+                            <p className="uppercase font-black text-[10px] tracking-wider text-muted-foreground">Llegadas Tarde</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-2xl font-black text-foreground leading-none">{lateCount}</span>
+                                <span className="text-[11px] text-muted-foreground font-medium truncate">Tardanzas registradas</span>
                             </div>
-                        </CardHeader>
-                        <CardContent className="p-5 pt-0">
-                            <div className="text-3xl font-black text-foreground">{lateCount}</div>
-                            <div className="text-xs text-muted-foreground font-medium mt-1">Tardanzas registradas</div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                            <Clock className="w-4 h-4" />
+                        </div>
+                    </div>
 
                     {/* Llamados de Atención */}
-                    <Card className="rounded-3xl border border-border/80 bg-card shadow-xs hover:border-primary/40 transition-all">
-                        <CardHeader className="p-5 pb-2 flex flex-row items-center justify-between">
-                            <CardDescription className="uppercase font-extrabold tracking-wider text-xs text-muted-foreground">
-                                Observaciones
-                            </CardDescription>
-                            <div className="p-2.5 rounded-2xl bg-primary/10 text-primary">
-                                <ShieldAlert className="w-5 h-5" />
+                    <div className="p-3.5 rounded-2xl border border-border/70 bg-card/70 backdrop-blur-md flex items-center justify-between gap-3 shadow-2xs hover:border-primary/40 transition-all">
+                        <div className="space-y-0.5 min-w-0">
+                            <p className="uppercase font-black text-[10px] tracking-wider text-muted-foreground">Observaciones</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-2xl font-black text-foreground leading-none">{remarks.filter(r => r.type === 'ATTENTION').length}</span>
+                                <span className="text-[11px] text-muted-foreground font-medium truncate">Llamados disciplinarios</span>
                             </div>
-                        </CardHeader>
-                        <CardContent className="p-5 pt-0">
-                            <div className="text-3xl font-black text-foreground">{remarks.filter(r => r.type === 'ATTENTION').length}</div>
-                            <div className="text-xs text-muted-foreground font-medium mt-1">Llamados de atención disciplinarios</div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
+                            <ShieldAlert className="w-4 h-4" />
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -2962,6 +3115,19 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Student Group History Timeline Modal */}
+            <StudentGroupHistoryModal
+                open={historyModalOpen}
+                onOpenChange={setHistoryModalOpen}
+                studentId={studentId || null}
+                isStaffManager={currentUserRole === "admin" || currentUserRole === "gestor" || currentUserRole === "coordinador" || currentUserRole === "manager"}
+                onSuccess={() => {
+                    loadRecords();
+                    loadGrades();
+                    loadGroupHistory();
+                }}
+            />
         </div>
     );
 }

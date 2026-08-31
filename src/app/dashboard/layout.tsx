@@ -7,7 +7,7 @@ import { LicenseModal } from "@/components/license/LicenseModal";
 import { ModeToggle } from "@/components/theme/ModeToggle";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { BackButton } from "@/components/navigation/BackButton";
+import { HeaderRoleBadge } from "@/components/navigation/HeaderRoleBadge";
 import { HeaderPushToggle } from "@/components/HeaderPushToggle";
 import { Footer } from "@/components/Footer";
 import { ProfileCompletionCheck } from "@/components/profile/ProfileCompletionCheck";
@@ -16,8 +16,10 @@ import prisma from "@/lib/prisma";
 import { ExceededLimitScreen } from "@/components/auth/ExceededLimitScreen";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { HelpCircle, Bug, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { GestorProgramProvider } from "@/features/gestor/context/GestorProgramContext";
+import { DashboardSidebarTrigger } from "@/components/sidebar/DashboardSidebarTrigger";
 
 export default async function DashboardLayout({
   children,
@@ -155,71 +157,50 @@ export default async function DashboardLayout({
   const showThemeSelector = true;
   const showLicenseModal = session.user.role !== "student";
 
+  const isSidebarDefaultOpen = session.user.role === "admin";
+
   return (
-
-    <SidebarProvider defaultOpen={false}>
-      <ProfileCompletionCheck />
-      <AppSidebar />
-      <SidebarInset className={`min-w-0 ${studentNovedad ? "md:peer-data-[variant=inset]:mt-0 md:peer-data-[variant=inset]:rounded-t-none" : ""}`}>
-        {studentNovedad && (
-          <div className={`sticky top-0 z-50 w-full py-2 px-4 flex items-center justify-center gap-2 text-[11px] font-black border-b uppercase tracking-wider select-none animate-pulse shrink-0 ${bannerClasses}`}>
-            <AlertTriangle className="h-4 h-4 shrink-0" />
-            <span>Novedad: {studentNovedad}</span>
-          </div>
-        )}
-        <header className={`sticky z-40 flex h-16 w-full items-center gap-2 bg-background text-foreground border-b group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 transition-all ${studentNovedad ? "top-[33px]" : "top-0"}`}>
-          <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 w-full">
-            <SidebarTrigger className="-ml-1" />
-            <div className="flex items-center gap-2">
-              <BackButton />
+    <GestorProgramProvider>
+      <SidebarProvider defaultOpen={isSidebarDefaultOpen}>
+        <ProfileCompletionCheck />
+        <AppSidebar />
+        <SidebarInset className={`min-w-0 ${studentNovedad ? "md:peer-data-[variant=inset]:mt-0 md:peer-data-[variant=inset]:rounded-t-none" : ""}`}>
+          {studentNovedad && (
+            <div className={`sticky top-0 z-50 w-full py-2 px-4 flex items-center justify-center gap-2 text-[11px] font-black border-b uppercase tracking-wider select-none animate-pulse shrink-0 ${bannerClasses}`}>
+              <AlertTriangle className="h-4 h-4 shrink-0" />
+              <span>Novedad: {studentNovedad}</span>
             </div>
-            <div className="ml-auto flex items-center gap-1 sm:gap-2">
-              <HeaderPushToggle />
-              {showThemeSelector && <ThemeSelector themes={themes} />}
-              {showModeToggle && <ModeToggle />}
-              {showLicenseModal && (
+          )}
+          <header className={`sticky z-40 flex h-14 w-full items-center gap-2 bg-background text-foreground border-b border-border/60 transition-all ${studentNovedad ? "top-[33px]" : "top-0"}`}>
+            <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 w-full justify-between">
+              <div className="flex items-center gap-2 shrink-0">
+                <DashboardSidebarTrigger />
+                <HeaderRoleBadge />
+              </div>
+
+              <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+                <HeaderPushToggle />
+                {showThemeSelector && <ThemeSelector themes={themes} />}
+                {showModeToggle && <ModeToggle />}
+                {showLicenseModal && (
+                  <div className="hidden md:inline-flex">
+                    <LicenseModal />
+                  </div>
+                )}
+
                 <div className="hidden sm:inline-flex">
-                  <LicenseModal />
+                  <CreditsModal />
                 </div>
-              )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" asChild className="h-8 w-8 shrink-0 opacity-60 hover:opacity-100 transition-all hidden sm:inline-flex">
-                    <Link href="/dashboard/help">
-                      <HelpCircle className="h-4 w-4" />
-                      <span className="sr-only">Ayuda</span>
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Centro de Ayuda</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" asChild className="h-8 w-8 shrink-0 opacity-60 hover:opacity-100 transition-all hidden sm:inline-flex">
-                    <a href="mailto:senaacademix@gmail.com?subject=Reporte%20de%20Problema%20-%20AcademiX">
-                      <Bug className="h-4 w-4" />
-                      <span className="sr-only">Reportar un problema</span>
-                    </a>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Reportar un problema</p>
-                </TooltipContent>
-              </Tooltip>
-              <CreditsModal />
+              </div>
             </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-3 sm:gap-4 p-3 sm:p-4 md:p-5 min-h-[calc(100vh-4rem)] relative overflow-hidden min-w-0">
+            {/* Subtle Grid Background */}
+            <div className="absolute inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_center,white,transparent)] pointer-events-none -z-10" />
+            {children}
           </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 sm:gap-6 p-4 sm:p-6 md:p-8 min-h-[calc(100vh-4rem)] relative overflow-hidden min-w-0">
-          {/* Subtle Grid Background */}
-          <div className="absolute inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_center,white,transparent)] pointer-events-none -z-10" />
-          {children}
-          <Footer />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
-
+        </SidebarInset>
+      </SidebarProvider>
+    </GestorProgramProvider>
   );
 }

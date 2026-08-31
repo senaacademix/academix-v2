@@ -4,6 +4,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,7 @@ import {
     ChevronRight, Layers, Clock, X, Info, GraduationCap, ArrowLeft, ArrowUpRight, GripVertical,
     AlertCircle, Building, Code, Database, Binary, MessageSquare, Terminal,
     ShieldCheck, Cloud, Rocket, NotebookTabs, Lock as LockIcon, Download,
-    Activity, Upload
+    Activity, Upload, AlertTriangle, School
 } from "lucide-react";
 import {
     DndContext,
@@ -82,6 +83,7 @@ import {
     createProgramAction,
     updateProgramAction,
     deleteProgramAction,
+    getGestoresAction,
     createPeriodAction,
     updatePeriodAction,
     deletePeriodAction,
@@ -245,12 +247,6 @@ interface Group {
     startDate: Date | null;
     endDate: Date | null;
     categoria?: string;
-    periodId?: string | null;
-    period?: {
-        id: string;
-        name: string;
-        description: string | null;
-    } | null;
     environmentId?: string | null;
     environment?: {
         id: string;
@@ -646,25 +642,25 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [managingGroup, setManagingGroup] = useState<Group | null>(null);
 
     useEffect(() => {
-        if (programIdParam && programs.length > 0) {
-            const prog = programs.find(p => p.id === programIdParam);
-            if (prog) {
-                setSelectedProgram(prog);
-            } else {
-                setSelectedProgram(null);
+        if (programs.length > 0) {
+            if (programIdParam) {
+                const prog = programs.find(p => p.id === programIdParam);
+                if (prog) {
+                    setSelectedProgram(prog);
+                    return;
+                }
             }
-        } else {
-            setSelectedProgram(null);
+            if (currentUserRole !== "admin") {
+                setSelectedProgram(programs[0]);
+            }
         }
-    }, [programIdParam, programs]);
+    }, [currentUserRole, programIdParam, programs]);
 
     const [selectedSchedulePeriodId, setSelectedSchedulePeriodId] = useState<string>("");
 
     useEffect(() => {
         if (managingGroup) {
-            if (managingGroup.periodId) {
-                setSelectedSchedulePeriodId(managingGroup.periodId);
-            } else if (selectedProgram && selectedProgram.periods.length > 0) {
+            if (selectedProgram && selectedProgram.periods.length > 0) {
                 setSelectedSchedulePeriodId(selectedProgram.periods[0].id);
             } else {
                 setSelectedSchedulePeriodId("");
@@ -683,6 +679,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [programEndDate, setProgramEndDate] = useState("");
     const [programScheduleTitle, setProgramScheduleTitle] = useState("");
     const [programMaxHours, setProgramMaxHours] = useState(40);
+    const [allGestores, setAllGestores] = useState<Array<{ id: string; name: string; email: string }>>([]);
+    const [programGestorIds, setProgramGestorIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        getGestoresAction().then(setAllGestores).catch(console.error);
+    }, []);
 
     const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
     const [periodToEdit, setPeriodToEdit] = useState<Period | null>(null);
@@ -715,6 +717,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [deleteType, setDeleteType] = useState<"program" | "period" | "group" | "course" | "teacher" | "student" | null>(null);
     const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
     const [deleteItemName, setDeleteItemName] = useState("");
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
     const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
 
 
@@ -910,7 +913,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         ?.map(c => c.title.toLowerCase()) || [];
 
     const catalogCourses = (selectedProgram?.periods
-        .filter(p => !managingGroup || p.id === managingGroup.periodId)
         .flatMap(p => p.courses) || [])
         .filter(c => !c.group)
         .filter(c => !scheduledTitles.includes(c.title.toLowerCase()));
@@ -1146,9 +1148,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     });
                     toast.success("Horario de clase actualizado con éxito");
                 } else {
-                    const periodId = managingGroup?.periodId;
+                    const periodId = selectedSchedulePeriodId || (selectedProgram?.periods[0]?.id || "");
                     if (!periodId) {
-                        throw new Error("El grupo debe tener configurado un periodo académico actual para poder programar clases.");
+                        throw new Error("Se requiere un periodo académico seleccionado para poder programar clases.");
                     }
 
                     await scheduleGroupCourseAction({
@@ -1204,6 +1206,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setProgramEndDate("");
         setProgramScheduleTitle("");
         setProgramMaxHours(40);
+        setProgramGestorIds([]);
         setProgramDialogOpen(true);
     };
 
@@ -1215,6 +1218,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setProgramEndDate(program.endDate ? new Date(program.endDate).toISOString().split('T')[0] : "");
         setProgramScheduleTitle(program.scheduleTitle || "");
         setProgramMaxHours(program.maxTeacherHours ?? 40);
+        setProgramGestorIds(((program as any).gestores || []).map((g: any) => g.id));
         setProgramDialogOpen(true);
     };
 
@@ -1229,13 +1233,15 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 if (programToEdit) {
                     await updateProgramAction(programToEdit.id, {
                         name: programName,
-                        description: programDescription
+                        description: programDescription,
+                        gestorIds: programGestorIds
                     });
                     toast.success("Programa de formación actualizado");
                 } else {
                     await createProgramAction({
                         name: programName,
-                        description: programDescription
+                        description: programDescription,
+                        gestorIds: programGestorIds
                     });
                     toast.success("Programa de formación creado");
                 }
@@ -1315,7 +1321,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setGroupToEdit(group);
         setGroupName(group.name);
         setGroupDescription(group.description || "");
-        setGroupPeriodId(group.periodId || "none");
         setGroupCategoria((group as any).categoria || "LECTIVA");
         setGroupDialogOpen(true);
     };
@@ -1333,7 +1338,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     await updateGroupAction(groupToEdit.id, {
                         name: groupName,
                         description: groupDescription || undefined,
-                        periodId: groupPeriodId === "none" ? undefined : groupPeriodId,
                         categoria: groupCategoria
                     });
                     toast.success("Grupo académico actualizado");
@@ -1342,7 +1346,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         programId: selectedProgram.id,
                         name: groupName,
                         description: groupDescription || undefined,
-                        periodId: groupPeriodId === "none" ? undefined : groupPeriodId,
                         categoria: groupCategoria
                     });
                     toast.success("Grupo académico creado");
@@ -1387,11 +1390,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     <TableCell className="py-3 text-xs font-bold text-foreground">
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span>{group.name}</span>
-                                            {group.period && (
-                                                <Badge variant="secondary" className="font-semibold text-[10px] px-1.5 py-0.2 bg-primary/10 text-primary border border-primary/20 shrink-0">
-                                                    {group.period.name}
-                                                </Badge>
-                                            )}
                                             <Badge 
                                                 variant="outline" 
                                                 className={`font-semibold text-[9px] px-1.5 py-0.2 shrink-0 uppercase tracking-wide ${(group as any).categoria === "PRODUCTIVA" ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800" : (group as any).categoria === "EGRESADOS" ? "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-800" : "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"}`}
@@ -1729,7 +1727,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     name: group.name,
                     description: group.description,
                     categoria: group.categoria,
-                    periodName: group.period?.name || null,
+                    periodName: null,
                     students: group.students.map(student => ({
                         identificacion: student.profile?.identificacion,
                         nombres: student.profile?.nombres || student.name.split(" ")[0] || "Estudiante",
@@ -2572,6 +2570,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setDeleteType(type);
         setDeleteItemId(id);
         setDeleteItemName(name);
+        setDeleteConfirmText("");
         setDeleteConfirmationOpen(true);
     };
 
@@ -2580,11 +2579,16 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const handleDeleteConfirm = async () => {
         if (!deleteType || !deleteItemId) return;
 
+        if (deleteType === "program" && deleteConfirmText.trim().toLowerCase() !== deleteItemName.trim().toLowerCase()) {
+            toast.error(`Debes escribir "${deleteItemName}" para confirmar la eliminación.`);
+            return;
+        }
+
         startTransition(async () => {
             try {
                 if (deleteType === "program") {
                     await deleteProgramAction(deleteItemId);
-                    toast.success("Programa de formación eliminado");
+                    toast.success("Programa de formación eliminado exitosamente");
                     if (selectedProgram?.id === deleteItemId) {
                         router.push('/dashboard/admin/courses');
                     }
@@ -2605,6 +2609,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     toast.success("Estudiante eliminado del sistema");
                 }
                 setDeleteConfirmationOpen(false);
+                setDeleteConfirmText("");
                 await refreshAll();
                 await fetchSystemStudents();
             } catch (error: any) {
@@ -2679,30 +2684,49 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Estructura Académica</h2>
-                    <p className="text-muted-foreground">
-                        Gestiona Programas de Formación, Periodos, Grupos y Materias.
-                    </p>
-                </div>
-                {!isObserver && currentUserRole === "admin" && (
-                    <div className="flex gap-2">
-                        <Button onClick={openCreateProgram} className="shadow-md hover:shadow-lg transition-all">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Nuevo Programa
-                        </Button>
+            {selectedProgram === null && currentUserRole === "admin" && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Programas de Formación</h2>
+                        <p className="text-muted-foreground">
+                            Crea y gestiona los Programas de Formación de la institución.
+                        </p>
                     </div>
-                )}
-            </div>
+                    {!isObserver && (
+                        <div className="flex gap-2">
+                            <Button onClick={openCreateProgram} className="shadow-md hover:shadow-lg transition-all">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nuevo Programa
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {selectedProgram === null ? (
-                /* GRID VIEW OF ALL PROGRAMS */
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-muted-foreground">Programas de Formación Activos</h3>
+                currentUserRole !== "admin" ? (
+                    programs.length === 0 ? (
+                        <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border/70 shadow-xs">
+                            <GraduationCap className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                            <h3 className="font-bold text-lg text-foreground">Sin Programa de Formación Asignado</h3>
+                            <p className="text-muted-foreground text-xs max-w-sm mx-auto mt-1">
+                                No tienes un programa de formación asignado. Contacta al Administrador de la institución para asignarte a uno.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-20 space-y-4 rounded-3xl border border-border/60 bg-card/50">
+                            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                            <p className="text-xs text-muted-foreground font-medium">Cargando datos del programa de formación...</p>
+                        </div>
+                    )
+                ) : programIdParam ? (
+                    <div className="flex flex-col items-center justify-center py-20 space-y-4 rounded-3xl border border-border/60 bg-card/50">
+                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                        <p className="text-xs text-muted-foreground font-medium">Cargando datos del programa de formación...</p>
                     </div>
-                    
+                ) : (
+                    /* TABLE VIEW OF ALL PROGRAMS FOR ADMIN ONLY */
+                    <div className="space-y-4">
                     {programs.length === 0 ? (
                         <div className="text-center py-20 bg-muted/10 rounded-2xl border border-dashed border-muted/50">
                             <GraduationCap className="h-16 w-16 text-muted/30 mx-auto mb-4" />
@@ -2717,96 +2741,159 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {programs.map((program) => {
-                                const totalStudents = program.groups.reduce((acc, g) => acc + g.students.length, 0);
-                                const totalCourses = program.periods
-                                    .filter((p: any) => !p.esEspecial)
-                                    .reduce((acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0), 0);
-                                return (
-                                    <Card key={program.id} className="border-none shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden bg-gradient-to-br from-background to-muted/10">
-                                        <CardHeader className="pb-3">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-                                                    <GraduationCap className="h-6 w-6" />
-                                                </div>
-                                                {!isObserver && (
-                                                    <div className="flex items-center gap-1">
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => openEditProgram(program)}>
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        {currentUserRole === "admin" && (
-                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => triggerDelete("program", program.id, program.name)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <CardTitle className="text-xl font-bold mt-3 leading-tight">{program.name}</CardTitle>
-                                            <CardDescription className="line-clamp-2 text-sm mt-1 h-10">
-                                                {program.description || "Sin descripción proporcionada."}
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="pt-2">
-                                            <div className="grid grid-cols-3 gap-2 border-t border-muted/50 pt-4 text-center">
-                                                <div>
-                                                    <div className="text-sm font-bold">{program.periods.length}</div>
-                                                    <div className="text-[10px] text-muted-foreground uppercase">Periodos</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold">{totalCourses}</div>
-                                                    <div className="text-[10px] text-muted-foreground uppercase">Materias</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold">{totalStudents}</div>
-                                                    <div className="text-[10px] text-muted-foreground uppercase">Alumnos</div>
-                                                </div>
-                                            </div>
-                                            
-                                            <Button 
-                                                onClick={() => {
-                                                    router.push(`/dashboard/admin/courses?programId=${program.id}`);
-                                                    setSubTab("overview");
-                                                }}
-                                                className="w-full mt-5 shadow-sm group-hover:bg-primary transition-all rounded-lg h-9"
-                                            >
-                                                Administrar
-                                                <ArrowUpRight className="ml-1.5 h-4 w-4" />
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </div>
+                        <Card className="border border-border/80 bg-card shadow-xs rounded-3xl overflow-hidden">
+                            <div className="p-5 border-b border-border/70 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-base font-bold text-foreground">Programas de Formación Activos</h3>
+                                    <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                        Lista de todos los programas de formación registrados en la institución.
+                                    </p>
+                                </div>
+                                <Badge variant="outline" className="text-xs font-bold px-3 py-1 rounded-xl bg-primary/10 text-primary border-primary/20">
+                                    {programs.length} {programs.length === 1 ? "Programa" : "Programas"}
+                                </Badge>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-muted/30">
+                                        <TableRow>
+                                            <TableHead className="w-[350px] font-bold">Programa de Formación</TableHead>
+                                            <TableHead className="text-center font-bold">Aprendices / Alumnos</TableHead>
+                                            <TableHead className="font-bold">Gestores Asignados</TableHead>
+                                            <TableHead className="text-right font-bold w-[120px]">Acciones</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {programs.map((program) => {
+                                            const totalStudents = program.groups.reduce((acc, g) => acc + g.students.length, 0);
+                                            const gestores = (program as any).gestores || [];
+
+                                            return (
+                                                <TableRow key={program.id} className="hover:bg-muted/20 transition-colors">
+                                                    <TableCell className="font-medium">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                                                                <GraduationCap className="h-5 w-5" />
+                                                            </div>
+                                                            <div className="flex flex-col max-w-xs">
+                                                                <span className="text-sm font-bold text-foreground">{program.name}</span>
+                                                                <span className="text-xs text-muted-foreground line-clamp-1">
+                                                                    {program.description || "Sin descripción proporcionada."}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+
+                                                    <TableCell className="text-center">
+                                                        <Badge variant="secondary" className="font-bold text-xs px-2.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
+                                                            {totalStudents}
+                                                        </Badge>
+                                                    </TableCell>
+
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            {gestores.length > 0 ? (
+                                                                <div className="flex flex-wrap gap-1 items-center">
+                                                                    {gestores.map((g: any) => (
+                                                                        <Badge key={g.id} variant="outline" className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20">
+                                                                            {g.name}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-muted-foreground italic">Sin gestor asignado</span>
+                                                            )}
+                                                            {currentUserRole === "admin" && (
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0 rounded-full"
+                                                                    onClick={() => openEditProgram(program)}
+                                                                    title="Asignar o cambiar gestores"
+                                                                >
+                                                                    <Plus className="h-3 w-3" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+
+                                                    <TableCell className="text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            {!isObserver && (
+                                                                <>
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                                                        onClick={() => openEditProgram(program)}
+                                                                        title="Editar programa"
+                                                                    >
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Button>
+                                                                    {currentUserRole === "admin" && (
+                                                                        <Button
+                                                                            size="icon"
+                                                                            variant="ghost"
+                                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                                            onClick={() => triggerDelete("program", program.id, program.name)}
+                                                                            title="Eliminar programa"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                            {currentUserRole !== "admin" && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        router.push(`/dashboard/admin/courses?programId=${program.id}`);
+                                                                        setSubTab("overview");
+                                                                    }}
+                                                                    className="h-8 text-xs font-bold gap-1 rounded-xl shadow-xs"
+                                                                >
+                                                                    Administrar
+                                                                    <ArrowUpRight className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </Card>
                     )}
                 </div>
-            ) : (
+            )) : (
                 /* PROGRAM-CENTRIC WORKSPACE */
                 <div className="space-y-6">
                     {/* Header Panel */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-muted/20 p-5 rounded-2xl border border-muted/40 shadow-sm">
-                        <div className="space-y-1.5">
-                            <div className="flex items-center gap-3">
-                                <GraduationCap className="h-7 w-7 text-primary" />
-                                <h3 className="text-2xl font-bold tracking-tight">{selectedProgram.name}</h3>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-3.5 sm:p-4 rounded-2xl border border-border/80 shadow-xs">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                                <GraduationCap className="h-5 w-5" />
                             </div>
-                            <p className="text-muted-foreground text-sm max-w-2xl pl-10">
-                                {selectedProgram.description || "Sin descripción."}
-                            </p>
+                            <div>
+                                <h3 className="text-lg font-black tracking-tight text-foreground">{selectedProgram.name}</h3>
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    {selectedProgram.description || "Sin descripción."}
+                                </p>
+                            </div>
                         </div>
-                        {!isObserver && (
-                            <div className="flex items-center gap-2 shrink-0 pl-10 sm:pl-0">
-                                <Button size="sm" variant="outline" onClick={() => openEditProgram(selectedProgram)}>
-                                    <Edit className="h-4 w-4 mr-1.5" />
+                        {currentUserRole === "admin" && (
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                <Button size="sm" variant="outline" className="h-8 text-xs font-bold rounded-xl" onClick={() => openEditProgram(selectedProgram)}>
+                                    <Edit className="h-3.5 w-3.5 mr-1.5" />
                                     Editar
                                 </Button>
-                                {currentUserRole === "admin" && (
-                                    <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => triggerDelete("program", selectedProgram.id, selectedProgram.name)}>
-                                        <Trash2 className="h-4 w-4 mr-1.5" />
-                                        Eliminar
-                                    </Button>
-                                )}
+                                <Button size="sm" variant="ghost" className="h-8 text-xs font-bold rounded-xl text-destructive hover:bg-destructive/10" onClick={() => triggerDelete("program", selectedProgram.id, selectedProgram.name)}>
+                                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                    Eliminar
+                                </Button>
                             </div>
                         )}
                     </div>
@@ -2885,70 +2972,68 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                                 return (
                                     <div className="space-y-6 animate-in fade-in-50 duration-200">
-                                        {/* Fila de Tarjetas de Métricas */}
+                                        {/* Fila de Tarjetas de Métricas (Compactas) */}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <Card className="bg-background relative overflow-hidden transition-all duration-300 hover:shadow-md">
+                                            <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
                                                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-                                                <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
-                                                    <CardTitle className="text-sm font-semibold tracking-tight">Periodos Académicos</CardTitle>
-                                                    <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg shrink-0">
+                                                <div className="flex items-center justify-between pl-1">
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Periodos Académicos</span>
+                                                    <div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
                                                         <Calendar className="h-4 w-4" />
                                                     </div>
-                                                </CardHeader>
-                                                <CardContent className="p-4 pt-0">
-                                                    <div className="text-3xl font-extrabold tracking-tight">{selectedProgram.periods.length}</div>
-                                                    <div className="flex gap-2 mt-1.5 text-xs text-muted-foreground">
-                                                        <span>{normalPeriods.length} normales</span>
-                                                        <span>•</span>
-                                                        <span>{specialPeriods.length} especiales</span>
-                                                    </div>
-                                                </CardContent>
+                                                </div>
+                                                <div className="flex items-baseline gap-2 pl-1 mt-1">
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">{selectedProgram.periods.length}</span>
+                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">
+                                                        {normalPeriods.length} normales • {specialPeriods.length} especiales
+                                                    </span>
+                                                </div>
                                             </Card>
 
-                                            <Card className="bg-background relative overflow-hidden transition-all duration-300 hover:shadow-md">
+                                            <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
                                                 <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-                                                <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
-                                                    <CardTitle className="text-sm font-semibold tracking-tight">Materias Totales</CardTitle>
-                                                    <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg shrink-0">
+                                                <div className="flex items-center justify-between pl-1">
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Materias Totales</span>
+                                                    <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0">
                                                         <BookOpen className="h-4 w-4" />
                                                     </div>
-                                                </CardHeader>
-                                                <CardContent className="p-4 pt-0">
-                                                    <div className="text-3xl font-extrabold tracking-tight">
+                                                </div>
+                                                <div className="flex items-baseline gap-2 pl-1 mt-1">
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">
                                                         {normalPeriods.reduce((acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0), 0)}
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground mt-1.5">Materias curriculares normales</p>
-                                                </CardContent>
+                                                    </span>
+                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Materias curriculares normales</span>
+                                                </div>
                                             </Card>
 
-                                            <Card className="bg-background relative overflow-hidden transition-all duration-300 hover:shadow-md">
+                                            <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
                                                 <div className="absolute top-0 left-0 w-1 h-full bg-violet-500" />
-                                                <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
-                                                    <CardTitle className="text-sm font-semibold tracking-tight">Total Estudiantes</CardTitle>
-                                                    <div className="p-2 bg-violet-500/10 text-violet-500 rounded-lg shrink-0">
+                                                <div className="flex items-center justify-between pl-1">
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Estudiantes</span>
+                                                    <div className="p-1.5 bg-violet-500/10 text-violet-500 rounded-xl shrink-0">
                                                         <Users className="h-4 w-4" />
                                                     </div>
-                                                </CardHeader>
-                                                <CardContent className="p-4 pt-0">
-                                                    <div className="text-3xl font-extrabold tracking-tight">
+                                                </div>
+                                                <div className="flex items-baseline gap-2 pl-1 mt-1">
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">
                                                         {selectedProgram.groups.reduce((acc, g) => acc + g.students.length, 0)}
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground mt-1.5">Alumnos matriculados en grupos</p>
-                                                </CardContent>
+                                                    </span>
+                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Alumnos matriculados en grupos</span>
+                                                </div>
                                             </Card>
 
-                                            <Card className="bg-background relative overflow-hidden transition-all duration-300 hover:shadow-md">
+                                            <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
                                                 <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
-                                                <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
-                                                    <CardTitle className="text-sm font-semibold tracking-tight">Docentes Vinculados</CardTitle>
-                                                    <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg shrink-0">
+                                                <div className="flex items-center justify-between pl-1">
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Docentes Vinculados</span>
+                                                    <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
                                                         <GraduationCap className="h-4 w-4" />
                                                     </div>
-                                                </CardHeader>
-                                                <CardContent className="p-4 pt-0">
-                                                    <div className="text-3xl font-extrabold tracking-tight">{selectedProgram.teachers?.length || 0}</div>
-                                                    <p className="text-xs text-muted-foreground mt-1.5">Profesores autorizados</p>
-                                                </CardContent>
+                                                </div>
+                                                <div className="flex items-baseline gap-2 pl-1 mt-1">
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">{selectedProgram.teachers?.length || 0}</span>
+                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Profesores autorizados</span>
+                                                </div>
                                             </Card>
                                         </div>
 
@@ -3278,11 +3363,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             <div className="flex items-center flex-wrap gap-3">
                                                 <Users className="h-6 w-6 text-primary" />
                                                 <h4 className="text-xl font-bold tracking-tight">Gestión de Grupo: {managingGroup.name}</h4>
-                                                {managingGroup.period && (
-                                                    <Badge variant="secondary" className="font-semibold text-xs px-2.5 py-0.5 bg-secondary/80 text-secondary-foreground border border-muted">
-                                                        Periodo: {managingGroup.period.name}
-                                                    </Badge>
-                                                )}
                                             </div>
                                             <p className="text-muted-foreground text-xs max-w-2xl pl-7">
                                                 {managingGroup.description || "Grupo de alumnos de este programa"}
@@ -3442,6 +3522,29 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                         {/* SUB-TAB: TEACHERS */}
                         <TabsContent value="teachers" className="space-y-6 mt-0">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl mb-2">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shrink-0">
+                                        <Calendar className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-indigo-900 dark:text-indigo-200">Gestión por Horario / Trimestre</p>
+                                        <p className="text-[11px] text-indigo-700 dark:text-indigo-300 truncate">
+                                            La disponibilidad y materias habilitadas de profesores se configuran por cada trimestre en el panel de Horarios.
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button 
+                                    asChild 
+                                    size="sm" 
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs shrink-0"
+                                >
+                                    <Link href="/dashboard/gestor/schedules">
+                                        Ir a Panel de Horarios
+                                    </Link>
+                                </Button>
+                            </div>
+
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
                                 <h4 className="text-base font-semibold text-muted-foreground">Profesores de {selectedProgram.name}</h4>
                                 <div className="flex flex-wrap items-center gap-2">
@@ -3586,8 +3689,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                         <TableHead className="py-3 text-xs font-semibold">Nombre Completo</TableHead>
                                                         <TableHead className="py-3 text-xs font-semibold">Correo Electrónico</TableHead>
                                                         <TableHead className="py-3 text-xs font-semibold">Teléfono</TableHead>
-                                                        <TableHead className="py-3 text-xs font-semibold text-center">Materias</TableHead>
-                                                        <TableHead className="py-3 text-xs font-semibold text-center">Disponibilidad</TableHead>
                                                         <TableHead className="py-3 text-xs font-semibold text-right">Acciones</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
@@ -3622,30 +3723,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                 <TableCell className="py-3 text-xs text-muted-foreground font-sans">
                                                                     {teacher.profile?.telefono || "—"}
                                                                 </TableCell>
-                                                                <TableCell className="py-3 text-center">
-                                                                    <Badge
-                                                                        variant="outline"
-                                                                        className={`font-bold text-[10.5px] px-2 py-0.5 rounded ${
-                                                                            teacher.qualifiedCoursesLocked
-                                                                                ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
-                                                                                : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
-                                                                        }`}
-                                                                    >
-                                                                        {teacher.qualifiedCoursesLocked ? "Publicado" : "Borrador"}
-                                                                    </Badge>
-                                                                </TableCell>
-                                                                <TableCell className="py-3 text-center">
-                                                                    <Badge
-                                                                        variant="outline"
-                                                                        className={`font-bold text-[10.5px] px-2 py-0.5 rounded ${
-                                                                            teacher.availabilityLocked
-                                                                                ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
-                                                                                : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
-                                                                        }`}
-                                                                    >
-                                                                        {teacher.availabilityLocked ? "Publicado" : "Borrador"}
-                                                                    </Badge>
-                                                                </TableCell>
                                                                 <TableCell className="py-3 text-right">
                                                                     <div className="flex justify-end items-center gap-1.5 ml-auto opacity-80 group-hover:opacity-100 transition-opacity">
                                                                         {!isObserver && (
@@ -3658,23 +3735,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                                 <Edit className="h-3.5 w-3.5" />
                                                                             </Button></TooltipTrigger><TooltipContent><p>Editar Información</p></TooltipContent></Tooltip>
                                                                         )}
-                                                                        <Tooltip><TooltipTrigger asChild><Button
-                                                                            size="icon"
-                                                                            variant="ghost"
-                                                                            className="h-7 w-7 text-muted-foreground hover:bg-muted/10"
-                                                                            onClick={() => handleOpenQual(teacher)}
-                                                                        >
-                                                                            <BookOpen className="h-3.5 w-3.5" />
-                                                                        </Button></TooltipTrigger><TooltipContent><p>Materias Habilitadas</p></TooltipContent></Tooltip>
-                                                                        <Tooltip><TooltipTrigger asChild><Button
-                                                                            size="icon"
-                                                                            variant="ghost"
-                                                                            className="h-7 w-7 text-muted-foreground hover:bg-muted/10"
-                                                                            onClick={() => handleOpenTeacherAvailability(teacher)}
-                                                                        >
-                                                                            <Clock className="h-3.5 w-3.5" />
-                                                                        </Button></TooltipTrigger><TooltipContent><p>Ver Disponibilidad</p></TooltipContent></Tooltip>
-
                                                                         {!isObserver && (
                                                                             <Tooltip><TooltipTrigger asChild><Button 
                                                                                 size="icon" 
@@ -3738,6 +3798,37 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 onChange={(e) => setProgramDescription(e.target.value)}
                                 rows={3}
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold text-foreground">Gestores Académicos Asignados</Label>
+                            {allGestores.length === 0 ? (
+                                <p className="text-xs text-muted-foreground italic">No hay gestores académicos registrados en el sistema.</p>
+                            ) : (
+                                <div className="space-y-2 max-h-[160px] overflow-y-auto p-3 rounded-2xl border border-border/80 bg-muted/10 divide-y divide-border/50">
+                                    {allGestores.map((gestor) => {
+                                        const isSelected = programGestorIds.includes(gestor.id);
+                                        return (
+                                            <div key={gestor.id} className="flex items-center justify-between pt-1.5 first:pt-0">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-foreground">{gestor.name}</span>
+                                                    <span className="text-[11px] text-muted-foreground">{gestor.email}</span>
+                                                </div>
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    onCheckedChange={(checked) => {
+                                                        if (checked) {
+                                                            setProgramGestorIds(prev => [...prev, gestor.id]);
+                                                        } else {
+                                                            setProgramGestorIds(prev => prev.filter(id => id !== gestor.id));
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
 
@@ -3819,22 +3910,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 onChange={(e) => setGroupName(e.target.value)}
                             />
                         </div>
-                        {selectedProgram && selectedProgram.periods.length > 0 && (
-                            <div className="space-y-2">
-                                <Label htmlFor="grpPeriod">Periodo Académico Actual (Opcional)</Label>
-                                <Select value={groupPeriodId} onValueChange={setGroupPeriodId}>
-                                    <SelectTrigger id="grpPeriod">
-                                        <SelectValue placeholder="Selecciona el periodo actual que cursa" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Ninguno / Sin definir</SelectItem>
-                                        {selectedProgram.periods.map(per => (
-                                            <SelectItem key={per.id} value={per.id}>{per.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
                         <div className="space-y-2">
                             <Label htmlFor="grpCategory">Categoría del Grupo</Label>
                             <Select value={groupCategoria} onValueChange={setGroupCategoria}>
@@ -4462,30 +4537,158 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             </AlertDialog>
 
             {/* ============ DIALOG: DELETE CONFIRMATION ============ */}
-            <AlertDialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Eliminarás definitivamente{" "}
-                            <strong>{deleteItemName}</strong> de la base de datos (junto con todas sus relaciones en cascada si corresponde).
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => {
-                                e.preventDefault();
-                                handleDeleteConfirm();
-                            }}
-                            className="bg-destructive hover:bg-destructive/90"
-                            disabled={isPending}
-                        >
-                            {isPending ? "Eliminando..." : "Eliminar de todas formas"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {(() => {
+                const programToDelete = deleteType === "program" ? programs.find(p => p.id === deleteItemId) : null;
+                const periodsCount = programToDelete?.periods?.length || 0;
+                const groupsCount = programToDelete?.groups?.length || 0;
+                const coursesCount = programToDelete?.periods
+                    ?.filter((p: any) => !p.esEspecial)
+                    ?.reduce((acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0), 0) || 0;
+                const studentsCount = programToDelete?.groups?.reduce((acc: number, g: any) => acc + (g.students?.length || 0), 0) || 0;
+                const teachersCount = programToDelete?.teachers?.length || 0;
+                const isProgramValid = deleteConfirmText.trim().toLowerCase() === deleteItemName.trim().toLowerCase();
+
+                return (
+                    <AlertDialog 
+                        open={deleteConfirmationOpen} 
+                        onOpenChange={(open) => {
+                            setDeleteConfirmationOpen(open);
+                            if (!open) setDeleteConfirmText("");
+                        }}
+                    >
+                        <AlertDialogContent className="max-w-xl rounded-3xl p-6 sm:p-7 border-border/80 bg-background shadow-2xl">
+                            <AlertDialogHeader className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 flex items-center justify-center shrink-0 shadow-inner">
+                                        <AlertTriangle className="w-6 h-6 animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <AlertDialogTitle className="text-xl font-bold text-foreground">
+                                            {deleteType === "program" ? "Eliminar Programa de Formación" : "¿Estás absolutamente seguro?"}
+                                        </AlertDialogTitle>
+                                        <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                            {deleteType === "program" 
+                                                ? "Esta acción es irreversible y eliminará toda la jerarquía académica asociada." 
+                                                : "Esta acción no se puede deshacer."}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {deleteType === "program" ? (
+                                    <div className="space-y-4 pt-2">
+                                        {/* Banner de Programa a Eliminar */}
+                                        <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-between">
+                                            <div className="flex items-center gap-2.5">
+                                                <School className="w-5 h-5 text-primary" />
+                                                <span className="font-bold text-foreground text-sm">{deleteItemName}</span>
+                                            </div>
+                                            <Badge variant="destructive" className="rounded-xl text-[10px] font-bold uppercase tracking-wider">
+                                                Eliminación Permanente
+                                            </Badge>
+                                        </div>
+
+                                        {/* Cuadro de Consecuencias y Datos que se Borrarán */}
+                                        <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/30 space-y-2.5">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-destructive">
+                                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                                <span>Consecuencias: Todo lo que se borrará en cascada:</span>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1">
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">{periodsCount}</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Periodos</span>
+                                                </div>
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">{groupsCount}</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Fichas / Grupos</span>
+                                                </div>
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">{coursesCount}</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Materias</span>
+                                                </div>
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">{studentsCount}</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Aprendices</span>
+                                                </div>
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">{teachersCount}</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Docentes</span>
+                                                </div>
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">Mallas</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Horarios</span>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-[11px] text-destructive/90 font-medium leading-relaxed pt-1">
+                                                ⚠️ Se desvincularán o borrarán permanentemente las matrículas de aprendices, planes de mejoramiento, calificaciones registradas, asignaciones de ambientes y franjas horarias pertenecientes a este programa.
+                                            </p>
+                                        </div>
+
+                                        {/* Input de validación por escritura */}
+                                        <div className="space-y-2 pt-1 text-left">
+                                            <Label className="text-xs font-bold text-foreground block">
+                                                Para confirmar, escribe <span className="text-destructive font-mono underline select-all font-extrabold">&quot;{deleteItemName}&quot;</span>:
+                                            </Label>
+                                            <Input
+                                                value={deleteConfirmText}
+                                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                                placeholder={`Escribe "${deleteItemName}" aquí...`}
+                                                className={`h-10 rounded-xl text-xs font-medium bg-background border transition-all ${
+                                                    isProgramValid 
+                                                        ? "border-emerald-500 ring-2 ring-emerald-500/20" 
+                                                        : "border-border/80 focus:border-destructive focus:ring-2 focus:ring-destructive/20"
+                                                }`}
+                                                autoFocus
+                                            />
+                                            {deleteConfirmText && (
+                                                <p className={`text-[11px] font-semibold ${
+                                                    isProgramValid
+                                                        ? "text-emerald-600 dark:text-emerald-400"
+                                                        : "text-muted-foreground"
+                                                }`}>
+                                                    {isProgramValid
+                                                        ? "✓ Texto de confirmación correcto. Ya puedes proceder a eliminar."
+                                                        : "El texto ingresado no coincide con el nombre del programa."}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
+                                        Eliminarás definitivamente <strong>{deleteItemName}</strong> de la base de datos (junto con todas sus relaciones asociadas si corresponde).
+                                    </AlertDialogDescription>
+                                )}
+                            </AlertDialogHeader>
+
+                            <AlertDialogFooter className="mt-6 pt-4 border-t border-border/60 flex items-center justify-end gap-2">
+                                <AlertDialogCancel 
+                                    disabled={isPending}
+                                    onClick={() => setDeleteConfirmText("")}
+                                    className="rounded-xl text-xs font-bold h-10 px-4"
+                                >
+                                    Cancelar
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteConfirm();
+                                    }}
+                                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl text-xs font-bold h-10 px-5 shadow-md shadow-destructive/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={isPending || (deleteType === "program" && !isProgramValid)}
+                                >
+                                    {isPending 
+                                        ? "Eliminando..." 
+                                        : deleteType === "program" 
+                                            ? "Eliminar Programa Definitivamente" 
+                                            : "Eliminar"}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                );
+            })()}
 
             {/* ============ DIALOG: TEACHER ASSIGN/UNASSIGN CONFIRMATION ============ */}
             <AlertDialog open={teacherConfirmOpen} onOpenChange={setTeacherConfirmOpen}>

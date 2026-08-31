@@ -83,6 +83,7 @@ export function ScheduleGroupSlotsModal({
 
   // Group Configurations (Day slots for each group: groupId -> DaySlotConfig[])
   const [groupSlotsMap, setGroupSlotsMap] = useState<Record<string, DaySlotConfig[]>>({});
+  const [groupPeriodsMap, setGroupPeriodsMap] = useState<Record<string, string>>({});
   const [activeGroupSlotTab, setActiveGroupSlotTab] = useState<string>("");
 
   useEffect(() => {
@@ -108,11 +109,15 @@ export function ScheduleGroupSlotsModal({
 
     // Populate from existing schedule group slots
     const groupMap: Record<string, DaySlotConfig[]> = {};
+    const periodsMap: Record<string, string> = {};
     const grpIds: string[] = [];
 
     schedule.groupSlots.forEach((slot) => {
       if (!grpIds.includes(slot.groupId)) {
         grpIds.push(slot.groupId);
+        if (slot.periodId) {
+          periodsMap[slot.groupId] = slot.periodId;
+        }
         groupMap[slot.groupId] = createDefaultDaySlots().map((d) => ({
           ...d,
           enabled: false,
@@ -129,6 +134,7 @@ export function ScheduleGroupSlotsModal({
 
     setSelectedGroupIds(grpIds);
     setGroupSlotsMap(groupMap);
+    setGroupPeriodsMap(periodsMap);
     if (grpIds.length > 0) {
       setActiveGroupSlotTab(grpIds[0]);
       setActiveTab("slots"); // Go directly to slots if it already has groups
@@ -282,6 +288,7 @@ export function ScheduleGroupSlotsModal({
       if (activeSlots.length > 0) {
         groupsConfig.push({
           groupId: gid,
+          periodId: groupPeriodsMap[gid] || null,
           slots: activeSlots,
         });
       }
@@ -315,7 +322,7 @@ export function ScheduleGroupSlotsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[96vw] max-w-5xl sm:max-w-5xl md:max-w-5xl lg:max-w-6xl max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-3xl border-border bg-background shadow-2xl">
+      <DialogContent className="fixed inset-0 top-0 left-0 translate-x-0 translate-y-0 w-screen h-screen max-w-none sm:max-w-none !max-w-none !w-screen min-w-full min-h-full rounded-none m-0 border-0 flex flex-col p-0 overflow-hidden bg-background shadow-none z-50">
         {/* Header */}
         <DialogHeader className="p-6 pb-4 border-b border-border/80 bg-muted/20">
           <div className="flex items-center gap-3">
@@ -427,38 +434,84 @@ export function ScheduleGroupSlotsModal({
                         <div
                           key={grp.id}
                           onClick={() => handleToggleGroup(grp.id)}
-                          className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                          className={`flex flex-col p-3 rounded-xl border transition-all cursor-pointer ${
                             isSelected
                               ? "bg-primary/10 border-primary/40 shadow-xs"
                               : "bg-card hover:bg-muted/40 border-border/60"
                           }`}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className={`w-5 h-5 shrink-0 rounded-lg border flex items-center justify-center transition-colors ${
-                                isSelected
-                                  ? "bg-primary border-primary text-primary-foreground"
-                                  : "border-muted-foreground/30 bg-background"
-                              }`}
-                            >
-                              {isSelected && <Check className="w-3.5 h-3.5" />}
+                          <div className="flex items-center justify-between min-w-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`w-5 h-5 shrink-0 rounded-lg border flex items-center justify-center transition-colors ${
+                                  isSelected
+                                    ? "bg-primary border-primary text-primary-foreground"
+                                    : "border-muted-foreground/30 bg-background"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3.5 h-3.5" />}
+                              </div>
+                              <div className="min-w-0">
+                                <span className="font-semibold text-xs text-foreground block truncate">
+                                  {grp.name}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground block truncate">
+                                  {grp.programName}
+                                </span>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <span className="font-semibold text-xs text-foreground block truncate">
-                                {grp.name}
-                              </span>
-                              <span className="text-[11px] text-muted-foreground block truncate">
-                                {grp.programName}
-                                {grp.periodName ? ` • ${grp.periodName}` : ""}
-                              </span>
+
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[9px] font-semibold">
+                                Etapa Lectiva
+                              </Badge>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0 ml-2">
-                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[9px] font-semibold">
-                              Etapa Lectiva
-                            </Badge>
-                          </div>
+                          {isSelected && (grp.availablePeriods || []).length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-border/40 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">Periodo:</span>
+                              <select
+                                value={groupPeriodsMap[grp.id] || "none"}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setGroupPeriodsMap((prev) => ({
+                                    ...prev,
+                                    [grp.id]: val === "none" ? "" : val,
+                                  }));
+                                }}
+                                className="px-2 py-1 rounded-lg border border-input bg-background text-[11px] font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary truncate max-w-[220px]"
+                              >
+                                {(() => {
+                                  const normal = (grp.availablePeriods || []).filter((p) => !p.esEspecial);
+                                  const special = (grp.availablePeriods || []).filter((p) => p.esEspecial);
+                                  return (
+                                    <>
+                                      <option value="none">Sin periodo asignado</option>
+                                      {normal.length > 0 && (
+                                        <optgroup label="Periodos Normales">
+                                          {normal.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                              {p.name}
+                                            </option>
+                                          ))}
+                                        </optgroup>
+                                      )}
+                                      {special.length > 0 && (
+                                        <optgroup label="Periodos Especiales">
+                                          {special.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                              {p.name} (Especial)
+                                            </option>
+                                          ))}
+                                        </optgroup>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </select>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -520,13 +573,62 @@ export function ScheduleGroupSlotsModal({
                     <div className="space-y-4 border border-border/80 rounded-2xl p-5 bg-muted/10">
                       {/* Group Header & Presets */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
-                        <div>
-                          <h4 className="font-bold text-sm text-foreground">
-                            {groupsList.find((g) => g.id === activeGroupSlotTab)?.name}
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            {groupsList.find((g) => g.id === activeGroupSlotTab)?.programName}
-                          </p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div>
+                            <h4 className="font-bold text-sm text-foreground">
+                              {groupsList.find((g) => g.id === activeGroupSlotTab)?.name}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              {groupsList.find((g) => g.id === activeGroupSlotTab)?.programName}
+                            </p>
+                          </div>
+
+                          {/* Period Selector for Active Group */}
+                          {((groupsList.find((g) => g.id === activeGroupSlotTab)?.availablePeriods) || []).length > 0 && (
+                            <div className="flex items-center gap-1.5 bg-background px-2.5 py-1 rounded-xl border border-border/80 shadow-2xs">
+                              <span className="text-[11px] font-bold text-muted-foreground shrink-0">Periodo:</span>
+                              <select
+                                value={groupPeriodsMap[activeGroupSlotTab] || "none"}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setGroupPeriodsMap((prev) => ({
+                                    ...prev,
+                                    [activeGroupSlotTab]: val === "none" ? "" : val,
+                                  }));
+                                }}
+                                className="px-2 py-0.5 rounded-lg border border-input bg-background text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                              >
+                                {(() => {
+                                  const activePeriods = (groupsList.find((g) => g.id === activeGroupSlotTab)?.availablePeriods) || [];
+                                  const normal = activePeriods.filter((p) => !p.esEspecial);
+                                  const special = activePeriods.filter((p) => p.esEspecial);
+                                  return (
+                                    <>
+                                      <option value="none">Sin periodo asignado</option>
+                                      {normal.length > 0 && (
+                                        <optgroup label="Periodos Normales">
+                                          {normal.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                              {p.name}
+                                            </option>
+                                          ))}
+                                        </optgroup>
+                                      )}
+                                      {special.length > 0 && (
+                                        <optgroup label="Periodos Especiales">
+                                          {special.map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                              {p.name} (Especial)
+                                            </option>
+                                          ))}
+                                        </optgroup>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </select>
+                            </div>
+                          )}
                         </div>
 
                         {/* Fast Presets Toolbar */}

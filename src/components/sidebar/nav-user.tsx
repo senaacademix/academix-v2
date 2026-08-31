@@ -68,17 +68,15 @@ export function NavUser({
   const getRoleBadgeLabel = () => {
     switch (userRole) {
       case "admin":
-        return { label: "Coordinador Académico", color: "bg-primary/10 text-primary border-primary/20" };
+        return { label: "Administrador", color: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 shadow-2xs" };
       case "gestor":
-        return { label: "Gestor Académico", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" };
+        return { label: "Gestor Académico", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 shadow-2xs" };
       case "teacher":
-        return { label: "Docente / Instructor", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" };
+        return { label: "Docente / Instructor", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 shadow-2xs" };
       case "student":
-        return { label: "Estudiante / Aprendiz", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" };
-      case "observer":
-        return { label: "Observador / Auditor", color: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20" };
+        return { label: "Estudiante / Aprendiz", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs" };
       default:
-        return { label: "Usuario", color: "bg-primary/10 text-primary border-primary/20" };
+        return { label: "Usuario", color: "bg-primary/15 text-primary border-primary/30 shadow-2xs" };
     }
   };
 
@@ -150,7 +148,7 @@ export function NavUser({
   const displayedUser = {
     name: su?.name ?? user.name,
     email: su?.email ?? user.email,
-    avatar: resolveAvatarUrl(rawImage) ?? user.avatar ?? "/avatars/shadcn.jpg",
+    avatar: resolveAvatarUrl(rawImage) ?? user.avatar ?? "",
   }
 
   const initialFirst = useMemo(() => (displayedUser.name || "").split(/\s+/)[0] || "", [displayedUser.name])
@@ -247,17 +245,17 @@ export function NavUser({
 
   return (
     <>
-      <SidebarMenu>
-        <SidebarMenuItem>
+      <SidebarMenu className="group-data-[collapsible=icon]:items-center pb-1.5 group-data-[collapsible=icon]:pb-3">
+        <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:rounded-xl"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:mx-auto! group-data-[collapsible=icon]:rounded-xl"
               >
-                <Avatar className="h-8 w-8 rounded-xl shrink-0">
-                  <AvatarImage src={displayedUser.avatar} alt={displayedUser.name ?? ""} />
-                  <AvatarFallback className="rounded-xl font-bold text-xs bg-primary/10 text-primary">
+                <Avatar className="h-8.5 w-8.5 aspect-square rounded-xl shrink-0">
+                  <AvatarImage src={displayedUser.avatar} alt={displayedUser.name ?? ""} className="aspect-square object-cover" />
+                  <AvatarFallback className="rounded-xl font-bold text-xs bg-primary/10 text-primary aspect-square flex items-center justify-center">
                     {getInitials(displayedUser.name)}
                   </AvatarFallback>
                 </Avatar>

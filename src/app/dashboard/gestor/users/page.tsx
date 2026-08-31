@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { UnifiedUserManagement } from "@/features/admin/components/UnifiedUserManagement";
 import { getAllUsersAction, getAdminsAndObserversAction } from "@/features/admin/actions/adminActions";
@@ -8,7 +8,7 @@ import { getAllImprovementPlansAdmin } from "@/features/student/actions/improvem
 
 export const metadata = {
     title: "Gestión y Matrícula | AcademiX",
-    description: "Matrícula de aprendices, traslados de ficha y planes de mejoramiento.",
+    description: "Matrícula de aprendices y planes de mejoramiento.",
 };
 
 export default async function GestorUsersPage({
@@ -25,10 +25,7 @@ export default async function GestorUsersPage({
     const resolvedSearchParams = searchParams ? await searchParams : undefined;
     const tabParam = resolvedSearchParams?.tab;
     const programIdParam = resolvedSearchParams?.programId;
-    const initialTab =
-        tabParam === "teachers" ? "teachers" : "students";
-    const initialSubTab = resolvedSearchParams?.subtab === "plans" ? "plans" : "directory";
-
+    
     const [groups, programs, admins, teachersResult, improvementPlansRes] = await Promise.all([
         getGroupsAction(),
         getProgramsAction(),
@@ -37,9 +34,25 @@ export default async function GestorUsersPage({
         getAllImprovementPlansAdmin(),
     ]);
 
+    const cookieStore = await cookies();
+    const cookieProgramId = cookieStore.get("academix_gestor_program_id")?.value;
+    let effectiveProgramId = programIdParam || cookieProgramId;
+
+    if (session.user.role === "gestor" && !effectiveProgramId) {
+        if (programs.length === 1) {
+            effectiveProgramId = programs[0].id;
+        } else {
+            redirect("/dashboard/gestor");
+        }
+    }
+
+    const initialTab =
+        tabParam === "teachers" ? "teachers" : "students";
+    const initialSubTab = resolvedSearchParams?.subtab === "plans" ? "plans" : "directory";
+
     const plans = improvementPlansRes.success && improvementPlansRes.data ? improvementPlansRes.data : [];
 
-    const targetProgramId = programIdParam || (programs.length > 0 ? programs[0].id : "none");
+    const targetProgramId = effectiveProgramId || (programs.length > 0 ? programs[0].id : "none");
     const initialLectivaGroup = groups.find(
         (g) => (targetProgramId === "none" || g.programId === targetProgramId) && (g as any).categoria === "LECTIVA"
     ) || groups.find((g) => targetProgramId === "none" || g.programId === targetProgramId) || groups[0];
@@ -52,7 +65,11 @@ export default async function GestorUsersPage({
         programId: defaultGroupId === "none" && targetProgramId !== "none" ? targetProgramId : undefined,
     });
 
-    const mappedPrograms = programs.map((p) => ({
+    const filteredPrograms = session.user.role === "gestor" && effectiveProgramId
+        ? programs.filter((p) => p.id === effectiveProgramId)
+        : programs;
+
+    const mappedPrograms = filteredPrograms.map((p) => ({
         id: p.id,
         name: p.name,
     }));

@@ -28,6 +28,7 @@ export interface ScheduleBuilderData {
     id: string;
     name: string;
     categoria: string;
+    studentCount: number;
     program: {
       id: string;
       name: string;
@@ -122,24 +123,27 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
       include: {
         groupSlots: {
           include: {
+            period: {
+              include: {
+                courses: {
+                  include: {
+                    qualifiedTeachers: { select: { id: true } }
+                  },
+                  orderBy: { order: "asc" }
+                }
+              }
+            },
             group: {
               include: {
                 program: { select: { id: true, name: true } },
-                period: {
-                  include: {
-                    courses: {
-                      where: { groupId: null },
-                      include: {
-                        qualifiedTeachers: { select: { id: true } }
-                      },
-                      orderBy: { order: "asc" }
-                    }
-                  }
-                },
+                students: { select: { id: true } },
                 environment: {
                   select: { id: true, name: true, location: true }
                 },
                 courses: {
+                  where: {
+                    academicScheduleId: scheduleId
+                  },
                   include: {
                     teacher: { select: { id: true, name: true, email: true } },
                     schedules: {
@@ -156,17 +160,25 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
       }
     });
 
-    if (!academicSchedule) return null;
+    if (!academicSchedule) {
+      throw new Error("El horario académico no existe");
+    }
 
     const now = new Date();
     const isCurrent = now >= academicSchedule.startDate && now <= academicSchedule.endDate;
     const isPublished = isCurrent ? academicSchedule.isPublished : true;
 
-    // 2. Todos los Profesores y su disponibilidad
+    // 2. Todos los Profesores y su disponibilidad (estrictamente para este horario)
     const allTeachers = await prisma.user.findMany({
-      where: { role: "teacher" },
+      where: { role: "teacher", banned: { not: true } },
       include: {
-        availabilities: true,
+        availabilities: {
+          where: { academicScheduleId: scheduleId }
+        },
+        teacherScheduleQualifications: {
+          where: { academicScheduleId: scheduleId },
+          include: { course: { select: { title: true } } }
+        },
         qualifiedCourses: {
           select: { title: true }
         },
@@ -207,6 +219,7 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
       if (!groupMap.has(g.id)) {
         groupMap.set(g.id, {
           group: g,
+          period: slot.period,
           daySlots: []
         });
       }
@@ -217,9 +230,9 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
       });
     });
 
-    const groupsData = Array.from(groupMap.values()).map(({ group: g, daySlots }) => {
-      // Materias/Actividades del trimestre actual de la ficha (plantilla del periodo)
-      const trimesterCourses = (g.period?.courses || []).map((c: any) => ({
+    const groupsData = Array.from(groupMap.values()).map(({ group: g, period, daySlots }) => {
+      // Materias/Actividades del trimestre actual asignado al grupo en este horario
+      const trimesterCourses = (period?.courses || []).map((c: any) => ({
         id: c.id,
         title: c.title,
         description: c.description,
@@ -259,14 +272,15 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
         id: g.id,
         name: g.name,
         categoria: g.categoria || "LECTIVA",
+        studentCount: g.students?.length || 25,
         program: {
           id: g.program.id,
           name: g.program.name
         },
-        period: g.period ? {
-          id: g.period.id,
-          name: g.period.name,
-          description: g.period.description
+        period: period ? {
+          id: period.id,
+          name: period.name,
+          description: period.description
         } : null,
         environment: g.environment ? {
           id: g.environment.id,
@@ -328,8 +342,12 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
       const scheduledSlots = Array.from(scheduledSlotsMap.values());
 
       const qualifiedCourseTitles: string[] = Array.from(
-        new Set((t.qualifiedCourses || []).map((qc) => qc.title))
+        new Set(
+          (t.teacherScheduleQualifications || []).map((q: any) => q.course?.title).filter(Boolean)
+        )
       );
+
+      const activeAvailabilities = t.availabilities || [];
 
       return {
         id: t.id,
@@ -337,7 +355,7 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
         email: t.email,
         avatar: t.image || null,
         maxHours: 40,
-        availability: (t.availabilities || []).map((a) => ({
+        availability: activeAvailabilities.map((a) => ({
           dayOfWeek: a.dayOfWeek,
           startTime: a.startTime,
           endTime: a.endTime
@@ -486,10 +504,11 @@ export async function assignGroupClassScheduleAction(data: {
     });
   }
 
-  // 3. Buscar o crear el curso asignado al grupo
+  // 3. Buscar o crear el curso asignado al grupo en este horario específico
   let groupCourse = await prisma.course.findFirst({
     where: {
       groupId: data.groupId,
+      academicScheduleId: data.scheduleId,
       title: { equals: data.courseTitle.trim(), mode: "insensitive" }
     }
   });
@@ -500,6 +519,7 @@ export async function assignGroupClassScheduleAction(data: {
         title: data.courseTitle.trim(),
         description: data.description ? data.description.trim() : null,
         groupId: data.groupId,
+        academicScheduleId: data.scheduleId,
         periodId: data.periodId || null,
         teacherId: resolvedTeacherId,
         weeklyHours: data.weeklyHours || 0

@@ -1,6 +1,6 @@
 import { authClient } from "@/lib/auth-client";
 
-export type Role = "admin" | "gestor" | "teacher" | "student" | "observer";
+export type Role = "admin" | "gestor" | "teacher" | "student";
 
 export function getRoleFromUser(user: unknown): Role | null {
   const u = user as { role?: string; roles?: string[] } | null | undefined;
@@ -11,7 +11,6 @@ export function getRoleFromUser(user: unknown): Role | null {
   if (u.role === "admin" || roles.includes("admin")) return "admin";
   if (u.role === "gestor" || roles.includes("gestor")) return "gestor";
   if (u.role === "teacher" || roles.includes("teacher")) return "teacher";
-  if (u.role === "observer" || roles.includes("observer")) return "observer";
   if (u.role === "student" || roles.includes("student")) return "student";
   
   return "student";
@@ -21,13 +20,20 @@ export function getRedirectForSession(session: unknown): string | null {
   const s = session as { user?: unknown } | null | undefined;
   if (!s?.user) return null;
   const role = getRoleFromUser(s.user);
-  if (role === "admin" || role === "observer") return "/dashboard/admin";
+  if (role === "admin") return "/dashboard/admin";
   if (role === "gestor") return "/dashboard/gestor";
   if (role === "teacher") return "/dashboard/teacher";
   return "/dashboard/student";
 }
 
 export async function signInEmail(payload: { email: string; password: string }): Promise<void> {
+  if (typeof document !== "undefined") {
+    document.cookie = "academix_gestor_program_id=; path=/; max-age=0; SameSite=Lax";
+    try {
+      sessionStorage.removeItem("academix_gestor_program_id");
+      localStorage.removeItem("academix_gestor_program_id");
+    } catch {}
+  }
   const { data, error } = await authClient.signIn.email({
     email: payload.email,
     password: payload.password,
@@ -39,6 +45,13 @@ export async function signInEmail(payload: { email: string; password: string }):
 }
 
 export async function signInSocial(provider: "google"): Promise<void> {
+  if (typeof document !== "undefined") {
+    document.cookie = "academix_gestor_program_id=; path=/; max-age=0; SameSite=Lax";
+    try {
+      sessionStorage.removeItem("academix_gestor_program_id");
+      localStorage.removeItem("academix_gestor_program_id");
+    } catch {}
+  }
   await authClient.signIn.social({ provider, callbackURL: "/signin" });
 }
 
@@ -58,6 +71,13 @@ export async function signUpEmail(payload: {
 }
 
 export async function signOut(): Promise<void> {
+  if (typeof document !== "undefined") {
+    document.cookie = "academix_gestor_program_id=; path=/; max-age=0; SameSite=Lax";
+    try {
+      sessionStorage.removeItem("academix_gestor_program_id");
+      localStorage.removeItem("academix_gestor_program_id");
+    } catch {}
+  }
   await authClient.signOut();
 }
 

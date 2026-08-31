@@ -48,6 +48,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +74,7 @@ interface ScheduleEventsManagerViewProps {
     isActive: boolean;
     isPublished: boolean;
   };
+  groups?: Array<{ id: string; name: string }>;
   initialEvents: ScheduleEventItem[];
 }
 
@@ -101,6 +103,13 @@ const AUDIENCE_CONFIG: Record<
     cardClass: "border-purple-300 dark:border-purple-800 bg-purple-500/5 hover:bg-purple-500/10",
     dotClass: "bg-purple-500",
   },
+  GROUP: {
+    label: "Ficha Específica",
+    icon: Users,
+    badgeClass: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+    cardClass: "border-amber-300 dark:border-amber-800 bg-amber-500/5 hover:bg-amber-500/10",
+    dotClass: "bg-amber-500",
+  },
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -114,6 +123,7 @@ const COLOR_MAP: Record<string, string> = {
 
 export function ScheduleEventsManagerView({
   schedule,
+  groups = [],
   initialEvents,
 }: ScheduleEventsManagerViewProps) {
   const pathname = usePathname();
@@ -124,6 +134,7 @@ export function ScheduleEventsManagerView({
   const [events, setEvents] = useState<ScheduleEventItem[]>(initialEvents);
   const [searchQuery, setSearchQuery] = useState("");
   const [audienceFilter, setAudienceFilter] = useState<string>("ALL");
+  const [filterGroupId, setFilterGroupId] = useState<string>("ALL");
   const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
 
   // Date constraints
@@ -149,20 +160,27 @@ export function ScheduleEventsManagerView({
     return events.filter((e) => {
       const matchesSearch =
         e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (e.group?.name && e.group.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (e.location && e.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (e.description && e.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (e.linkUrl && e.linkUrl.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchesAudience = audienceFilter === "ALL" || e.targetAudience === audienceFilter;
 
-      return matchesSearch && matchesAudience;
+      const matchesGroup =
+        filterGroupId === "ALL" ||
+        (filterGroupId === "GENERAL" && e.isGeneral) ||
+        e.groupId === filterGroupId;
+
+      return matchesSearch && matchesAudience && matchesGroup;
     });
-  }, [events, searchQuery, audienceFilter]);
+  }, [events, searchQuery, audienceFilter, filterGroupId]);
 
   // Statistics
   const publicCount = useMemo(() => events.filter((e) => e.targetAudience === "PUBLIC").length, [events]);
   const teacherCount = useMemo(() => events.filter((e) => e.targetAudience === "TEACHERS").length, [events]);
   const studentCount = useMemo(() => events.filter((e) => e.targetAudience === "STUDENTS").length, [events]);
+  const groupCount = useMemo(() => events.filter((e) => e.targetAudience === "GROUP" || e.groupId).length, [events]);
 
   // Calendar Days computation
   const calendarDays = useMemo(() => {
@@ -247,9 +265,13 @@ export function ScheduleEventsManagerView({
                   <Badge className="bg-emerald-600 text-white font-extrabold text-xs gap-1 shadow-xs">
                     <Star className="w-3 h-3 fill-white" /> VIGENTE
                   </Badge>
+                ) : new Date(schedule.startDate) > new Date() ? (
+                  <Badge variant="outline" className="bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30 text-xs font-bold gap-1">
+                    <Clock className="w-3 h-3 text-sky-600 dark:text-sky-400" /> Vigencia Futura
+                  </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-xs text-muted-foreground bg-muted/40">
-                    Fuera de Vigencia
+                  <Badge variant="outline" className="bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/30 text-xs font-bold gap-1">
+                    <CalendarIcon className="w-3 h-3 text-slate-500" /> Vigencia Pasada
                   </Badge>
                 )}
                 {schedule.isPublished ? (
@@ -348,6 +370,26 @@ export function ScheduleEventsManagerView({
 
         {/* Filters & View Switcher */}
         <div className="flex items-center gap-2 flex-wrap justify-between md:justify-end">
+          {/* Ficha Select Filter */}
+          <Select value={filterGroupId} onValueChange={setFilterGroupId}>
+            <SelectTrigger className="h-9 text-xs rounded-xl w-44 bg-background">
+              <SelectValue placeholder="Todas las Fichas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs font-bold">
+                🌐 Todas las Fichas
+              </SelectItem>
+              <SelectItem value="GENERAL" className="text-xs font-medium">
+                📌 Eventos Generales
+              </SelectItem>
+              {groups.map((g) => (
+                <SelectItem key={g.id} value={g.id} className="text-xs font-medium">
+                  Ficha {g.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Audience Filter Pills */}
           <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/50 text-xs">
             <button
@@ -393,6 +435,17 @@ export function ScheduleEventsManagerView({
               }`}
             >
               🎓 Estudiantes
+            </button>
+            <button
+              type="button"
+              onClick={() => setAudienceFilter("GROUP")}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                audienceFilter === "GROUP"
+                  ? "bg-background text-amber-600 shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🎯 Fichas ({groupCount})
             </button>
           </div>
 
@@ -617,7 +670,7 @@ export function ScheduleEventsManagerView({
                       {/* Top Header: Audience badge & Date */}
                       <div className="flex items-center justify-between gap-2">
                         <Badge className={`text-[10px] font-bold gap-1 px-2.5 py-0.5 rounded-lg border ${aud.badgeClass}`}>
-                          <AudIcon className="w-3 h-3" /> {aud.label}
+                          <AudIcon className="w-3 h-3" /> {evt.targetAudience === "GROUP" ? `🎯 Ficha ${evt.group?.name || "Específica"}` : aud.label}
                         </Badge>
                         <span className="text-xs font-mono font-bold text-foreground">
                           {evt.date}
@@ -698,6 +751,7 @@ export function ScheduleEventsManagerView({
         open={modalOpen}
         onOpenChange={setModalOpen}
         schedule={schedule}
+        groupsList={groups}
         eventToEdit={eventToEdit}
         defaultDate={selectedDayForNewEvent}
         onSuccess={handleEventSaved}

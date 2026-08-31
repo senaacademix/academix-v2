@@ -203,7 +203,6 @@ export const courseService = {
             orderBy: { createdAt: "desc" },
             include: {
                 program: true,
-                period: true,
                 students: {
                     where: {
                         banned: { not: true }

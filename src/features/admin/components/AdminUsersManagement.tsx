@@ -106,7 +106,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
 
     // Form states
     const [email, setEmail] = useState("");
-    const [role, setRole] = useState<"admin" | "gestor" | "observer">("admin");
+    const [role, setRole] = useState<"admin" | "gestor">("admin");
     const [identificacion, setIdentificacion] = useState("");
     const [nombres, setNombres] = useState("");
     const [apellido, setApellido] = useState("");
@@ -135,7 +135,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
     const handleOpenEdit = (user: AdminUser) => {
         setSelectedUser(user);
         setEmail(user.email);
-        setRole((user.role as "admin" | "gestor" | "observer") || "admin");
+        setRole(user.role === "gestor" ? "gestor" : "admin");
         setIdentificacion(user.profile?.identificacion || "");
         setNombres(user.profile?.nombres || "");
         setApellido(user.profile?.apellido || "");
@@ -168,7 +168,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                     nombres: nombres.trim(),
                     apellido: apellido.trim(),
                     telefono: telefono.trim() || undefined,
-                    programIds: (role === "gestor" || role === "observer") ? selectedProgramIds : []
+                    programIds: role === "gestor" ? selectedProgramIds : []
                 });
 
                 const newUser: AdminUser = {
@@ -216,7 +216,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                     nombres: nombres.trim(),
                     apellido: apellido.trim(),
                     telefono: telefono.trim() || undefined,
-                    programIds: (role === "gestor" || role === "observer") ? selectedProgramIds : []
+                    programIds: role === "gestor" ? selectedProgramIds : []
                 });
 
                 setUsers(prev => prev.map(u => u.id === selectedUser.id ? {
@@ -290,8 +290,8 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 {!hideMainHeader ? (
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Coordinación y Gestión Académica</h1>
-                        <p className="text-muted-foreground text-sm">Administra los accesos de Coordinadores Académicos y Gestores de Programas.</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Administración y Gestión Académica</h1>
+                        <p className="text-muted-foreground text-sm">Administra los accesos de Administradores y Gestores de Programas.</p>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                 )}
                 <Button onClick={handleOpenCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium gap-2 ml-auto shadow-xs">
                     <UserPlus className="h-4 w-4" />
-                    Nuevo Coordinador o Gestor
+                    Nuevo Administrador o Gestor
                 </Button>
             </div>
 
@@ -327,8 +327,8 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
             {/* Listado de usuarios */}
             <Card className="border-border bg-card shadow-xs rounded-3xl overflow-hidden">
                 <CardHeader className="pb-3 border-b border-border/70">
-                    <CardTitle className="text-lg">Equipo de Coordinación y Gestión ({filteredUsers.length})</CardTitle>
-                    <CardDescription>Lista de Coordinadores Académicos y Gestores de Programas de Formación.</CardDescription>
+                    <CardTitle className="text-lg">Equipo de Administración y Gestión ({filteredUsers.length})</CardTitle>
+                    <CardDescription>Lista de Administradores y Gestores de Programas de Formación.</CardDescription>
                 </CardHeader>
                 <div className="overflow-x-auto">
                     <Table>
@@ -389,7 +389,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                                                 </Badge>
                                             ) : (
                                                 <Badge className="bg-primary/10 text-primary border border-primary/20 font-bold gap-1">
-                                                    <Shield className="h-3.5 w-3.5" /> Coordinador Académico
+                                                    <Shield className="h-3.5 w-3.5" /> Administrador
                                                 </Badge>
                                             )}
                                         </TableCell>
@@ -442,113 +442,121 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
 
             {/* Dialogo: Crear Usuario */}
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogContent className="sm:max-w-xl w-full max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <UserCog className="h-5 w-5 text-primary" />
                             Nuevo Miembro del Equipo
                         </DialogTitle>
-                        <DialogDescription>Crea un Coordinador Académico o un Gestor de Programas de Formación.</DialogDescription>
+                        <DialogDescription>Crea un Administrador o un Gestor de Programas de Formación.</DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-1 gap-4 py-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
                         {/* Selector de Rol */}
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                             <Label htmlFor="role" className="text-xs font-bold">Rol Institucional *</Label>
-                            <Select value={role} onValueChange={(val: "admin" | "gestor" | "observer") => setRole(val)}>
-                                <SelectTrigger className="w-full font-semibold">
+                            <Select value={role} onValueChange={(val: "admin" | "gestor") => setRole(val)}>
+                                <SelectTrigger className="w-full font-semibold h-9 text-xs">
                                     <SelectValue placeholder="Seleccione el rol..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="admin" className="font-bold">👑 Coordinador Académico (Acceso Total)</SelectItem>
-                                    <SelectItem value="gestor" className="font-bold">📂 Gestor Académico (Carga y Horarios por Programa)</SelectItem>
-                                    <SelectItem value="observer" className="font-bold">👁️ Observador / Auditor (Solo Lectura)</SelectItem>
+                                    <SelectItem value="admin" className="font-bold text-xs">👑 Administrador</SelectItem>
+                                    <SelectItem value="gestor" className="font-bold text-xs">📂 Gestor Académico</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Columna de Datos de Usuario */}
+                        {/* Identificación */}
                         <div className="space-y-1">
                             <Label htmlFor="identificacion" className="text-xs font-semibold">Identificación *</Label>
                             <Input
                                 id="identificacion"
                                 placeholder="Cédula/Documento"
+                                className="h-9 text-xs"
                                 value={identificacion}
                                 onChange={(e) => setIdentificacion(e.target.value)}
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label htmlFor="nombres" className="text-xs font-semibold">Nombres *</Label>
-                                <Input
-                                    id="nombres"
-                                    placeholder="Nombres"
-                                    value={nombres}
-                                    onChange={(e) => setNombres(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="apellido" className="text-xs font-semibold">Apellidos *</Label>
-                                <Input
-                                    id="apellido"
-                                    placeholder="Apellidos"
-                                    value={apellido}
-                                    onChange={(e) => setApellido(e.target.value)}
-                                />
-                            </div>
+                        {/* Nombres */}
+                        <div className="space-y-1">
+                            <Label htmlFor="nombres" className="text-xs font-semibold">Nombres *</Label>
+                            <Input
+                                id="nombres"
+                                placeholder="Nombres"
+                                className="h-9 text-xs"
+                                value={nombres}
+                                onChange={(e) => setNombres(e.target.value)}
+                            />
                         </div>
 
+                        {/* Apellidos */}
+                        <div className="space-y-1">
+                            <Label htmlFor="apellido" className="text-xs font-semibold">Apellidos *</Label>
+                            <Input
+                                id="apellido"
+                                placeholder="Apellidos"
+                                className="h-9 text-xs"
+                                value={apellido}
+                                onChange={(e) => setApellido(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Correo Electrónico */}
                         <div className="space-y-1">
                             <Label htmlFor="email" className="text-xs font-semibold">Correo Electrónico *</Label>
                             <Input
                                 id="email"
                                 type="email"
                                 placeholder="email@dominio.com"
+                                className="h-9 text-xs"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label htmlFor="telefono" className="text-xs font-semibold">Teléfono</Label>
-                                <Input
-                                    id="telefono"
-                                    placeholder="Opcional"
-                                    value={telefono}
-                                    onChange={(e) => setTelefono(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="pass" className="text-xs font-semibold">Contraseña</Label>
-                                <Input
-                                    id="pass"
-                                    type="password"
-                                    placeholder="Por defecto la Identificación"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-                            </div>
+                        {/* Teléfono */}
+                        <div className="space-y-1">
+                            <Label htmlFor="telefono" className="text-xs font-semibold">Teléfono</Label>
+                            <Input
+                                id="telefono"
+                                placeholder="Opcional"
+                                className="h-9 text-xs"
+                                value={telefono}
+                                onChange={(e) => setTelefono(e.target.value)}
+                            />
                         </div>
 
-                        {/* Asignación de Programas si es Gestor u Observador */}
-                        {(role === "gestor" || role === "observer") && (
-                            <div className="space-y-2 border border-border/80 rounded-2xl p-4 bg-muted/30">
-                                <Label className="text-xs font-black text-foreground flex items-center justify-between">
-                                    <span>Programas de Formación Asignados *</span>
+                        {/* Contraseña */}
+                        <div className="space-y-1 md:col-span-2">
+                            <Label htmlFor="pass" className="text-xs font-semibold">Contraseña</Label>
+                            <Input
+                                id="pass"
+                                type="password"
+                                placeholder="Por defecto la Identificación"
+                                className="h-9 text-xs"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Asignación de Programas si es Gestor */}
+                        {role === "gestor" && (
+                            <div className="md:col-span-2 space-y-1.5 border border-border/80 rounded-xl p-3 bg-muted/30">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-black text-foreground">Programas de Formación Asignados *</Label>
                                     <span className="text-xs font-bold text-primary">{selectedProgramIds.length} seleccionados</span>
-                                </Label>
+                                </div>
                                 <p className="text-[11px] text-muted-foreground">
-                                    El {role === "gestor" ? "Gestor" : "Observador"} solo podrá administrar fichas, estudiantes y horarios de los programas marcados.
+                                    El Gestor Académico solo podrá administrar fichas, estudiantes y horarios de los programas marcados.
                                 </p>
-                                <ScrollArea className="h-44 rounded-xl border border-border/60 p-2 bg-card">
+                                <ScrollArea className="h-28 rounded-lg border border-border/60 p-2 bg-card">
                                     {programs.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground p-3">No hay programas de formación creados.</p>
+                                        <p className="text-xs text-muted-foreground p-2">No hay programas de formación creados.</p>
                                     ) : (
-                                        <div className="space-y-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                             {programs.map(prog => (
-                                                <div key={prog.id} className="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-muted/50">
+                                                <div key={prog.id} className="flex items-center space-x-2 p-1 rounded-md hover:bg-muted/50">
                                                     <Checkbox
                                                         id={`create-prog-${prog.id}`}
                                                         checked={selectedProgramIds.includes(prog.id)}
@@ -556,7 +564,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                                                     />
                                                     <label
                                                         htmlFor={`create-prog-${prog.id}`}
-                                                        className="text-xs font-medium leading-none cursor-pointer flex-1"
+                                                        className="text-xs font-medium leading-none cursor-pointer truncate"
                                                     >
                                                         {prog.name}
                                                     </label>
@@ -582,7 +590,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
 
             {/* Dialogo: Editar Usuario */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogContent className="sm:max-w-xl w-full max-h-[90vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <UserCog className="h-5 w-5 text-primary" />
@@ -591,91 +599,99 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                         <DialogDescription>Modifica los datos y programas asignados al usuario.</DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-1 gap-4 py-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
                         {/* Selector de Rol */}
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                             <Label htmlFor="edit-role" className="text-xs font-bold">Rol Institucional *</Label>
-                            <Select value={role} onValueChange={(val: "admin" | "gestor" | "observer") => setRole(val)}>
-                                <SelectTrigger className="w-full font-semibold">
+                            <Select value={role} onValueChange={(val: "admin" | "gestor") => setRole(val)}>
+                                <SelectTrigger className="w-full font-semibold h-9 text-xs">
                                     <SelectValue placeholder="Seleccione el rol..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="admin" className="font-bold">👑 Coordinador Académico (Acceso Total)</SelectItem>
-                                    <SelectItem value="gestor" className="font-bold">📂 Gestor Académico (Carga y Horarios por Programa)</SelectItem>
-                                    <SelectItem value="observer" className="font-bold">👁️ Observador / Auditor (Solo Lectura)</SelectItem>
+                                    <SelectItem value="admin" className="font-bold text-xs">👑 Administrador</SelectItem>
+                                    <SelectItem value="gestor" className="font-bold text-xs">📂 Gestor Académico</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
+                        {/* Identificación */}
                         <div className="space-y-1">
                             <Label htmlFor="edit-identificacion" className="text-xs font-semibold">Identificación *</Label>
                             <Input
                                 id="edit-identificacion"
                                 placeholder="Cédula/Documento"
+                                className="h-9 text-xs"
                                 value={identificacion}
                                 onChange={(e) => setIdentificacion(e.target.value)}
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label htmlFor="edit-nombres" className="text-xs font-semibold">Nombres *</Label>
-                                <Input
-                                    id="edit-nombres"
-                                    placeholder="Nombres"
-                                    value={nombres}
-                                    onChange={(e) => setNombres(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="edit-apellido" className="text-xs font-semibold">Apellidos *</Label>
-                                <Input
-                                    id="edit-apellido"
-                                    placeholder="Apellidos"
-                                    value={apellido}
-                                    onChange={(e) => setApellido(e.target.value)}
-                                />
-                            </div>
+                        {/* Nombres */}
+                        <div className="space-y-1">
+                            <Label htmlFor="edit-nombres" className="text-xs font-semibold">Nombres *</Label>
+                            <Input
+                                id="edit-nombres"
+                                placeholder="Nombres"
+                                className="h-9 text-xs"
+                                value={nombres}
+                                onChange={(e) => setNombres(e.target.value)}
+                            />
                         </div>
 
+                        {/* Apellidos */}
+                        <div className="space-y-1">
+                            <Label htmlFor="edit-apellido" className="text-xs font-semibold">Apellidos *</Label>
+                            <Input
+                                id="edit-apellido"
+                                placeholder="Apellidos"
+                                className="h-9 text-xs"
+                                value={apellido}
+                                onChange={(e) => setApellido(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Correo Electrónico */}
                         <div className="space-y-1">
                             <Label htmlFor="edit-email" className="text-xs font-semibold">Correo Electrónico *</Label>
                             <Input
                                 id="edit-email"
                                 type="email"
                                 placeholder="email@dominio.com"
+                                className="h-9 text-xs"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
                         </div>
 
+                        {/* Teléfono */}
                         <div className="space-y-1">
                             <Label htmlFor="edit-telefono" className="text-xs font-semibold">Teléfono</Label>
                             <Input
                                 id="edit-telefono"
                                 placeholder="Opcional"
+                                className="h-9 text-xs"
                                 value={telefono}
                                 onChange={(e) => setTelefono(e.target.value)}
                             />
                         </div>
 
-                        {/* Asignación de Programas si es Gestor u Observador */}
-                        {(role === "gestor" || role === "observer") && (
-                            <div className="space-y-2 border border-border/80 rounded-2xl p-4 bg-muted/30">
-                                <Label className="text-xs font-black text-foreground flex items-center justify-between">
-                                    <span>Programas de Formación Asignados *</span>
+                        {/* Asignación de Programas si es Gestor */}
+                        {role === "gestor" && (
+                            <div className="md:col-span-2 space-y-1.5 border border-border/80 rounded-xl p-3 bg-muted/30">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-black text-foreground">Programas de Formación Asignados *</Label>
                                     <span className="text-xs font-bold text-primary">{selectedProgramIds.length} seleccionados</span>
-                                </Label>
+                                </div>
                                 <p className="text-[11px] text-muted-foreground">
-                                    El {role === "gestor" ? "Gestor" : "Observador"} solo podrá administrar fichas, estudiantes y horarios de los programas marcados.
+                                    El Gestor Académico solo podrá administrar fichas, estudiantes y horarios de los programas marcados.
                                 </p>
-                                <ScrollArea className="h-44 rounded-xl border border-border/60 p-2 bg-card">
+                                <ScrollArea className="h-28 rounded-lg border border-border/60 p-2 bg-card">
                                     {programs.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground p-3">No hay programas de formación creados.</p>
+                                        <p className="text-xs text-muted-foreground p-2">No hay programas de formación creados.</p>
                                     ) : (
-                                        <div className="space-y-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                             {programs.map(prog => (
-                                                <div key={prog.id} className="flex items-center space-x-2.5 p-1.5 rounded-lg hover:bg-muted/50">
+                                                <div key={prog.id} className="flex items-center space-x-2 p-1 rounded-md hover:bg-muted/50">
                                                     <Checkbox
                                                         id={`edit-prog-${prog.id}`}
                                                         checked={selectedProgramIds.includes(prog.id)}
@@ -683,7 +699,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                                                     />
                                                     <label
                                                         htmlFor={`edit-prog-${prog.id}`}
-                                                        className="text-xs font-medium leading-none cursor-pointer flex-1"
+                                                        className="text-xs font-medium leading-none cursor-pointer truncate"
                                                     >
                                                         {prog.name}
                                                     </label>

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { Building2, CalendarDays, Save, Sparkles, HelpCircle } from "lucide-react";
+import { ShieldCheck, Save, Sparkles, HelpCircle, UserCheck } from "lucide-react";
 
 interface AdminSettingsProps {
     initialSettings: {
@@ -28,275 +28,129 @@ interface AdminSettingsProps {
 }
 
 export function AdminSettings({ initialSettings, isObserver = false }: AdminSettingsProps) {
-    const [allowPreviousWeeks, setAllowPreviousWeeks] = useState(!initialSettings.limitAttendanceToCurrentWeek);
-    const [institutionName, setInstitutionName] = useState(initialSettings.institutionName || "");
-    const [footerText, setFooterText] = useState(initialSettings.footerText || "");
     const [studentDailyLimit, setStudentDailyLimit] = useState(initialSettings.studentDailyLimit ?? 2);
-    const [scheduleTitle, setScheduleTitle] = useState(initialSettings.scheduleTitle || "");
-    const [scheduleStartDate, setScheduleStartDate] = useState(formatDateForInput(initialSettings.scheduleStartDate));
-    const [scheduleEndDate, setScheduleEndDate] = useState(formatDateForInput(initialSettings.scheduleEndDate));
-    const [maxTeacherHours, setMaxTeacherHours] = useState(initialSettings.maxTeacherHours ?? 40);
+    const [studentAccessEnabled, setStudentAccessEnabled] = useState<boolean>(
+        (initialSettings as any).studentAccessEnabled ?? true
+    );
 
     useEffect(() => {
-        setAllowPreviousWeeks(!initialSettings.limitAttendanceToCurrentWeek);
-        setInstitutionName(initialSettings.institutionName || "");
-        setFooterText(initialSettings.footerText || "");
         setStudentDailyLimit(initialSettings.studentDailyLimit ?? 2);
-        setScheduleTitle(initialSettings.scheduleTitle || "");
-        setScheduleStartDate(formatDateForInput(initialSettings.scheduleStartDate));
-        setScheduleEndDate(formatDateForInput(initialSettings.scheduleEndDate));
-        setMaxTeacherHours(initialSettings.maxTeacherHours ?? 40);
+        setStudentAccessEnabled((initialSettings as any).studentAccessEnabled ?? true);
     }, [
-        initialSettings.limitAttendanceToCurrentWeek,
-        initialSettings.institutionName,
-        initialSettings.footerText,
         initialSettings.studentDailyLimit,
-        initialSettings.scheduleTitle,
-        initialSettings.scheduleStartDate,
-        initialSettings.scheduleEndDate,
-        initialSettings.maxTeacherHours
+        (initialSettings as any).studentAccessEnabled
     ]);
 
     return (
-        <div className="space-y-8 max-w-6xl mx-auto p-2">
-            {/* Elegant Header with Sparkle/Icon and Gradients */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/40 pb-6">
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                            <Sparkles className="w-5 h-5 animate-pulse" />
-                        </div>
-                        <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-muted-foreground bg-clip-text text-transparent">
-                            Configuración del Sistema
-                        </h2>
-                    </div>
-                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                        Gestiona y personaliza las preferencias globales del entorno institucional
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                        Configuración del Sistema
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        Gestiona y personaliza las reglas de acceso e inicio de sesión de la plataforma.
                     </p>
                 </div>
             </div>
 
-            {/* Two-Column Responsive Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                
-                {/* CARD 1: Personalización */}
-                <Card className="border border-border/40 bg-card/60 backdrop-blur-md shadow-xl hover:shadow-2xl hover:border-primary/20 transition-all duration-300 flex flex-col justify-between overflow-hidden">
-                    <div>
-                        <CardHeader className="border-b border-border/30 bg-muted/20 pb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
-                                    <Building2 className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-lg font-bold">Personalización de la Institución</CardTitle>
-                                    <CardDescription className="text-xs">Define la identidad visual y límites básicos de la plataforma.</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-5 pt-6">
-                            <form action={async (formData) => {
-                                const { updateSettingsAction } = await import("@/features/admin/actions/settingsActions");
-                                await updateSettingsAction(formData);
-                                toast.success("Personalización de la institución actualizada");
-                            }} className="space-y-5">
-                                <div className="space-y-2">
-                                    <Label htmlFor="institutionName" className="text-sm font-semibold flex items-center gap-1.5">
-                                        Nombre de la Institución
+            {/* Configuración de Acceso y Límites */}
+            <Card className="rounded-3xl border border-border/80 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="border-b border-border/60 bg-muted/20 p-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 rounded-2xl bg-primary/10 text-primary border border-primary/20">
+                            <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-base font-bold text-foreground">Reglas de Acceso Estudiantil</CardTitle>
+                            <CardDescription className="text-xs font-medium text-muted-foreground mt-0.5">
+                                Controla la disponibilidad general y límites de acceso diario para los aprendices.
+                            </CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="p-6 space-y-6">
+                    <form action={async (formData) => {
+                        const { updateSettingsAction } = await import("@/features/admin/actions/settingsActions");
+                        await updateSettingsAction(formData);
+                        toast.success("Configuración actualizada correctamente");
+                    }} className="space-y-6">
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor="studentDailyLimit" className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                                Límite Diario de Accesos (Estudiantes)
+                            </Label>
+                            <Input
+                                id="studentDailyLimit"
+                                name="studentDailyLimit"
+                                type="number"
+                                min={1}
+                                value={studentDailyLimit}
+                                onChange={(e) => setStudentDailyLimit(Number(e.target.value))}
+                                placeholder="Ej: 2"
+                                className="h-11 rounded-2xl border-border/80 focus-visible:ring-primary font-medium"
+                                disabled={isObserver}
+                            />
+                            <p className="text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5 font-medium">
+                                <HelpCircle className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                                Controla el número máximo de veces que un estudiante puede acceder a la plataforma por día.
+                            </p>
+                        </div>
+
+                        <div className="border-t border-border/50 pt-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                    <Label htmlFor="studentAccessEnabled" className="text-sm font-bold text-foreground cursor-pointer flex items-center gap-2">
+                                        <UserCheck className="w-4 h-4 text-primary" />
+                                        <span>Acceso General para Estudiantes</span>
                                     </Label>
-                                    <Input
-                                        id="institutionName"
-                                        name="institutionName"
-                                        value={institutionName}
-                                        onChange={(e) => setInstitutionName(e.target.value)}
-                                        placeholder="Ej: Universidad AcademiX"
-                                        className="h-10 transition-all focus-visible:ring-emerald-500 focus-visible:border-emerald-500"
-                                        disabled={isObserver}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="footerText" className="text-sm font-semibold flex items-center gap-1.5">
-                                        Texto del Footer
-                                    </Label>
-                                    <Input
-                                        id="footerText"
-                                        name="footerText"
-                                        value={footerText}
-                                        onChange={(e) => setFooterText(e.target.value)}
-                                        placeholder="Ej: © 2026 AcademiX - Todos los derechos reservados"
-                                        className="h-10 transition-all focus-visible:ring-emerald-500 focus-visible:border-emerald-500"
-                                        disabled={isObserver}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="studentDailyLimit" className="text-sm font-semibold flex items-center gap-1.5">
-                                        Límite Diario de Accesos (Estudiante)
-                                    </Label>
-                                    <Input
-                                        id="studentDailyLimit"
-                                        name="studentDailyLimit"
-                                        type="number"
-                                        min={1}
-                                        value={studentDailyLimit}
-                                        onChange={(e) => setStudentDailyLimit(Number(e.target.value))}
-                                        placeholder="Ej: 2"
-                                        className="h-10 transition-all focus-visible:ring-emerald-500 focus-visible:border-emerald-500"
-                                        disabled={isObserver}
-                                    />
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1">
-                                        <HelpCircle className="w-3.5 h-3.5 mt-0.5 text-muted-foreground/75 flex-shrink-0" />
-                                        Controla el número máximo de veces que un estudiante puede acceder a la plataforma por día.
+                                    <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                                        Habilita o deshabilita de forma global el acceso y la navegación de todos los aprendices/estudiantes en la plataforma.
                                     </p>
                                 </div>
-                                
-                                <div className="border-t border-border/30 pt-5">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div className="space-y-1">
-                                            <Label htmlFor="limitAttendanceToCurrentWeek" className="text-sm font-semibold cursor-pointer">
-                                                Permitir edición de fechas anteriores
-                                            </Label>
-                                            <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                                Si está activo, los docentes pueden registrar/modificar asistencias de semanas anteriores libremente.
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                            <Switch
-                                                id="limitAttendanceToCurrentWeek"
-                                                checked={allowPreviousWeeks}
-                                                onCheckedChange={setAllowPreviousWeeks}
-                                                disabled={isObserver}
-                                                className="data-[state=checked]:bg-emerald-500"
-                                            />
-                                            <input
-                                                type="hidden"
-                                                name="limitAttendanceToCurrentWeek"
-                                                value={allowPreviousWeeks ? "false" : "true"}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {!isObserver && (
-                                    <div className="flex justify-end pt-4 border-t border-border/20">
-                                        <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5 transition-all active:scale-[0.98]">
-                                            <Save className="w-4 h-4" />
-                                            Guardar Personalización
-                                        </Button>
-                                    </div>
-                                )}
-                            </form>
-                        </CardContent>
-                    </div>
-                </Card>
-
-                {/* CARD 2: Horario */}
-                <Card className="border border-border/40 bg-card/60 backdrop-blur-md shadow-xl hover:shadow-2xl hover:border-primary/20 transition-all duration-300 flex flex-col justify-between overflow-hidden">
-                    <div>
-                        <CardHeader className="border-b border-border/30 bg-muted/20 pb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                    <CalendarDays className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-lg font-bold">Configuración del Horario Académico</CardTitle>
-                                    <CardDescription className="text-xs">Define los periodos de vigencia y límites del calendario lectivo.</CardDescription>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <Switch
+                                        id="studentAccessEnabled"
+                                        checked={studentAccessEnabled}
+                                        onCheckedChange={async (checked) => {
+                                            setStudentAccessEnabled(checked);
+                                            try {
+                                                const { toggleStudentAccessAction } = await import("@/features/admin/actions/settingsActions");
+                                                await toggleStudentAccessAction(checked);
+                                                toast.success(checked ? "Acceso de estudiantes habilitado globalmente" : "Acceso de estudiantes deshabilitado globalmente");
+                                            } catch (err: any) {
+                                                toast.error("Error al actualizar la configuración de acceso");
+                                                setStudentAccessEnabled(!checked);
+                                            }
+                                        }}
+                                        disabled={isObserver}
+                                        className="data-[state=checked]:bg-primary"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="studentAccessEnabled"
+                                        value={studentAccessEnabled ? "true" : "false"}
+                                    />
                                 </div>
                             </div>
-                        </CardHeader>
-                        <CardContent className="space-y-5 pt-6">
-                            <form action={async (formData) => {
-                                const { updateSettingsAction } = await import("@/features/admin/actions/settingsActions");
-                                await updateSettingsAction(formData);
-                                toast.success("Configuración del horario actualizada");
-                            }} className="space-y-5">
-                                <div className="space-y-2">
-                                    <Label htmlFor="scheduleTitle" className="text-sm font-semibold">
-                                        Título del Horario
-                                    </Label>
-                                    <Input
-                                        id="scheduleTitle"
-                                        name="scheduleTitle"
-                                        value={scheduleTitle}
-                                        onChange={(e) => setScheduleTitle(e.target.value)}
-                                        placeholder="Ej: Horario Trimestre 1 - 2026"
-                                        className="h-10 transition-all focus-visible:ring-primary focus-visible:border-primary"
-                                        disabled={isObserver}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="scheduleStartDate" className="text-sm font-semibold">
-                                            Fecha Inicio del Periodo
-                                        </Label>
-                                        <Input
-                                            id="scheduleStartDate"
-                                            name="scheduleStartDate"
-                                            type="date"
-                                            value={scheduleStartDate}
-                                            onChange={(e) => setScheduleStartDate(e.target.value)}
-                                            className="h-10 transition-all focus-visible:ring-primary focus-visible:border-primary"
-                                            disabled={isObserver}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="scheduleEndDate" className="text-sm font-semibold">
-                                            Fecha Fin del Periodo
-                                        </Label>
-                                        <Input
-                                            id="scheduleEndDate"
-                                            name="scheduleEndDate"
-                                            type="date"
-                                            value={scheduleEndDate}
-                                            onChange={(e) => setScheduleEndDate(e.target.value)}
-                                            className="h-10 transition-all focus-visible:ring-primary focus-visible:border-primary"
-                                            disabled={isObserver}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="maxTeacherHours" className="text-sm font-semibold">
-                                        Límite Legal (Horas Semanales por Docente)
-                                    </Label>
-                                    <Input
-                                        id="maxTeacherHours"
-                                        name="maxTeacherHours"
-                                        type="number"
-                                        min={1}
-                                        max={168}
-                                        value={maxTeacherHours}
-                                        onChange={(e) => setMaxTeacherHours(Number(e.target.value))}
-                                        placeholder="40"
-                                        className="h-10 transition-all focus-visible:ring-primary focus-visible:border-primary"
-                                        disabled={isObserver}
-                                    />
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1">
-                                        <HelpCircle className="w-3.5 h-3.5 mt-0.5 text-muted-foreground/75 flex-shrink-0" />
-                                        Este valor se utiliza para controlar y alertar sobre asignaciones semanales que superen el límite legal del contrato.
-                                    </p>
-                                </div>
+                        </div>
 
-                                {!isObserver && (
-                                    <div className="flex justify-end pt-[34px] border-t border-border/20">
-                                        <Button type="submit" className="bg-primary hover:bg-primary/90 text-white font-medium flex items-center gap-1.5 transition-all active:scale-[0.98]">
-                                            <Save className="w-4 h-4" />
-                                            Guardar Configuración del Horario
-                                        </Button>
-                                    </div>
-                                )}
-                            </form>
-                        </CardContent>
-                    </div>
-                </Card>
-            </div>
+                        {!isObserver && (
+                            <div className="flex justify-end pt-4 border-t border-border/40">
+                                <Button 
+                                    type="submit" 
+                                    className="rounded-2xl h-11 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 flex items-center gap-2 transition-all"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    Guardar Configuración
+                                </Button>
+                            </div>
+                        )}
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
-}
-
-function formatDateForInput(dateVal: any) {
-    if (!dateVal) return "";
-    const dateObj = new Date(dateVal);
-    if (isNaN(dateObj.getTime())) return "";
-    const y = dateObj.getFullYear();
-    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
-    const d = String(dateObj.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
 }

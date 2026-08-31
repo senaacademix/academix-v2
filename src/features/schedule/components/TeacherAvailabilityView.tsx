@@ -8,9 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Trash2, Plus, Lock, CheckCircle2, AlertCircle, Edit2, X, Check, Cloud, Sun, Moon } from "lucide-react";
+import { Calendar, Clock, Trash2, Plus, Lock, CheckCircle2, AlertCircle, Edit2, X, Check, Cloud, Sun, Moon, User } from "lucide-react";
 import { toast } from "sonner";
 import { DayOfWeek } from "@/generated/prisma/client";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { 
     getTeacherAvailabilityAction, 
     saveTeacherAvailabilityAction, 
@@ -89,7 +96,17 @@ interface TimeSlot {
     endTime: string; // "HH:mm"
 }
 
-export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionComplete }: { teacherId?: string, isAdminMode?: boolean, onAdminActionComplete?: () => void }) {
+export function TeacherAvailabilityView({ 
+    teacherId, 
+    scheduleId,
+    isAdminMode, 
+    onAdminActionComplete 
+}: { 
+    teacherId?: string, 
+    scheduleId?: string,
+    isAdminMode?: boolean, 
+    onAdminActionComplete?: () => void 
+}) {
     const [locked, setLocked] = useState(false);
     const [slots, setSlots] = useState<TimeSlot[]>([]);
     const [loading, setLoading] = useState(true);
@@ -108,18 +125,36 @@ export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionC
     const [editStartTime, setEditStartTime] = useState("");
     const [editEndTime, setEditEndTime] = useState("");
 
-    useEffect(() => {
-        loadAvailability();
-    }, []);
+    const [schedules, setSchedules] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+    const [selectedScheduleId, setSelectedScheduleId] = useState<string>(scheduleId || "");
 
-    const loadAvailability = async () => {
+    useEffect(() => {
+        if (scheduleId) {
+            setSelectedScheduleId(scheduleId);
+        }
+    }, [scheduleId]);
+
+    useEffect(() => {
+        loadAvailability(selectedScheduleId);
+    }, [selectedScheduleId]);
+
+    const loadAvailability = async (schedId?: string) => {
         setLoading(true);
+        const targetSched = schedId !== undefined ? schedId : selectedScheduleId;
         try {
             const data = isAdminMode && teacherId 
-                ? await getTeacherAvailabilityForAdminAction(teacherId)
-                : await getTeacherAvailabilityAction();
+                ? await getTeacherAvailabilityForAdminAction(teacherId, targetSched)
+                : await getTeacherAvailabilityAction(targetSched);
             setLocked(data.locked);
             setSlots(data.slots);
+            if ((data as any).schedules) {
+                const list = (data as any).schedules;
+                setSchedules(list);
+                if ((!selectedScheduleId || selectedScheduleId === "all") && list.length > 0) {
+                    const active = list.find((s: any) => s.isActive)?.id || list[0].id;
+                    setSelectedScheduleId(active);
+                }
+            }
             setLastModifiedBy((data as any).lastModifiedBy || null);
             setUpdatedAt((data as any).updatedAt ? new Date((data as any).updatedAt) : null);
         } catch (e: any) {
@@ -247,12 +282,12 @@ export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionC
         startTransition(async () => {
             try {
                 if (isAdminMode && teacherId) {
-                    await adminSaveTeacherAvailabilityAction(teacherId, slots);
+                    await adminSaveTeacherAvailabilityAction(teacherId, slots, selectedScheduleId);
                 } else {
-                    await saveTeacherAvailabilityAction(slots);
+                    await saveTeacherAvailabilityAction(slots, selectedScheduleId);
                 }
                 toast.success("Borrador de disponibilidad guardado exitosamente");
-                await loadAvailability();
+                await loadAvailability(selectedScheduleId);
                 if (onAdminActionComplete) onAdminActionComplete();
             } catch (e: any) {
                 toast.error(e.message || "Error al guardar los cambios");
@@ -265,15 +300,15 @@ export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionC
             try {
                 // First save the current slots state to ensure DB matches exactly the UI
                 if (isAdminMode && teacherId) {
-                    await adminSaveTeacherAvailabilityAction(teacherId, slots);
+                    await adminSaveTeacherAvailabilityAction(teacherId, slots, selectedScheduleId);
                     await adminLockTeacherAvailabilityAction(teacherId);
                 } else {
-                    await saveTeacherAvailabilityAction(slots);
+                    await saveTeacherAvailabilityAction(slots, selectedScheduleId);
                     await publishTeacherAvailabilityAction();
                 }
                 toast.success("Disponibilidad publicada y bloqueada con éxito");
                 setPublishDialogOpen(false);
-                await loadAvailability();
+                await loadAvailability(selectedScheduleId);
                 if (onAdminActionComplete) onAdminActionComplete();
             } catch (e: any) {
                 toast.error(e.message || "Error al publicar la disponibilidad");
@@ -305,6 +340,33 @@ export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionC
 
     return (
         <div className="space-y-6">
+            {/* Academic Schedule Scope Selector (Only in standalone teacher mode) */}
+            {!isAdminMode && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-card/80 backdrop-blur-md border border-border/80 rounded-2xl shadow-2xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+                            <Calendar className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Disponibilidad por Horario / Trimestre</p>
+                            <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar la disponibilidad específica del docente.</p>
+                        </div>
+                    </div>
+                    <Select value={selectedScheduleId} onValueChange={(val) => { setSelectedScheduleId(val); loadAvailability(val); }}>
+                        <SelectTrigger className="w-full sm:w-[260px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
+                            <SelectValue placeholder="Seleccionar Horario..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {schedules.map((s) => (
+                                <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
+                                    {s.isActive ? "🟢" : "⚪"} {s.name} {s.isActive ? "(VIGENTE)" : ""}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+
             {/* Status alerts */}
             {locked ? (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
@@ -356,54 +418,52 @@ export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionC
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-1 sm:pt-0">
-                        {!isAdminMode ? (
-                            <>
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={handleSaveChanges} 
-                                    disabled={isPending}
-                                    className="bg-background text-foreground hover:bg-muted font-bold text-xs"
-                                >
-                                    Guardar Borrador
-                                </Button>
-                                <AlertDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-                                    <AlertDialogTrigger asChild>
-                                        <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs">
-                                            Publicar y Bloquear
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle className="flex items-center gap-2">
-                                                <Lock className="w-5 h-5 text-amber-600" />
-                                                ¿Confirmas publicar tu disponibilidad?
-                                            </AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Una vez publicada, tu disponibilidad horaria quedará **bloqueada** y no podrás realizar más cambios. Solo un administrador podrá desbloquearla para que puedas editarla nuevamente.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction 
-                                                onClick={handlePublish}
-                                                className="bg-amber-600 hover:bg-amber-700 text-white"
-                                            >
-                                                Confirmar y Bloquear
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </>
-                        ) : (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleSaveChanges} 
+                            disabled={isPending}
+                            className="bg-background text-foreground hover:bg-muted font-bold text-xs"
+                        >
+                            {isPending ? "Guardando..." : "Guardar Cambios"}
+                        </Button>
+                        {isAdminMode ? (
                             <Button 
                                 size="sm" 
                                 onClick={handlePublish}
                                 disabled={isPending}
-                                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+                                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs"
                             >
                                 {isPending ? "Aprobando..." : "Aprobar y Bloquear"}
                             </Button>
+                        ) : (
+                            <AlertDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+                                <AlertDialogTrigger asChild>
+                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs">
+                                        Publicar y Bloquear
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="flex items-center gap-2">
+                                            <Lock className="w-5 h-5 text-amber-600" />
+                                            ¿Confirmas publicar tu disponibilidad?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Una vez publicada, tu disponibilidad horaria quedará **bloqueada** y no podrás realizar más cambios. Solo un administrador podrá desbloquearla para que puedas editarla nuevamente.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction 
+                                            onClick={handlePublish}
+                                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                                        >
+                                            Confirmar y Bloquear
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         )}
                     </div>
                 </div>
@@ -476,7 +536,7 @@ export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionC
                                                                     className="h-6 px-2 text-[10px] bg-primary text-primary-foreground hover:bg-primary/90"
                                                                     onClick={() => handleSaveEdit(index)}
                                                                 >
-                                                                    <Check className="w-3 h-3 mr-1" /> Aceptar
+                                                                    <Check className="w-3 h-3 mr-1" /> Guardar
                                                                 </Button>
                                                             </div>
                                                         </div>
@@ -485,18 +545,43 @@ export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionC
 
                                                 const styles = getSchedulePeriodStyles(slot.startTime);
                                                 const IconComp = styles.icon;
+                                                const slotAuthor = (slot as any).createdBy || lastModifiedBy;
+                                                const isProf = slotAuthor?.role === "teacher" || slotAuthor?.id === teacherId;
+                                                const authorRoleLabel = isProf ? "Profesor" : slotAuthor?.role === "admin" ? "Administrador" : "Gestor";
+                                                const authorName = slotAuthor?.name || "Usuario registrado";
 
                                                 return (
                                                     <div 
                                                         key={index} 
                                                         className={`bg-gradient-to-br flex items-center justify-between p-2 rounded-lg border text-xs font-medium group transition-all duration-200 ${styles.gradient}`}
                                                     >
-                                                        <span className={`flex items-center gap-1.5 ${styles.text}`}>
-                                                            <IconComp className="w-3.5 h-3.5 shrink-0" /> 
-                                                            {toFormat12h(slot.startTime)} – {toFormat12h(slot.endTime)} ({styles.label})
-                                                        </span>
-                                                        {!locked && !isAdminMode && (
-                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                            <span className={`flex items-center gap-1.5 ${styles.text} truncate`}>
+                                                                <IconComp className="w-3.5 h-3.5 shrink-0" /> 
+                                                                {toFormat12h(slot.startTime)} – {toFormat12h(slot.endTime)} ({styles.label})
+                                                            </span>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Badge 
+                                                                        variant="outline" 
+                                                                        className={`text-[9px] font-bold px-1.5 py-0 rounded shrink-0 cursor-help ${
+                                                                            isProf 
+                                                                                ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
+                                                                                : "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                        }`}
+                                                                    >
+                                                                        <User className="w-2.5 h-2.5 mr-0.5 inline" />
+                                                                        {authorRoleLabel}
+                                                                    </Badge>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="text-xs font-semibold">
+                                                                    <p>Configurado por: <strong>{authorName}</strong> ({authorRoleLabel})</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
+
+                                                        {(!locked || isAdminMode) && (
+                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                                                 <Tooltip><TooltipTrigger asChild><Button 
                                                                                                     variant="ghost" size="icon"
                                                                                                     onClick={() => handleStartEdit(index, slot)}
@@ -521,7 +606,7 @@ export function TeacherAvailabilityView({ teacherId, isAdminMode, onAdminActionC
                                 </div>
 
                                 {/* Form to add slots */}
-                                {!locked && !isAdminMode && (
+                                {(!locked || isAdminMode) && (
                                     <div className="border-t border-muted/40 pt-3 space-y-2 mt-2">
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="space-y-1">

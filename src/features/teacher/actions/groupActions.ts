@@ -34,6 +34,34 @@ function isDateInCurrentWeek(date: Date): boolean {
     return d.getTime() >= monday.getTime() && d.getTime() <= sunday.getTime();
 }
 
+async function checkIsCourseWeekLocked(courseId: string, dateObj: Date): Promise<boolean> {
+    if (isDateInCurrentWeek(dateObj)) return false;
+
+    const course = await prisma.course.findUnique({
+        where: { id: courseId },
+        select: {
+            group: {
+                select: {
+                    program: {
+                        select: { allowPastAttendanceEdit: true }
+                    }
+                }
+            },
+            period: {
+                select: {
+                    program: {
+                        select: { allowPastAttendanceEdit: true }
+                    }
+                }
+            }
+        }
+    });
+
+    const allowPast = course?.group?.program?.allowPastAttendanceEdit ?? course?.period?.program?.allowPastAttendanceEdit ?? false;
+
+    return !allowPast;
+}
+
 async function requireTeacher() {
     const session = await getSession();
     if (!session || (session.user.role !== "teacher" && session.user.role !== "admin" && session.user.role !== "gestor")) {
@@ -113,23 +141,19 @@ export async function saveAttendanceBatch(
         const dateObj = new Date(date);
         dateObj.setUTCHours(12, 0, 0, 0);
 
-        // Check week locking config
-        const settings = await prisma.systemSettings.findUnique({
-            where: { id: "settings" }
-        });
-        if (settings?.limitAttendanceToCurrentWeek) {
-            if (!isDateInCurrentWeek(dateObj)) {
-                const approvedRequest = await prisma.attendancePermissionRequest.findFirst({
-                    where: {
-                        courseId,
-                        teacherId: teacher.id,
-                        date: dateObj,
-                        status: "APPROVED"
-                    }
-                });
-                if (!approvedRequest) {
-                    throw new Error("WEEK_LOCKED");
+        // Check week locking config per program
+        const isLocked = await checkIsCourseWeekLocked(courseId, dateObj);
+        if (isLocked) {
+            const approvedRequest = await prisma.attendancePermissionRequest.findFirst({
+                where: {
+                    courseId,
+                    teacherId: teacher.id,
+                    date: dateObj,
+                    status: "APPROVED"
                 }
+            });
+            if (!approvedRequest) {
+                throw new Error("WEEK_LOCKED");
             }
         }
 
@@ -383,7 +407,6 @@ export async function getGroupRemarksHistory(groupId: string) {
         where: { id: groupId },
         include: {
             program: true,
-            period: true,
             environment: true,
             students: {
                 where: user.role === "admin" ? {} : { banned: { not: true } },
@@ -538,7 +561,7 @@ export async function getGroupRemarksHistory(groupId: string) {
         groupName: group.name,
         groupDescription: group.description,
         program: group.program?.name,
-        period: group.period?.name,
+        period: null,
         environment: group.environment?.name,
         startDate: group.startDate,
         endDate: group.endDate,
@@ -571,23 +594,19 @@ export async function saveSingleAttendanceAction(
         // Avoid timezone shifting issues by setting hours in UTC
         dateObj.setUTCHours(12, 0, 0, 0);
 
-        // Check week locking config
-        const settings = await prisma.systemSettings.findUnique({
-            where: { id: "settings" }
-        });
-        if (settings?.limitAttendanceToCurrentWeek) {
-            if (!isDateInCurrentWeek(dateObj)) {
-                const approvedRequest = await prisma.attendancePermissionRequest.findFirst({
-                    where: {
-                        courseId,
-                        teacherId: teacher.id,
-                        date: dateObj,
-                        status: "APPROVED"
-                    }
-                });
-                if (!approvedRequest) {
-                    throw new Error("WEEK_LOCKED");
+        // Check week locking config per program
+        const isLocked = await checkIsCourseWeekLocked(courseId, dateObj);
+        if (isLocked) {
+            const approvedRequest = await prisma.attendancePermissionRequest.findFirst({
+                where: {
+                    courseId,
+                    teacherId: teacher.id,
+                    date: dateObj,
+                    status: "APPROVED"
                 }
+            });
+            if (!approvedRequest) {
+                throw new Error("WEEK_LOCKED");
             }
         }
 
@@ -831,11 +850,7 @@ export async function getAttendanceEditPermissionStatusAction(courseId: string, 
         const dateObj = new Date(dateStr);
         dateObj.setUTCHours(12, 0, 0, 0);
 
-        const settings = await prisma.systemSettings.findUnique({
-            where: { id: "settings" }
-        });
-
-        const isLocked = settings?.limitAttendanceToCurrentWeek ? !isDateInCurrentWeek(dateObj) : false;
+        const isLocked = await checkIsCourseWeekLocked(courseId, dateObj);
 
         return { 
             success: true, 
@@ -843,7 +858,7 @@ export async function getAttendanceEditPermissionStatusAction(courseId: string, 
             hasPermission: !isLocked,
             requestStatus: null,
             reason: null,
-            limitSettingsActive: settings?.limitAttendanceToCurrentWeek || false
+            limitSettingsActive: isLocked
         };
     } catch (error: any) {
         console.error("Error fetching permission status:", error);

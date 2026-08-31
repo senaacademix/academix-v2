@@ -28,7 +28,6 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
           group: {
             include: {
               program: { select: { id: true, name: true } },
-              period: { select: { id: true, name: true } },
               environment: { select: { id: true, name: true, location: true } },
               courses: {
                 include: {
@@ -104,6 +103,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
     vigenteSchedule.groupSlots.forEach((slot: any) => {
       if (!studentUser?.groupId || slot.groupId === studentUser.groupId) {
         slot.group.courses.forEach((c: any) => {
+          if (c.academicScheduleId && c.academicScheduleId !== vigenteSchedule.id) return;
           if (!courseMap.has(c.id)) {
             courseMap.set(c.id, {
               id: c.id,
@@ -204,6 +204,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
     const courseMap = new Map<string, any>();
     selectedSchedule.groupSlots.forEach((slot: any) => {
       slot.group.courses.forEach((c: any) => {
+        if (c.academicScheduleId && c.academicScheduleId !== selectedSchedule.id) return;
         // Filtrar franjas horarias estrictamente asignadas a este profesor
         const matchingSchedules = (c.schedules || []).filter((s: any) => {
           if (role !== "teacher") return true;

@@ -1,15 +1,23 @@
 "use client";
 
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { BookOpen, CheckCircle2, AlertCircle, Lock } from "lucide-react";
+import { BookOpen, CheckCircle2, AlertCircle, Lock, User } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {
     getTeacherQualificationsAction,
     updateTeacherQualificationsAction,
@@ -32,16 +40,20 @@ import { authClient } from "@/lib/auth-client";
 
 interface TeacherQualificationsViewProps {
     teacherId?: string;
+    scheduleId?: string;
     isAdminMode?: boolean;
     programId?: string;
     onAdminActionComplete?: () => void;
 }
 
-export function TeacherQualificationsView({ teacherId, isAdminMode = false, programId, onAdminActionComplete }: TeacherQualificationsViewProps) {
+export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode = false, programId, onAdminActionComplete }: TeacherQualificationsViewProps) {
     const { data: session } = authClient.useSession();
     const [locked, setLocked] = useState(false);
     const [qualPrograms, setQualPrograms] = useState<any[]>([]);
     const [selectedQualCourses, setSelectedQualCourses] = useState<string[]>([]);
+    const [qualificationsCreatedBy, setQualificationsCreatedBy] = useState<Record<string, { id: string; name: string | null; role: string }>>({});
+    const [schedules, setSchedules] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+    const [selectedScheduleId, setSelectedScheduleId] = useState<string>(scheduleId || "");
     const [loading, setLoading] = useState(true);
     const [isPending, startTransition] = useTransition();
     const [publishDialogOpen, setPublishDialogOpen] = useState(false);
@@ -51,20 +63,36 @@ export function TeacherQualificationsView({ teacherId, isAdminMode = false, prog
     const targetTeacherId = isAdminMode ? teacherId : session?.user?.id;
 
     useEffect(() => {
-        if (targetTeacherId) {
-            loadQualifications();
+        if (scheduleId) {
+            setSelectedScheduleId(scheduleId);
         }
-    }, [targetTeacherId]);
+    }, [scheduleId]);
 
-    const loadQualifications = async () => {
+    useEffect(() => {
+        if (targetTeacherId) {
+            loadQualifications(selectedScheduleId);
+        }
+    }, [targetTeacherId, selectedScheduleId]);
+
+    const loadQualifications = async (schedId?: string) => {
         if (!targetTeacherId) return;
         setLoading(true);
+        const targetSched = schedId !== undefined ? schedId : selectedScheduleId;
         try {
-            const data = await getTeacherQualificationsAction(targetTeacherId);
+            const data = await getTeacherQualificationsAction(targetTeacherId, targetSched);
             if (data) {
                 setQualPrograms((data as any).programs || []);
                 setSelectedQualCourses(((data as any).qualifiedCourses || []).map((c: any) => c.id));
+                setQualificationsCreatedBy((data as any).qualificationsCreatedBy || {});
                 setLocked((data as any).locked || false);
+                if ((data as any).schedules) {
+                    const list = (data as any).schedules;
+                    setSchedules(list);
+                    if ((!selectedScheduleId || selectedScheduleId === "all") && list.length > 0) {
+                        const active = list.find((s: any) => s.isActive)?.id || list[0].id;
+                        setSelectedScheduleId(active);
+                    }
+                }
                 setLastModifiedBy((data as any).lastModifiedBy || null);
                 setUpdatedAt((data as any).updatedAt ? new Date((data as any).updatedAt) : null);
             }
@@ -79,9 +107,9 @@ export function TeacherQualificationsView({ teacherId, isAdminMode = false, prog
         if (!targetTeacherId) return;
         startTransition(async () => {
             try {
-                await updateTeacherQualificationsAction(targetTeacherId, selectedQualCourses);
+                await updateTeacherQualificationsAction(targetTeacherId, selectedQualCourses, selectedScheduleId);
                 toast.success("Borrador de materias guardado exitosamente");
-                await loadQualifications();
+                await loadQualifications(selectedScheduleId);
             } catch (e: any) {
                 toast.error(e.message || "Error al guardar los cambios");
             }
@@ -157,6 +185,33 @@ export function TeacherQualificationsView({ teacherId, isAdminMode = false, prog
 
     return (
         <div className="space-y-6">
+            {/* Academic Schedule Scope Selector (Only in standalone teacher mode) */}
+            {!isAdminMode && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-card/80 backdrop-blur-md border border-border/80 rounded-2xl shadow-2xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                            <BookOpen className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Materias Habilitadas por Horario / Trimestre</p>
+                            <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar las materias específicas del docente.</p>
+                        </div>
+                    </div>
+                    <Select value={selectedScheduleId} onValueChange={(val) => { setSelectedScheduleId(val); loadQualifications(val); }}>
+                        <SelectTrigger className="w-full sm:w-[260px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
+                            <SelectValue placeholder="Seleccionar Horario..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {schedules.map((s) => (
+                                <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
+                                    {s.isActive ? "🟢" : "⚪"} {s.name} {s.isActive ? "(VIGENTE)" : ""}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+
             {/* Status alerts */}
             {locked ? (
                 <div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
@@ -206,17 +261,15 @@ export function TeacherQualificationsView({ teacherId, isAdminMode = false, prog
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-1 sm:pt-0">
-                        {!isAdminMode && (
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={handleSaveChanges} 
-                                disabled={isPending}
-                                className="bg-background text-foreground hover:bg-muted font-bold text-xs"
-                            >
-                                Guardar Borrador
-                            </Button>
-                        )}
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleSaveChanges} 
+                            disabled={isPending}
+                            className="bg-background text-foreground hover:bg-muted font-bold text-xs"
+                        >
+                            {isPending ? "Guardando..." : "Guardar Cambios"}
+                        </Button>
                         {isAdminMode ? (
                             <Button 
                                 size="sm" 
@@ -236,11 +289,11 @@ export function TeacherQualificationsView({ teacherId, isAdminMode = false, prog
                                 <AlertDialogContent className="max-w-[90vw] sm:max-w-lg rounded-2xl">
                                     <AlertDialogHeader>
                                         <AlertDialogTitle className="flex items-center gap-2">
-                                            <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                            <Lock className="w-5 h-5 text-amber-600" />
                                             ¿Confirmas publicar tus materias?
                                         </AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Una vez publicadas, tus materias quedarán **bloqueadas** y no podrás realizar más cambios. Solo un administrador podrá desbloquearlas para que puedas editar nuevamente.
+                                            Una vez publicadas, tus materias habilitadas quedarán **bloqueadas** y no podrás realizar más cambios. Solo un administrador podrá desbloquearlas.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -259,11 +312,12 @@ export function TeacherQualificationsView({ teacherId, isAdminMode = false, prog
                 </div>
             )}
 
+            {/* Qualifications Selection Card */}
             <Card className="border-none shadow-sm bg-background">
                 <CardHeader className="bg-muted/10 pb-4">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="space-y-1">
-                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <CardTitle className="text-base font-bold flex items-center gap-2">
                                 <BookOpen className="h-5 w-5 text-primary" />
                                 Asignaturas Disponibles en tus Programas
                             </CardTitle>
@@ -325,40 +379,68 @@ export function TeacherQualificationsView({ teacherId, isAdminMode = false, prog
                                                         ) : (
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2">
                                                                 {periodCourses.map((course: any) => {
-                                                                const isChecked = selectedQualCourses.includes(course.id);
-                                                                return (
-                                                                    <div 
-                                                                        key={course.id} 
-                                                                        className={`flex items-center space-x-2.5 p-2.5 rounded-lg border transition-colors ${
-                                                                            isChecked 
-                                                                                ? "bg-primary/5 border-primary/20" 
-                                                                                : "bg-background border-border hover:bg-muted/30"
-                                                                        }`}
-                                                                    >
-                                                                        <Checkbox
-                                                                            id={`qual-course-${course.id}`}
-                                                                            checked={isChecked}
-                                                                            disabled={locked || isAdminMode}
-                                                                            onCheckedChange={(checked) => {
-                                                                                if (checked) {
-                                                                                    setSelectedQualCourses(prev => [...prev, course.id]);
-                                                                                } else {
-                                                                                    setSelectedQualCourses(prev => prev.filter(id => id !== course.id));
-                                                                                }
-                                                                            }}
-                                                                            className="h-4 w-4 rounded-sm border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                                                        />
-                                                                        <Label 
-                                                                            htmlFor={`qual-course-${course.id}`} 
-                                                                            className={`text-xs font-semibold cursor-pointer select-none transition-colors ${locked || isAdminMode ? "opacity-70 cursor-not-allowed" : "hover:text-foreground"}`}
+                                                                    const isChecked = selectedQualCourses.includes(course.id);
+                                                                    const creator = qualificationsCreatedBy[course.id] || lastModifiedBy;
+                                                                    const isProf = creator?.role === "teacher" || creator?.id === targetTeacherId;
+                                                                    const authorRoleLabel = isProf ? "Profesor" : creator?.role === "admin" ? "Administrador" : "Gestor";
+                                                                    const authorName = creator?.name || "Usuario registrado";
+
+                                                                    return (
+                                                                        <div 
+                                                                            key={course.id} 
+                                                                            className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${
+                                                                                isChecked 
+                                                                                    ? "bg-primary/5 border-primary/20" 
+                                                                                    : "bg-background border-border hover:bg-muted/30"
+                                                                            }`}
                                                                         >
-                                                                            {course.title}
-                                                                        </Label>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
+                                                                            <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                                                                                <Checkbox
+                                                                                    id={`qual-course-${course.id}`}
+                                                                                    checked={isChecked}
+                                                                                    disabled={locked && !isAdminMode}
+                                                                                    onCheckedChange={(checked) => {
+                                                                                        if (checked) {
+                                                                                            setSelectedQualCourses(prev => [...prev, course.id]);
+                                                                                        } else {
+                                                                                            setSelectedQualCourses(prev => prev.filter(id => id !== course.id));
+                                                                                        }
+                                                                                    }}
+                                                                                    className="h-4 w-4 rounded-sm border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0"
+                                                                                />
+                                                                                <Label 
+                                                                                    htmlFor={`qual-course-${course.id}`} 
+                                                                                    className={`text-xs font-semibold cursor-pointer select-none transition-colors truncate ${locked && !isAdminMode ? "opacity-70 cursor-not-allowed" : "hover:text-foreground"}`}
+                                                                                >
+                                                                                    {course.title}
+                                                                                </Label>
+                                                                            </div>
+
+                                                                            {isChecked && (
+                                                                                <Tooltip>
+                                                                                    <TooltipTrigger asChild>
+                                                                                        <Badge 
+                                                                                            variant="outline" 
+                                                                                            className={`ml-2 text-[9px] font-bold px-1.5 py-0 rounded shrink-0 cursor-help ${
+                                                                                                isProf 
+                                                                                                    ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
+                                                                                                    : "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                                            }`}
+                                                                                        >
+                                                                                            <User className="w-2.5 h-2.5 mr-0.5 inline" />
+                                                                                            {authorRoleLabel}
+                                                                                        </Badge>
+                                                                                    </TooltipTrigger>
+                                                                                    <TooltipContent className="text-xs font-semibold">
+                                                                                        <p>Habilitado por: <strong>{authorName}</strong> ({authorRoleLabel})</p>
+                                                                                    </TooltipContent>
+                                                                                </Tooltip>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 );
                                             })}

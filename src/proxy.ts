@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
 
     // Define role-based access control
     const allowed: Record<string, string[]> = {
-        "/dashboard/admin": ["admin", "observer"],
+        "/dashboard/admin": ["admin"],
         "/dashboard/gestor": ["gestor", "admin"],
         "/dashboard/teacher": ["teacher", "admin"],
         "/dashboard/student": ["student", "admin"],
@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
 
     // Redirect authenticated users from root or signin to their role dashboard
     if (pathname === "/" || pathname === "/signin" || pathname === "/signup") {
-        if (role === "admin" || role === "observer") {
+        if (role === "admin") {
             return NextResponse.redirect(new URL("/dashboard/admin", request.url));
         }
         if (role === "gestor") {
