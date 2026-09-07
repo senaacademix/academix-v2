@@ -849,24 +849,6 @@ export async function updateStudentNovedadAction(userId: string, novedad: string
         success: true,
     });
 
-    try {
-        const { sendPushNotification } = await import("@/lib/push-notifications");
-        if (novedad) {
-            await sendPushNotification(userId, {
-                title: "Novedad Académica Registrada",
-                body: `Se ha registrado una novedad en tu perfil: "${novedad}"`,
-                url: "/dashboard/student"
-            });
-        } else {
-            await sendPushNotification(userId, {
-                title: "Novedad Académica Retirada",
-                body: "Se ha retirado la novedad de tu perfil académico.",
-                url: "/dashboard/student"
-            });
-        }
-    } catch (pushErr) {
-        console.error("Error al enviar notificación push de novedad:", pushErr);
-    }
 
     revalidatePath("/dashboard/admin/users");
     revalidatePath("/dashboard/admin/courses");

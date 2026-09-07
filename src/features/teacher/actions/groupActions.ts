@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
-import { sendPushNotification } from "@/lib/push-notifications";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
@@ -198,53 +197,6 @@ export async function saveAttendanceBatch(
             });
         }
 
-        // Notification logic for batch - non-blocking
-        const targetStatuses = ["ABSENT", "LATE", "LEAVE_EARLY"];
-        const notifiedRecords = records.filter(r => targetStatuses.includes(r.status));
-        if (notifiedRecords.length > 0) {
-            setTimeout(async () => {
-                try {
-                    const course = await prisma.course.findUnique({
-                        where: { id: courseId },
-                        select: { title: true }
-                    });
-                    const courseTitle = course?.title || "Materia";
-                    const formattedDate = new Date(date).toLocaleDateString("es-CO", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        timeZone: "UTC"
-                    });
-
-                    await Promise.allSettled(
-                        notifiedRecords.map(async r => {
-                            let title = "Registro de Asistencia";
-                            let body = "";
-
-                            if (r.status === "ABSENT") {
-                                title = "Falta Registrada";
-                                body = `Se ha registrado una inasistencia (falta) en ${courseTitle} para el ${formattedDate}.`;
-                            } else if (r.status === "LATE") {
-                                title = "Llegada Tarde Registrada";
-                                body = `Se ha registrado una llegada tarde en ${courseTitle} para el ${formattedDate}.`;
-                            } else if (r.status === "LEAVE_EARLY") {
-                                title = "Retiro Anticipado";
-                                body = `Se ha registrado un retiro anticipado en ${courseTitle} para el ${formattedDate}.`;
-                            }
-
-                            return sendPushNotification(r.studentId, {
-                                title,
-                                body,
-                                url: "/dashboard/student/attendance"
-                            });
-                        })
-                    );
-                } catch (err) {
-                    console.error("Error sending batch attendance notifications:", err);
-                }
-            }, 0);
-        }
-
         return { success: true };
     } catch (error: any) {
         console.error("Error saving attendance:", error);
@@ -282,29 +234,6 @@ export async function saveRemarkBatch(
         await prisma.remark.createMany({
             data: finalData
         });
-
-        // Send push notifications asynchronously
-        (async () => {
-            try {
-                const course = await prisma.course.findUnique({
-                    where: { id: courseId },
-                    select: { title: true }
-                });
-                const courseTitle = course?.title || "Materia";
-
-                await Promise.all(
-                    studentIds.map(async (studentId) => {
-                        await sendPushNotification(studentId, {
-                            title: "Nueva Observación Registrada",
-                            body: `Se ha registrado una nueva observación de tipo "${(type as any) === "POSITIVE" ? "Positiva" : (type as any) === "NEGATIVE" ? "Negativa" : "Llamado de atención"}" en ${courseTitle}.`,
-                            url: "/dashboard/student/records"
-                        });
-                    })
-                );
-            } catch (err) {
-                console.error("Error sending remark push notifications:", err);
-            }
-        })();
 
         revalidatePath("/dashboard/teacher");
         return { success: true };
@@ -724,47 +653,7 @@ export async function saveSingleAttendanceAction(
             });
         }
 
-        // Notification logic for single record - non-blocking
-        const targetStatuses = ["ABSENT", "EXCUSED", "LATE", "LEAVE_EARLY"];
-        if (targetStatuses.includes(status)) {
-            setTimeout(async () => {
-                try {
-                    const course = await prisma.course.findUnique({
-                        where: { id: courseId },
-                        select: { title: true }
-                    });
-                    const courseTitle = course?.title || "Materia";
-                    const formattedDate = new Date(dateStr).toLocaleDateString("es-CO", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        timeZone: "UTC"
-                    });
 
-                    let title = "Registro de Asistencia";
-                    let body = "";
-
-                    if (status === "ABSENT" || status === "EXCUSED") {
-                        title = "Falta Registrada";
-                        body = `Se ha registrado una inasistencia (falta) en ${courseTitle} para el ${formattedDate}.`;
-                    } else if (status === "LATE") {
-                        title = "Llegada Tarde Registrada";
-                        body = `Se ha registrado una llegada tarde en ${courseTitle} para el ${formattedDate}.`;
-                    } else if (status === "LEAVE_EARLY") {
-                        title = "Retiro Anticipado";
-                        body = `Se ha registrado un retiro anticipado en ${courseTitle} para el ${formattedDate}.`;
-                    }
-
-                    await sendPushNotification(studentId, {
-                        title,
-                        body,
-                        url: "/dashboard/student/attendance"
-                    });
-                } catch (err) {
-                    console.error("Error sending single attendance notification:", err);
-                }
-            }, 0);
-        }
 
         return { success: true, record: savedRecord };
     } catch (error: any) {
@@ -958,36 +847,7 @@ export async function resetStudentDailyAttempts(studentId: string) {
     }
 }
 
-export async function notifyEmailSentBatchAction(studentIds: string[], type: "PLAN" | "REMARK" | "GENERAL") {
-    try {
-        const session = await getSession();
-        if (!session?.user) throw new Error("Unauthorized");
-
-        let title = "Correo Enviado";
-        let body = "Se te ha enviado un correo con información académica.";
-
-        if (type === "PLAN") {
-            title = "Correo de Plan de Mejoramiento";
-            body = "Se te ha enviado un correo electrónico con los detalles de tu Plan de Mejoramiento.";
-        } else if (type === "REMARK") {
-            title = "Correo de Observación/Bitácora";
-            body = "Se te ha enviado un correo electrónico con las observaciones registradas.";
-        }
-
-        await Promise.all(
-            studentIds.map(async (studentId) => {
-                await sendPushNotification(studentId, {
-                    title,
-                    body,
-                    url: "/dashboard/student/records"
-                });
-            })
-        );
-
-        return { success: true };
-    } catch (error: any) {
-        console.error("Error sending email sent push notification batch:", error);
-        return { success: false, error: error.message };
-    }
+export async function notifyEmailSentBatchAction(_studentIds: string[], _type: "PLAN" | "REMARK" | "GENERAL") {
+    return { success: true };
 }
 

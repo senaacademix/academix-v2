@@ -3,7 +3,6 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { sendPushNotification } from "@/lib/push-notifications";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
@@ -208,18 +207,7 @@ export async function upsertImprovementPlan(data: {
                 }
             });
 
-            // Send push notification asynchronously
-            (async () => {
-                try {
-                    await sendPushNotification(studentId, {
-                        title: "Plan de Mejoramiento Modificado",
-                        body: `Se han registrado actualizaciones en tu plan de mejoramiento ${planNumber}.`,
-                        url: "/dashboard/student/records"
-                    });
-                } catch (err) {
-                    console.error("Error sending improvement plan update notification:", err);
-                }
-            })();
+
 
             return { success: true, data: updated };
         } else {
@@ -241,18 +229,7 @@ export async function upsertImprovementPlan(data: {
                 }
             });
 
-            // Send push notification asynchronously
-            (async () => {
-                try {
-                    await sendPushNotification(studentId, {
-                        title: "Nuevo Plan de Mejoramiento",
-                        body: `Se ha creado un nuevo plan de mejoramiento (${planNumber}) para ti.`,
-                        url: "/dashboard/student/records"
-                    });
-                } catch (err) {
-                    console.error("Error sending improvement plan create notification:", err);
-                }
-            })();
+
 
             return { success: true, data: created };
         }
@@ -314,21 +291,7 @@ export async function submitSignedDocument(planId: string, signedDocUrl: string)
             data: { signedDocUrl }
         });
 
-        // Send push notification to teacher asynchronously
-        if (plan.teacherId) {
-            const studentName = session.user.name || "Un aprendiz";
-            (async () => {
-                try {
-                    await sendPushNotification(plan.teacherId, {
-                        title: "Plan de Mejoramiento Firmado",
-                        body: `El aprendiz ${studentName} ha firmado y cargado el Plan de Mejoramiento ${plan.planNumber}.`,
-                        url: "/dashboard/teacher"
-                    });
-                } catch (err) {
-                    console.error("Error sending push notification to teacher on plan signature:", err);
-                }
-            })();
-        }
+
 
         return { success: true, data: updated };
     } catch (error: any) {
@@ -462,20 +425,7 @@ export async function submitEvidenceUrl(planId: string, evidenceUrl: string) {
             data: { evidenceUrl }
         });
 
-        if (plan.teacherId) {
-            const studentName = session.user.name || "Un aprendiz";
-            (async () => {
-                try {
-                    await sendPushNotification(plan.teacherId, {
-                        title: "Evidencias Cargadas",
-                        body: `El aprendiz ${studentName} ha cargado las evidencias para el Plan de Mejoramiento ${plan.planNumber}.`,
-                        url: "/dashboard/teacher"
-                    });
-                } catch (err) {
-                    console.error("Error sending push notification to teacher on plan evidence:", err);
-                }
-            })();
-        }
+
 
         return { success: true, data: updated };
     } catch (error: any) {
@@ -568,17 +518,7 @@ export async function resetPlanToStep(planId: string, stepNumber: number, reason
             data: dataUpdate
         });
 
-        (async () => {
-            try {
-                await sendPushNotification(plan.studentId, {
-                    title: "Plan de Mejoramiento Devuelto",
-                    body: `El plan ${plan.planNumber} fue devuelto al ${stepName}.${reason ? ` Motivo: ${reason}` : ""}`,
-                    url: "/dashboard/student/records"
-                });
-            } catch (err) {
-                console.error("Error sending push notification on plan reset:", err);
-            }
-        })();
+
 
         return { success: true, data: updated };
     } catch (error: any) {
@@ -623,17 +563,7 @@ export async function gradeImprovementPlan(planId: string, grade: number) {
             }
         });
 
-        (async () => {
-            try {
-                await sendPushNotification(plan.studentId, {
-                    title: "Plan Calificado",
-                    body: `Tu Plan de Mejoramiento ${plan.planNumber} ha sido calificado con una nota de ${grade.toFixed(1)}.`,
-                    url: "/dashboard/student/records"
-                });
-            } catch (err) {
-                console.error("Error sending push notification on plan grading:", err);
-            }
-        })();
+
 
         return { success: true, data: updated };
     } catch (error: any) {
