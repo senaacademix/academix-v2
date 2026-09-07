@@ -14,8 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useWebPush } from "@/hooks/useWebPush";
-import { Bell, BellOff, Loader2, Sparkles, History } from "lucide-react";
+import { Sparkles, History } from "lucide-react";
 import { getFormattedTodayDate } from "@/lib/dateUtils";
 import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
 
@@ -41,35 +40,6 @@ export function StudentDashboard({
     const selectedCourse = searchParams.get("courseId") || "";
     const activeTab = searchParams.get("tab") || "activities";
     const isInsideCourse = !!selectedCourse;
-
-    const {
-        permission,
-        isSubscribed,
-        loading: pushLoading,
-        subscribe,
-        unsubscribe
-    } = useWebPush();
-
-    const handlePushToggle = async () => {
-        if (permission === "denied") {
-            toast.error("Permiso bloqueado: Por favor, activa las notificaciones en la barra de direcciones de tu navegador (icono del candado/configuración).", {
-                duration: 6000
-            });
-            return;
-        }
-
-        try {
-            if (isSubscribed) {
-                await unsubscribe();
-                toast.success("Notificaciones desactivadas.");
-            } else {
-                await subscribe();
-                toast.success("Notificaciones activadas con éxito.");
-            }
-        } catch (err: any) {
-            toast.error(err.message || "Error al cambiar estado de notificaciones");
-        }
-    };
 
     const [mounted, setMounted] = useState(false);
     const [clientDate, setClientDate] = useState<string>("");
@@ -200,36 +170,6 @@ export function StudentDashboard({
                                 <History className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                                 <span>Mi Histórico de Fichas</span>
                             </Button>
-
-                            {/* Botón de Notificaciones para el Estudiante */}
-                            {mounted && permission !== "unsupported" && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handlePushToggle}
-                                    disabled={pushLoading}
-                                    className={cn(
-                                        "gap-2 rounded-2xl h-11 px-4 text-xs font-bold transition-all shadow-sm",
-                                        isSubscribed
-                                            ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
-                                            : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                    )}
-                                >
-                                    {pushLoading ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : isSubscribed ? (
-                                        <>
-                                            <Bell className="h-4 w-4 text-emerald-500" />
-                                            <span>Notificaciones Activas</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <BellOff className="h-4 w-4 text-slate-400" />
-                                            <span>Activar Notificaciones</span>
-                                        </>
-                                    )}
-                                </Button>
-                            )}
                         </div>
                     </div>
                 </motion.div>

@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { BookOpen, Calendar, Users, FileText, Activity, ScrollText, Home, Wrench, ClipboardList, Settings2, GraduationCap, Building2, CalendarDays, BarChart3, UserCog, CalendarClock, Sparkles, RotateCcw, School, Globe } from "lucide-react"
+import { BookOpen, Calendar, Users, FileText, Activity, ScrollText, Home, Wrench, ClipboardList, Settings2, GraduationCap, Building2, CalendarDays, BarChart3, UserCog, CalendarClock, Sparkles, RotateCcw, School, Globe, Eye } from "lucide-react"
 
 import { NavMain, NavGroup } from "@/components/sidebar/nav-main"
 import { NavUser } from "@/components/sidebar/nav-user"
@@ -11,6 +11,7 @@ import { NavUser } from "@/components/sidebar/nav-user"
 import { authClient } from "@/lib/auth-client"
 import { getRoleFromUser } from "@/features/auth/services/authService"
 import { useGestorProgram } from "@/features/gestor/context/GestorProgramContext"
+import { getProgramsAction } from "@/features/admin/actions/academicActions"
 import {
   Sidebar,
   SidebarContent,
@@ -30,7 +31,7 @@ import {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session, isPending } = authClient.useSession()
-  const { selectedProgramId, selectedProgram, managedPrograms, selectProgram, clearProgram } = useGestorProgram()
+  const { selectedProgramId, selectedProgram, managedPrograms, selectProgram, clearProgram, setManagedPrograms } = useGestorProgram()
   const [mounted, setMounted] = React.useState(false)
   const searchParams = useSearchParams()
 
@@ -42,6 +43,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // For Admin: active program is determined when explicitly inside a program URL
   const adminProgramParam = searchParams.get("programId")
   const adminActiveProgram = adminProgramParam ? managedPrograms.find(p => p.id === adminProgramParam) || selectedProgram : null
+
+  // Fetch observer programs if role is observer
+  React.useEffect(() => {
+    if (role === "observer" && managedPrograms.length === 0) {
+      getProgramsAction().then((progs) => {
+        if (progs && progs.length > 0) {
+          const mapped = progs.map(p => ({
+            id: p.id,
+            name: p.name,
+            color: (p as any).color || "#3b82f6",
+            code: (p as any).code || ""
+          }));
+          setManagedPrograms(mapped as any);
+        }
+      }).catch(console.error);
+    }
+  }, [role, managedPrograms.length, setManagedPrograms]);
 
   // Prevent hydration mismatch
   React.useEffect(() => {
@@ -135,6 +153,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               isActive: false,
             },
           ]
+        : role === "observer"
+          ? [
+              {
+                title: "Inicio",
+                url: effectiveGestorProgramId ? `/dashboard/admin?programId=${effectiveGestorProgramId}` : "/dashboard/admin",
+                icon: Home,
+                isActive: false,
+              },
+              {
+                title: "Programas de Formación",
+                url: effectiveGestorProgramId ? `/dashboard/admin/courses?programId=${effectiveGestorProgramId}` : "/dashboard/admin/courses",
+                icon: BookOpen,
+                isActive: false,
+              },
+              {
+                title: "Gestión de Usuarios",
+                url: effectiveGestorProgramId ? `/dashboard/admin/users?programId=${effectiveGestorProgramId}` : "/dashboard/admin/users",
+                icon: Users,
+                isActive: false,
+              },
+            ]
         : role === "teacher"
             ? [
                 {
@@ -194,14 +233,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 
 
-        {/* Selector de Programa de Formación (Sólo cuando hay más de 1 programa) */}
-        {managedPrograms && managedPrograms.length > 1 && (
+        {/* Selector de Programa de Formación (Sólo cuando hay más de 1 programa para Gestor u Observador) */}
+        {managedPrograms && managedPrograms.length > 1 && (role === "gestor" || role === "observer") && (
           <div className="px-3.5 py-2.5 mx-2 mb-2 rounded-2xl bg-muted/30 border border-border/60 flex flex-col gap-1.5 group-data-[collapsible=icon]:hidden animate-in fade-in duration-300">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <School className="w-3 h-3" />
+              <div className="w-5 h-5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                {role === "observer" ? <Eye className="w-3 h-3" /> : <School className="w-3 h-3" />}
               </div>
-              <span>Programa de Formación</span>
+              <span>{role === "observer" ? "Programa Observado" : "Programa de Formación"}</span>
             </span>
             <Select 
               value={effectiveGestorProgramId || managedPrograms[0]?.id || ""} 

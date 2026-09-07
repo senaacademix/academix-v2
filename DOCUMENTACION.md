@@ -1,239 +1,604 @@
-# Documentación Completa de AcademiX V2
+# Documentación Integral y Manual Funcional del Sistema — AcademiX V2
 
-AcademiX V2 es una plataforma integral de gestión académica, control de asistencia, seguimiento conductual (observador digital), calificaciones jerárquicas y planificación horaria, diseñada específicamente para centros de formación técnica y profesional (alineada con el modelo educativo del **SENA - Servicio Nacional de Aprendizaje** de Colombia).
+AcademiX V2 es una plataforma tecnológica de nivel empresarial diseñada para la gestión académica, control de asistencia, seguimiento conductual (observador digital), evaluación ponderada jerárquica, gestión de infraestructura y planificación horaria anticolisión. El sistema está estructurado con base en el modelo pedagógico del **SENA (Servicio Nacional de Aprendizaje)** de Colombia y centros de formación técnica y tecnológica superior.
 
-La plataforma conecta en tiempo real a cuatro actores principales: **Administradores**, **Gestores Académicos**, **Instructores (Docentes)** y **Aprendices (Estudiantes)**, permitiendo automatizar los procesos de programación horaria, evaluación jerárquica y analítica del rendimiento académico.
-
----
-
-## Índice
-1. [Arquitectura y Roles de Usuario](#1-arquitectura-y-roles-de-usuario)
-2. [Módulo de Gestión Académica y Usuarios (Administrador)](#2-módulo-de-gestión-académica-y-usuarios-administrador)
-3. [Módulo de Gestión para Coordinación y Gestores Académicos](#3-módulo-de-gestión-para-coordinación-y-gestores-académicos)
-4. [Módulo de Planificación y Gestión Horaria Anticolisión](#4-módulo-de-planificación-y-gestión-horaria-anticolisión)
-5. [Módulo del Instructor (Gestión de Fichas)](#5-módulo-del-instructor-gestión-de-fichas)
-6. [Módulo del Aprendiz (Portal de Estudiante)](#6-módulo-del-aprendiz-portal-de-estudiante)
-7. [Módulo de Ambientes de Formación e Infraestructura](#7-módulo-de-ambientes-de-formación-e-infraestructura)
-8. [Configuración Global y Personalización del Sistema](#8-configuración-global-y-personalización-del-sistema)
-9. [Modelo de Base de Datos (Esquema Prisma V2)](#9-modelo-de-base-de-datos-esquema-prisma-v2)
-10. [CLI y Scripts de Administración](#10-cli-y-scripts-de-administración)
+La plataforma conecta a cinco actores principales bajo una arquitectura basada en roles (**RBAC**): **Administrador (`admin`)**, **Gestor Académico (`gestor`)**, **Observador (`observer`)**, **Docente / Instructor (`teacher`)** y **Aprendiz / Estudiante (`student`)**.
 
 ---
 
-## 1. Arquitectura y Roles de Usuario
-
-La plataforma implementa un control de acceso basado en roles (RBAC) con una arquitectura de menú lateral (`AppSidebar`) optimizada. En el modelo formativo del **SENA**, el **Gestor Académico** es el **coordinador operativo principal** que ejecuta la mayor parte del flujo académico, mientras que el **Administrador** gestiona el equipo directivo y la configuración global del sistema.
-
----
-
-### 📂 1.1. Gestor Académico (`gestor`) — Coordinador Académico Principal
-*   **Propósito:** Es el **actor operativo central** del sistema. Coordina y ejecuta la gestión completa de los Programas de Formación a su cargo (`managedPrograms`), incluyendo aprendices, instructores, fichas, competencias, ambientes y mallas horarias.
-*   **📌 Estructura del Menú Lateral (Sidebar):**
-    1.  **`Inicio` (`/dashboard/gestor?programId=...`):**
-        *   Panel de monitoreo y salud académica del Programa de Formación seleccionado.
-        *   KPIs en tiempo real: Aprendices matriculados, Fichas activas, Competencias y Docentes vinculados.
-        *   Filtro interactivo para alternar entre los diferentes programas coordinados.
-    2.  **`Gestión de Usuarios` (`/dashboard/gestor/users?programId=...`):**
-        *   **Módulo Central de Operación de Aprendices y Docentes (`UnifiedUserManagement.tsx`):**
-        *   **Selección por Ficha:** Selector dinámico por pills de Fichas (`Todas`, `3410947`, `3491237`, etc.).
-        *   **Gestión de Estudiantes:** Filtros por Etapa (Lectiva / Productiva), alta manual, edición, traslados entre fichas e importación masiva desde planillas de Excel.
-        *   **Analítica de Grupo:** Acceso directo al panel estadístico del grupo.
-        *   **Seguimiento a Planes de Mejoramiento:** Control de compromisos académicos de los aprendices.
-        *   **Gestión de Instructores:** Directorio de docentes vinculados al programa.
-    3.  **`Estructura Curricular` (`/dashboard/gestor/courses?programId=...`):**
-        *   Módulo completo de administración curricular (`AcademicManagement.tsx`):
-        *   **Trimestres / Periodos:** Estructuración y ordenamiento de las fases de formación.
-        *   **Competencias / Materias:** Creación de materias, horas semanales y enlaces de apoyo.
-        *   **Fichas / Grupos de Caracterización:** Fechas de inicio/fin, jornadas lectivas y tutores.
-        *   **Ambientes de Formación:** Asignación de aulas físicas, laboratorios, aforo y recursos.
-        *   **Cualificación Docente:** Registro de instructores autorizados para imparte cada competencia.
-    4.  **`Programación Horaria` (`/dashboard/gestor/schedules?programId=...`):**
-        *   Motor de planificación horaria anticolisión (`SchedulePlanning.tsx`):
-        *   Creación, edición y publicación de mallas horarias de las fichas.
-        *   Validación en tiempo real de disponibilidad del docente, aforo de aula y topes semanales.
-        *   Registro de festivos y novedades de horario.
+## Tabla de Contenido
+1. [Arquitectura Tecnológica y Estructura del Código](#1-arquitectura-tecnológica-y-estructura-del-código)
+2. [Matriz Comparativa de Roles y Permisos](#2-matriz-comparativa-de-roles-y-permisos)
+3. [Funciones Estrictas por Rol de Usuario](#3-funciones-estrictas-por-rol-de-usuario)
+   - [3.1. Rol: Administrador (`admin`)](#31-rol-administrador-admin)
+   - [3.2. Rol: Gestor Académico (`gestor`)](#32-rol-gestor-académico-gestor)
+   - [3.3. Rol: Observador (`observer`)](#33-rol-observador-observer)
+   - [3.4. Rol: Docente / Instructor (`teacher`)](#34-rol-docente--instructor-teacher)
+   - [3.5. Rol: Aprendiz / Estudiante (`student`)](#35-rol-aprendiz--estudiante-student)
+4. [Módulos Especializados del Núcleo](#4-módulos-especializados-del-núcleo)
+   - [4.1. Motor de Planificación Horaria y Detección Anticolisión](#41-motor-de-planificación-horaria-y-detección-anticolisión)
+   - [4.2. Sistema de Calificaciones Jerárquicas Ponderadas](#42-sistema-de-calificaciones-jerárquicas-ponderadas)
+   - [4.3. Planilla de Asistencia Matricial y Permisos Extemporáneos](#43-planilla-de-asistencia-matricial-y-permisos-extemporáneos)
+   - [4.4. Observador Digital y Bitácora Formativa](#44-observador-digital-y-bitácora-formativa)
+   - [4.5. Flujo de Planes de Mejoramiento (Compromisos y Firmas)](#45-flujo-de-planes-de-mejoramiento-compromisos-y-firmas)
+   - [4.6. Suplantación de Sesión Segura (Impersonation) y Auditoría](#46-suplantación-de-sesión-segura-impersonation-y-auditoría)
+5. [Diccionario del Modelo de Datos (Prisma ORM)](#5-diccionario-del-modelo-de-datos-prisma-orm)
+6. [Catálogo de Server Actions y APIs](#6-catálogo-de-server-actions-y-apis)
+7. [Scripts de Despliegue, Mantenimiento y CLI](#7-scripts-de-despliegue-mantenimiento-y-cli)
 
 ---
 
-### 👑 1.2. Administrador (`admin`) — Gestión Institucional y Directiva
-*   **Propósito:** Gestión directiva del sistema, control de usuarios administrativos y personalización global del centro de formación.
-*   **📌 Estructura del Menú Lateral (Sidebar):**
-    1.  **`Inicio` (`/dashboard/admin`):** Dashboard institucional global con métricas consolidadas del centro (administradores, gestores, programas, docentes y aprendices).
-    2.  **`Gestión de Usuarios` (`/dashboard/admin/users`):**
-        *   Administración del **Equipo de Administración y Gestión** (`AdminUsersManagement.tsx`):
-        *   **Administradores:** Alta y control de cuentas directivas.
-        *   **Gestores Académicos:** Alta de gestores y asignación/desasignación de Programas de Formación bajo su responsabilidad (`managedPrograms`).
-        *   **Suplantación de Sesión Segura (*Impersonation*):** Inicia sesión en tiempo real como cualquier usuario para soporte remoto inmediato.
-        *   **Seguridad:** Reseteo de claves, eliminación y suspensión (`banned`).
-    3.  **`Programas de Formación` (`/dashboard/admin/courses`):** Vista de supervisión global de programas de formación y mallas curriculares.
-    4.  **`Configuración` (`/dashboard/admin/settings`):** Personalización institucional (`SystemSettings.tsx`): Logotipos, favicons, imagen Hero, temas HSL, editor de código y parámetros operativos.
+## 1. Arquitectura Tecnológica y Estructura del Código
 
----
+AcademiX V2 sigue los principios de **Clean Architecture** bajo el patrón **Feature-First**:
 
-### 👨‍🏫 1.3. Instructor / Docente (`teacher`) — Formador de Aula
-*   **Propósito:** Gestión pedagógica diaria de las Fichas asignadas.
-*   **📌 Estructura del Menú Lateral (Sidebar):**
-    1.  **`Inicio` (`/dashboard`):** Clases del día y agenda de formación.
-    2.  **`Gestión de Usuarios` / `Gestión de Fichas` (`/dashboard/teacher`):** Consola por Ficha (`GroupManager.tsx`) con planilla de asistencia matricial responsiva (`touch-pan-x`), observador digital (`viewedAt`), calificaciones ponderadas a Excel, planes de mejoramiento, material compartido y ruleta (`Roulette.tsx`).
-    3.  **`Programación Horaria` (`/dashboard/teacher/schedule`):** Horario de clases y declaración de disponibilidad semanal.
+*   **Framework Base:** Next.js 16 (App Router) compilado con **Turbopack**.
+*   **Lenguaje:** TypeScript estricto con tipado estático en frontend, backend y esquema de datos.
+*   **Base de Datos y ORM:** PostgreSQL (Neon Serverless) operado mediante **Prisma ORM** con características avanzadas de `relationJoins`.
+*   **Autenticación y Seguridad:** **Better Auth** integrado con proveedores de credenciales locales, hash criptográfico de contraseñas, control de sesiones persistentes y suplantación segura de identidad (*impersonation*).
+*   **Diseño y UI:** Tailwind CSS, Radix UI Primitives, componentes Shadcn UI, Lucid Icons y paletas temáticas dinámicas HSL.
+*   **Notificaciones:** Alertas y toasts reactivos del sistema con `Sonner`.
+*   **Exportación y Reportes:** Generación de planillas Excel multinivel con formato condicional (`xlsx`) y exportación a PDF nativa.
 
----
-
-### 🎓 1.4. Aprendiz / Estudiante (`student`) — Portal de Formación
-*   **Propósito:** Consulta y autocontrol del proceso formativo.
-*   **📌 Estructura del Menú Lateral (Sidebar):**
-    1.  **`Inicio` (`/dashboard`):** Dashboard real-time con % Asistencia, Ficha, Promedio de Notas y agenda diaria.
-    2.  **`Registro Académico` (`/dashboard/student/records`):** Expediente full-width (`w-full max-w-full`), justificación digital de inasistencias, firma de planes de mejoramiento y boletines.
-    3.  **`Programación Horaria` (`/dashboard/student/schedule`):** Agenda de clases semanal/mensual.
-
----
-
-## 2. Módulo de Gestión Académica y Usuarios (Administrador)
-
-Este módulo (implementado en [AcademicManagement.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/admin/components/AcademicManagement.tsx) y [UnifiedUserManagement.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/admin/components/UnifiedUserManagement.tsx)) constituye la base administrativa del sistema:
-
-*   **Gestión Unificada de Usuarios (`UnifiedUserManagement.tsx`):**
-    *   Administración centralizada de Administradores, Gestores, Instructores y Aprendices.
-    *   **Creación y Edición Rápida:** Registro individual con autocompletado de perfiles (documento, nombres, apellidos, teléfono).
-    *   **Carga Masiva en Excel:** Importación de listas de aprendices desde plantillas de Excel con validación previa de correos e identificaciones.
-    *   **Suplantación de Sesión Segura (*Impersonation*):** Permite al administrador acceder a la plataforma como cualquier usuario para soporte en tiempo real sin requerir su contraseña, con trazabilidad de auditoría.
-    *   **Suspensión y Bloqueo (`banned`):** Inhabilitación de accesos temporales o definitivos especificando el motivo del bloqueo.
-*   **Periodos y Materias:**
-    *   Estructuración de divisiones temporales (trimestres o periodos específicos) por programa de formación.
-    *   Administración de **Materias / Competencias**: creación de cursos con horas semanales sugeridas, URL de apoyo (Classroom/Moodle), badges de color e íconos temáticos.
-*   **Grupos y Fichas de Formación:**
-    *   Creación y edición de Fichas de caracterización con fechas de inicio/fin y jornada lectiva.
-    *   Reubicación ágil de aprendices entre fichas e historial de traslados (`GroupEnrollment`).
-*   **Instructores:**
-    *   Asignación de competencias que cada docente está calificado para impartir (`qualifiedCourses`).
-    *   Configuración de límites de carga horaria semanal y bloqueo de disponibilidad.
-
----
-
-## 3. Módulo de Gestión para Coordinación y Gestores Académicos
-
-Módulo dedicado a la supervisión académica descentralizada por programa de formación:
-
-*   **Alcance Delimitado (`managedPrograms`):** El gestor solo tiene acceso a las fichas, materias, instructores y aprendices pertenecientes a los programas que le han sido asignados.
-*   **Monitoreo Institucional:** Métricas de cobertura horaria, cumplimiento de clases y seguimiento a novedades reportadas por los instructores.
-
----
-
-## 4. Módulo de Planificación y Gestión Horaria Anticolisión
-
-Motor de generación de horarios académicos (implementado en [SchedulePlanning.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/admin/components/SchedulePlanning.tsx) y [CalendarGroupGrid.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/admin/components/CalendarGroupGrid.tsx)):
-
-*   **Planificador Interactivo Grid:** Visualización estructurada por Ficha de lunes a domingo con bloques horarios drag-and-drop o asignación asistida.
-*   **Detección de Colisiones en Tiempo Real:**
-    1.  **Colisión del Instructor:** Evita asignar un docente a dos clases simultáneas.
-    2.  **Colisión de Ambiente:** Impide la sobreasignación de aulas físicas o laboratorios.
-    3.  **Límites de Carga y Disponibilidad:** Controla la intensidad máxima semanal del docente y los límites diarios del aprendiz.
-*   **Publicación Jerárquica:** Los horarios se conservan en estado **Borrador** hasta su validación y publicación definitiva.
-*   **Novedades y Eventos (`ScheduleNovelty` / `ScheduleEvent`):** Registro de festivos o ausencias programadas que suspenden la contabilización horaria.
-
----
-
-## 5. Módulo del Instructor (Gestión de Fichas)
-
-Es la consola de trabajo diaria del docente (implementada en [GroupManager.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/teacher/components/GroupManager.tsx)):
-
-*   **A. Directorio y Fichas de Aprendices:** Vista completa de estudiantes con foto, datos de contacto, novedad (`StudentNovedadBadge`) y acumulado de asistencias.
-*   **B. Planilla de Asistencia Matricial Responsiva:**
-    *   **Control Diario:** Marcación de estados: **Presente (`PRESENT`)**, **Ausente (`ABSENT`)**, **Tarde (`LATE`)**, **Retiro Temprano (`LEAVE_EARLY`)** y **Excusa (`EXCUSED`)**.
-    *   **Desplazamiento Táctil Completo (`touch-pan-x`):** En dispositivos móviles, la tabla permite scroll horizontal fluido de todas las columnas (fechas y totales `F / T / R`).
-    *   **Permisos Extemporáneos:** Formulario de solicitud al administrador para modificar asistencias de semanas anteriores cerradas.
-*   **C. Observador Digital (Bitácora Conductual):**
-    *   Anotaciones formativas (`ATTENTION`, `COMMENDATION`, `CITATION`, `OTHER`) con uso de plantillas (`RemarkTemplate`).
-    *   **Acuse de Recibo:** Registro con marca temporal (`viewedAt`) cuando el estudiante visualiza la observación.
-*   **D. Calificaciones Ponderadas Jerárquicas (`GradeManagerPanel.tsx`):**
-    *   Soporte para modos de ponderación porcentual (`usePercentageWeights`) o por suma de puntos.
-    *   Estructuración en Cortes, Grupos de Actividades y Tareas Evaluativas.
-    *   Recepción de evidencias digitales mediante enlaces compartidos.
-    *   Exportación a Excel multinivel con formato institucional SENA.
-*   **E. Planes de Mejoramiento (`ImprovementPlan`):**
-    *   Asignación de actividades de recuperación académica o actas de compromiso.
-    *   Recepción de firma digital del aprendiz, carga de evidencias y calificación final.
-*   **F. Dinámicas de Aula:** Ruleta de selección aleatoria (`Roulette.tsx`) y gestor de sub-grupos de trabajo (`WorkGroupManagerDialog.tsx`).
-
----
-
-## 6. Módulo del Aprendiz (Portal de Estudiante)
-
-Portal de autocontrol y consulta (coordinado por [StudentDashboard.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/student/components/StudentDashboard.tsx) y [StudentRecords.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/student/components/StudentRecords.tsx)):
-
-*   **Panel Principal (Dashboard Real-Time):** Resumen dinámico de asistencia general (%), ficha asignada, promedio acumulado de calificaciones y tareas pendientes por entregar.
-*   **Agenda Diaria:** Clases programadas para el día con materia, horario e instructor a cargo.
-*   **Expediente Académico Integral (`StudentRecords.tsx`):**
-    *   Diseño extendido de ancho completo (`w-full max-w-full`).
-    *   Filtro por Ficha activa e historial consolidado de fichas anteriores (`GroupEnrollment`).
-    *   **Justificación Digital:** Envío de justificaciones e incapacidades con enlace de soporte.
-    *   Exportación de boletines y ficha de aprendiz a PDF o Excel.
-
----
-
-## 7. Módulo de Ambientes de Formación e Infraestructura
-
-Gestión de la infraestructura física o virtual (`TrainingEnvironment`):
-
-*   **Aforo y Recursos:** Control de capacidad máxima de aprendices e inventario de equipamiento (ej. "30 PCs", "Proyector", "Aire Acondicionado").
-*   **Validación de Disponibilidad:** Cruce estricto en la matriz horaria para prevenir doble reserva de un mismo aula.
-
----
-
-## 8. Configuración Global y Personalización del Sistema
-
-Administrada en el panel de ajustes (`SystemSettings`):
-
-*   **Identidad Institucional:** Nombre de la institución, logotipo, favicon, imagen de bienvenida (Hero) y enlaces a redes.
-*   **Tema Visual:** Cambio entre modo Claro, Oscuro o Sistema, con paletas de acento HSL personalizadas.
-*   **Reglas de Negocio:** Intensidad horaria máxima por instructor, restricción semanal de asistencia y límites de acceso diario.
-
----
-
-## 9. Modelo de Base de Datos (Esquema Prisma V2)
-
-Estructura de las entidades principales definidas en `prisma/schema.prisma`:
-
-```mermaid
-erDiagram
-    USER ||--o| PROFILE : "tiene"
-    USER ||--o{ ENROLLMENT : "se inscribe"
-    USER ||--o{ GROUP_ENROLLMENT : "historial fichas"
-    USER ||--o{ ATTENDANCE : "asistencia"
-    USER ||--o{ REMARK : "observaciones"
-    USER ||--o{ STUDENT_GRADE : "calificaciones"
-    USER ||--o{ IMPROVEMENT_PLAN : "planes mejoramiento"
-    PROGRAM ||--o{ GROUP : "contiene"
-    PROGRAM ||--o{ PERIOD : "organiza"
-    GROUP ||--o{ COURSE : "asigna materias"
-    COURSE ||--o{ ACTIVITY : "evalúa"
-    ACTIVITY ||--o{ STUDENT_GRADE : "registra notas"
+### Estructura de Directorios Modular (Feature-First):
+```text
+src/
+├── app/                              # App Router (páginas, layouts y API handlers)
+│   ├── api/auth/                     # Endpoints Better Auth
+│   ├── api/themes/                   # Configuración y temas dinámicos
+│   ├── dashboard/                    # Rutas protegidas por rol
+│   │   ├── admin/                    # Consola de administración general
+│   │   ├── gestor/                   # Consola del Gestor Académico
+│   │   ├── teacher/                  # Consola del Instructor
+│   │   └── student/                  # Portal del Aprendiz
+├── features/                         # Lógica dividida por dominio de negocio
+│   ├── admin/                        # Componentes, acciones y servicios de administración
+│   │   ├── actions/                  # Server Actions (adminActions, academicActions)
+│   │   ├── components/               # UI de usuarios, programas, analítica
+│   │   └── services/                 # Servicios de negocio (auditLogger, etc.)
+│   ├── auth/                         # Lógica de inicio de sesión, roles y sesiones
+│   ├── schedule/                     # Motor de mallas horarias, colisiones y calendarios
+│   ├── student/                      # Expedientes, inasistencias, planes de mejora
+│   └── teacher/                      # Planillas de asistencia, notas, observador
+├── components/                       # Componentes UI globales (Sidebar, Navbar, Theme)
+├── lib/                              # Cliente Prisma, Auth, utilitarios y constantes
+└── scripts/                          # Scripts de inicialización y CLI (create-admin, etc.)
 ```
 
-### Principales Modelos:
-- **`User`**: Cuenta de usuario con campos de rol (`admin`, `gestor`, `teacher`, `student`), suspensión (`banned`), `groupId` y relaciones.
-- **`Profile`**: Datos personales (documento, nombres, apellidos, teléfono, novedad, consentimiento Habeas Data).
-- **`Group`**: Ficha de caracterización con fechas de inicio/fin, programa y docente tutor.
-- **`GroupEnrollment`**: Registro histórico y secundario de pertenencia de aprendices a fichas.
-- **`Course`**: Competencia o materia del programa asignada a un grupo y docente.
-- **`Attendance`**: Registro diario de asistencia (`PRESENT`, `ABSENT`, `LATE`, `LEAVE_EARLY`, `EXCUSED`) con justificaciones.
-- **`Remark`**: Anotaciones del observador con confirmación de lectura (`viewedAt`).
-- **`ImprovementPlan`**: Plan de mejoramiento con compromiso, firma digital, evidencia y nota.
+---
+
+## 2. Matriz Comparativa de Roles y Permisos
+
+| Módulo / Capacidad | Administrador (`admin`) | Gestor Académico (`gestor`) | Observador (`observer`) | Instructor (`teacher`) | Aprendiz (`student`) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Panel de Control Institucional** | Global Completo | Por Programas Asignados | Solo Lectura | Agenda de Aula | Dashboard Personal |
+| **Gestión de Administradores** | Total (Crear, Editar, Eliminar) | ❌ Denegado | ❌ Denegado | ❌ Denegado | ❌ Denegado |
+| **Gestión de Gestores y Asignación de Programas** | Total | ❌ Denegado | ❌ Denegado | ❌ Denegado | ❌ Denegado |
+| **Gestión de Observadores** | Total | ❌ Denegado | ❌ Denegado | ❌ Denegado | ❌ Denegado |
+| **Creación/Edición de Programas de Formación** | Total | ❌ Denegado (Supervisión) | Solo Lectura | ❌ Denegado | ❌ Denegado |
+| **Estructuración Curricular (Periodos y Materias)** | Total | Programas a Cargo | Solo Lectura | ❌ Denegado | ❌ Denegado |
+| **Gestión de Fichas (Grupos) y Matrícula** | Total | Programas a Cargo | Solo Lectura | Ver sus Fichas | Ver su Ficha |
+| **Importación Masiva de Aprendices (Excel)** | Total | Programas a Cargo | ❌ Denegado | ❌ Denegado | ❌ Denegado |
+| **Traslados de Ficha e Historial** | Total | Programas a Cargo | Solo Lectura | ❌ Denegado | Ver su Historial |
+| **Gestión y Registro de Docentes** | Total | Programas a Cargo | Solo Lectura | ❌ Denegado | ❌ Denegado |
+| **Cualificación Docente y Asignación de Cursos** | Total | Programas a Cargo | Solo Lectura | Ver sus Cursos | ❌ Denegado |
+| **Planificación Horaria y Motor Anticolisión** | Total | Programas a Cargo | Solo Lectura | Declarar Disponibilidad | Ver Horario |
+| **Gestión de Ambientes de Aprendizaje (Aulas)** | Total | Programas a Cargo | Solo Lectura | ❌ Denegado | ❌ Denegado |
+| **Registro y Control Diario de Asistencia** | Supervisión / Permisos | Supervisión | Solo Lectura | Total (Marcación en Fichas) | Ver Inasistencias |
+| **Justificación de Inasistencias** | Aprobar / Supervisar | Supervisar | Solo Lectura | Ver y Avalar | Radicar con Soporte |
+| **Aprobación de Permisos Extemporáneos de Asistencia** | Total | Total | Solo Lectura | Solicitar Permiso | ❌ Denegado |
+| **Observador Digital (Anotaciones Formativas)** | Auditoría Global | Auditoría en Programas | Auditoría Solo Lectura | Crear y Gestionar | Leer y Acuse de Recibo |
+| **Calificaciones y Ponderaciones Jerárquicas** | Supervisión General | Supervisión en Programas | Solo Lectura | Configurar y Calificar | Ver Notas y Cortes |
+| **Planes de Mejoramiento Académico** | Supervisión General | Supervisión en Programas | Solo Lectura | Crear, Asignar y Evaluar | Firmar y Cargar Evidencias |
+| **Suplantación de Identidad (*Impersonation*)** | Total con Auditoría | ❌ Denegado | ❌ Denegado | ❌ Denegado | ❌ Denegado |
+| **Configuración Institucional (Branding/Temas)** | Total | ❌ Denegado | ❌ Denegado | ❌ Denegado | Preferencias Locales |
+| **Restablecimiento de Contraseñas a Documento** | Total | Aprendices y Docentes | ❌ Denegado | ❌ Denegado | ❌ Denegado |
 
 ---
 
-## 10. CLI y Scripts de Administración
+## 3. Funciones Estrictas por Rol de Usuario
 
-Para facilitar el despliegue e inicialización del sistema en entornos locales o de producción, la aplicación incluye scripts CLI ejecutables mediante `npm run`:
+---
 
-*   **Creación de Administrador Inicial:**
+### 3.1. Rol: Administrador (`admin`)
+
+El Administrador ostenta la gobernanza directiva, técnica y de seguridad de toda la plataforma.
+
+#### A. Gestión de Miembros del Equipo Directivo (`/dashboard/admin/users`)
+*   **Gestión de Administradores:**
+    *   Crear nuevos Administradores con nombre, apellido, documento, correo, teléfono y contraseña.
+    *   Editar perfiles de administradores existentes.
+    *   Restablecer contraseña de cualquier administrador a su número de documento de identidad con un solo clic.
+    *   Eliminar cuentas de administradores (con protección de auto-eliminación para evitar bloqueos del sistema).
+*   **Gestión y Asignación de Gestores Académicos:**
+    *   Crear nuevos Gestores Académicos asignando uno o varios Programas de Formación bajo su responsabilidad (`managedPrograms`).
+    *   Modificar la asignación de programas vinculados a cada gestor.
+    *   Restablecer contraseñas de gestores.
+    *   Eliminar gestores académicos.
+*   **Gestión de Observadores:**
+    *   Crear nuevos Observadores institucionales con restricción de acceso a programas y fichas específicas en modo solo lectura (`observedPrograms`, `observedGroups`).
+    *   Editar asignaciones de visualización para observadores.
+    *   Eliminar observadores.
+*   **Filtros Avanzados y Búsqueda en Vivo:**
+    *   Filtro interactivo por rol (`Todos`, `Administradores`, `Gestores`, `Observadores`) con contadores dinámicos.
+    *   Búsqueda instantánea por nombre, correo electrónico o número de documento.
+    *   Botón de limpieza inmediata de filtros y botón de recarga reactiva con servidor.
+
+#### B. Gestión de Programas de Formación y Malla Curricular (`/dashboard/admin/courses`)
+*   **Programas de Formación:**
+    *   Crear, editar y eliminar Programas de Formación (ej. *ADSO - Análisis y Desarrollo de Software*, *Gestión Administrativa*).
+    *   Configurar topes de horas semanales permitidas por docente para el programa.
+    *   Habilitar/deshabilitar la edición extemporánea de asistencias pasadas a nivel de programa.
+*   **Periodos o Fases de Formación (Trimestres):**
+    *   Crear trimestres académicos asociados a cada programa.
+    *   Establecer si un periodo es ordinario o especial.
+    *   Reordenar trimestres mediante interfaz de arrastrar y soltar (*drag and drop*).
+    *   Eliminar periodos curriculares.
+*   **Competencias / Cursos:**
+    *   Crear materias/competencias curriculares asignando título, descripción, horas semanales de trabajo, enlace externo (Classroom/Moodle), ícono representativo y badge identificador de color.
+    *   Reordenar competencias dentro de cada periodo.
+    *   Eliminar competencias académicas.
+*   **Cualificación y Asignación Docente:**
+    *   Asignar docentes habilitados para impartir cada competencia curricular.
+    *   Designar el docente titular de la materia en cada ficha.
+
+#### C. Gestión Global de Fichas (Grupos) e Infraestructura
+*   **Fichas de Caracterización:**
+    *   Crear fichas de formación con código de caracterización, nombre descriptivo, jornada lectiva, fechas de inicio y terminación, y categoría formativa (**Lectiva** o **Productiva**).
+    *   Asignar un ambiente de formación principal (aula o laboratorio).
+    *   Designar instructor tutor/líder de ficha.
+*   **Ambientes de Aprendizaje (Aulas y Laboratorios):**
+    *   Crear ambientes de formación física o virtual especificando nombre (ej. *Ambiente 302 - Computo*, *Taller Mecánica*), aforo máximo de aprendices, ubicación y recursos disponibles (*PCs, Proyector, Tablero Inteligente, Aire Acondicionado*).
+    *   Editar y dar de baja ambientes de formación.
+
+#### D. Planificación Horaria y Motor Anticolisión (`/dashboard/admin/schedules`)
+*   Crear mallas horarias generales o por programa.
+*   Diseñar franjas horarias por ficha de lunes a domingo.
+*   Ejecutar el validador anticolisión que detecta solapamiento de instructores, cruces de aulas y excesos de carga horaria.
+*   Publicar u ocultar los horarios para aprendices e instructores.
+*   Registrar festivos institucionales y novedades horarias de fuerza mayor.
+
+#### E. Analítica Institucional y Auditoría (`/dashboard/admin/analytics`)
+*   Visualizar KPIs globales: total de aprendices matriculados, instructores activos, fichas en etapa lectiva/productiva, porcentaje de asistencia general.
+*   Matriz de riesgo: aprendices en riesgo académico, deserción por inasistencia o alertas conductuales del observador.
+*   Registro de auditoría (*Audit Logs*): trazabilidad de creación, edición y eliminación de usuarios, roles y notas con IP y usuario ejecutor.
+*   **Suplantación de Sesión (*Impersonation*):** Iniciar sesión en un clic con la cuenta de cualquier usuario del centro para verificar errores o prestar soporte remoto, con registro estricto en auditoría.
+
+#### F. Configuración Global del Sistema (`/dashboard/admin/settings`)
+*   **Identidad Corporativa:** Configurar nombre de la institución, logotipo principal, logotipo alterno, favicon, imagen hero del login y enlaces a redes sociales.
+*   **Parámetros Operativos del Sistema:**
+    *   Límite de accesos diarios de aprendices.
+    *   Carga horaria máxima permitida por docente.
+    *   Restricción de modificación de asistencias a la semana en curso.
+*   **Temas Visuales:** Definir el tema por defecto (Claro, Oscuro o Sistema), esquemas de color de acento HSL institucionales y tema del visor de código.
+
+---
+
+### 3.2. Rol: Gestor Académico (`gestor`)
+
+El Gestor Académico es el **coordinador operativo directo** de los programas formativos asignados a su cargo (`managedPrograms`).
+
+#### A. Consola del Gestor (`/dashboard/gestor`)
+*   Panel de control filtrable por Programa de Formación a su cargo.
+*   Indicadores en tiempo real de aprendices matriculados, fichas activas, competencias estructuradas y docentes vinculados.
+*   Acceso a alertas tempranas de deserción e inasistencias acumuladas.
+
+#### B. Directorio de Aprendices y Matrícula (`/dashboard/gestor/users`)
+*   **Selector Dinámico por Ficha:** Navegación por píldoras (*pills*) de todas las fichas del programa a su cargo.
+*   **Filtros por Etapa Formativa:** Filtrado de aprendices en **Etapa Lectiva** vs. **Etapa Productiva**.
+*   **Registro Individual de Aprendices:** Formulario modal de matrícula con autocompletado de identificación, nombres, apellidos, correo, teléfono y asignación de ficha.
+*   **Importación Masiva de Aprendices desde Excel:**
+    *   Descarga de plantilla oficial en formato `.xlsx`.
+    *   Carga masiva de aprendices con validación previa de duplicidad de documentos y correos electrónicos.
+    *   Creación simultánea de cuentas y perfiles vinculados automáticamente a la ficha elegida.
+*   **Traslado de Aprendices entre Fichas:**
+    *   Mover aprendices de una ficha a otra con registro de motivo.
+    *   Mantenimiento del historial de traslados previos (`GroupEnrollment`) para trazabilidad académica.
+*   **Gestión de Novedades de Aprendiz:** Marcar novedades disciplinarias o administrativas en el perfil del aprendiz (*Cancelación de Matrícula, Aplazamiento, Traslado, Deserción*).
+*   **Restablecimiento de Contraseñas:** Restaurar la contraseña de cualquier aprendiz a su número de documento en caso de olvido.
+*   **Analítica del Grupo:** Abrir panel analítico del grupo con métricas de asistencia consolidada, notas promedio y distribución de calificaciones.
+
+#### C. Directorio de Docentes del Programa (`/dashboard/gestor/users?tab=teachers`)
+*   Directorio de instructores asignados a sus programas de formación.
+*   Registro manual de nuevos docentes.
+*   Edición de datos de contacto de los instructores.
+*   Visualización de competencias habilitadas para cada docente.
+*   Restablecimiento de contraseñas de instructores a su número de documento.
+
+#### D. Estructuración Curricular del Programa (`/dashboard/gestor/courses`)
+*   Administración de los periodos (trimestres) del programa.
+*   Creación, edición y ordenamiento de materias y competencias formativas.
+*   Configuración de horas semanales sugeridas e intensidades horarias.
+*   Asignación de fichas y aulas a las materias.
+*   Cualificación pedagógica de los instructores para cada materia del programa.
+
+#### E. Planificación Horaria Operativa (`/dashboard/gestor/schedules`)
+*   Creación y edición de las mallas horarias semanales de las fichas a su cargo.
+*   Asignación de instructores y ambientes de formación en la matriz horaria.
+*   Validación inmediata del motor anticolisión (evita cruces de docentes y aulas).
+*   Aprobación de solicitudes de permisos de asistencia extemporánea remitidas por los instructores.
+*   Gestión de eventos especiales y novedades de horario en sus programas.
+
+#### F. Seguimiento a Planes de Mejoramiento (`/dashboard/gestor/users?tab=students&subtab=plans`)
+*   Monitoreo centralizado de todos los planes de mejoramiento abiertos por los instructores.
+*   Verificación del estado del plan: *Emitido, Firmado por Aprendiz, Evaluado por Docente*.
+*   Auditoría de evidencias cargadas y notas de recuperación asignadas.
+
+---
+
+### 3.3. Rol: Observador (`observer`)
+
+El Observador es un rol de auditoría, inspección y supervisión pedagógica o directiva externa.
+
+#### A. Ámbito y Restricción de Acceso
+*   Acceso restringido únicamente a los Programas de Formación (`observedPrograms`) y Fichas (`observedGroups`) expresamente autorizados por el Administrador.
+*   **Régimen Estricto de Solo Lectura:** El observador puede navegar, consultar y exportar información, pero **todos los controles de modificación, alta, baja y edición están deshabilitados**.
+
+#### B. Capacidades de Consulta
+*   **Supervisión de Mallas Curriculares:** Consultar competencias, trimestres, intensidades horarias y docentes cualificados.
+*   **Consulta de Fichas y Aprendices:** Visualizar listas de aprendices, datos de contacto, fichas activas y estados formativos.
+*   **Consulta de Asistencias y Observador:**
+    *   Ver matrices de asistencia consolidadas por ficha y por estudiante.
+    *   Ver bitácora de anotaciones del observador digital realizadas por los instructores.
+*   **Consulta de Horarios:** Visualizar la programación horaria semanal publicada y los ambientes de formación utilizados.
+*   **Seguimiento de Planes de Mejoramiento:** Auditar actas de compromiso, evidencias y calificaciones de recuperación.
+*   **Exportación de Reportes:** Descargar reportes en Excel o PDF para fines de inspección y calidad académica.
+
+---
+
+### 3.4. Rol: Docente / Instructor (`teacher`)
+
+El Instructor es el líder pedagógico del aula y administra las fichas a las que ha sido asignado.
+
+#### A. Consola del Instructor (`/dashboard/teacher`)
+*   Selector de Fichas asignadas con badge de competencia y periodo activo.
+*   Acceso a la consola integral de ficha (`GroupManager.tsx`).
+
+#### B. Planilla de Asistencia Matricial (`/dashboard/teacher`)
+*   **Marcación de Estados de Asistencia:**
+    *   **`PRESENT` (Presente):** Asistencia puntual a la sesión.
+    *   **`ABSENT` (Ausente):** Inasistencia no justificada.
+    *   **`LATE` (Llegada Tarde):** Retraso con registro opcional de hora de ingreso.
+    *   **`LEAVE_EARLY` (Retiro Temprano):** Abandono antes del fin de la jornada.
+    *   **`EXCUSED` (Excusa / Justificada):** Inasistencia avalada formalmente.
+*   **Navegación Móvil Táctil (`touch-pan-x`):** Desplazamiento horizontal fluido en dispositivos móviles y tabletas sobre toda la matriz de fechas y totales de fallas (`F`), tardanzas (`T`) y retiros (`R`).
+*   **Marcación Rápida:** Botón para marcar a toda la ficha como presente en un solo clic.
+*   **Solicitud de Permiso Extemporáneo:** Formulario para solicitar al Administrador o Gestor la apertura de una semana anterior cerrada para corregir asistencias pasadas.
+
+#### C. Observador Digital de Aula (`RemarkManagerDialog.tsx`)
+*   Creación de anotaciones formativas dirigidas a aprendices específicos:
+    *   `ATTENTION`: Llamados de atención verbal o escrito.
+    *   `COMMENDATION`: Felicitaciones y reconocimientos por desempeño sobresaliente.
+    *   `CITATION`: Citaciones formales a coordinación o acudiente.
+    *   `OTHER`: Otras observaciones de seguimiento pedagógico.
+*   **Plantillas Predefinidas (`RemarkTemplate`):** Carga rápida de causales y descripciones frecuentes.
+*   **Trazabilidad de Notificación (`viewedAt`):** Registro exacto de fecha y hora en que el aprendiz abrió y leyó la anotación en su portal.
+
+#### D. Calificaciones Ponderadas Jerárquicas (`GradeManagerPanel.tsx`)
+*   **Modos de Evaluación:**
+    *   Ponderación porcentual (`usePercentageWeights = true`).
+    *   Evaluación acumulativa por puntos.
+*   **Estructura Jerárquica:**
+    *   **Cortes Académicos (`GradeCategory`):** Ej. *Primer Corte (30%)*, *Segundo Corte (30%)*, *Tercer Corte (40%)*.
+    *   **Grupos de Actividades (`GradeGroup`):** Ej. *Talleres Prácticos (40%)*, *Exámenes Técnicos (40%)*, *Participación (20%)*.
+    *   **Actividades Específicas (`Activity`):** Creación de tareas con peso relativo, fecha límite y opción de recepción de enlace de evidencia.
+*   **Calificación de Entregas:** Asignación de nota cuantitativa (0.0 a 5.0) y retroalimentación personalizada (*feedback*).
+*   **Exportación Oficial a Excel:** Generación automática de libro de calificaciones con fórmulas de ponderación y formato institucional.
+
+#### E. Planes de Mejoramiento (`ImprovementPlanDialog.tsx`)
+*   Apertura formal de planes de mejoramiento para aprendices con bajo rendimiento o inasistencias críticas.
+*   Asignación de número de radicado, descripción de compromisos y plazos (fechas de inicio y entrega).
+*   **Carga de Documento Inicial (`teacherDocUrl`):** Enlace con las actividades a desarrollar.
+*   **Recepción y Revisión:** Verificación del documento firmado subido por el aprendiz (`signedDocUrl`).
+*   **Contrafirma Docente y Evaluación:** Carga del documento con contrafirma del instructor (`teacherSignedDocUrl`), evidencia de sustentación (`evidenceUrl`) y nota definitiva de superación del plan.
+
+#### F. Dinámicas y Recursos de Aula
+*   **Ruleta de Participación (`Roulette.tsx`):** Selección aleatoria animada de aprendices de la ficha para dinamizar intervenciones en clase.
+*   **Gestor de Subgrupos de Trabajo (`WorkGroupManagerDialog.tsx`):** Organización de equipos de trabajo colaborativo dentro de la ficha.
+*   **Contenido Compartido (`SharedContent`):** Publicación de enlaces de interés, archivos de código y recursos bibliográficos para la ficha.
+
+#### G. Gestión de Disponibilidad Horaria (`/dashboard/teacher/schedule`)
+*   Visualización de su horario de clases semanal por ambiente y ficha.
+*   Declaración interactiva de bloques de disponibilidad horaria semanal para ser considerada por el motor de planificación.
+
+---
+
+### 3.5. Rol: Aprendiz / Estudiante (`student`)
+
+El Aprendiz es el beneficiario de la formación y cuenta con un portal autónomo de consulta y autogestión.
+
+#### A. Panel Principal (`/dashboard/student`)
+*   Visualización de KPIs personales en tiempo real:
+    *   Porcentaje general de asistencia acumulada.
+    *   Ficha activa y competencia en curso.
+    *   Promedio ponderado de calificaciones.
+    *   Notificaciones de nuevas observaciones o tareas pendientes.
+*   **Agenda del Día:** Detalle de clases programadas para el día con hora, materia, aula asignada e instructor titular.
+
+#### B. Expediente y Registro Académico (`/dashboard/student/records`)
+*   **Diseño Full-Width:** Visualización completa de expediente sin restricciones de ancho.
+*   **Historial de Fichas:** Selector para consultar su ficha activa o el historial de notas y asistencias de fichas anteriores (`GroupEnrollment`).
+*   **Radicación de Justificaciones de Inasistencia:**
+    *   Identificación de fechas con estado `ABSENT`.
+    *   Formulario de radicación con motivo de la ausencia y enlace a soporte digital (incapacidad médica o calamidad).
+    *   Consulta del estado de aprobación de la justificación.
+*   **Observador Digital del Aprendiz:**
+    *   Lectura de todas las anotaciones formativas realizadas por los instructores.
+    *   Emisión automática del acuse de recibo digital (`viewedAt`) al momento de abrir la observación.
+*   **Firma y Evidencias de Planes de Mejoramiento:**
+    *   Descarga del documento de compromisos emitido por el docente.
+    *   Carga del documento firmado digitalmente por el aprendiz.
+    *   Carga de evidencias de cumplimiento académico.
+    *   Consulta de la calificación final obtenida.
+*   **Descarga de Boletines:** Descarga de reportes académicos y boletines de notas consolidadas en PDF o Excel.
+
+#### C. Consulta de Programación Horaria (`/dashboard/student/schedule`)
+*   Calendario semanal y mensual de clases con ambientes de aprendizaje y docentes.
+*   Consulta de eventos institucionales y festivos que aplican a su ficha.
+*   Visualización de novedades horarias (cambios de aula, suspensiones o sesiones virtuales).
+
+---
+
+## 4. Módulos Especializados del Núcleo
+
+---
+
+### 4.1. Motor de Planificación Horaria y Detección Anticolisión
+
+Ubicado en `src/features/schedule/` y gestionado mediante [SchedulePlanning.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/admin/components/SchedulePlanning.tsx):
+
+```mermaid
+flowchart TD
+    A[Inicio Asignación Bloque Horario] --> B{¿Docente Disponible?}
+    B -- No --> C[Error: Conflicto Disponibilidad Docente]
+    B -- Sí --> D{¿Docente en otra Clase simultánea?}
+    D -- Sí --> E[Error: Colisión de Docente en otra Ficha]
+    D -- No --> F{¿Ambiente/Aula ocupada?}
+    F -- Sí --> G[Error: Colisión de Aula]
+    F -- No --> H{¿Excede Carga Horaria Semanal?}
+    H -- Sí --> I[Error: Tope Semanal Superado]
+    H -- No --> J[Asignación Exitosa en Matriz Horaria]
+```
+
+*   **Validaciones en Tiempo Real:**
+    1.  **Doble Reserva de Docente:** Un instructor no puede tener asignadas dos sesiones en el mismo día y franja horaria.
+    2.  **Doble Reserva de Ambiente:** Un aula física no puede superar su aforo ni albergar dos fichas a la vez.
+    3.  **Límite Horario Semanal:** Controla que el docente no sobrepase el parámetro institucional (ej. 40 horas semanales).
+    4.  **Cruce de Ficha:** Garantiza que la ficha no tenga dos clases simultáneas.
+*   **Estados de Publicación:** Los horarios se gestionan en estado **Borrador (`isPublished = false`)** y solo se hacen visibles para instructores y aprendices cuando el Administrador o Gestor realiza la publicación formal.
+
+---
+
+### 4.2. Sistema de Calificaciones Jerárquicas Ponderadas
+
+Ubicado en [GradeManagerPanel.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/teacher/components/GradeManagerPanel.tsx):
+
+```text
+Curso / Competencia (100%)
+│
+├── Corte 1: GradeCategory (Peso: 30%)
+│   ├── Grupo 1: Talleres Prácticos (Peso: 50% del Corte)
+│   │   ├── Actividad 1: Taller Algoritmos (Peso interno)
+│   │   └── Actividad 2: Diagramas UML (Peso interno)
+│   └── Grupo 2: Evaluación Técnica (Peso: 50% del Corte)
+│       └── Actividad 3: Parcial Escrito
+│
+├── Corte 2: GradeCategory (Peso: 30%)
+└── Corte 3: GradeCategory (Peso: 40%)
+```
+
+*   Permite alternar entre ponderación porcentual y suma absoluta de puntos.
+*   Cálculo reactivo automático de promedios ponderados por corte y nota final del curso.
+*   Generación de planillas matriciales exportables a Excel con formato institucional de celdas.
+
+---
+
+### 4.3. Planilla de Asistencia Matricial y Permisos Extemporáneos
+
+Implementada en [GroupManager.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/teacher/components/GroupManager.tsx):
+
+*   **Matriz Responsiva:** Tabla interactiva con columnas fijas de aprendices y columnas dinámicas por fecha de formación con scroll horizontal optimizado para móviles (`touch-pan-x`).
+*   **Cierre de Semanas:** Si el parámetro `limitAttendanceToCurrentWeek` está activo, las semanas previas quedan bloqueadas para evitar adulteraciones posteriores.
+*   **Flujo de Permiso Extemporáneo (`AttendancePermissionRequest`):**
+    1.  El docente solicita modificación indicando ficha, fecha y justificación.
+    2.  El Gestor o Administrador recibe la notificación y aprueba o rechaza la solicitud.
+    3.  Al ser aprobada, el docente cuenta con una ventana de tiempo para corregir la asistencia.
+
+---
+
+### 4.4. Observador Digital y Bitácora Formativa
+
+Implementado en [RemarkManagerDialog.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/teacher/components/RemarkManagerDialog.tsx):
+
+*   **Categorías Formativas:** `ATTENTION` (Llamado de atención), `COMMENDATION` (Felicitación), `CITATION` (Citación), `OTHER` (Anotación general).
+*   **Acuse de Recibo Inmutable (`viewedAt`):** Al momento exacto en que el aprendiz inicia sesión y abre el detalle de la anotación, el backend estampa la fecha y hora de lectura. Esto elimina reclamos de desconocimiento en procesos de comité de evaluación.
+*   **Plantillas Rápidas (`RemarkTemplate`):** Banco de textos estandarizados según el manual de convivencia institucional.
+
+---
+
+### 4.5. Flujo de Planes de Mejoramiento (Compromisos y Firmas)
+
+Implementado en [ImprovementPlanDialog.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/teacher/components/ImprovementPlanDialog.tsx):
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Docente
+    actor Aprendiz
+    participant Sistema
+    actor Gestor
+
+    Docente->>Sistema: Crea Plan de Mejoramiento (Radicado, Compromisos, Plazos, Enlace de Guía)
+    Sistema-->>Aprendiz: Notifica Plan de Mejoramiento Pendiente
+    Aprendiz->>Sistema: Descarga Guía y Carga Documento Firmado Digitalmente
+    Docente->>Sistema: Valida Documento Firmado y Sube Contrafirma Docente
+    Aprendiz->>Sistema: Entrega Evidencias Académicas dentro del plazo
+    Docente->>Sistema: Califica Plan (Nota 0-5) y Carga Acta de Cierre
+    Gestor->>Sistema: Audita Estado del Plan (Superado / No Superado)
+```
+
+---
+
+### 4.6. Suplantación de Sesión Segura (Impersonation) y Auditoría
+
+Implementado mediante Better Auth y [auditLogger.ts](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/admin/services/auditLogger.ts):
+
+*   **Uso Exclusivo:** Rol `admin`.
+*   **Propósito:** Soporte remoto inmediato y reproducción de incidencias reportadas por aprendices o instructores sin vulnerar ni solicitar contraseñas.
+*   **Mecanismo:** Generación de un token de sesión temporal donde el campo `impersonatedBy` almacena el identificador del administrador que opera la sesión.
+*   **Banner de Advertencia:** En la interfaz superior aparece una barra flotante que indica: *"Sesión suplantada activa como [Nombre Usuario] - Salir de la suplantación"*.
+*   **Trazabilidad en Base de Datos:** Toda acción ejecutada bajo suplantación queda registrada en el registro de auditoría con la referencia de ambos usuarios.
+
+---
+
+## 5. Diccionario del Modelo de Datos (Prisma ORM)
+
+El archivo [`prisma/schema.prisma`](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/prisma/schema.prisma) define las siguientes entidades maestras:
+
+### 1. `User` (Usuario Principal)
+*   `id` (`String`, PK): Identificador único UUID.
+*   `name` (`String`): Nombre completo.
+*   `email` (`String`, Unique): Correo electrónico institucional o personal.
+*   `role` (`String`): Rol del usuario (`admin`, `gestor`, `observer`, `teacher`, `student`).
+*   `banned` (`Boolean`): Estado de suspensión de cuenta.
+*   `banReason` (`String`): Motivo de la suspensión.
+*   `groupId` (`String`, FK opcional): Ficha formativa principal (para aprendices).
+*   `availabilityLocked` (`Boolean`): Bloqueo de edición de disponibilidad para docentes.
+
+### 2. `Profile` (Información Personal y Sensible)
+*   `identificacion` (`String`): Cédula de ciudadanía, tarjeta de identidad o documento legal.
+*   `nombres` (`String`): Nombres del usuario.
+*   `apellido` (`String`): Apellidos del usuario.
+*   `telefono` (`String`): Teléfono de contacto.
+*   `novedad` (`String`): Novedad académica del estudiante (*Retiro, Aplazamiento, Deserción*).
+*   `dataProcessingConsent` (`Boolean`): Aceptación de política de tratamiento de datos (Habeas Data).
+
+### 3. `Program` (Programa de Formación)
+*   `name` (`String`): Nombre del programa de formación técnica/tecnológica.
+*   `maxTeacherHours` (`Int`): Intensidad horaria semanal máxima permitida a instructores del programa.
+*   `allowPastAttendanceEdit` (`Boolean`): Autorización de modificación de asistencias pasadas.
+*   *Relaciones:* Vinculado a `gestores` (`User[]`), `observers` (`User[]`), `teachers` (`User[]`), `groups` (`Group[]`) y `periods` (`Period[]`).
+
+### 4. `Period` (Periodo o Trimestre Académico)
+*   `name` (`String`): Denominación del periodo (ej. *Trimestre I*, *Trimestre II*).
+*   `order` (`Int`): Orden secuencial en la malla curricular.
+*   `esEspecial` (`Boolean`): Indicador de periodo de nivelación o extraordinario.
+
+### 5. `Group` (Ficha de Caracterización / Grupo)
+*   `name` (`String`): Código oficial de la ficha (ej. *2693521*).
+*   `description` (`String`): Nombre del programa o especialidad.
+*   `categoria` (`String`): Etapa formativa (**`LECTIVA`** o **`PRODUCTIVA`**).
+*   `startDate` / `endDate` (`DateTime`): Fechas oficiales de vigencia de la ficha.
+*   `environmentId` (`String`, FK): Aula o ambiente de formación asignado.
+
+### 6. `GroupEnrollment` (Historial de Aprendices en Fichas)
+*   `studentId` (`String`, FK) y `groupId` (`String`, FK).
+*   `status` (`GroupEnrollmentStatus`): `ACTIVE`, `TRANSFERRED`, `COMPLETED`, `WITHDRAWN`.
+*   `isCurrent` (`Boolean`): Si representa la ficha activa del aprendiz.
+*   `notes` (`String`): Observaciones sobre traslados o cambios de grupo.
+
+### 7. `Course` (Materia o Competencia Curricular)
+*   `title` (`String`): Nombre de la competencia o materia.
+*   `weeklyHours` (`Float`): Horas semanales sugeridas.
+*   `usePercentageWeights` (`Boolean`): Indica si usa ponderación porcentual (100%) o acumulativa.
+*   `teacherId` (`String`, FK): Docente titular asignado.
+
+### 8. `Attendance` (Registro Diario de Asistencia)
+*   `date` (`DateTime`): Fecha de la sesión.
+*   `status` (`AttendanceStatus`): `PRESENT`, `ABSENT`, `LATE`, `LEAVE_EARLY`.
+*   `justification` (`String`): Motivo radicado por el aprendiz.
+*   `justificationUrl` (`String`): Enlace al comprobante digital.
+
+### 9. `Remark` (Anotación en el Observador Digital)
+*   `type` (`RemarkType`): `ATTENTION`, `COMMENDATION`, `CITATION`, `OTHER`.
+*   `title` / `description` (`String`): Detalle del hecho u observación.
+*   `viewedAt` (`DateTime`): Marca temporal del acuse de recibo del aprendiz.
+
+### 10. `ImprovementPlan` (Plan de Mejoramiento)
+*   `planNumber` (`String`): Número único de radicación del acta.
+*   `teacherDocUrl` (`String`): Enlace al documento original emitido por el docente.
+*   `signedDocUrl` (`String`): Enlace al documento firmado por el aprendiz.
+*   `teacherSignedDocUrl` (`String`): Enlace con contrafirma docente.
+*   `evidenceUrl` (`String`): Enlace a evidencias de sustentación.
+*   `planScore` / `finalGrade` (`Float`): Calificaciones de recuperación asignadas.
+
+### 11. `TrainingEnvironment` (Ambiente de Formación / Aula)
+*   `name` (`String`): Nombre identificador del ambiente.
+*   `capacity` (`Int`): Aforo máximo de puestos.
+*   `resources` (`String[]`): Equipamiento disponible.
+
+### 12. `AcademicSchedule` & `ScheduleGroupSlot` (Mallas Horarias)
+*   Define el horario académico, sus franjas semanales por ficha, día de la semana (`DayOfWeek`), hora de inicio (`startTime`) y hora de fin (`endTime`).
+
+### 13. `ScheduleNovelty` (Novedades de Horario)
+*   Tipos: `SCHEDULE_SUSPENSION`, `ROOM_CHANGE`, `CLASS_RESCHEDULE`, `TECHNICAL_OUTAGE`, `INSTITUTIONAL_EVENT`, `VIRTUAL_SESSION`, `OTHER`.
+
+---
+
+## 6. Catálogo de Server Actions y APIs
+
+Todas las acciones del servidor se ejecutan bajo el modelo `"use server"` con validación estricta de sesión y roles (`requireAdmin`, `requireAdminOrObserver`, `requireCoordinator`):
+
+### A. Acciones de Administración y Usuarios (`adminActions.ts`)
+*   `getAdminDashboardStatsAction()`: Obtiene estadísticas consolidadas para admin o gestor.
+*   `getAllUsersAction({ role, groupId, programId, limit, page })`: Listado paginado y filtrado de usuarios.
+*   `createUserAction(data)`: Crea estudiantes o docentes con perfil, credenciales y validación de duplicados.
+*   `createAdminOrObserverAction(data)`: Crea Administradores, Gestores u Observadores asociando programas y fichas.
+*   `updateAdminOrObserverAction(id, data)`: Modifica información, roles y asignación de programas/fichas.
+*   `deleteAdminOrObserverAction(id)`: Elimina usuarios directivos con auditoría.
+*   `getAdminsAndObserversAction()`: Retorna todos los directivos con programas asignados formateados.
+*   `resetUserPasswordToDocAction(userId)`: Restaura la contraseña del usuario a su documento de identidad.
+*   `toggleUserBanAction(userId, reason)`: Bloquea o reactiva el acceso de un usuario.
+*   `updateStudentNovedadAction(userId, novedad, color)`: Registra novedades de matrícula en el aprendiz.
+*   `getSystemSettingsAction()` / `updateSystemSettingsAction(data)`: Consulta y modifica los parámetros globales del sistema.
+
+### B. Acciones Académicas y Curriculares (`academicActions.ts`)
+*   `getProgramsAction()` / `createProgramAction(data)` / `updateProgramAction(id, data)` / `deleteProgramAction(id)`: Ciclo de vida de programas formativos.
+*   `getGroupsAction()` / `createGroupAction(data)` / `updateGroupAction(id, data)` / `deleteGroupAction(id)`: Ciclo de vida de fichas de caracterización.
+*   `createPeriodAction(data)` / `updatePeriodAction(id, data)` / `deletePeriodAction(id)` / `reorderPeriodsAction(ids)`: Manejo de trimestres formativos.
+*   `assignCourseToPeriodAction(data)` / `reorderCoursesAction(ids)` / `deleteCourseAction(id)`: Manejo de competencias en trimestres.
+*   `registerStudentManualAction(data)`: Registro individual de aprendices con asignación a ficha.
+*   `registerStudentsBulkAction(students, groupId)`: Registro masivo desde planilla de Excel.
+*   `transferStudentGroupAction(studentId, newGroupId, notes)`: Traslado formal de ficha con historial.
+*   `getEnvironmentsAction()` / `createEnvironmentAction(data)` / `updateEnvironmentAction(id, data)`: Administración de aulas y ambientes.
+
+### C. Acciones del Docente y Aula (`groupActions.ts`, `attendanceActions.ts`, etc.)
+*   `recordAttendanceAction(courseId, date, records)`: Guarda la asistencia masiva de la sesión.
+*   `requestPastAttendancePermissionAction(courseId, date, reason)`: Radica solicitud de modificación extemporánea.
+*   `createRemarkAction(data)` / `getRemarksForStudentAction(userId)`: Registra y consulta anotaciones en el observador.
+*   `markRemarkAsViewedAction(remarkId)`: Estampa la fecha de acuse de recibo del aprendiz.
+*   `saveGradesAction(courseId, grades)`: Registra calificaciones cuantitativas y retroalimentación.
+*   `createImprovementPlanAction(data)` / `signImprovementPlanAction(planId, url)` / `evaluateImprovementPlanAction(planId, score, grade)`: Flujo completo de planes de mejoramiento.
+
+---
+
+## 7. Scripts de Despliegue, Mantenimiento y CLI
+
+La aplicación incorpora utilitarios de línea de comandos para facilitar el despliegue inicial y la administración del servidor:
+
+*   **Creación Interactiva de Administrador Maestro:**
     ```bash
     npm run create-admin
     ```
-    Ejecuta el script interactivo [`src/scripts/create-admin.ts`](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/scripts/create-admin.ts) para registrar el primer usuario con rol `admin`, contraseña encriptada (bcrypt/argon2 vía Better Auth) y perfil completo.
+    Ejecuta [`src/scripts/create-admin.ts`](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/scripts/create-admin.ts), solicitando nombre, correo, documento y contraseña para garantizar el acceso inicial a un sistema recién desplegado.
 
-*   **Migraciones y Generación de Cliente Prisma:**
+*   **Generación y Migración de Base de Datos:**
     ```bash
     npx prisma generate
     npx prisma migrate dev
     ```
+
+*   **Compilación y Validación de Producción:**
+    ```bash
+    npm run build
+    ```
+    Ejecuta el compilador Turbopack de Next.js y el chequeo estricto de tipos con `tsc --noEmit`.
+
+*   **Ejecución en Entornos de Desarrollo:**
+    ```bash
+    npm run dev
+    ```
+    Inicia el servidor de desarrollo local en `http://localhost:3000`.
+
+---
+*Documentación oficial generada para AcademiX V2 — Plataforma Integral de Gestión y Formación Técnica Profesional.*

@@ -25,7 +25,7 @@ interface UnifiedUserManagementProps {
   };
   adminData: {
     initialUsers: any[];
-    programs: Array<{ id: string; name: string }>;
+    programs: Array<{ id: string; name: string; groups?: Array<{ id: string; name: string; programId: string; categoria?: string }> }>;
     currentUserId: string;
   };
   currentUserRole?: string;

@@ -132,10 +132,8 @@ export const adminService = {
             if (filters.role === "student") {
                 andConditions.push({
                     group: {
-                        program: {
-                            teachers: {
-                                some: { id: filters.observerUserId }
-                            }
+                        observers: {
+                            some: { id: filters.observerUserId }
                         }
                     }
                 });
@@ -143,7 +141,7 @@ export const adminService = {
                 andConditions.push({
                     programs: {
                         some: {
-                            teachers: {
+                            observers: {
                                 some: { id: filters.observerUserId }
                             }
                         }
@@ -408,8 +406,15 @@ export const adminService = {
                 OR: [
                     {
                         group: {
+                            observers: {
+                                some: { id: filters.observerUserId }
+                            }
+                        }
+                    },
+                    {
+                        group: {
                             program: {
-                                teachers: {
+                                observers: {
                                     some: { id: filters.observerUserId }
                                 }
                             }
@@ -418,7 +423,7 @@ export const adminService = {
                     {
                         period: {
                             program: {
-                                teachers: {
+                                observers: {
                                     some: { id: filters.observerUserId }
                                 }
                             }

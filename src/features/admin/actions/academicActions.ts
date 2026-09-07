@@ -53,7 +53,7 @@ export async function getProgramsAction() {
         };
     } else if (session.user.role === "observer") {
         whereClause = {
-            teachers: {
+            observers: {
                 some: {
                     id: session.user.id
                 }
@@ -116,6 +116,11 @@ export async function getProgramsAction() {
                 }
             },
             groups: {
+                where: session.user.role === "observer" ? {
+                    observers: {
+                        some: { id: session.user.id }
+                    }
+                } : undefined,
                 orderBy: { createdAt: "asc" },
                 include: {
                     environment: true,
@@ -403,11 +408,9 @@ export async function getGroupsAction() {
         };
     } else if (session.user.role === "observer") {
         whereClause = {
-            program: {
-                teachers: {
-                    some: {
-                        id: session.user.id
-                    }
+            observers: {
+                some: {
+                    id: session.user.id
                 }
             }
         };

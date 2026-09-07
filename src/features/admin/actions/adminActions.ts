@@ -989,7 +989,7 @@ export async function getAllCoursesAdminAction(filters?: {
     observerUserId?: string;
 }) {
     const session = await requireAdminOrObserver();
-    const isObserver = false;
+    const isObserver = session.user.role === "observer";
     const finalFilters = { ...filters };
     if (isObserver) {
         finalFilters.observerUserId = session.user.id;
@@ -999,15 +999,16 @@ export async function getAllCoursesAdminAction(filters?: {
 
 export async function getCourseDetailsAdminAction(courseId: string) {
     const session = await requireAdminOrObserver();
-    const isObserver = false;
+    const isObserver = session.user.role === "observer";
     const course = await adminService.getCourseDetailsAdmin(courseId);
     if (isObserver && course) {
         const isAssociated = await prisma.course.findFirst({
             where: {
                 id: courseId,
                 OR: [
-                    { group: { program: { teachers: { some: { id: session.user.id } } } } },
-                    { period: { program: { teachers: { some: { id: session.user.id } } } } }
+                    { group: { observers: { some: { id: session.user.id } } } },
+                    { group: { program: { observers: { some: { id: session.user.id } } } } },
+                    { period: { program: { observers: { some: { id: session.user.id } } } } }
                 ]
             }
         });
@@ -1725,6 +1726,12 @@ export async function getAdminsAndObserversAction() {
             managedPrograms: {
                 select: { id: true, name: true }
             },
+            observedPrograms: {
+                select: { id: true, name: true }
+            },
+            observedGroups: {
+                select: { id: true, name: true, programId: true }
+            },
             programs: {
                 select: { id: true, name: true }
             }
@@ -1734,7 +1741,8 @@ export async function getAdminsAndObserversAction() {
     // Map programs uniformly
     return users.map(u => ({
         ...u,
-        programs: u.managedPrograms.length > 0 ? u.managedPrograms : u.programs
+        programs: u.role === "observer" ? u.observedPrograms : (u.managedPrograms.length > 0 ? u.managedPrograms : u.programs),
+        observedGroups: u.observedGroups || []
     }));
 }
 
@@ -1748,6 +1756,7 @@ export async function createAdminOrObserverAction(data: {
     apellido: string;
     telefono?: string;
     programIds?: string[];
+    groupIds?: string[];
 }) {
     const session = await requireCoordinator();
 
@@ -1772,7 +1781,7 @@ export async function createAdminOrObserverAction(data: {
     const passwordToUse = data.password || data.identificacion;
     const hashedPassword = await hashPassword(passwordToUse);
 
-    // Create user with account, profile and assigned programs
+    // Create user with account, profile and assigned programs/groups
     const user = await prisma.user.create({
         data: {
             id: crypto.randomUUID(),
@@ -1798,16 +1807,21 @@ export async function createAdminOrObserverAction(data: {
                     password: hashedPassword,
                 }
             },
-            managedPrograms: (data.role === "gestor" || data.role === "observer") && data.programIds && data.programIds.length > 0 ? {
+            managedPrograms: data.role === "gestor" && data.programIds && data.programIds.length > 0 ? {
                 connect: data.programIds.map(pid => ({ id: pid }))
             } : undefined,
-            programs: data.role === "observer" && data.programIds && data.programIds.length > 0 ? {
+            observedPrograms: data.role === "observer" && data.programIds && data.programIds.length > 0 ? {
                 connect: data.programIds.map(pid => ({ id: pid }))
-            } : undefined
+            } : undefined,
+            observedGroups: data.role === "observer" && data.groupIds && data.groupIds.length > 0 ? {
+                connect: data.groupIds.map(gid => ({ id: gid }))
+            } : undefined,
         },
         include: {
             profile: true,
             managedPrograms: true,
+            observedPrograms: true,
+            observedGroups: true,
             programs: true
         }
     });
@@ -1826,6 +1840,9 @@ export async function createAdminOrObserverAction(data: {
         success: true,
     });
 
+    revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
+
     return user;
 }
 
@@ -1838,6 +1855,7 @@ export async function updateAdminOrObserverAction(id: string, data: {
     apellido: string;
     telefono?: string;
     programIds?: string[];
+    groupIds?: string[];
 }) {
     const session = await requireCoordinator();
 
@@ -1857,16 +1875,6 @@ export async function updateAdminOrObserverAction(id: string, data: {
         throw new Error("Ya existe otro perfil con esta identificación");
     }
 
-    const currentManagedPrograms = await prisma.program.findMany({
-        where: { gestores: { some: { id } } },
-        select: { id: true }
-    });
-
-    const currentObserverPrograms = await prisma.program.findMany({
-        where: { teachers: { some: { id } } },
-        select: { id: true }
-    });
-
     const user = await prisma.user.update({
         where: { id },
         data: {
@@ -1882,21 +1890,20 @@ export async function updateAdminOrObserverAction(id: string, data: {
                 }
             },
             managedPrograms: {
-                disconnect: currentManagedPrograms.map(p => ({ id: p.id })),
-                connect: (data.role === "gestor" || data.role === "observer") && data.programIds && data.programIds.length > 0
-                    ? data.programIds.map(pid => ({ id: pid }))
-                    : []
+                set: data.role === "gestor" && data.programIds ? data.programIds.map(pid => ({ id: pid })) : []
             },
-            programs: {
-                disconnect: currentObserverPrograms.map(p => ({ id: p.id })),
-                connect: data.role === "observer" && data.programIds && data.programIds.length > 0
-                    ? data.programIds.map(pid => ({ id: pid }))
-                    : []
+            observedPrograms: {
+                set: data.role === "observer" && data.programIds ? data.programIds.map(pid => ({ id: pid })) : []
+            },
+            observedGroups: {
+                set: data.role === "observer" && data.groupIds ? data.groupIds.map(gid => ({ id: gid })) : []
             }
         },
         include: {
             profile: true,
             managedPrograms: true,
+            observedPrograms: true,
+            observedGroups: true,
             programs: true
         }
     });
@@ -1914,6 +1921,9 @@ export async function updateAdminOrObserverAction(id: string, data: {
         metadata: { email: data.email, role: data.role, programIds: data.programIds },
         success: true,
     });
+
+    revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
 
     return user;
 }
@@ -1947,6 +1957,9 @@ export async function deleteAdminOrObserverAction(id: string) {
         metadata: { email: user?.email, role: user?.role },
         success: true,
     });
+
+    revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
 
     return result;
 }

@@ -51,7 +51,7 @@ import {
     ChevronRight, Layers, Clock, X, Info, GraduationCap, ArrowLeft, ArrowUpRight, GripVertical,
     AlertCircle, Building, Code, Database, Binary, MessageSquare, Terminal,
     ShieldCheck, Cloud, Rocket, NotebookTabs, Lock as LockIcon, Download,
-    Activity, Upload, AlertTriangle, School
+    Activity, Upload, AlertTriangle, School, Eye
 } from "lucide-react";
 import {
     DndContext,
@@ -134,6 +134,7 @@ import { TeacherQualificationsView } from "@/features/teacher/components/Teacher
 import { DayOfWeek } from "@/generated/prisma/client";
 import { EnvironmentManagement, TrainingEnvironment } from "@/features/admin/components/EnvironmentManagement";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
+import { AdminProgramReadOnlyView } from "./program-view/AdminProgramReadOnlyView";
 
 const DAYS_OF_WEEK_ORDERED: { value: DayOfWeek; label: string }[] = [
     { value: "MONDAY", label: "Lunes" },
@@ -2773,11 +2774,27 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 <TableRow key={program.id} className="hover:bg-muted/20 transition-colors">
                                                     <TableCell className="font-medium">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 shrink-0">
+                                                            <div 
+                                                                className="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 shrink-0 cursor-pointer hover:bg-primary/20 transition-colors"
+                                                                onClick={() => {
+                                                                    setSelectedProgram(program);
+                                                                    router.push(`/dashboard/admin/courses?programId=${program.id}`);
+                                                                }}
+                                                                title="Visualizar este programa"
+                                                            >
                                                                 <GraduationCap className="h-5 w-5" />
                                                             </div>
-                                                            <div className="flex flex-col max-w-xs">
-                                                                <span className="text-sm font-bold text-foreground">{program.name}</span>
+                                                            <div 
+                                                                className="flex flex-col max-w-xs cursor-pointer group"
+                                                                onClick={() => {
+                                                                    setSelectedProgram(program);
+                                                                    router.push(`/dashboard/admin/courses?programId=${program.id}`);
+                                                                }}
+                                                                title="Visualizar este programa"
+                                                            >
+                                                                <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1">
+                                                                    {program.name}
+                                                                </span>
                                                                 <span className="text-xs text-muted-foreground line-clamp-1">
                                                                     {program.description || "Sin descripción proporcionada."}
                                                                 </span>
@@ -2844,7 +2861,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                     )}
                                                                 </>
                                                             )}
-                                                            {currentUserRole !== "admin" && (
+                                                            {currentUserRole !== "admin" ? (
                                                                 <Button
                                                                     size="sm"
                                                                     onClick={() => {
@@ -2855,6 +2872,18 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                 >
                                                                     Administrar
                                                                     <ArrowUpRight className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            ) : (
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        setSelectedProgram(program);
+                                                                        router.push(`/dashboard/admin/courses?programId=${program.id}`);
+                                                                    }}
+                                                                    className="h-8 text-xs font-bold gap-1.5 rounded-xl shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 ml-1"
+                                                                >
+                                                                    <Eye className="h-3.5 w-3.5" />
+                                                                    Visualizar Programa
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -2868,8 +2897,26 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         </Card>
                     )}
                 </div>
-            )) : (
-                /* PROGRAM-CENTRIC WORKSPACE */
+            )) : (currentUserRole === "admin" || isObserver) ? (
+                <AdminProgramReadOnlyView
+                    program={selectedProgram}
+                    allPrograms={programs}
+                    isObserver={isObserver}
+                    onBack={() => {
+                        setSelectedProgram(null);
+                        router.push("/dashboard/admin/courses");
+                    }}
+                    onSelectProgram={(progId) => {
+                        const nextProg = programs.find(p => p.id === progId);
+                        if (nextProg) {
+                            setSelectedProgram(nextProg);
+                            router.push(`/dashboard/admin/courses?programId=${progId}`);
+                        }
+                    }}
+                    onEditProgram={isObserver ? undefined : (prog) => openEditProgram(prog)}
+                />
+            ) : (
+                /* PROGRAM-CENTRIC WORKSPACE FOR GESTOR */
                 <div className="space-y-6">
                     {/* Header Panel */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-3.5 sm:p-4 rounded-2xl border border-border/80 shadow-xs">

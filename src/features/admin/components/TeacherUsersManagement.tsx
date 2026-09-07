@@ -46,10 +46,11 @@ import {
   Mail,
   IdCard,
   BookOpen,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { createUserAction, deleteUserAction, resetUserPasswordToDocAction, updateTeacherUserAction } from "@/app/admin-actions";
+import { createUserAction, deleteUserAction, resetUserPasswordToDocAction, updateTeacherUserAction } from "@/features/admin/actions/adminActions";
 import { TeacherAvailabilityView } from "@/features/schedule/components/TeacherAvailabilityView";
 import { TeacherQualificationsView } from "@/features/teacher/components/TeacherQualificationsView";
 
@@ -222,6 +223,7 @@ export function TeacherUsersManagement({
         toast.success("Docente registrado exitosamente");
         setCreateDialogOpen(false);
         resetForm();
+        setSearchQuery("");
         router.refresh();
       } catch (error: any) {
         toast.error("Error al registrar docente", {
@@ -313,16 +315,37 @@ export function TeacherUsersManagement({
       {/* Search Filter */}
       <Card className="border-border bg-card shadow-xs">
         <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar docente por nombre, correo o número de documento..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 pr-9"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+                  title="Limpiar búsqueda y mostrar todos"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
+            {searchQuery && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSearchQuery("")}
+                className="text-xs font-semibold text-muted-foreground hover:text-indigo-600 shrink-0 gap-1.5"
+              >
+                <X className="h-3.5 w-3.5" />
+                Mostrar todos ({teachers.length})
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

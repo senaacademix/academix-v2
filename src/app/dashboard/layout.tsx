@@ -8,7 +8,6 @@ import { ModeToggle } from "@/components/theme/ModeToggle";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { HeaderRoleBadge } from "@/components/navigation/HeaderRoleBadge";
-import { HeaderPushToggle } from "@/components/HeaderPushToggle";
 import { Footer } from "@/components/Footer";
 import { ProfileCompletionCheck } from "@/components/profile/ProfileCompletionCheck";
 import { getAvailableThemes } from "@/app/actions/themes";
@@ -179,7 +178,6 @@ export default async function DashboardLayout({
               </div>
 
               <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
-                <HeaderPushToggle />
                 {showThemeSelector && <ThemeSelector themes={themes} />}
                 {showModeToggle && <ModeToggle />}
                 {showLicenseModal && (

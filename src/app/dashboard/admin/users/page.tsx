@@ -54,6 +54,13 @@ export default async function AdminUsersPage({
     const mappedPrograms = programs.map((p) => ({
         id: p.id,
         name: p.name,
+        groups: (p.groups || []).map((g: any) => ({
+            id: g.id,
+            name: g.name,
+            code: g.code,
+            programId: p.id,
+            categoria: g.categoria
+        }))
     }));
 
     return (

@@ -34,6 +34,12 @@ export function HeaderRoleBadge() {
           fullLabel: "Gestor Académico",
           icon: Sparkles,
         };
+      case "observer":
+        return {
+          shortLabel: "Observador",
+          fullLabel: "Observador de Programa",
+          icon: Eye,
+        };
       case "teacher":
         return {
           shortLabel: "Docente",

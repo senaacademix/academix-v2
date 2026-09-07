@@ -24,7 +24,6 @@ model User {
   updatedAt     DateTime  @default(now()) @updatedAt
   sessions      Session[]
   accounts      Account[]
-  pushSubscriptions PushSubscription[]
 
   role String? // "admin", "teacher", "student"
 
@@ -76,6 +75,8 @@ model User {
   workGroups                   CourseWorkGroup[] @relation("StudentWorkGroups")
   studentAccessLogs            StudentAccessLog[]
   managedPrograms              Program[]         @relation("GestorPrograms")
+  observedPrograms             Program[]         @relation("ObserverPrograms")
+  observedGroups               Group[]           @relation("ObserverGroups")
   reportedScheduleNovelties    ScheduleNovelty[] @relation("ReportedNovelties")
 
   @@unique([email])
@@ -408,6 +409,7 @@ model Program {
   groups          Group[]
   teachers        User[]     @relation("ProgramTeachers")
   gestores        User[]     @relation("GestorPrograms")
+  observers       User[]     @relation("ObserverPrograms")
   environments    TrainingEnvironment[]
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
@@ -439,6 +441,7 @@ model Group {
   program     Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
   students    User[]
   teachers    User[]     @relation("GroupTeachers")
+  observers   User[]     @relation("ObserverGroups")
   courses     Course[]
   startDate   DateTime?
   endDate     DateTime?
@@ -615,19 +618,6 @@ model ImprovementPlan {
   updatedAt     DateTime  @updatedAt
 
   @@map("improvement_plan")
-}
-
-model PushSubscription {
-  id        String   @id @default(cuid())
-  endpoint  String   @unique
-  p256dh    String
-  auth      String
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("push_subscription")
 }
 
 model AcademicSchedule {
