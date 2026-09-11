@@ -71,14 +71,22 @@ const GROUP_COLORS = [
 
 interface ScheduleWeekPreviewProps {
   schedule: AcademicScheduleItem;
+  programId?: string;
 }
 
-export function ScheduleWeekPreview({ schedule }: ScheduleWeekPreviewProps) {
+export function ScheduleWeekPreview({ schedule, programId }: ScheduleWeekPreviewProps) {
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>("ALL");
+
+  const isScoped = Boolean(programId && programId !== "all" && programId !== "ALL");
+
+  // Filter slots for active program first if scoped
+  const baseSlots = isScoped
+    ? schedule.groupSlots.filter((slot) => slot.group.program?.id === programId)
+    : schedule.groupSlots;
 
   // Get unique groups in this schedule
   const uniqueGroupsMap = new Map<string, { id: string; name: string; programName: string; periodName?: string }>();
-  schedule.groupSlots.forEach((slot) => {
+  baseSlots.forEach((slot) => {
     if (!uniqueGroupsMap.has(slot.groupId)) {
       uniqueGroupsMap.set(slot.groupId, {
         id: slot.groupId,
@@ -99,8 +107,8 @@ export function ScheduleWeekPreview({ schedule }: ScheduleWeekPreviewProps) {
 
   // Filter slots
   const filteredSlots = selectedGroupFilter === "ALL"
-    ? schedule.groupSlots
-    : schedule.groupSlots.filter((s) => s.groupId === selectedGroupFilter);
+    ? baseSlots
+    : baseSlots.filter((s) => s.groupId === selectedGroupFilter);
 
   // Group slots by day
   const slotsByDay: Record<DayOfWeek, typeof filteredSlots> = {

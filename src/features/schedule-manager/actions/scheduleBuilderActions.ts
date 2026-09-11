@@ -111,17 +111,33 @@ export interface ScheduleBuilderData {
 /**
  * Obtener todos los datos necesarios para el constructor de horarios de un período
  */
-export async function getScheduleBuilderDataAction(scheduleId: string): Promise<ScheduleBuilderData | null> {
+export async function getScheduleBuilderDataAction(scheduleId: string, programId?: string): Promise<ScheduleBuilderData | null> {
   try {
-    await requireAdmin();
+    const session = await requireAdmin();
 
     if (!scheduleId) return null;
+
+    const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
+
+    const groupSlotsWhere: any = {};
+    if (effectiveProgramId) {
+      groupSlotsWhere.group = { programId: effectiveProgramId };
+    } else if (session.user.role === "gestor") {
+      groupSlotsWhere.group = {
+        program: {
+          gestores: {
+            some: { id: session.user.id }
+          }
+        }
+      };
+    }
 
     // 1. Horario Académico
     const academicSchedule = await prisma.academicSchedule.findUnique({
       where: { id: scheduleId },
       include: {
         groupSlots: {
+          where: Object.keys(groupSlotsWhere).length > 0 ? groupSlotsWhere : undefined,
           include: {
             period: {
               include: {
@@ -169,8 +185,29 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
     const isPublished = isCurrent ? academicSchedule.isPublished : true;
 
     // 2. Todos los Profesores y su disponibilidad (estrictamente para este horario)
+    const teacherWhere: any = { role: "teacher", banned: { not: true } };
+    if (effectiveProgramId) {
+      teacherWhere.OR = [
+        { programs: { some: { id: effectiveProgramId } } },
+        { groupsTaught: { some: { programId: effectiveProgramId } } },
+        { coursesTaught: { some: { OR: [
+          { group: { programId: effectiveProgramId } },
+          { period: { programId: effectiveProgramId } }
+        ] } } }
+      ];
+    } else if (session.user.role === "gestor") {
+      teacherWhere.OR = [
+        { programs: { some: { gestores: { some: { id: session.user.id } } } } },
+        { groupsTaught: { some: { program: { gestores: { some: { id: session.user.id } } } } } },
+        { coursesTaught: { some: { OR: [
+          { group: { program: { gestores: { some: { id: session.user.id } } } } },
+          { period: { program: { gestores: { some: { id: session.user.id } } } } }
+        ] } } }
+      ];
+    }
+
     const allTeachers = await prisma.user.findMany({
-      where: { role: "teacher", banned: { not: true } },
+      where: teacherWhere,
       include: {
         availabilities: {
           where: { academicScheduleId: scheduleId }
@@ -207,7 +244,9 @@ export async function getScheduleBuilderDataAction(scheduleId: string): Promise<
 
     // 3. Ambientes de Formación
     const environments = await prisma.trainingEnvironment.findMany({
-      where: { isActive: true },
+      where: effectiveProgramId
+        ? { isActive: true, OR: [{ programId: effectiveProgramId }, { programId: null }] }
+        : { isActive: true },
       orderBy: { name: "asc" }
     });
 

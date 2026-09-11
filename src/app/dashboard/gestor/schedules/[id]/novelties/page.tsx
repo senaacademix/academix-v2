@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { getScheduleNoveltiesDataAction } from "@/features/schedule-manager/actions/scheduleNoveltyActions";
 import { ScheduleNoveltiesManagerView } from "@/features/schedule-manager/components/novelties/ScheduleNoveltiesManagerView";
@@ -15,9 +15,12 @@ interface GestorScheduleNoveltiesPageProps {
   params: Promise<{
     id: string;
   }>;
+  searchParams?: Promise<{
+    programId?: string;
+  }>;
 }
 
-export default async function GestorScheduleNoveltiesPage({ params }: GestorScheduleNoveltiesPageProps) {
+export default async function GestorScheduleNoveltiesPage({ params, searchParams }: GestorScheduleNoveltiesPageProps) {
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session || (session.user.role !== "gestor" && session.user.role !== "admin")) {
@@ -25,7 +28,12 @@ export default async function GestorScheduleNoveltiesPage({ params }: GestorSche
   }
 
   const { id } = await params;
-  const data = await getScheduleNoveltiesDataAction(id);
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const cookieStore = await cookies();
+  const cookieProgramId = cookieStore.get("academix_gestor_program_id")?.value;
+  const effectiveProgramId = resolvedSearchParams?.programId || cookieProgramId;
+
+  const data = await getScheduleNoveltiesDataAction(id, effectiveProgramId);
 
   if (!data) {
     notFound();

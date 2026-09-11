@@ -106,6 +106,7 @@ export interface GroupSlotItemPayload {
 
 export interface SaveGroupSlotsPayload {
   scheduleId: string;
+  programId?: string;
   groupsConfig: {
     groupId: string;
     periodId?: string | null;

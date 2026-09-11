@@ -182,13 +182,20 @@ export class GestorService {
     /**
      * Get recent activity scoped to the programs managed by a specific gestor
      */
-    async getRecentActivity(gestorId: string, limit: number = 10): Promise<GestorActivityItem[]> {
-        const gestorCourseFilter = {
-            OR: [
-                { group: { program: { gestores: { some: { id: gestorId } } } } },
-                { period: { program: { gestores: { some: { id: gestorId } } } } }
-            ]
-        };
+    async getRecentActivity(gestorId: string, limit: number = 10, programId?: string): Promise<GestorActivityItem[]> {
+        const gestorCourseFilter = programId && programId !== "all"
+            ? {
+                OR: [
+                    { group: { programId } },
+                    { period: { programId } }
+                ]
+            }
+            : {
+                OR: [
+                    { group: { program: { gestores: { some: { id: gestorId } } } } },
+                    { period: { program: { gestores: { some: { id: gestorId } } } } }
+                ]
+            };
 
         const [recentGrades, recentRemarks, recentAttendances] = await Promise.all([
             prisma.studentGrade.findMany({

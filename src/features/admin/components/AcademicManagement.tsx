@@ -319,6 +319,7 @@ interface AcademicManagementProps {
     isObserver?: boolean;
     currentUserRole?: string;
     settings?: any;
+    initialProgramId?: string;
 }
 
 interface SortableCourseItemProps {
@@ -536,7 +537,8 @@ function SortablePeriodCard({
     );
 }
 
-export function AcademicManagement({ initialCourses, teachers, totalCount, isObserver = false, currentUserRole = "admin", settings }: AcademicManagementProps) {
+export function AcademicManagement({ initialCourses, teachers, totalCount, isObserver = false, currentUserRole = "admin", settings, initialProgramId }: AcademicManagementProps) {
+    const coursesBasePath = currentUserRole === "gestor" ? "/dashboard/gestor/courses" : "/dashboard/admin/courses";
     const [programs, setPrograms] = useState<Program[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [teachersList, setTeachersList] = useState<Teacher[]>(teachers);
@@ -644,8 +646,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     useEffect(() => {
         if (programs.length > 0) {
-            if (programIdParam) {
-                const prog = programs.find(p => p.id === programIdParam);
+            const targetId = programIdParam || initialProgramId;
+            if (targetId) {
+                const prog = programs.find(p => p.id === targetId);
                 if (prog) {
                     setSelectedProgram(prog);
                     return;
@@ -655,7 +658,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 setSelectedProgram(programs[0]);
             }
         }
-    }, [currentUserRole, programIdParam, programs]);
+    }, [currentUserRole, programIdParam, initialProgramId, programs]);
 
     const [selectedSchedulePeriodId, setSelectedSchedulePeriodId] = useState<string>("");
 
@@ -988,7 +991,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     const refreshAll = async () => {
         try {
-            const fetched = await getProgramsAction();
+            const progFilter = currentUserRole === "gestor" ? (initialProgramId || programIdParam || undefined) : undefined;
+            const fetched = await getProgramsAction(progFilter);
             const parsed = fetched.map((p: any) => ({
                 ...p,
                 createdAt: new Date(p.createdAt),
@@ -2591,7 +2595,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     await deleteProgramAction(deleteItemId);
                     toast.success("Programa de formación eliminado exitosamente");
                     if (selectedProgram?.id === deleteItemId) {
-                        router.push('/dashboard/admin/courses');
+                        router.push(coursesBasePath);
                     }
                 } else if (deleteType === "period") {
                     await deletePeriodAction(deleteItemId);
@@ -2778,7 +2782,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                 className="p-2.5 rounded-2xl bg-primary/10 text-primary border border-primary/20 shrink-0 cursor-pointer hover:bg-primary/20 transition-colors"
                                                                 onClick={() => {
                                                                     setSelectedProgram(program);
-                                                                    router.push(`/dashboard/admin/courses?programId=${program.id}`);
+                                                                    router.push(`${coursesBasePath}?programId=${program.id}`);
                                                                 }}
                                                                 title="Visualizar este programa"
                                                             >
@@ -2788,7 +2792,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                 className="flex flex-col max-w-xs cursor-pointer group"
                                                                 onClick={() => {
                                                                     setSelectedProgram(program);
-                                                                    router.push(`/dashboard/admin/courses?programId=${program.id}`);
+                                                                    router.push(`${coursesBasePath}?programId=${program.id}`);
                                                                 }}
                                                                 title="Visualizar este programa"
                                                             >
@@ -2865,7 +2869,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                 <Button
                                                                     size="sm"
                                                                     onClick={() => {
-                                                                        router.push(`/dashboard/admin/courses?programId=${program.id}`);
+                                                                        router.push(`${coursesBasePath}?programId=${program.id}`);
                                                                         setSubTab("overview");
                                                                     }}
                                                                     className="h-8 text-xs font-bold gap-1 rounded-xl shadow-xs"
@@ -2878,7 +2882,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                     size="sm"
                                                                     onClick={() => {
                                                                         setSelectedProgram(program);
-                                                                        router.push(`/dashboard/admin/courses?programId=${program.id}`);
+                                                                        router.push(`${coursesBasePath}?programId=${program.id}`);
                                                                     }}
                                                                     className="h-8 text-xs font-bold gap-1.5 rounded-xl shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 ml-1"
                                                                 >
@@ -2904,13 +2908,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     isObserver={isObserver}
                     onBack={() => {
                         setSelectedProgram(null);
-                        router.push("/dashboard/admin/courses");
+                        router.push(coursesBasePath);
                     }}
                     onSelectProgram={(progId) => {
                         const nextProg = programs.find(p => p.id === progId);
                         if (nextProg) {
                             setSelectedProgram(nextProg);
-                            router.push(`/dashboard/admin/courses?programId=${progId}`);
+                            router.push(`${coursesBasePath}?programId=${progId}`);
                         }
                     }}
                     onEditProgram={isObserver ? undefined : (prog) => openEditProgram(prog)}

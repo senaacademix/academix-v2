@@ -126,15 +126,20 @@ export async function getScheduleNoveltiesAction(groupId?: string) {
   }
 }
 
-export async function getScheduleNoveltiesDataAction(scheduleId: string) {
+export async function getScheduleNoveltiesDataAction(scheduleId: string, programId?: string) {
   try {
+    const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
+
     const schedule = await prisma.academicSchedule.findUnique({
       where: { id: scheduleId },
       include: {
         groupSlots: {
+          where: effectiveProgramId ? {
+            group: { programId: effectiveProgramId }
+          } : undefined,
           include: {
             group: {
-              select: { id: true, name: true },
+              select: { id: true, name: true, programId: true },
             },
           },
         },
@@ -146,12 +151,19 @@ export async function getScheduleNoveltiesDataAction(scheduleId: string) {
     const groupIds = schedule.groupSlots.map((s) => s.groupId);
 
     const novelties = await prisma.scheduleNovelty.findMany({
-      where: {
-        OR: [
-          { groupId: { in: groupIds } },
-          { isGeneral: true }
-        ]
-      },
+      where: effectiveProgramId
+        ? {
+            OR: [
+              { groupId: { in: groupIds } },
+              { group: { programId: effectiveProgramId } }
+            ]
+          }
+        : {
+            OR: [
+              { groupId: { in: groupIds } },
+              { isGeneral: true }
+            ]
+          },
       include: {
         group: { select: { id: true, name: true } },
         course: { select: { id: true, title: true } },
@@ -162,7 +174,9 @@ export async function getScheduleNoveltiesDataAction(scheduleId: string) {
     });
 
     const environments = await prisma.trainingEnvironment.findMany({
-      where: { isActive: true },
+      where: effectiveProgramId
+        ? { isActive: true, OR: [{ programId: effectiveProgramId }, { programId: null }] }
+        : { isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });

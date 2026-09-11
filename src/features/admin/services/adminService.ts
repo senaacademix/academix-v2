@@ -91,7 +91,20 @@ export const adminService = {
         if (filters?.groupId && filters.groupId !== 'all') {
             where.groupId = filters.groupId;
         } else if (filters?.programId && filters.programId !== 'all') {
-            where.group = { programId: filters.programId };
+            if (filters?.role === "teacher") {
+                andConditions.push({
+                    OR: [
+                        { programs: { some: { id: filters.programId } } },
+                        { groupsTaught: { some: { programId: filters.programId } } },
+                        { coursesTaught: { some: { OR: [
+                            { group: { programId: filters.programId } },
+                            { period: { programId: filters.programId } }
+                        ] } } }
+                    ]
+                });
+            } else {
+                where.group = { programId: filters.programId };
+            }
         }
 
         if (filters?.courseId && filters.courseId !== 'all') {
@@ -124,6 +137,17 @@ export const adminService = {
                             }
                         }
                     }
+                });
+            } else if (filters.role === "teacher" && (!filters.programId || filters.programId === 'all')) {
+                andConditions.push({
+                    OR: [
+                        { programs: { some: { gestores: { some: { id: filters.gestorUserId } } } } },
+                        { groupsTaught: { some: { program: { gestores: { some: { id: filters.gestorUserId } } } } } },
+                        { coursesTaught: { some: { OR: [
+                            { group: { program: { gestores: { some: { id: filters.gestorUserId } } } } },
+                            { period: { program: { gestores: { some: { id: filters.gestorUserId } } } } }
+                        ] } } }
+                    ]
                 });
             }
         }
@@ -361,13 +385,14 @@ export const adminService = {
         });
     },
 
-    // ============ COURSE MANAGEMENT ============
     async getAllCoursesAdmin(filters?: {
         status?: 'active' | 'archived' | 'all';
         search?: string;
         limit?: number;
         offset?: number;
         observerUserId?: string;
+        gestorUserId?: string;
+        programId?: string;
     }) {
         const where: any = {};
         const andConditions: any[] = [];
@@ -397,6 +422,22 @@ export const adminService = {
                 OR: [
                     { title: { contains: filters.search, mode: 'insensitive' as const } },
                     { description: { contains: filters.search, mode: 'insensitive' as const } }
+                ]
+            });
+        }
+
+        if (filters?.programId && filters.programId !== 'all') {
+            andConditions.push({
+                OR: [
+                    { group: { programId: filters.programId } },
+                    { period: { programId: filters.programId } }
+                ]
+            });
+        } else if (filters?.gestorUserId) {
+            andConditions.push({
+                OR: [
+                    { group: { program: { gestores: { some: { id: filters.gestorUserId } } } } },
+                    { period: { program: { gestores: { some: { id: filters.gestorUserId } } } } }
                 ]
             });
         }

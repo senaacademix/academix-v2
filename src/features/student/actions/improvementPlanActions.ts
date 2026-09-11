@@ -572,14 +572,34 @@ export async function gradeImprovementPlan(planId: string, grade: number) {
     }
 }
 
-export async function getAllImprovementPlansAdmin() {
+export async function getAllImprovementPlansAdmin(programId?: string) {
     const session = await getSession();
     if (!session?.user || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
         throw new Error("No autorizado");
     }
 
     try {
+        const where: any = {};
+        if (programId && programId !== "all" && programId !== "ALL") {
+            where.student = {
+                group: {
+                    programId: programId
+                }
+            };
+        } else if (session.user.role === "gestor") {
+            where.student = {
+                group: {
+                    program: {
+                        gestores: {
+                            some: { id: session.user.id }
+                        }
+                    }
+                }
+            };
+        }
+
         const plans = await prisma.improvementPlan.findMany({
+            where: Object.keys(where).length > 0 ? where : undefined,
             include: {
                 student: {
                     select: {

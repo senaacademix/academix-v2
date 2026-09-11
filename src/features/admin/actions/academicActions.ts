@@ -40,7 +40,7 @@ async function requireAdminOrObserver() {
 
 // ============ PROGRAM CRUD ============
 
-export async function getProgramsAction() {
+export async function getProgramsAction(programId?: string) {
     const session = await requireAdminOrObserver();
     let whereClause: any = {};
     if (session.user.role === "gestor") {
@@ -59,6 +59,10 @@ export async function getProgramsAction() {
                 }
             }
         };
+    }
+
+    if (programId && programId !== "all" && programId !== "ALL") {
+        whereClause.id = programId;
     }
 
     return await prisma.program.findMany({
@@ -393,7 +397,7 @@ export async function deletePeriodAction(id: string) {
 
 // ============ GROUP CRUD ============
 
-export async function getGroupsAction() {
+export async function getGroupsAction(programId?: string) {
     const session = await requireAdminOrObserver();
     let whereClause: any = {};
     if (session.user.role === "gestor") {
@@ -414,6 +418,10 @@ export async function getGroupsAction() {
                 }
             }
         };
+    }
+
+    if (programId && programId !== "all" && programId !== "ALL") {
+        whereClause.programId = programId;
     }
 
     return await prisma.group.findMany({

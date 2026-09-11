@@ -12,6 +12,7 @@ import { authClient } from "@/lib/auth-client"
 import { getRoleFromUser } from "@/features/auth/services/authService"
 import { useGestorProgram } from "@/features/gestor/context/GestorProgramContext"
 import { getProgramsAction } from "@/features/admin/actions/academicActions"
+import { getGestorProgramsAction } from "@/features/gestor/actions/gestorActions"
 import {
   Sidebar,
   SidebarContent,
@@ -40,14 +41,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const effectiveGestorProgramId = selectedProgramId || (managedPrograms?.length > 0 ? managedPrograms[0].id : null)
   const hasMultiplePrograms = (managedPrograms?.length || 0) > 1
 
+  const displayPrograms = (managedPrograms && managedPrograms.length > 0)
+    ? managedPrograms
+    : (selectedProgram ? [selectedProgram] : [])
+
   // For Admin: active program is determined when explicitly inside a program URL
   const adminProgramParam = searchParams.get("programId")
   const adminActiveProgram = adminProgramParam ? managedPrograms.find(p => p.id === adminProgramParam) || selectedProgram : null
 
-  // Fetch observer programs if role is observer
+  // Fetch observer or gestor programs if empty
   React.useEffect(() => {
     if (role === "observer" && managedPrograms.length === 0) {
       getProgramsAction().then((progs) => {
+        if (progs && progs.length > 0) {
+          const mapped = progs.map(p => ({
+            id: p.id,
+            name: p.name,
+            color: (p as any).color || "#3b82f6",
+            code: (p as any).code || ""
+          }));
+          setManagedPrograms(mapped as any);
+        }
+      }).catch(console.error);
+    } else if (role === "gestor" && managedPrograms.length === 0) {
+      getGestorProgramsAction().then((progs) => {
         if (progs && progs.length > 0) {
           const mapped = progs.map(p => ({
             id: p.id,
@@ -233,8 +250,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 
 
-        {/* Selector de Programa de Formación (Sólo cuando hay más de 1 programa para Gestor u Observador) */}
-        {managedPrograms && managedPrograms.length > 1 && (role === "gestor" || role === "observer") && (
+        {/* Selector de Programa de Formación (Siempre visible para Gestor Académico y Observador) */}
+        {displayPrograms.length > 0 && (role === "gestor" || role === "observer") && (
           <div className="px-3.5 py-2.5 mx-2 mb-2 rounded-2xl bg-muted/30 border border-border/60 flex flex-col gap-1.5 group-data-[collapsible=icon]:hidden animate-in fade-in duration-300">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
               <div className="w-5 h-5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
@@ -243,9 +260,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <span>{role === "observer" ? "Programa Observado" : "Programa de Formación"}</span>
             </span>
             <Select 
-              value={effectiveGestorProgramId || managedPrograms[0]?.id || ""} 
+              value={effectiveGestorProgramId || displayPrograms[0]?.id || ""} 
               onValueChange={(val) => {
-                const prog = managedPrograms.find(p => p.id === val);
+                const prog = displayPrograms.find(p => p.id === val);
                 selectProgram(val, prog);
               }}
             >
@@ -253,7 +270,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SelectValue placeholder="Seleccionar Programa..." />
               </SelectTrigger>
               <SelectContent className="rounded-2xl">
-                {managedPrograms.map((prog) => (
+                {displayPrograms.map((prog) => (
                   <SelectItem key={prog.id} value={prog.id} className="text-xs font-medium rounded-xl">
                     {prog.name}
                   </SelectItem>

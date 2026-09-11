@@ -39,8 +39,8 @@ export default async function GestorCoursesPage({
     }
 
     const [{ courses, total }, { users: allUsers }, settings] = await Promise.all([
-        getAllCoursesAdminAction({ limit: 100 }),
-        getAllUsersAction({ role: "teacher", limit: 500 }),
+        getAllCoursesAdminAction({ limit: 100, programId: effectiveProgramId }),
+        getAllUsersAction({ role: "teacher", limit: 500, programId: effectiveProgramId }),
         getSystemSettingsAction()
     ]);
 
@@ -67,6 +67,7 @@ export default async function GestorCoursesPage({
                 isObserver={false}
                 currentUserRole={session.user.role}
                 settings={settings}
+                initialProgramId={effectiveProgramId}
             />
         </div>
     );

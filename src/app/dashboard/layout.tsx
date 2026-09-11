@@ -156,7 +156,7 @@ export default async function DashboardLayout({
   const showThemeSelector = true;
   const showLicenseModal = session.user.role !== "student";
 
-  const isSidebarDefaultOpen = session.user.role === "admin";
+  const isSidebarDefaultOpen = session.user.role === "admin" || session.user.role === "gestor";
 
   return (
     <GestorProgramProvider>

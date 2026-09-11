@@ -62,6 +62,7 @@ interface ScheduleGroupSlotsModalProps {
   schedule: AcademicScheduleItem | null;
   availableGroups: AvailableGroupOption[];
   onSuccess: () => void;
+  programId?: string;
 }
 
 export function ScheduleGroupSlotsModal({
@@ -70,10 +71,16 @@ export function ScheduleGroupSlotsModal({
   schedule,
   availableGroups,
   onSuccess,
+  programId,
 }: ScheduleGroupSlotsModalProps) {
+  const isScopedToProgram = Boolean(programId && programId !== "all" && programId !== "ALL");
   const [activeTab, setActiveTab] = useState<string>("groups");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [groupsList, setGroupsList] = useState<AvailableGroupOption[]>(availableGroups);
+  const [groupsList, setGroupsList] = useState<AvailableGroupOption[]>(() => {
+    return isScopedToProgram
+      ? availableGroups.filter((g) => g.programId === programId)
+      : availableGroups;
+  });
   const [isLoadingGroups, setIsLoadingGroups] = useState<boolean>(false);
 
   // Selected Group IDs
@@ -93,26 +100,34 @@ export function ScheduleGroupSlotsModal({
     const fetchLatestGroups = async () => {
       setIsLoadingGroups(true);
       try {
-        const latest = await getAvailableGroupsAction();
-        if (latest && latest.length > 0) {
-          setGroupsList(latest);
-        } else {
-          setGroupsList(availableGroups);
+        const latest = await getAvailableGroupsAction(isScopedToProgram ? programId : undefined);
+        let groups = latest && latest.length > 0 ? latest : availableGroups;
+        if (isScopedToProgram) {
+          groups = groups.filter((g) => g.programId === programId);
         }
+        setGroupsList(groups);
       } catch (err) {
         console.error("Error fetching latest groups:", err);
+        const fallback = isScopedToProgram
+          ? availableGroups.filter((g) => g.programId === programId)
+          : availableGroups;
+        setGroupsList(fallback);
       } finally {
         setIsLoadingGroups(false);
       }
     };
     fetchLatestGroups();
 
-    // Populate from existing schedule group slots
+    // Populate from existing schedule group slots (strictly scoped if active program)
     const groupMap: Record<string, DaySlotConfig[]> = {};
     const periodsMap: Record<string, string> = {};
     const grpIds: string[] = [];
 
     schedule.groupSlots.forEach((slot) => {
+      if (isScopedToProgram && slot.group.program?.id !== programId) {
+        return;
+      }
+
       if (!grpIds.includes(slot.groupId)) {
         grpIds.push(slot.groupId);
         if (slot.periodId) {
@@ -142,7 +157,7 @@ export function ScheduleGroupSlotsModal({
       setActiveGroupSlotTab("");
       setActiveTab("groups");
     }
-  }, [open, schedule, availableGroups]);
+  }, [open, schedule, availableGroups, programId, isScopedToProgram]);
 
   if (!schedule) return null;
 
@@ -151,13 +166,14 @@ export function ScheduleGroupSlotsModal({
     new Set(groupsList.map((g) => g.programName))
   );
 
-  // Filtered available groups
+  // Filtered available groups (strictly scoped if active program)
   const filteredAvailableGroups = groupsList.filter((g) => {
+    if (isScopedToProgram && g.programId !== programId) return false;
     const matchesSearch =
       g.name.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
       g.programName.toLowerCase().includes(groupSearchQuery.toLowerCase());
     const matchesProgram =
-      programFilter === "ALL" || g.programName === programFilter;
+      isScopedToProgram || programFilter === "ALL" || g.programName === programFilter;
     return matchesSearch && matchesProgram;
   });
 
@@ -298,6 +314,7 @@ export function ScheduleGroupSlotsModal({
     try {
       await saveScheduleGroupSlotsAction({
         scheduleId: schedule.id,
+        programId: isScopedToProgram ? programId : undefined,
         groupsConfig,
       });
       toast.success("Grupos y franjas horarias actualizados correctamente");
@@ -384,7 +401,7 @@ export function ScheduleGroupSlotsModal({
                   />
                 </div>
 
-                {uniquePrograms.length > 1 && (
+                {!isScopedToProgram && uniquePrograms.length > 1 && (
                   <select
                     value={programFilter}
                     onChange={(e) => setProgramFilter(e.target.value)}

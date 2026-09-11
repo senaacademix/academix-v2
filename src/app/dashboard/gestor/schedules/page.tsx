@@ -43,14 +43,15 @@ export default async function GestorSchedulesPage({
   }
 
   const [schedules, availableGroups] = await Promise.all([
-    getSchedulesAction(),
-    getAvailableGroupsAction(),
+    getSchedulesAction(effectiveProgramId),
+    getAvailableGroupsAction(effectiveProgramId),
   ]);
 
   return (
     <ScheduleManagerView
       initialSchedules={schedules}
       availableGroups={availableGroups}
+      initialProgramId={effectiveProgramId}
     />
   );
 }

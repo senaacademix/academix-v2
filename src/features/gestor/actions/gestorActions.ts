@@ -22,9 +22,9 @@ export async function getGestorDashboardStatsAction() {
     return await gestorService.getDashboardStats(session.user.id);
 }
 
-export async function getGestorRecentActivityAction(limit: number = 10) {
+export async function getGestorRecentActivityAction(limit: number = 10, programId?: string) {
     const session = await requireGestor();
-    return await gestorService.getRecentActivity(session.user.id, limit);
+    return await gestorService.getRecentActivity(session.user.id, limit, programId);
 }
 
 export async function getGestorProgramsAction() {

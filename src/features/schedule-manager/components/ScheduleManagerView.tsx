@@ -73,22 +73,29 @@ import {
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatCalendarDate } from "@/lib/dateUtils";
+import { useGestorProgram } from "@/features/gestor/context/GestorProgramContext";
 
 interface ScheduleManagerViewProps {
   initialSchedules: AcademicScheduleItem[];
   availableGroups: AvailableGroupOption[];
+  initialProgramId?: string;
 }
 
 export function ScheduleManagerView({
   initialSchedules,
   availableGroups,
+  initialProgramId,
 }: ScheduleManagerViewProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const programIdParam = searchParams.get("programId");
+  const { selectedProgramId: gestorProgramId } = useGestorProgram();
 
-  const schedulesBaseUrl = pathname?.startsWith("/dashboard/gestor")
+  const isGestorRoute = pathname?.startsWith("/dashboard/gestor");
+  const activeProgramId = programIdParam || initialProgramId || (isGestorRoute ? gestorProgramId : null);
+
+  const schedulesBaseUrl = isGestorRoute
     ? "/dashboard/gestor/schedules"
     : "/dashboard/admin/schedules";
 
@@ -96,13 +103,17 @@ export function ScheduleManagerView({
   const [schedules, setSchedules] = useState<AcademicScheduleItem[]>(initialSchedules);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  const [selectedProgramId, setSelectedProgramId] = useState<string>(programIdParam || "all");
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(activeProgramId || "all");
 
   useEffect(() => {
-    if (programIdParam) {
-      setSelectedProgramId(programIdParam);
+    if (activeProgramId) {
+      setSelectedProgramId(activeProgramId);
     }
-  }, [programIdParam]);
+  }, [activeProgramId]);
+
+  const effectiveProgramId = (isGestorRoute && (activeProgramId || gestorProgramId))
+    ? (activeProgramId || gestorProgramId || "all")
+    : (selectedProgramId || "all");
 
   useEffect(() => {
     setIsMounted(true);
@@ -262,24 +273,28 @@ export function ScheduleManagerView({
         const matchesYear = selectedYear === "ALL" || startYear === selectedYear || endYear === selectedYear;
 
         const matchesProgram =
-          selectedProgramId === "all" ||
-          s.groupSlots.length === 0 ||
-          s.groupSlots.some((slot) => slot.group.program?.id === selectedProgramId);
+          !effectiveProgramId || effectiveProgramId === "all"
+            ? true
+            : s.groupSlots.length === 0 || s.groupSlots.some((slot) => slot.group.program?.id === effectiveProgramId);
 
         return matchesSearch && matchesYear && matchesProgram;
       })
       .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-  }, [schedules, searchQuery, selectedYear, selectedProgramId]);
+  }, [schedules, searchQuery, selectedYear, effectiveProgramId]);
 
   // Calculate stats
-  const totalSchedules = schedules.length;
-  const activeSchedule = schedules.find((s) => s.isActive) || null;
+  const totalSchedules = filteredSchedules.length;
+  const activeSchedule = filteredSchedules.find((s) => s.isActive) || null;
   const activeSchedulesCount = activeSchedule ? 1 : 0;
   const activeScheduleGroupsCount = activeSchedule
-    ? new Set(activeSchedule.groupSlots.map((slot) => slot.groupId)).size
+    ? new Set(
+        activeSchedule.groupSlots
+          .filter((slot) => !effectiveProgramId || effectiveProgramId === "all" || slot.group.program?.id === effectiveProgramId)
+          .map((slot) => slot.groupId)
+      ).size
     : 0;
   const activeScheduleSlotsCount = activeSchedule
-    ? activeSchedule.groupSlots.length
+    ? activeSchedule.groupSlots.filter((slot) => !effectiveProgramId || effectiveProgramId === "all" || slot.group.program?.id === effectiveProgramId).length
     : 0;
 
   const formatDate = (isoString: string) => {
@@ -370,8 +385,8 @@ export function ScheduleManagerView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
-          {/* Program Filter (Only shown if more than 1 program) */}
-          {isMounted && availablePrograms.length > 1 && (
+          {/* Program Filter (Only shown if more than 1 program and not fixed in gestor route) */}
+          {isMounted && availablePrograms.length > 1 && !isGestorRoute && (
             <Select value={selectedProgramId} onValueChange={setSelectedProgramId}>
               <SelectTrigger className="w-full sm:w-[220px] rounded-2xl text-xs bg-card border-border/80 h-9 font-semibold px-3 gap-2 shadow-xs">
                 <FolderKanban className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -458,6 +473,12 @@ export function ScheduleManagerView({
             schedule.groupSlots.forEach((slot) => {
               const progId = slot.group.program?.id || "";
               const progName = slot.group.program?.name || "";
+
+              // If filtering by program, strictly exclude groups/slots of other programs
+              if (effectiveProgramId && effectiveProgramId !== "all" && progId !== effectiveProgramId) {
+                return;
+              }
+
               if (progId && progName && !scheduleProgramsMap.has(progId)) {
                 scheduleProgramsMap.set(progId, progName);
               }
@@ -718,7 +739,7 @@ export function ScheduleManagerView({
                       </div>
                     </div>
 
-                    <ScheduleWeekPreview schedule={schedule} />
+                    <ScheduleWeekPreview schedule={schedule} programId={effectiveProgramId !== "all" ? effectiveProgramId : undefined} />
                   </div>
                 )}
               </Card>
@@ -744,6 +765,7 @@ export function ScheduleManagerView({
             onOpenChange={setIsGroupSlotsModalOpen}
             schedule={activeSlotsSchedule}
             availableGroups={availableGroups}
+            programId={effectiveProgramId !== "all" ? effectiveProgramId : undefined}
             onSuccess={handleRefresh}
           />
 

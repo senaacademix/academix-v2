@@ -969,12 +969,17 @@ export async function getAllCoursesAdminAction(filters?: {
     limit?: number;
     offset?: number;
     observerUserId?: string;
+    gestorUserId?: string;
+    programId?: string;
 }) {
     const session = await requireAdminOrObserver();
     const isObserver = session.user.role === "observer";
+    const isGestor = session.user.role === "gestor";
     const finalFilters = { ...filters };
     if (isObserver) {
         finalFilters.observerUserId = session.user.id;
+    } else if (isGestor && !finalFilters.programId) {
+        finalFilters.gestorUserId = session.user.id;
     }
     return await adminService.getAllCoursesAdmin(finalFilters);
 }

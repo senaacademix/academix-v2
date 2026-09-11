@@ -46,16 +46,32 @@ export async function getTeachersListAction() {
 }
 
 /**
- * Obtener todos los horarios académicos registrados
+ * Obtener todos los horarios académicos registrados (filtrables por programa de formación)
  */
-export async function getSchedulesAction(): Promise<AcademicScheduleItem[]> {
+export async function getSchedulesAction(programId?: string): Promise<AcademicScheduleItem[]> {
   try {
-    await requireAdmin();
+    const session = await requireAdmin();
+
+    const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
+
+    const groupSlotsWhere: any = {};
+    if (effectiveProgramId) {
+      groupSlotsWhere.group = { programId: effectiveProgramId };
+    } else if (session.user.role === "gestor") {
+      groupSlotsWhere.group = {
+        program: {
+          gestores: {
+            some: { id: session.user.id }
+          }
+        }
+      };
+    }
 
     const schedules = await prisma.academicSchedule.findMany({
       orderBy: { startDate: "desc" },
       include: {
         groupSlots: {
+          where: Object.keys(groupSlotsWhere).length > 0 ? groupSlotsWhere : undefined,
           include: {
             period: {
               select: {
@@ -197,9 +213,9 @@ export async function getScheduleByIdAction(id: string): Promise<AcademicSchedul
 }
 
 /**
- * Obtener todos los grupos disponibles agrupados por programa
+ * Obtener todos los grupos disponibles agrupados por programa (filtrable por programId)
  */
-export async function getAvailableGroupsAction(): Promise<AvailableGroupOption[]> {
+export async function getAvailableGroupsAction(programId?: string): Promise<AvailableGroupOption[]> {
   try {
     const session = await requireAdmin();
 
@@ -209,7 +225,9 @@ export async function getAvailableGroupsAction(): Promise<AvailableGroupOption[]
       }
     };
 
-    if (session.user.role === "gestor") {
+    if (programId && programId !== "all" && programId !== "ALL") {
+      whereClause.programId = programId;
+    } else if (session.user.role === "gestor") {
       whereClause.program = {
         gestores: {
           some: {
@@ -440,7 +458,7 @@ export async function updateBasicScheduleAction(id: string, data: BasicScheduleP
 export async function saveScheduleGroupSlotsAction(payload: SaveGroupSlotsPayload) {
   const session = await requireAdmin();
 
-  const { scheduleId, groupsConfig } = payload;
+  const { scheduleId, programId, groupsConfig } = payload;
   if (!scheduleId) throw new Error("ID del horario no especificado");
 
   const schedule = await prisma.academicSchedule.findUnique({
@@ -451,9 +469,13 @@ export async function saveScheduleGroupSlotsAction(payload: SaveGroupSlotsPayloa
   if (!schedule) throw new Error("El horario académico no existe");
 
   await prisma.$transaction(async (tx) => {
-    // 1. Limpiar franjas previas del horario
+    // 1. Limpiar franjas previas del horario (solo para el programa si se especifica)
+    const deleteWhere: any = { academicScheduleId: scheduleId };
+    if (programId && programId !== "all" && programId !== "ALL") {
+      deleteWhere.group = { programId };
+    }
     await tx.scheduleGroupSlot.deleteMany({
-      where: { academicScheduleId: scheduleId }
+      where: deleteWhere
     });
 
     // 2. Crear las nuevas franjas por grupo

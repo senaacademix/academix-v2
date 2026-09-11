@@ -26,17 +26,11 @@ export default async function GestorUsersPage({
     const tabParam = resolvedSearchParams?.tab;
     const programIdParam = resolvedSearchParams?.programId;
     
-    const [groups, programs, admins, teachersResult, improvementPlansRes] = await Promise.all([
-        getGroupsAction(),
-        getProgramsAction(),
-        getAdminsAndObserversAction(),
-        getAllUsersAction({ role: "teacher", limit: 500 }),
-        getAllImprovementPlansAdmin(),
-    ]);
-
     const cookieStore = await cookies();
     const cookieProgramId = cookieStore.get("academix_gestor_program_id")?.value;
     let effectiveProgramId = programIdParam || cookieProgramId;
+
+    const programs = await getProgramsAction();
 
     if (session.user.role === "gestor" && !effectiveProgramId) {
         if (programs.length === 1) {
@@ -46,6 +40,13 @@ export default async function GestorUsersPage({
         }
     }
 
+    const [groups, admins, teachersResult, improvementPlansRes] = await Promise.all([
+        getGroupsAction(effectiveProgramId),
+        getAdminsAndObserversAction(),
+        getAllUsersAction({ role: "teacher", limit: 500, programId: effectiveProgramId }),
+        getAllImprovementPlansAdmin(effectiveProgramId),
+    ]);
+
     const initialTab =
         tabParam === "teachers" ? "teachers" : "students";
     const initialSubTab = resolvedSearchParams?.subtab === "plans" ? "plans" : "directory";
@@ -53,9 +54,13 @@ export default async function GestorUsersPage({
     const plans = improvementPlansRes.success && improvementPlansRes.data ? improvementPlansRes.data : [];
 
     const targetProgramId = effectiveProgramId || (programs.length > 0 ? programs[0].id : "none");
-    const initialLectivaGroup = groups.find(
+    const filteredGroups = session.user.role === "gestor" && effectiveProgramId
+        ? groups.filter((g) => g.programId === effectiveProgramId)
+        : groups;
+
+    const initialLectivaGroup = filteredGroups.find(
         (g) => (targetProgramId === "none" || g.programId === targetProgramId) && (g as any).categoria === "LECTIVA"
-    ) || groups.find((g) => targetProgramId === "none" || g.programId === targetProgramId) || groups[0];
+    ) || filteredGroups.find((g) => targetProgramId === "none" || g.programId === targetProgramId) || filteredGroups[0];
     const defaultGroupId = initialLectivaGroup ? initialLectivaGroup.id : "none";
 
     const { users: students, total: totalStudents } = await getAllUsersAction({
@@ -81,7 +86,7 @@ export default async function GestorUsersPage({
                     initialUsers: students,
                     totalCount: totalStudents,
                     initialGroupId: defaultGroupId,
-                    initialGroups: groups.map((g) => ({
+                    initialGroups: filteredGroups.map((g) => ({
                         id: g.id,
                         name: g.name,
                         programId: g.programId,

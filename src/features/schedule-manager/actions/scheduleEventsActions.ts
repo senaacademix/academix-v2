@@ -35,14 +35,34 @@ export interface ScheduleEventsPageData {
 /**
  * Obtener horario y sus eventos registrados
  */
-export async function getScheduleEventsDataAction(scheduleId: string): Promise<ScheduleEventsPageData | null> {
+export async function getScheduleEventsDataAction(scheduleId: string, programId?: string): Promise<ScheduleEventsPageData | null> {
   try {
-    await requireAdmin();
+    const session = await requireAdmin();
+
+    const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
+
+    const groupWhere: any = {};
+    if (effectiveProgramId) {
+      groupWhere.programId = effectiveProgramId;
+    } else if (session.user.role === "gestor") {
+      groupWhere.program = {
+        gestores: {
+          some: { id: session.user.id }
+        }
+      };
+    }
 
     const schedule = await prisma.academicSchedule.findUnique({
       where: { id: scheduleId },
       include: {
         events: {
+          where: effectiveProgramId ? {
+            OR: [
+              { isGeneral: true },
+              { group: { programId: effectiveProgramId } },
+              { groupId: null }
+            ]
+          } : undefined,
           include: {
             group: { select: { id: true, name: true } },
           },
@@ -57,6 +77,7 @@ export async function getScheduleEventsDataAction(scheduleId: string): Promise<S
     if (!schedule) return null;
 
     const groups = await prisma.group.findMany({
+      where: Object.keys(groupWhere).length > 0 ? groupWhere : undefined,
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });
