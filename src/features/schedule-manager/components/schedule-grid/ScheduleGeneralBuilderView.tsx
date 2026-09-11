@@ -32,7 +32,10 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
+  HelpCircle,
 } from "lucide-react";
+import { SchedulePanelHelpModal } from "../SchedulePanelHelpModal";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { DayOfWeek } from "@/generated/prisma/client";
 import {
@@ -100,6 +103,7 @@ export function ScheduleGeneralBuilderView({
 
   // Fullscreen State (Full Viewport Z-40 Overlay)
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev);
@@ -453,6 +457,22 @@ export function ScheduleGeneralBuilderView({
               </>
             )}
           </Button>
+
+          {/* Help Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsHelpOpen(true)}
+                className="rounded-xl text-xs gap-1.5 h-7 px-2 font-bold transition-all border-border/80 hover:bg-accent shrink-0"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                <span className="hidden md:inline">Ayuda</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía del Constructor de Horarios</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -608,6 +628,13 @@ export function ScheduleGeneralBuilderView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SchedulePanelHelpModal
+        panel="builder"
+        open={isHelpOpen}
+        onOpenChange={setIsHelpOpen}
+        scheduleName={data.schedule.name}
+      />
     </div>
   );
 }

@@ -116,6 +116,7 @@ import { StudentRecords } from "@/features/student/components/StudentRecords";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { GradeManagerPanel } from "./GradeManagerPanel";
+import { TeacherHelpModal } from "./TeacherHelpModal";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -571,6 +572,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     const [isRouletteOpen, setIsRouletteOpen] = useState(false);
     const [isGroupGeneratorOpen, setIsGroupGeneratorOpen] = useState(false);
     const [attendanceToDelete, setAttendanceToDelete] = useState<{ studentId: string; studentName: string; date: string } | null>(null);
+    const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
     const [banRequestDialogOpen, setBanRequestDialogOpen] = useState(false);
     const [studentToBan, setStudentToBan] = useState<any | null>(null);
@@ -1859,7 +1861,7 @@ const handleOpenAnalytics = async () => {
                             </div>
 
                             {/* FILA INFERIOR: Pestañas de Navegación Desplazables en Móvil */}
-                            <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center">
+                            <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center justify-between gap-2">
                                 <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 rounded-2xl gap-1.5 backdrop-blur-md w-max border border-border/50">
                                     {/* ── ESTUDIANTES ── */}
                                     <TabsTrigger value="students" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:border-border/60 shrink-0 transition-all">
@@ -1917,6 +1919,27 @@ const handleOpenAnalytics = async () => {
                                         </span>
                                     </TabsTrigger>
                                 </TabsList>
+
+                                <div className="shrink-0 flex items-center pr-1">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsHelpModalOpen(true)}
+                                                className="h-9 px-3 rounded-xl border-border/70 bg-background/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all text-xs font-bold gap-1.5 text-muted-foreground shadow-2xs cursor-pointer"
+                                            >
+                                                <HelpCircle className="w-4 h-4 text-primary" />
+                                                <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
+                                                <span className="sm:hidden">Ayuda</span>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
+                                            Guía completa del panel de docente y pestañas
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
                             </div>
                         </div>
 
@@ -6115,6 +6138,13 @@ const handleOpenAnalytics = async () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Modal de Ayuda del Panel de Docente */}
+            <TeacherHelpModal
+                open={isHelpModalOpen}
+                onOpenChange={setIsHelpModalOpen}
+                initialTab={activeTab as any}
+            />
         </div>
     );
 }

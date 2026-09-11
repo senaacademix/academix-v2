@@ -1,12 +1,12 @@
 "use client";
 
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { BookOpen, CheckCircle2, AlertCircle, Lock, User } from "lucide-react";
+import { BookOpen, CheckCircle2, AlertCircle, Lock, User, Calendar, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Progress } from "@/components/ui/progress";
@@ -25,6 +25,7 @@ import {
     adminLockTeacherQualificationsAction,
     unlockTeacherQualificationsAction
 } from "../actions/qualificationActions";
+import { getScheduleCalendarYear } from "@/lib/dateUtils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -46,18 +47,67 @@ interface TeacherQualificationsViewProps {
     onAdminActionComplete?: () => void;
 }
 
+const getAuthorRoleLabel = (
+    user?: { id?: string | null; name?: string | null; role?: string | null } | null, 
+    targetTeacherId?: string
+): string => {
+    if (!user) return "";
+    if (user.id && targetTeacherId && user.id === targetTeacherId) {
+        return "Profesor";
+    }
+    const r = (user.role || "").toLowerCase().trim();
+    if (r === "gestor") return "Gestor";
+    if (r === "admin" || r === "administrator") return "Administrador";
+    if (r === "coordinador") return "Coordinador";
+    if (r === "teacher" || r === "profesor" || r === "docente") return "Profesor";
+    return "Gestor";
+};
+
+const getScheduleYear = (s: { name?: string; startDate?: string | Date | null }): string => {
+    return getScheduleCalendarYear(s);
+};
+
 export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode = false, programId, onAdminActionComplete }: TeacherQualificationsViewProps) {
     const { data: session } = authClient.useSession();
     const [locked, setLocked] = useState(false);
     const [qualPrograms, setQualPrograms] = useState<any[]>([]);
+    const [selectedProgramId, setSelectedProgramId] = useState<string>(programId || "");
     const [selectedQualCourses, setSelectedQualCourses] = useState<string[]>([]);
     const [qualificationsCreatedBy, setQualificationsCreatedBy] = useState<Record<string, { id: string; name: string | null; role: string }>>({});
-    const [schedules, setSchedules] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+    const [schedules, setSchedules] = useState<{ id: string; name: string; isActive: boolean; startDate?: string | Date; endDate?: string | Date }[]>([]);
     const [selectedScheduleId, setSelectedScheduleId] = useState<string>(scheduleId || "");
+    const currentYearStr = new Date().getFullYear().toString();
+    const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
+
+    const availableYears = useMemo(() => {
+        const yearsSet = new Set<string>();
+        const currentYear = new Date().getFullYear().toString();
+        yearsSet.add(currentYear);
+        schedules.forEach(s => {
+            yearsSet.add(getScheduleYear(s));
+        });
+        return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+    }, [schedules]);
+
+    const filteredSchedules = useMemo(() => {
+        if (selectedYear === "ALL") return schedules;
+        return schedules.filter(s => getScheduleYear(s) === selectedYear);
+    }, [schedules, selectedYear]);
+
+    const handleYearChange = (year: string) => {
+        setSelectedYear(year);
+        const filtered = year === "ALL" ? schedules : schedules.filter(s => getScheduleYear(s) === year);
+        if (filtered.length > 0) {
+            const active = filtered.find(s => s.isActive)?.id || filtered[0].id;
+            setSelectedScheduleId(active);
+            loadQualifications(active);
+        }
+    };
     const [loading, setLoading] = useState(true);
+    const [loadedTeacherName, setLoadedTeacherName] = useState<string>("");
     const [isPending, startTransition] = useTransition();
     const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-    const [lastModifiedBy, setLastModifiedBy] = useState<{name: string, role: string} | null>(null);
+    const [lastModifiedBy, setLastModifiedBy] = useState<{ id?: string; name: string; role?: string } | null>(null);
     const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
     const targetTeacherId = isAdminMode ? teacherId : session?.user?.id;
@@ -72,16 +122,23 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         if (targetTeacherId) {
             loadQualifications(selectedScheduleId);
         }
-    }, [targetTeacherId, selectedScheduleId]);
+    }, [targetTeacherId, selectedScheduleId, programId]);
 
     const loadQualifications = async (schedId?: string) => {
         if (!targetTeacherId) return;
         setLoading(true);
         const targetSched = schedId !== undefined ? schedId : selectedScheduleId;
         try {
-            const data = await getTeacherQualificationsAction(targetTeacherId, targetSched);
+            const data = await getTeacherQualificationsAction(targetTeacherId, targetSched, programId);
             if (data) {
-                setQualPrograms((data as any).programs || []);
+                if ((data as any).teacherName) {
+                    setLoadedTeacherName((data as any).teacherName);
+                }
+                const progs = (data as any).programs || [];
+                setQualPrograms(progs);
+                if (progs.length > 0) {
+                    setSelectedProgramId(prev => (prev && progs.some((p: any) => p.id === prev)) ? prev : progs[0].id);
+                }
                 setSelectedQualCourses(((data as any).qualifiedCourses || []).map((c: any) => c.id));
                 setQualificationsCreatedBy((data as any).qualificationsCreatedBy || {});
                 setLocked((data as any).locked || false);
@@ -89,8 +146,14 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                     const list = (data as any).schedules;
                     setSchedules(list);
                     if ((!selectedScheduleId || selectedScheduleId === "all") && list.length > 0) {
-                        const active = list.find((s: any) => s.isActive)?.id || list[0].id;
+                        const currentYear = new Date().getFullYear().toString();
+                        const yearSchedules = list.filter((s: any) => getScheduleYear(s) === currentYear);
+                        const candidateList = yearSchedules.length > 0 ? yearSchedules : list;
+                        const active = candidateList.find((s: any) => s.isActive)?.id || candidateList[0].id;
                         setSelectedScheduleId(active);
+                        if (yearSchedules.length === 0 && candidateList.length > 0) {
+                            setSelectedYear(getScheduleYear(candidateList[0]));
+                        }
                     }
                 }
                 setLastModifiedBy((data as any).lastModifiedBy || null);
@@ -121,12 +184,12 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         startTransition(async () => {
             try {
                 // First save the current state
-                await updateTeacherQualificationsAction(targetTeacherId, selectedQualCourses);
+                await updateTeacherQualificationsAction(targetTeacherId, selectedQualCourses, selectedScheduleId);
                 // Then publish/lock
                 await publishTeacherQualificationsAction(targetTeacherId);
                 toast.success("Materias publicadas y bloqueadas con éxito");
                 setPublishDialogOpen(false);
-                await loadQualifications();
+                await loadQualifications(selectedScheduleId);
             } catch (e: any) {
                 toast.error(e.message || "Error al publicar las materias");
             }
@@ -169,9 +232,13 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         );
     }
 
-    const filteredQualPrograms = (isAdminMode && programId) 
-        ? qualPrograms.filter(p => p.id === programId) 
-        : qualPrograms;
+    const effectiveProgramId = (programId && programId !== "all" && programId !== "ALL") 
+        ? programId 
+        : (selectedProgramId || (qualPrograms.length > 0 ? qualPrograms[0].id : ""));
+
+    const filteredQualPrograms = (effectiveProgramId && effectiveProgramId !== "all" && effectiveProgramId !== "ALL") 
+        ? qualPrograms.filter(p => p.id === effectiveProgramId) 
+        : (qualPrograms.length > 0 ? [qualPrograms[0]] : []);
 
     // Calculate global stats (only normal periods and master courses without group)
     const allCourses = filteredQualPrograms.flatMap(p => 
@@ -193,22 +260,73 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                             <BookOpen className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Materias Habilitadas por Horario / Trimestre</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Materias Habilitadas por Horario / Trimestre</p>
+                                {qualPrograms.length === 1 && (
+                                    <Badge variant="outline" className="text-[10px] font-extrabold bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400 py-0 px-2 h-4.5 shrink-0">
+                                        {qualPrograms[0].name}
+                                    </Badge>
+                                )}
+                            </div>
                             <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar las materias específicas del docente.</p>
                         </div>
                     </div>
-                    <Select value={selectedScheduleId} onValueChange={(val) => { setSelectedScheduleId(val); loadQualifications(val); }}>
-                        <SelectTrigger className="w-full sm:w-[260px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
-                            <SelectValue placeholder="Seleccionar Horario..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {schedules.map((s) => (
-                                <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
-                                    {s.isActive ? "🟢" : "⚪"} {s.name} {s.isActive ? "(VIGENTE)" : ""}
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
+                        {/* Selector de Programa de Formación (si el docente tiene más de 1 programa asignado) */}
+                        {qualPrograms.length > 1 && (
+                            <Select value={effectiveProgramId} onValueChange={(val) => { setSelectedProgramId(val); }}>
+                                <SelectTrigger className="w-full sm:w-[180px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
+                                    <GraduationCap className="w-3.5 h-3.5 text-primary mr-1 shrink-0" />
+                                    <SelectValue placeholder="Programa..." />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl text-xs">
+                                    {qualPrograms.map((p) => (
+                                        <SelectItem key={p.id} value={p.id} className="text-xs font-bold">
+                                            {p.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+
+                        {/* Filtro por Año (por defecto año actual) */}
+                        <Select value={selectedYear} onValueChange={handleYearChange}>
+                            <SelectTrigger className="w-[145px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0 px-2.5 gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-primary mr-1 shrink-0" />
+                                <SelectValue placeholder="Año" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl text-xs">
+                                <SelectItem value="ALL" className="text-xs font-bold">
+                                    Todos los años
                                 </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                                {availableYears.map((yr) => (
+                                    <SelectItem key={yr} value={yr} className="text-xs font-bold">
+                                        Año {yr}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Selector de Horario */}
+                        <Select value={selectedScheduleId} onValueChange={(val) => { setSelectedScheduleId(val); loadQualifications(val); }}>
+                            <SelectTrigger className="w-full sm:w-[250px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
+                                <SelectValue placeholder="Seleccionar Horario..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl text-xs">
+                                {filteredSchedules.length === 0 ? (
+                                    <div className="px-3 py-2 text-xs text-muted-foreground italic">
+                                        Sin horarios para {selectedYear}
+                                    </div>
+                                ) : (
+                                    filteredSchedules.map((s) => (
+                                        <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
+                                            {s.isActive ? "🟢" : "⚪"} {s.name} {s.isActive ? "(VIGENTE)" : ""}
+                                        </SelectItem>
+                                    ))
+                                )}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             )}
 
@@ -220,12 +338,14 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                         <p className="font-semibold text-sm">Materias Publicadas y Bloqueadas</p>
                         <p className="text-xs opacity-90 mt-0.5">
                             {isAdminMode 
-                                ? "El profesor ha publicado sus materias y no puede editarlas." 
+                                ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Profesor"
+                                    ? `Las materias fueron guardadas y bloqueadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()}. Desbloquea para permitir o realizar cambios.`
+                                    : "El profesor ha publicado sus materias y no puede editarlas.")
                                 : "Las materias que dictas están registradas y bloqueadas para edición. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
                         </p>
                         {lastModifiedBy && (
                             <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-block">
-                                Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({lastModifiedBy.role === "admin" ? "Administrador" : "Profesor"}) 
+                                Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, targetTeacherId)}) 
                                 {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                             </p>
                         )}
@@ -249,12 +369,14 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                             <p className="font-semibold text-sm">Materias en Modo Borrador</p>
                             <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
                                 {isAdminMode
-                                    ? "El profesor aún puede editar sus materias."
+                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Profesor"
+                                        ? `Las materias fueron editadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()} y permanecen en modo borrador.`
+                                        : "El profesor aún puede editar sus materias.")
                                     : "Puedes configurar qué materias de tu programa estás en capacidad de dictar. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
                             </p>
                             {lastModifiedBy && (
                                 <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-block">
-                                    Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({lastModifiedBy.role === "admin" ? "Administrador" : "Profesor"}) 
+                                    Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, targetTeacherId)}) 
                                     {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                                 </p>
                             )}
@@ -380,9 +502,9 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2">
                                                                 {periodCourses.map((course: any) => {
                                                                     const isChecked = selectedQualCourses.includes(course.id);
-                                                                    const creator = qualificationsCreatedBy[course.id] || lastModifiedBy;
-                                                                    const isProf = creator?.role === "teacher" || creator?.id === targetTeacherId;
-                                                                    const authorRoleLabel = isProf ? "Profesor" : creator?.role === "admin" ? "Administrador" : "Gestor";
+                                                                    const creator = qualificationsCreatedBy[course.id] || (targetTeacherId ? { id: targetTeacherId, name: loadedTeacherName || "Profesor", role: "teacher" } : null);
+                                                                    const authorRoleLabel = getAuthorRoleLabel(creator, targetTeacherId);
+                                                                    const isProf = authorRoleLabel === "Profesor";
                                                                     const authorName = creator?.name || "Usuario registrado";
 
                                                                     return (
@@ -402,6 +524,16 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                                                                     onCheckedChange={(checked) => {
                                                                                         if (checked) {
                                                                                             setSelectedQualCourses(prev => [...prev, course.id]);
+                                                                                            const currentRole = session?.user?.role || (isAdminMode ? "gestor" : "teacher");
+                                                                                            const currentName = session?.user?.name || (isAdminMode ? "Gestor" : (loadedTeacherName || "Profesor"));
+                                                                                            setQualificationsCreatedBy(prev => ({
+                                                                                                ...prev,
+                                                                                                [course.id]: {
+                                                                                                    id: session?.user?.id || targetTeacherId || "",
+                                                                                                    name: currentName,
+                                                                                                    role: currentRole
+                                                                                                }
+                                                                                            }));
                                                                                         } else {
                                                                                             setSelectedQualCourses(prev => prev.filter(id => id !== course.id));
                                                                                         }
@@ -424,7 +556,9 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                                                                             className={`ml-2 text-[9px] font-bold px-1.5 py-0 rounded shrink-0 cursor-help ${
                                                                                                 isProf 
                                                                                                     ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
-                                                                                                    : "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                                                    : authorRoleLabel === "Gestor"
+                                                                                                    ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                                                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
                                                                                             }`}
                                                                                         >
                                                                                             <User className="w-2.5 h-2.5 mr-0.5 inline" />

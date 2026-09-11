@@ -14,9 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Sparkles, History } from "lucide-react";
+import { Sparkles, History, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getFormattedTodayDate } from "@/lib/dateUtils";
 import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
+import { StudentHelpModal } from "./StudentHelpModal";
 
 export function StudentDashboard({
     availableCourses,
@@ -59,6 +61,7 @@ export function StudentDashboard({
     const [passwordSuccess, setPasswordSuccess] = useState("");
     const [changingPassword, setChangingPassword] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [showHelpModal, setShowHelpModal] = useState(false);
 
     useEffect(() => {
         const checkPassword = async () => {
@@ -161,6 +164,25 @@ export function StudentDashboard({
                         </div>
 
                         <div className="shrink-0 flex items-center gap-2">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowHelpModal(true)}
+                                        className="gap-2 rounded-2xl h-11 px-4 text-xs font-bold border-border/80 text-foreground bg-background/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary shadow-2xs transition-all cursor-pointer"
+                                    >
+                                        <HelpCircle className="h-4 w-4 text-primary" />
+                                        <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
+                                        <span className="sm:hidden">Ayuda</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
+                                    Guía del portal del estudiante y herramientas
+                                </TooltipContent>
+                            </Tooltip>
+
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -348,6 +370,13 @@ export function StudentDashboard({
                 onOpenChange={setShowHistoryModal}
                 studentId="me"
                 isStaffManager={false}
+            />
+
+            {/* Modal de Ayuda del Portal de Estudiante */}
+            <StudentHelpModal
+                open={showHelpModal}
+                onOpenChange={setShowHelpModal}
+                initialTab="overview"
             />
         </div>
     );

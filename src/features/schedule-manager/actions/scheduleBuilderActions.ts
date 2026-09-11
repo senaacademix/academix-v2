@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { DayOfWeek } from "@/generated/prisma/client";
+import { isScheduleCurrent } from "@/lib/dateUtils";
 
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -180,8 +181,7 @@ export async function getScheduleBuilderDataAction(scheduleId: string, programId
       throw new Error("El horario académico no existe");
     }
 
-    const now = new Date();
-    const isCurrent = now >= academicSchedule.startDate && now <= academicSchedule.endDate;
+    const isCurrent = isScheduleCurrent(academicSchedule.startDate, academicSchedule.endDate);
     const isPublished = isCurrent ? academicSchedule.isPublished : true;
 
     // 2. Todos los Profesores y su disponibilidad (estrictamente para este horario)

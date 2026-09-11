@@ -3,11 +3,14 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, ShieldCheck, GraduationCap, School, ClipboardList, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Users, ShieldCheck, GraduationCap, School, ClipboardList, BookOpen, HelpCircle } from "lucide-react";
 import { UserManagement } from "./UserManagement";
 import { AdminUsersManagement } from "./AdminUsersManagement";
 import { TeacherUsersManagement, TeacherUser } from "./TeacherUsersManagement";
 import { AdminImprovementPlans } from "./AdminImprovementPlans";
+import { UsersHelpModal, UsersTabKey } from "./UsersHelpModal";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface UnifiedUserManagementProps {
@@ -22,6 +25,7 @@ interface UnifiedUserManagementProps {
   };
   teacherData: {
     initialTeachers: TeacherUser[];
+    programId?: string;
   };
   adminData: {
     initialUsers: any[];
@@ -57,6 +61,7 @@ export function UnifiedUserManagement({
   const [activeStudentSubTab, setActiveStudentSubTab] = useState<string>(
     rawSubTab ? currentSubTabFromUrl : defaultSubTab
   );
+  const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
 
   const basePath = currentUserRole === "gestor" ? "/dashboard/gestor/users" : "/dashboard/admin/users";
 
@@ -126,54 +131,70 @@ export function UnifiedUserManagement({
             </div>
           </div>
 
-          <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-2xl bg-muted/60 p-1.5 gap-1.5 self-start md:self-auto border border-border/50 shadow-xs">
-            {/* Tab 1: Estudiantes */}
-            <TabsTrigger
-              value="students"
-              className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all shrink-0"
-            >
-              <GraduationCap className="w-4 h-4" />
-              <span>Estudiantes</span>
-              <Badge
-                variant="secondary"
-                className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-primary/10 text-primary border-primary/20 rounded-lg"
-              >
-                {studentData.totalCount}
-              </Badge>
-            </TabsTrigger>
-
-            {/* Tab 2: Docentes */}
-            <TabsTrigger
-              value="teachers"
-              className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm transition-all shrink-0"
-            >
-              <School className="w-4 h-4 text-indigo-600" />
-              <span>Docentes</span>
-              <Badge
-                variant="secondary"
-                className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 rounded-lg"
-              >
-                {teacherData.initialTeachers.length}
-              </Badge>
-            </TabsTrigger>
-
-            {/* Tab 3: Administradores y Gestores */}
-            {currentUserRole === "admin" && (
+          <div className="flex items-center gap-2.5 self-start md:self-auto">
+            <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-2xl bg-muted/60 p-1.5 gap-1.5 border border-border/50 shadow-xs">
+              {/* Tab 1: Estudiantes */}
               <TabsTrigger
-                value="admins"
-                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm transition-all shrink-0"
+                value="students"
+                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all shrink-0"
               >
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Administradores y Gestores</span>
+                <GraduationCap className="w-4 h-4" />
+                <span>Estudiantes</span>
                 <Badge
                   variant="secondary"
-                  className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 rounded-lg"
+                  className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-primary/10 text-primary border-primary/20 rounded-lg"
                 >
-                  {adminData.initialUsers.length}
+                  {studentData.totalCount}
                 </Badge>
               </TabsTrigger>
-            )}
-          </TabsList>
+
+              {/* Tab 2: Docentes */}
+              <TabsTrigger
+                value="teachers"
+                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm transition-all shrink-0"
+              >
+                <School className="w-4 h-4 text-indigo-600" />
+                <span>Docentes</span>
+                <Badge
+                  variant="secondary"
+                  className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 rounded-lg"
+                >
+                  {teacherData.initialTeachers.length}
+                </Badge>
+              </TabsTrigger>
+
+              {/* Tab 3: Administradores y Gestores */}
+              {currentUserRole === "admin" && (
+                <TabsTrigger
+                  value="admins"
+                  className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm transition-all shrink-0"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Administradores y Gestores</span>
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 rounded-lg"
+                  >
+                    {adminData.initialUsers.length}
+                  </Badge>
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsHelpOpen(true)}
+                  className="w-10 h-10 rounded-2xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all shrink-0"
+                >
+                  <HelpCircle className="w-4.5 h-4.5 text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Usuarios</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
 
         {/* Tab 1: Estudiantes (con sub-pestañas para Directorio vs Planes de Mejoramiento) */}
@@ -184,23 +205,41 @@ export function UnifiedUserManagement({
             className="w-full space-y-5"
           >
             <div className="flex items-center justify-between w-full overflow-x-auto scrollbar-none">
-              <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-xl bg-muted/50 p-1 gap-1 border border-border/40">
-                <TabsTrigger
-                  value="directory"
-                  className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs shrink-0"
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Directorio y Matrícula ({studentData.totalCount})</span>
-                </TabsTrigger>
+              <div className="flex items-center gap-2">
+                <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-xl bg-muted/50 p-1 gap-1 border border-border/40">
+                  <TabsTrigger
+                    value="directory"
+                    className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs shrink-0"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Directorio y Matrícula ({studentData.totalCount})</span>
+                  </TabsTrigger>
 
-                <TabsTrigger
-                  value="plans"
-                  className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-rose-600 data-[state=active]:shadow-xs shrink-0"
-                >
-                  <ClipboardList className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Planes de Mejoramiento ({studentData.plans.length})</span>
-                </TabsTrigger>
-              </TabsList>
+                  <TabsTrigger
+                    value="plans"
+                    className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-rose-600 data-[state=active]:shadow-xs shrink-0"
+                  >
+                    <ClipboardList className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Planes de Mejoramiento ({studentData.plans.length})</span>
+                  </TabsTrigger>
+                </TabsList>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsHelpOpen(true)}
+                      className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all shrink-0"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {activeStudentSubTab === "plans" ? "¿Qué puedo hacer acá? Guía de Planes de Mejoramiento" : "¿Qué puedo hacer acá? Guía de Estudiantes"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
 
             {/* Sub-Pestaña A: Directorio de Estudiantes */}
@@ -213,6 +252,7 @@ export function UnifiedUserManagement({
                 initialPrograms={studentData.initialPrograms}
                 isObserver={studentData.isObserver}
                 hideMainHeader={true}
+                onHelpClick={() => setIsHelpOpen(true)}
               />
             </TabsContent>
 
@@ -227,7 +267,9 @@ export function UnifiedUserManagement({
         <TabsContent value="teachers" className="m-0 focus-visible:outline-hidden">
           <TeacherUsersManagement
             initialTeachers={teacherData.initialTeachers}
+            programId={teacherData.programId}
             hideMainHeader={true}
+            onHelpClick={() => setIsHelpOpen(true)}
           />
         </TabsContent>
 
@@ -243,6 +285,23 @@ export function UnifiedUserManagement({
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Modal de Ayuda para Gestión de Usuarios */}
+      <UsersHelpModal
+        open={isHelpOpen}
+        onOpenChange={setIsHelpOpen}
+        activeTab={
+          activeTab === "teachers"
+            ? "teachers"
+            : activeTab === "admins"
+            ? "admins"
+            : activeStudentSubTab === "plans"
+            ? "plans"
+            : "students"
+        }
+        showAdminsTab={currentUserRole === "admin"}
+        programName={studentData.initialPrograms?.[0]?.name || teacherData.programId}
+      />
     </div>
   );
 }

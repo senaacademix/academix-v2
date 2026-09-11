@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { SaveScheduleEventPayload, ScheduleEventItem } from "../types";
+import { isScheduleCurrent } from "@/lib/dateUtils";
 
 async function getSession() {
   return await auth.api.getSession({ headers: await headers() });
@@ -89,7 +90,7 @@ export async function getScheduleEventsDataAction(scheduleId: string, programId?
         description: schedule.description,
         startDate: schedule.startDate.toISOString(),
         endDate: schedule.endDate.toISOString(),
-        isActive: schedule.isActive,
+        isActive: isScheduleCurrent(schedule.startDate, schedule.endDate),
         isPublished: schedule.isPublished,
       },
       groups: groups.map((g) => ({ id: g.id, name: g.name })),

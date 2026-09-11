@@ -26,7 +26,10 @@ import {
   Sparkles,
   Layers,
   ArrowRight,
+  HelpCircle,
 } from "lucide-react";
+import { SchedulePanelHelpModal } from "./SchedulePanelHelpModal";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
   AcademicScheduleItem,
@@ -54,6 +57,42 @@ function createDefaultDaySlots(): DaySlotConfig[] {
     startTime: "06:00",
     endTime: "12:00",
   }));
+}
+
+// 24-hour format options in 1-hour intervals (00:00 to 23:00)
+const TIME_OPTIONS_24H_1H: string[] = (() => {
+  const list: string[] = [];
+  for (let h = 0; h < 24; h++) {
+    const hh = String(h).padStart(2, "0");
+    list.push(`${hh}:00`);
+  }
+  return list;
+})();
+
+function getTimeOptions(currentVal?: string, isEndTime?: boolean): string[] {
+  const base = [...TIME_OPTIONS_24H_1H];
+  if (isEndTime && !base.includes("23:59")) {
+    base.push("23:59");
+  }
+  if (currentVal && !base.includes(currentVal)) {
+    base.push(currentVal);
+    base.sort();
+  }
+  return base;
+}
+
+function formatDuration(startTime: string, endTime: string): string {
+  if (!startTime || !endTime) return "";
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  const startMins = sh * 60 + sm;
+  const endMins = eh * 60 + em;
+  const diffMins = endMins - startMins;
+  if (diffMins <= 0) return "Inválido";
+  const hours = Math.floor(diffMins / 60);
+  const mins = diffMins % 60;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
 }
 
 interface ScheduleGroupSlotsModalProps {
@@ -92,6 +131,7 @@ export function ScheduleGroupSlotsModal({
   const [groupSlotsMap, setGroupSlotsMap] = useState<Record<string, DaySlotConfig[]>>({});
   const [groupPeriodsMap, setGroupPeriodsMap] = useState<Record<string, string>>({});
   const [activeGroupSlotTab, setActiveGroupSlotTab] = useState<string>("");
+  const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!open || !schedule) return;
@@ -214,7 +254,19 @@ export function ScheduleGroupSlotsModal({
       const currentSlots = prev[groupId] || createDefaultDaySlots();
       const updatedSlots = currentSlots.map((slot) => {
         if (slot.dayOfWeek === dayKey) {
-          return { ...slot, [field]: value };
+          const updated = { ...slot, [field]: value };
+          // If startTime is updated and is >= current endTime, suggest a valid endTime (e.g., +4 hours, max 23:45)
+          if (field === "startTime" && updated.enabled && updated.endTime) {
+            const [sh, sm] = value.split(":").map(Number);
+            const [eh, em] = updated.endTime.split(":").map(Number);
+            if (sh * 60 + sm >= eh * 60 + em) {
+              const newEndMin = Math.min(sh * 60 + sm + 240, 23 * 60 + 45);
+              const ehNew = Math.floor(newEndMin / 60);
+              const emNew = newEndMin % 60;
+              updated.endTime = `${String(ehNew).padStart(2, "0")}:${String(emNew).padStart(2, "0")}`;
+            }
+          }
+          return updated;
         }
         return slot;
       });
@@ -342,23 +394,39 @@ export function ScheduleGroupSlotsModal({
       <DialogContent className="fixed inset-0 top-0 left-0 translate-x-0 translate-y-0 w-screen h-screen max-w-none sm:max-w-none !max-w-none !w-screen min-w-full min-h-full rounded-none m-0 border-0 flex flex-col p-0 overflow-hidden bg-background shadow-none z-50">
         {/* Header */}
         <DialogHeader className="p-6 pb-4 border-b border-border/80 bg-muted/20">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <DialogTitle className="text-xl font-bold text-foreground">
-                  {schedule.name}
-                </DialogTitle>
-                <Badge variant="secondary" className="text-xs font-mono">
-                  {formatDate(schedule.startDate)} - {formatDate(schedule.endDate)}
-                </Badge>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                <Clock className="w-5 h-5" />
               </div>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Asigna los grupos a este horario y define sus horas de inicio y fin de Lunes a Domingo.
-              </DialogDescription>
+              <div>
+                <div className="flex items-center gap-2">
+                  <DialogTitle className="text-xl font-bold text-foreground">
+                    {schedule.name}
+                  </DialogTitle>
+                  <Badge variant="secondary" className="text-xs font-mono">
+                    {formatDate(schedule.startDate)} - {formatDate(schedule.endDate)}
+                  </Badge>
+                </div>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Asigna los grupos a este horario y define sus horas de inicio y fin de Lunes a Domingo.
+                </DialogDescription>
+              </div>
             </div>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsHelpOpen(true)}
+                  className="w-9 h-9 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs shrink-0 mr-8"
+                >
+                  <HelpCircle className="w-4.5 h-4.5 text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Grupos</TooltipContent>
+            </Tooltip>
           </div>
         </DialogHeader>
 
@@ -732,11 +800,11 @@ export function ScheduleGroupSlotsModal({
                                 </div>
 
                                 {dayConfig.enabled ? (
-                                  <div className="flex items-center gap-2 text-xs font-mono shrink-0">
-                                    <div className="flex items-center gap-1 bg-muted/40 px-2 py-1 rounded-xl border border-input">
-                                      <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                      <Input
-                                        type="time"
+                                  <div className="flex items-center gap-2 text-xs font-mono shrink-0 flex-wrap sm:flex-nowrap justify-end">
+                                    {/* Hora Inicio (24 Horas, intervalos de 15 min) */}
+                                    <div className="flex items-center gap-1.5 bg-background dark:bg-muted/30 px-2 py-1 rounded-xl border border-input shadow-2xs hover:border-primary/50 transition-colors">
+                                      <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                                      <select
                                         value={dayConfig.startTime}
                                         onChange={(e) =>
                                           handleUpdateDaySlot(
@@ -746,14 +814,22 @@ export function ScheduleGroupSlotsModal({
                                             e.target.value
                                           )
                                         }
-                                        className="w-20 h-6 text-xs border-0 bg-transparent p-0 focus-visible:ring-0"
-                                      />
+                                        className="bg-transparent font-mono text-xs font-bold text-foreground focus:outline-none cursor-pointer"
+                                      >
+                                        {getTimeOptions(dayConfig.startTime, false).map((t) => (
+                                          <option key={t} value={t} className="bg-background text-foreground font-mono">
+                                            {t}
+                                          </option>
+                                        ))}
+                                      </select>
                                     </div>
+
                                     <span className="text-muted-foreground font-sans font-medium text-xs">a</span>
-                                    <div className="flex items-center gap-1 bg-muted/40 px-2 py-1 rounded-xl border border-input">
-                                      <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                      <Input
-                                        type="time"
+
+                                    {/* Hora Fin (24 Horas, intervalos de 15 min) */}
+                                    <div className="flex items-center gap-1.5 bg-background dark:bg-muted/30 px-2 py-1 rounded-xl border border-input shadow-2xs hover:border-primary/50 transition-colors">
+                                      <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                                      <select
                                         value={dayConfig.endTime}
                                         onChange={(e) =>
                                           handleUpdateDaySlot(
@@ -763,9 +839,33 @@ export function ScheduleGroupSlotsModal({
                                             e.target.value
                                           )
                                         }
-                                        className="w-20 h-6 text-xs border-0 bg-transparent p-0 focus-visible:ring-0"
-                                      />
+                                        className="bg-transparent font-mono text-xs font-bold text-foreground focus:outline-none cursor-pointer"
+                                      >
+                                        {getTimeOptions(dayConfig.endTime, true).map((t) => (
+                                          <option key={t} value={t} className="bg-background text-foreground font-mono">
+                                            {t}
+                                          </option>
+                                        ))}
+                                      </select>
                                     </div>
+
+                                    {/* Chip de Duración en Horas y Minutos */}
+                                    {(() => {
+                                      const dur = formatDuration(dayConfig.startTime, dayConfig.endTime);
+                                      const isInvalid = dur === "Inválido";
+                                      return (
+                                        <span
+                                          className={`text-[10px] font-bold px-2 py-0.5 rounded-lg font-sans transition-colors ${
+                                            isInvalid
+                                              ? "bg-destructive/10 text-destructive border border-destructive/20"
+                                              : "bg-muted/70 text-muted-foreground border border-border/60"
+                                          }`}
+                                          title={isInvalid ? "La hora de fin debe ser posterior a la de inicio" : `Duración calculada: ${dur}`}
+                                        >
+                                          {dur}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                 ) : (
                                   <Badge variant="outline" className="text-[11px] text-muted-foreground bg-background font-normal border-dashed">
@@ -821,6 +921,13 @@ export function ScheduleGroupSlotsModal({
             </div>
           </DialogFooter>
         </Tabs>
+
+        <SchedulePanelHelpModal
+          panel="groups"
+          open={isHelpOpen}
+          onOpenChange={setIsHelpOpen}
+          scheduleName={schedule.name}
+        />
       </DialogContent>
     </Dialog>
   );

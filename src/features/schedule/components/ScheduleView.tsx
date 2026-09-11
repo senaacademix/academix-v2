@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,7 @@ import {
     Building,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCalendarDate } from "@/lib/dateUtils";
+import { formatCalendarDate, getScheduleCalendarYear } from "@/lib/dateUtils";
 import { getScheduleViewAction } from "@/features/schedule/actions/scheduleActions";
 import { useSession } from "@/lib/auth-client";
 import {
@@ -211,6 +211,37 @@ export function ScheduleView() {
     } | null>(null);
     const [selectedScheduleId, setSelectedScheduleId] = useState<string>("");
     const [isDraft, setIsDraft] = useState(false);
+    const currentYearStr = new Date().getFullYear().toString();
+    const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
+
+    const getScheduleYear = (s: { name?: string; startDate?: string | Date | null }): string => {
+        return getScheduleCalendarYear(s);
+    };
+
+    const availableYears = useMemo(() => {
+        const yearsSet = new Set<string>();
+        const currentYear = new Date().getFullYear().toString();
+        yearsSet.add(currentYear);
+        allSchedules.forEach(s => {
+            yearsSet.add(getScheduleYear(s));
+        });
+        return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+    }, [allSchedules]);
+
+    const filteredSchedules = useMemo(() => {
+        if (selectedYear === "ALL") return allSchedules;
+        return allSchedules.filter(s => getScheduleYear(s) === selectedYear);
+    }, [allSchedules, selectedYear]);
+
+    const handleYearChange = (year: string) => {
+        setSelectedYear(year);
+        const filtered = year === "ALL" ? allSchedules : allSchedules.filter(s => getScheduleYear(s) === year);
+        if (filtered.length > 0) {
+            const active = filtered.find(s => s.isActive)?.id || filtered[0].id;
+            setSelectedScheduleId(active);
+            loadScheduleData(active);
+        }
+    };
 
     const loadScheduleData = (requestedId?: string) => {
         setIsLoading(true);
@@ -615,48 +646,71 @@ export function ScheduleView() {
                         )}
                     </div>
 
-                    {/* Row 3: Academic Period Selector (Full width on mobile) */}
-                    <div className="w-full">
+                    {/* Row 3: Academic Period Selector (Full width on mobile, with Year Filter) */}
+                    <div className="w-full flex flex-col sm:flex-row items-center gap-2">
                         {allSchedules.length > 0 ? (
-                            <Select
-                                value={selectedScheduleId}
-                                onValueChange={(val) => {
-                                    setSelectedScheduleId(val);
-                                    loadScheduleData(val);
-                                }}
-                            >
-                                <SelectTrigger className="h-9 rounded-xl text-xs font-bold bg-muted/40 hover:bg-muted/70 text-foreground border-border/80 gap-2 shadow-2xs w-full">
-                                    <div className="flex items-center gap-2 truncate">
-                                        <div className={cn("w-2 h-2 rounded-full shrink-0", currentSchedule?.isActive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/50")} />
-                                        <SelectValue placeholder="Seleccionar Período" />
-                                    </div>
-                                </SelectTrigger>
-                                <SelectContent className="rounded-2xl text-xs max-h-64 shadow-xl border-border/80">
-                                    {allSchedules.map((s) => (
-                                        <SelectItem key={s.id} value={s.id} className="cursor-pointer rounded-xl my-0.5">
-                                            <div className="flex items-center justify-between gap-3 w-full">
-                                                <span className="font-bold text-foreground">{s.name}</span>
-                                                <div className="flex items-center gap-1 shrink-0">
-                                                    {s.isActive && (
-                                                        <Badge className="bg-emerald-600 text-white text-[9px] px-1.5 py-0 h-4 font-extrabold rounded-md">
-                                                            Vigente
-                                                        </Badge>
-                                                    )}
-                                                    {!s.isPublished ? (
-                                                        <Badge variant="outline" className="text-amber-600 border-amber-500/40 bg-amber-500/10 text-[9px] px-1.5 py-0 h-4 font-bold rounded-md">
-                                                            Borrador
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="outline" className="text-blue-600 border-blue-500/40 bg-blue-500/10 text-[9px] px-1.5 py-0 h-4 font-bold rounded-md">
-                                                            Público
-                                                        </Badge>
-                                                    )}
-                                                </div>
+                            <>
+                                {/* Year Filter */}
+                                <Select value={selectedYear} onValueChange={handleYearChange}>
+                                    <SelectTrigger className="h-9 rounded-xl text-xs font-bold bg-muted/40 hover:bg-muted/70 text-foreground border-border/80 gap-1.5 shadow-2xs w-full sm:w-[145px] px-2.5 shrink-0">
+                                        <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        <SelectValue placeholder="Año" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl text-xs shadow-xl border-border/80">
+                                        <SelectItem value="ALL" className="font-bold">Todos los años</SelectItem>
+                                        {availableYears.map(yr => (
+                                            <SelectItem key={yr} value={yr} className="font-bold">Año {yr}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Schedule Selector */}
+                                <Select
+                                    value={selectedScheduleId}
+                                    onValueChange={(val) => {
+                                        setSelectedScheduleId(val);
+                                        loadScheduleData(val);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-9 rounded-xl text-xs font-bold bg-muted/40 hover:bg-muted/70 text-foreground border-border/80 gap-2 shadow-2xs w-full flex-1">
+                                        <div className="flex items-center gap-2 truncate">
+                                            <div className={cn("w-2 h-2 rounded-full shrink-0", currentSchedule?.isActive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/50")} />
+                                            <SelectValue placeholder="Seleccionar Período" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-2xl text-xs max-h-64 shadow-xl border-border/80">
+                                        {filteredSchedules.length === 0 ? (
+                                            <div className="px-3 py-2 text-xs text-muted-foreground italic">
+                                                Sin horarios para {selectedYear}
                                             </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                        ) : (
+                                            filteredSchedules.map((s) => (
+                                                <SelectItem key={s.id} value={s.id} className="cursor-pointer rounded-xl my-0.5">
+                                                    <div className="flex items-center justify-between gap-3 w-full">
+                                                        <span className="font-bold text-foreground">{s.name}</span>
+                                                        <div className="flex items-center gap-1 shrink-0">
+                                                            {s.isActive && (
+                                                                <Badge className="bg-emerald-600 text-white text-[9px] px-1.5 py-0 h-4 font-extrabold rounded-md">
+                                                                    Vigente
+                                                                </Badge>
+                                                            )}
+                                                            {!s.isPublished ? (
+                                                                <Badge variant="outline" className="text-amber-600 border-amber-500/40 bg-amber-500/10 text-[9px] px-1.5 py-0 h-4 font-bold rounded-md">
+                                                                    Borrador
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge variant="outline" className="text-blue-600 border-blue-500/40 bg-blue-500/10 text-[9px] px-1.5 py-0 h-4 font-bold rounded-md">
+                                                                    Público
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </SelectItem>
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </>
                         ) : (
                             globalDates.title && (
                                 <div className="text-xs text-primary font-bold bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl truncate w-full text-center sm:text-left">

@@ -60,6 +60,30 @@ const COLOR_OPTIONS = [
   { id: "indigo", label: "Índigo", bg: "bg-indigo-500", border: "border-indigo-500", text: "text-indigo-600 dark:text-indigo-400" },
 ];
 
+const TIME_OPTIONS_24H_15M: string[] = (() => {
+  const list: string[] = [];
+  for (let h = 0; h < 24; h++) {
+    const hh = String(h).padStart(2, "0");
+    for (let m = 0; m < 60; m += 15) {
+      const mm = String(m).padStart(2, "0");
+      list.push(`${hh}:${mm}`);
+    }
+  }
+  return list;
+})();
+
+function getTimeOptions(currentVal?: string, isEndTime?: boolean): string[] {
+  const base = [...TIME_OPTIONS_24H_15M];
+  if (isEndTime && !base.includes("23:59")) {
+    base.push("23:59");
+  }
+  if (currentVal && !base.includes(currentVal)) {
+    base.push(currentVal);
+    base.sort();
+  }
+  return base;
+}
+
 export function ScheduleEventModal({
   open,
   onOpenChange,
@@ -346,38 +370,64 @@ export function ScheduleEventModal({
               </span>
             </div>
 
-            {/* Hora Inicio */}
+            {/* Hora Inicio (24 Horas, intervalos de 15 min) */}
             <div className="space-y-1.5">
               <Label htmlFor="start-time" className="text-xs font-bold flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-primary" /> Hora Inicio <span className="text-rose-500">*</span>
               </Label>
-              <Input
-                id="start-time"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="rounded-xl font-mono h-10"
-                required
-              />
-              <span className="text-[10px] text-muted-foreground block">Inicio de la actividad</span>
+              <div className="flex items-center gap-2 bg-background dark:bg-muted/40 px-3 py-2 rounded-xl border border-input h-10 shadow-2xs">
+                <select
+                  id="start-time"
+                  value={startTime}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setStartTime(val);
+                    if (val >= endTime) {
+                      const [sh, sm] = val.split(":").map(Number);
+                      const newEndMin = Math.min(sh * 60 + sm + 120, 23 * 60 + 45);
+                      const ehNew = Math.floor(newEndMin / 60);
+                      const emNew = newEndMin % 60;
+                      setEndTime(`${String(ehNew).padStart(2, "0")}:${String(emNew).padStart(2, "0")}`);
+                    }
+                  }}
+                  className="w-full bg-transparent font-mono text-sm font-bold text-foreground focus:outline-none cursor-pointer"
+                  required
+                >
+                  {getTimeOptions(startTime, false).map((t) => (
+                    <option key={t} value={t} className="bg-background text-foreground font-mono">
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="text-[10px] text-muted-foreground block">Inicio (pasos de 15 min)</span>
             </div>
 
-            {/* Hora Fin */}
+            {/* Hora Fin (24 Horas, intervalos de 15 min) */}
             <div className="space-y-1.5">
               <Label htmlFor="end-time" className="text-xs font-bold flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-primary" /> Hora Fin <span className="text-rose-500">*</span>
               </Label>
-              <Input
-                id="end-time"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className={`rounded-xl font-mono h-10 ${
-                  isTimeInvalid ? "border-rose-500 bg-rose-500/5 focus-visible:ring-rose-500" : ""
+              <div
+                className={`flex items-center gap-2 bg-background dark:bg-muted/40 px-3 py-2 rounded-xl border h-10 shadow-2xs ${
+                  isTimeInvalid ? "border-rose-500 bg-rose-500/5 ring-1 ring-rose-500" : "border-input"
                 }`}
-                required
-              />
-              <span className="text-[10px] text-muted-foreground block">Culminación del evento</span>
+              >
+                <select
+                  id="end-time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full bg-transparent font-mono text-sm font-bold text-foreground focus:outline-none cursor-pointer"
+                  required
+                >
+                  {getTimeOptions(endTime, true).map((t) => (
+                    <option key={t} value={t} className="bg-background text-foreground font-mono">
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="text-[10px] text-muted-foreground block">Culminación (pasos de 15 min)</span>
             </div>
           </div>
 

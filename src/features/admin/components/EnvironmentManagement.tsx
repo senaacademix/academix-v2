@@ -57,6 +57,7 @@ import {
  Upload,
  Download,
  AlertCircle,
+ HelpCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -87,6 +88,7 @@ interface EnvironmentManagementProps {
  programId: string;
  onActionComplete?: () => void;
  isObserver?: boolean;
+ onHelpClick?: () => void;
 }
 
 // ─── Suggested Resources ─────────────────────────────────────────────────────
@@ -130,7 +132,7 @@ const emptyForm = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function EnvironmentManagement({ initialEnvironments, programId, onActionComplete, isObserver = false }: EnvironmentManagementProps) {
+export function EnvironmentManagement({ initialEnvironments, programId, onActionComplete, isObserver = false, onHelpClick }: EnvironmentManagementProps) {
   const [environments, setEnvironments] = useState<TrainingEnvironment[]>(initialEnvironments);
   const [progressModal, setProgressModal] = useState<{
     isOpen: boolean;
@@ -471,6 +473,21 @@ export function EnvironmentManagement({ initialEnvironments, programId, onAction
       </div>
     </div>
     <div className="flex flex-wrap items-center gap-2">
+      {onHelpClick && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onHelpClick}
+              className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-primary" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Ambientes</TooltipContent>
+        </Tooltip>
+      )}
       <Button onClick={handleExportJSON} variant="outline" size="sm" className="h-8 text-xs font-bold gap-1.5 rounded-xl border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
         <Download className="w-3.5 h-3.5" />
         Exportar JSON

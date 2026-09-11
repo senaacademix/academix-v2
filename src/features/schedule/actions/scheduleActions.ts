@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { courseService } from "../../teacher/services/courseService";
 import prisma from "@/lib/prisma";
+import { isScheduleCurrent } from "@/lib/dateUtils";
 
 async function getSession() {
   return await auth.api.getSession({ headers: await headers() });
@@ -53,7 +54,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
   if (role === "student") {
     // Buscar exclusivamente el horario vigente
     const vigenteSchedule = academicSchedules.find(
-      (s) => now >= s.startDate && now <= s.endDate
+      (s) => isScheduleCurrent(s.startDate, s.endDate)
     );
 
     // Si no hay horario vigente configurado
@@ -154,7 +155,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
 
   // CASO B: DOCENTE / ADMINISTRADOR (Visualiza todos sus horarios con selector, por defecto el vigente)
   const allSchedulesList = academicSchedules.map((s) => {
-    const isCurrent = now >= s.startDate && now <= s.endDate;
+    const isCurrent = isScheduleCurrent(s.startDate, s.endDate);
     const isPublished = isCurrent ? s.isPublished : true;
     return {
       id: s.id,
@@ -173,11 +174,11 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
     }
     if (!selectedSchedule) {
       selectedSchedule =
-        academicSchedules.find((s) => now >= s.startDate && now <= s.endDate) ||
+        academicSchedules.find((s) => isScheduleCurrent(s.startDate, s.endDate)) ||
         academicSchedules[0];
     }
 
-    const isCurrent = now >= selectedSchedule.startDate && now <= selectedSchedule.endDate;
+    const isCurrent = isScheduleCurrent(selectedSchedule.startDate, selectedSchedule.endDate);
     const isPublished = isCurrent ? selectedSchedule.isPublished : true;
 
     if (!isPublished) {

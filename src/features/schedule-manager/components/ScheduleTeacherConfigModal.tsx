@@ -15,17 +15,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Clock, BookOpen } from "lucide-react";
+import { Users, Clock, BookOpen, HelpCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AcademicScheduleItem } from "../types";
 import { getTeachersListAction } from "../actions/scheduleManagerActions";
 import { TeacherAvailabilityView } from "@/features/schedule/components/TeacherAvailabilityView";
 import { TeacherQualificationsView } from "@/features/teacher/components/TeacherQualificationsView";
+import { SchedulePanelHelpModal } from "./SchedulePanelHelpModal";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ScheduleTeacherConfigModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   schedules: AcademicScheduleItem[];
   defaultScheduleId?: string | null;
+  programId?: string;
 }
 
 export function ScheduleTeacherConfigModal({
@@ -33,6 +37,7 @@ export function ScheduleTeacherConfigModal({
   onOpenChange,
   schedules,
   defaultScheduleId,
+  programId,
 }: ScheduleTeacherConfigModalProps) {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
@@ -41,22 +46,25 @@ export function ScheduleTeacherConfigModal({
   );
   const [activeTab, setActiveTab] = useState<string>("availability");
   const [loadingTeachers, setLoadingTeachers] = useState<boolean>(false);
+  const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (open) {
       const initialSchedId = defaultScheduleId || schedules.find(s => s.isActive)?.id || schedules[0]?.id || "";
       setSelectedScheduleId(initialSchedId);
-      fetchTeachers();
+      fetchTeachers(programId);
     }
-  }, [open, defaultScheduleId, schedules]);
+  }, [open, defaultScheduleId, schedules, programId]);
 
-  const fetchTeachers = async () => {
+  const fetchTeachers = async (progId?: string) => {
     setLoadingTeachers(true);
     try {
-      const list = await getTeachersListAction();
+      const list = await getTeachersListAction(progId || programId);
       setTeachers(list);
-      if (list.length > 0 && !selectedTeacherId) {
+      if (list.length > 0 && (!selectedTeacherId || !list.some(t => t.id === selectedTeacherId))) {
         setSelectedTeacherId(list[0].id);
+      } else if (list.length === 0) {
+        setSelectedTeacherId("");
       }
     } catch (error) {
       console.error(error);
@@ -72,7 +80,7 @@ export function ScheduleTeacherConfigModal({
         {/* Compact Header & Controls Bar */}
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           
-          {/* Row 1: Compact Title & Badge */}
+          {/* Row 1: Modal Header (Minimalist 1-line) */}
           <div className="flex items-center justify-between gap-2 shrink-0 pb-2 border-b border-border/70 mb-2">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">
@@ -85,6 +93,20 @@ export function ScheduleTeacherConfigModal({
                 Disponibilidad y Materias por Horario
               </Badge>
             </div>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsHelpOpen(true)}
+                  className="w-8 h-8 rounded-lg border-border/80 hover:bg-muted text-foreground shadow-2xs shrink-0 mr-8"
+                >
+                  <HelpCircle className="w-4 h-4 text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Profesores</TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Row 2: Selectors & Tabs in 1 compact bar */}
@@ -153,16 +175,23 @@ export function ScheduleTeacherConfigModal({
 
                 <TabsContent value="qualifications" className="m-0 h-full">
                   <TeacherQualificationsView 
-                    key={`qual-${selectedTeacherId}-${selectedScheduleId}`}
+                    key={`qual-${selectedTeacherId}-${selectedScheduleId}-${programId}`}
                     teacherId={selectedTeacherId} 
                     scheduleId={selectedScheduleId}
                     isAdminMode={true} 
+                    programId={programId}
                   />
                 </TabsContent>
               </div>
             )}
           </Tabs>
 
+          <SchedulePanelHelpModal
+            panel="teachers"
+            open={isHelpOpen}
+            onOpenChange={setIsHelpOpen}
+            scheduleName={schedules.find(s => s.id === selectedScheduleId)?.name}
+          />
         </div>
       </DialogContent>
     </Dialog>

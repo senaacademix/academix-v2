@@ -31,7 +31,10 @@ import {
   Building,
   FileSpreadsheet,
   Globe,
+  HelpCircle,
 } from "lucide-react";
+import { SchedulePanelHelpModal } from "../SchedulePanelHelpModal";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -168,6 +171,7 @@ export function ScheduleNoveltiesManagerView({
 
   // View Mode: Month vs Week vs List
   const [viewMode, setViewMode] = useState<"month" | "week" | "list">("month");
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Filter state
   const [filterGroupId, setFilterGroupId] = useState<string>("ALL");
@@ -338,7 +342,7 @@ export function ScheduleNoveltiesManagerView({
   const handleExportExcel = async () => {
     setIsExportingExcel(true);
     try {
-      const rangeFmt = `${schedule.startDate ? format(new Date(schedule.startDate), "dd/MM/yyyy") : ""} - ${schedule.endDate ? format(new Date(schedule.endDate), "dd/MM/yyyy") : ""}`;
+      const rangeFmt = `${schedule.startDate ? formatCalendarDate(schedule.startDate, "dd/MM/yyyy") : ""} - ${schedule.endDate ? formatCalendarDate(schedule.endDate, "dd/MM/yyyy") : ""}`;
       await generateAndDownloadNoveltiesExcel(schedule.name, rangeFmt, filteredNovelties);
       toast.success("Reporte Excel generado correctamente");
     } catch (err) {
@@ -352,7 +356,7 @@ export function ScheduleNoveltiesManagerView({
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
     try {
-      const rangeFmt = `${schedule.startDate ? format(new Date(schedule.startDate), "dd/MM/yyyy") : ""} - ${schedule.endDate ? format(new Date(schedule.endDate), "dd/MM/yyyy") : ""}`;
+      const rangeFmt = `${schedule.startDate ? formatCalendarDate(schedule.startDate, "dd/MM/yyyy") : ""} - ${schedule.endDate ? formatCalendarDate(schedule.endDate, "dd/MM/yyyy") : ""}`;
       await generateAndDownloadNoveltiesPdf(schedule.name, rangeFmt, filteredNovelties);
       toast.success("Reporte PDF generado correctamente");
     } catch (err) {
@@ -481,6 +485,20 @@ export function ScheduleNoveltiesManagerView({
             )}
             <span>Excel</span>
           </Button>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsHelpOpen(true)}
+                className="h-9 w-9 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+              >
+                <HelpCircle className="w-4 h-4 text-primary" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Novedades</TooltipContent>
+          </Tooltip>
 
           <Button
             onClick={() => handleOpenCreateModal()}
@@ -654,8 +672,8 @@ export function ScheduleNoveltiesManagerView({
 
                   // Filter novelties active on this date
                   const dayNovelties = filteredNovelties.filter((n) => {
-                    const startStr = format(new Date(n.startDate), "yyyy-MM-dd");
-                    const endStr = format(new Date(n.endDate), "yyyy-MM-dd");
+                    const startStr = formatCalendarDate(n.startDate, "yyyy-MM-dd");
+                    const endStr = formatCalendarDate(n.endDate, "yyyy-MM-dd");
                     return dayStr >= startStr && dayStr <= endStr;
                   });
 
@@ -808,8 +826,8 @@ export function ScheduleNoveltiesManagerView({
                     (!scheduleEndStr || dayStr <= scheduleEndStr);
 
                   const dayNovelties = filteredNovelties.filter((n) => {
-                    const startStr = format(new Date(n.startDate), "yyyy-MM-dd");
-                    const endStr = format(new Date(n.endDate), "yyyy-MM-dd");
+                    const startStr = formatCalendarDate(n.startDate, "yyyy-MM-dd");
+                    const endStr = formatCalendarDate(n.endDate, "yyyy-MM-dd");
                     return dayStr >= startStr && dayStr <= endStr;
                   });
 
@@ -928,8 +946,8 @@ export function ScheduleNoveltiesManagerView({
           ) : (
             filteredNovelties.map((n) => {
               const typeConfig = NOVELTY_TYPES.find((t) => t.type === n.type) || NOVELTY_TYPES[5];
-              const startFmt = format(new Date(n.startDate), "dd MMM yyyy", { locale: es });
-              const endFmt = format(new Date(n.endDate), "dd MMM yyyy", { locale: es });
+              const startFmt = formatCalendarDate(n.startDate, "dd MMM yyyy");
+              const endFmt = formatCalendarDate(n.endDate, "dd MMM yyyy");
 
               return (
                 <Card
@@ -1227,6 +1245,13 @@ export function ScheduleNoveltiesManagerView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SchedulePanelHelpModal
+        panel="novelties"
+        open={isHelpOpen}
+        onOpenChange={setIsHelpOpen}
+        scheduleName={schedule.name}
+      />
     </div>
   );
 }

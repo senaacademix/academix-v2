@@ -51,7 +51,7 @@ import {
     ChevronRight, Layers, Clock, X, Info, GraduationCap, ArrowLeft, ArrowUpRight, GripVertical,
     AlertCircle, Building, Code, Database, Binary, MessageSquare, Terminal,
     ShieldCheck, Cloud, Rocket, NotebookTabs, Lock as LockIcon, Download,
-    Activity, Upload, AlertTriangle, School, Eye
+    Activity, Upload, AlertTriangle, School, Eye, HelpCircle
 } from "lucide-react";
 import {
     DndContext,
@@ -135,6 +135,7 @@ import { DayOfWeek } from "@/generated/prisma/client";
 import { EnvironmentManagement, TrainingEnvironment } from "@/features/admin/components/EnvironmentManagement";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
 import { AdminProgramReadOnlyView } from "./program-view/AdminProgramReadOnlyView";
+import { AcademicTabsHelpModal, AcademicTabKey } from "./AcademicTabsHelpModal";
 
 const DAYS_OF_WEEK_ORDERED: { value: DayOfWeek; label: string }[] = [
     { value: "MONDAY", label: "Lunes" },
@@ -543,6 +544,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [students, setStudents] = useState<Student[]>([]);
     const [teachersList, setTeachersList] = useState<Teacher[]>(teachers);
     const [subTab, setSubTab] = useState<string>("overview");
+    const [isTabsHelpOpen, setIsTabsHelpOpen] = useState<boolean>(false);
     const [isPending, startTransition] = useTransition();
     const [progressModal, setProgressModal] = useState<{
         isOpen: boolean;
@@ -2607,8 +2609,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     await deleteCourseAction(deleteItemId);
                     toast.success("Materia académica eliminada");
                 } else if (deleteType === "teacher") {
-                    await deleteUserAction(deleteItemId);
-                    toast.success("Profesor eliminado del sistema");
+                    if (selectedProgram) {
+                        await assignTeacherToProgramAction(selectedProgram.id, deleteItemId, false);
+                        toast.success("Profesor desvinculado del programa");
+                    } else {
+                        await deleteUserAction(deleteItemId);
+                        toast.success("Profesor eliminado del sistema");
+                    }
                 } else if (deleteType === "student") {
                     await deleteUserAction(deleteItemId);
                     toast.success("Estudiante eliminado del sistema");
@@ -2950,13 +2957,29 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     </div>
 
                     <Tabs value={subTab} onValueChange={setSubTab} className="space-y-6">
-                        <TabsList className="flex w-full md:max-w-none overflow-x-auto bg-muted/40 p-1 rounded-xl scrollbar-none justify-start md:justify-center">
-                            <TabsTrigger value="overview" className="rounded-lg flex-1 shrink-0">Vista General</TabsTrigger>
-                            <TabsTrigger value="periods" className="rounded-lg flex-1 shrink-0">Periodos y Materias</TabsTrigger>
-                            <TabsTrigger value="groups" className="rounded-lg flex-1 shrink-0">Grupos y Alumnos</TabsTrigger>
-                            <TabsTrigger value="teachers" className="rounded-lg flex-1 shrink-0">Profesores</TabsTrigger>
-                            <TabsTrigger value="environments" className="rounded-lg flex-1 shrink-0">Ambientes</TabsTrigger>
-                        </TabsList>
+                        <div className="flex items-center gap-2">
+                            <TabsList className="flex flex-1 md:max-w-none overflow-x-auto bg-muted/40 p-1 rounded-xl scrollbar-none justify-start md:justify-center">
+                                <TabsTrigger value="overview" className="rounded-lg flex-1 shrink-0">Vista General</TabsTrigger>
+                                <TabsTrigger value="periods" className="rounded-lg flex-1 shrink-0">Periodos y Materias</TabsTrigger>
+                                <TabsTrigger value="groups" className="rounded-lg flex-1 shrink-0">Grupos y Alumnos</TabsTrigger>
+                                <TabsTrigger value="teachers" className="rounded-lg flex-1 shrink-0">Profesores</TabsTrigger>
+                                <TabsTrigger value="environments" className="rounded-lg flex-1 shrink-0">Ambientes</TabsTrigger>
+                            </TabsList>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => setIsTabsHelpOpen(true)}
+                                        className="w-10 h-10 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all shrink-0"
+                                    >
+                                        <HelpCircle className="w-4.5 h-4.5 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de la pestaña</TooltipContent>
+                            </Tooltip>
+                        </div>
 
                         {/* SUB-TAB: OVERVIEW */}
                         <TabsContent value="overview" className="space-y-6 mt-0">
@@ -3023,6 +3046,28 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                                 return (
                                     <div className="space-y-6 animate-in fade-in-50 duration-200">
+                                        {/* Header de Vista General con Ayuda */}
+                                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-1">
+                                            <div>
+                                                <h4 className="text-base font-bold tracking-tight text-foreground">Diagnóstico del Programa: {selectedProgram.name}</h4>
+                                                <p className="text-xs text-muted-foreground">Resumen general de periodos, materias, alumnos y ambientes vinculados.</p>
+                                            </div>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setIsTabsHelpOpen(true)}
+                                                        className="h-8 rounded-xl text-xs font-bold gap-1.5 border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all self-start sm:self-auto"
+                                                    >
+                                                        <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                                                        <span>¿Qué puedo hacer acá?</span>
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Vista General</TooltipContent>
+                                            </Tooltip>
+                                        </div>
+
                                         {/* Fila de Tarjetas de Métricas (Compactas) */}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
@@ -3291,6 +3336,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
                                 <h4 className="text-base font-semibold text-muted-foreground">Periodos y Materias de {selectedProgram.name}</h4>
                                 <div className="flex flex-wrap items-center gap-2">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => setIsTabsHelpOpen(true)}
+                                                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                                            >
+                                                <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Periodos y Materias</TooltipContent>
+                                    </Tooltip>
                                     <Button onClick={handleExportPeriodsJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
                                         <Download className="h-4 w-4 mr-1.5" />
                                         Exportar JSON
@@ -3492,6 +3550,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
                                         <h4 className="text-base font-semibold text-muted-foreground">Grupos de Alumnos de {selectedProgram.name}</h4>
                                         <div className="flex flex-wrap items-center gap-2">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => setIsTabsHelpOpen(true)}
+                                                        className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                                                    >
+                                                        <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Grupos y Alumnos</TooltipContent>
+                                            </Tooltip>
                                             <Button onClick={handleExportGroupsJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
                                                 <Download className="h-4 w-4 mr-1.5" />
                                                 Exportar JSON
@@ -3599,6 +3670,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
                                 <h4 className="text-base font-semibold text-muted-foreground">Profesores de {selectedProgram.name}</h4>
                                 <div className="flex flex-wrap items-center gap-2">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => setIsTabsHelpOpen(true)}
+                                                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                                            >
+                                                <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Profesores</TooltipContent>
+                                    </Tooltip>
                                     <Button onClick={handleExportTeachersJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
                                         <Download className="h-4 w-4 mr-1.5" />
                                         Exportar JSON
@@ -3817,6 +3901,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 programId={selectedProgram.id}
                                 onActionComplete={refreshAll}
                                 isObserver={isObserver}
+                                onHelpClick={() => setIsTabsHelpOpen(true)}
                             />
                         </TabsContent>
                     </Tabs>
@@ -4391,6 +4476,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <TeacherQualificationsView 
                                 teacherId={qualTeacher.id} 
                                 isAdminMode={true} 
+                                programId={selectedProgram?.id || initialProgramId || undefined}
                                 onAdminActionComplete={refreshAll} 
                             />
                         )}
@@ -4706,6 +4792,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             )}
                                         </div>
                                     </div>
+                                ) : deleteType === "teacher" ? (
+                                    <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
+                                        Desvincularás al profesor <strong>{deleteItemName}</strong> de <strong>{selectedProgram?.name}</strong>. El profesor mantendrá su cuenta en el sistema pero ya no estará asociado a este programa de formación.
+                                    </AlertDialogDescription>
                                 ) : (
                                     <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
                                         Eliminarás definitivamente <strong>{deleteItemName}</strong> de la base de datos (junto con todas sus relaciones asociadas si corresponde).
@@ -5187,6 +5277,16 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Modal de Ayuda para las pestañas de Gestión Académica */}
+            {selectedProgram && (
+                <AcademicTabsHelpModal
+                    open={isTabsHelpOpen}
+                    onOpenChange={setIsTabsHelpOpen}
+                    activeTab={subTab as AcademicTabKey}
+                    programName={selectedProgram.name}
+                />
+            )}
         </div>
     );
 }

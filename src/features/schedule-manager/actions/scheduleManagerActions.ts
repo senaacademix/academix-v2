@@ -10,6 +10,7 @@ import {
   SaveGroupSlotsPayload,
   AvailableGroupOption 
 } from "../types";
+import { isScheduleCurrent, formatCalendarDate } from "@/lib/dateUtils";
 
 async function getSession() {
   return await auth.api.getSession({ headers: await headers() });
@@ -26,10 +27,33 @@ async function requireAdmin() {
 /**
  * Obtener todos los profesores registrados para gestión en el panel de horarios
  */
-export async function getTeachersListAction() {
-  await requireAdmin();
+export async function getTeachersListAction(programId?: string) {
+  const session = await requireAdmin();
+  const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
+  const where: any = { role: "teacher", banned: { not: true } };
+
+  if (effectiveProgramId) {
+    where.OR = [
+      { programs: { some: { id: effectiveProgramId } } },
+      { groupsTaught: { some: { programId: effectiveProgramId } } },
+      { coursesTaught: { some: { OR: [
+        { group: { programId: effectiveProgramId } },
+        { period: { programId: effectiveProgramId } }
+      ] } } }
+    ];
+  } else if (session.user.role === "gestor") {
+    where.OR = [
+      { programs: { some: { gestores: { some: { id: session.user.id } } } } },
+      { groupsTaught: { some: { program: { gestores: { some: { id: session.user.id } } } } } },
+      { coursesTaught: { some: { OR: [
+        { group: { program: { gestores: { some: { id: session.user.id } } } } },
+        { period: { program: { gestores: { some: { id: session.user.id } } } } }
+      ] } } }
+    ];
+  }
+
   const teachers = await prisma.user.findMany({
-    where: { role: "teacher", banned: { not: true } },
+    where,
     select: {
       id: true,
       name: true,
@@ -101,10 +125,8 @@ export async function getSchedulesAction(programId?: string): Promise<AcademicSc
       }
     });
 
-    const now = new Date();
-
     return schedules.map((item) => {
-      const isCurrent = now >= item.startDate && now <= item.endDate;
+      const isCurrent = isScheduleCurrent(item.startDate, item.endDate);
       const isPublished = isCurrent ? item.isPublished : true;
       return {
         id: item.id,
@@ -174,8 +196,7 @@ export async function getScheduleByIdAction(id: string): Promise<AcademicSchedul
     });
 
     if (!item) return null;
-    const now = new Date();
-    const isCurrent = now >= item.startDate && now <= item.endDate;
+    const isCurrent = isScheduleCurrent(item.startDate, item.endDate);
     const isPublished = isCurrent ? item.isPublished : true;
 
     return {
@@ -288,9 +309,31 @@ export async function getAvailableGroupsAction(programId?: string): Promise<Avai
 }
 
 /**
- * Helper para validar traslape de rangos de fechas de horarios
+ * Helper para validar unicidad de nombre de horario
  */
-async function validateNoScheduleDateConflict(startDate: Date, endDate: Date, excludeScheduleId?: string) {
+async function checkScheduleNameUnique(name: string, excludeScheduleId?: string): Promise<string | null> {
+  const existing = await prisma.academicSchedule.findFirst({
+    where: {
+      ...(excludeScheduleId ? { id: { not: excludeScheduleId } } : {}),
+      name: { equals: name.trim(), mode: "insensitive" },
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  if (existing) {
+    return `Ya existe un horario con el nombre "${name.trim()}". Por favor utiliza un nombre diferente.`;
+  }
+  return null;
+}
+
+/**
+ * Helper para validar traslape de rangos de fechas de horarios
+ * No permite crear ni actualizar horarios donde alguna parte de los rangos esté en ambos horarios.
+ */
+async function checkScheduleDateConflict(startDate: Date, endDate: Date, excludeScheduleId?: string): Promise<string | null> {
   // Dos rangos [A_start, A_end] y [B_start, B_end] se traslapan si: A_start <= B_end AND A_end >= B_start
   const conflictingSchedule = await prisma.academicSchedule.findFirst({
     where: {
@@ -307,149 +350,174 @@ async function validateNoScheduleDateConflict(startDate: Date, endDate: Date, ex
   });
 
   if (conflictingSchedule) {
-    const formatDate = (d: Date) => {
-      return d.toLocaleDateString("es-CO", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-      });
-    };
+    const formatDate = (d: Date | string) => formatCalendarDate(d, "dd 'de' MMM 'de' yyyy");
 
     const startFmt = formatDate(startDate);
     const endFmt = formatDate(endDate);
     const confStartFmt = formatDate(conflictingSchedule.startDate);
     const confEndFmt = formatDate(conflictingSchedule.endDate);
 
-    throw new Error(
-      `Conflicto de Fechas: El rango propuesto (${startFmt} a ${endFmt}) se traslapa con el horario existente "${conflictingSchedule.name}" (${confStartFmt} a ${confEndFmt}). Ningún horario puede traslaparse en fechas.`
-    );
+    return `Conflicto de Fechas: El rango propuesto (${startFmt} a ${endFmt}) se traslapa con el horario existente "${conflictingSchedule.name}" (${confStartFmt} a ${confEndFmt}). Ninguna fecha puede pertenecer a más de un horario.`;
   }
+  return null;
 }
 
 /**
  * 1. Crear Horario Académico básico (Nombre, Fechas y Descripción)
  */
-export async function createBasicScheduleAction(data: BasicSchedulePayload) {
-  const session = await requireAdmin();
+export async function createBasicScheduleAction(data: BasicSchedulePayload): Promise<{ success: boolean; scheduleId?: string; error?: string }> {
+  try {
+    const session = await requireAdmin();
 
-  if (!data.name || !data.name.trim()) {
-    throw new Error("El nombre del horario es obligatorio");
-  }
-  if (!data.startDate || !data.endDate) {
-    throw new Error("Las fechas de inicio y fin son obligatorias");
-  }
-
-  const startDate = new Date(data.startDate + (data.startDate.includes("T") ? "" : "T00:00:00.000Z"));
-  const endDate = new Date(data.endDate + (data.endDate.includes("T") ? "" : "T23:59:59.999Z"));
-
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    throw new Error("Las fechas proporcionadas no son válidas");
-  }
-
-  if (startDate > endDate) {
-    throw new Error("La fecha de inicio no puede ser posterior a la fecha de fin");
-  }
-
-  // Validar conflicto de rango de fechas con otros horarios existentes
-  await validateNoScheduleDateConflict(startDate, endDate);
-
-  const now = new Date();
-  const shouldBeActive = now >= startDate && now <= endDate;
-
-  const newSchedule = await prisma.academicSchedule.create({
-    data: {
-      name: data.name.trim(),
-      description: data.description ? data.description.trim() : null,
-      startDate,
-      endDate,
-      isActive: shouldBeActive
+    if (!data.name || !data.name.trim()) {
+      return { success: false, error: "El nombre del horario es obligatorio" };
     }
-  });
+    if (!data.startDate || !data.endDate) {
+      return { success: false, error: "Las fechas de inicio y fin son obligatorias" };
+    }
 
-  const { auditLogger } = await import("@/features/admin/services/auditLogger");
-  await auditLogger.log({
-    action: "CREATE",
-    entity: "SCHEDULE",
-    entityId: newSchedule.id,
-    userId: session.user.id,
-    userName: session.user.name || "Admin",
-    userRole: "admin",
-    description: `Creación de horario académico: "${newSchedule.name}"`,
-    metadata: { scheduleId: newSchedule.id, name: newSchedule.name, isActive: shouldBeActive },
-    success: true
-  });
+    const startDate = new Date(data.startDate + (data.startDate.includes("T") ? "" : "T00:00:00.000Z"));
+    const endDate = new Date(data.endDate + (data.endDate.includes("T") ? "" : "T23:59:59.999Z"));
 
-  revalidatePath("/dashboard/admin/schedules");
-  return { success: true, scheduleId: newSchedule.id };
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return { success: false, error: "Las fechas proporcionadas no son válidas" };
+    }
+
+    if (startDate > endDate) {
+      return { success: false, error: "La fecha de inicio no puede ser posterior a la fecha de fin" };
+    }
+
+    // Validar nombre único para evitar confusión de horarios duplicados
+    const nameConflict = await checkScheduleNameUnique(data.name);
+    if (nameConflict) {
+      return { success: false, error: nameConflict };
+    }
+
+    // Validar que ninguna parte del rango de fechas se traslape con otros horarios existentes
+    const dateConflict = await checkScheduleDateConflict(startDate, endDate);
+    if (dateConflict) {
+      return { success: false, error: dateConflict };
+    }
+
+    const shouldBeActive = isScheduleCurrent(startDate, endDate);
+
+    const newSchedule = await prisma.academicSchedule.create({
+      data: {
+        name: data.name.trim(),
+        description: data.description ? data.description.trim() : null,
+        startDate,
+        endDate,
+        isActive: shouldBeActive
+      }
+    });
+
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+      action: "CREATE",
+      entity: "SCHEDULE",
+      entityId: newSchedule.id,
+      userId: session.user.id,
+      userName: session.user.name || "Admin",
+      userRole: session.user.role || "admin",
+      description: `Creación de horario académico: "${newSchedule.name}"`,
+      metadata: {
+        scheduleId: newSchedule.id,
+        name: newSchedule.name,
+        isActive: shouldBeActive,
+        programId: data.programId,
+      },
+      success: true
+    });
+
+    revalidatePath("/dashboard/admin/schedules");
+    revalidatePath("/dashboard/gestor/schedules");
+    return { success: true, scheduleId: newSchedule.id };
+  } catch (err: any) {
+    console.warn("createBasicScheduleAction error:", err.message);
+    return { success: false, error: err.message || "Error al crear el horario" };
+  }
 }
 
 /**
  * 1.1 Actualizar Horario Académico básico (Nombre, Fechas, Descripción)
  */
-export async function updateBasicScheduleAction(id: string, data: BasicSchedulePayload) {
-  const session = await requireAdmin();
+export async function updateBasicScheduleAction(id: string, data: BasicSchedulePayload): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await requireAdmin();
 
-  if (!id) throw new Error("ID del horario no proporcionado");
-  if (!data.name || !data.name.trim()) {
-    throw new Error("El nombre del horario es obligatorio");
-  }
-  if (!data.startDate || !data.endDate) {
-    throw new Error("Las fechas de inicio y fin son obligatorias");
-  }
-
-  const currentSchedule = await prisma.academicSchedule.findUnique({
-    where: { id },
-    select: { id: true, name: true, startDate: true, endDate: true }
-  });
-
-  if (!currentSchedule) {
-    throw new Error("El horario académico no existe");
-  }
-
-  const startDate = new Date(data.startDate + (data.startDate.includes("T") ? "" : "T00:00:00.000Z"));
-  const endDate = new Date(data.endDate + (data.endDate.includes("T") ? "" : "T23:59:59.999Z"));
-
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    throw new Error("Las fechas proporcionadas no son válidas");
-  }
-
-  if (startDate > endDate) {
-    throw new Error("La fecha de inicio no puede ser posterior a la fecha de fin");
-  }
-
-  // Validar conflicto de rango de fechas excluyendo el horario actual
-  await validateNoScheduleDateConflict(startDate, endDate, id);
-
-  const now = new Date();
-  const newIsActive = now >= startDate && now <= endDate;
-
-  await prisma.academicSchedule.update({
-    where: { id },
-    data: {
-      name: data.name.trim(),
-      description: data.description ? data.description.trim() : null,
-      startDate,
-      endDate,
-      isActive: newIsActive
+    if (!id) return { success: false, error: "ID del horario no proporcionado" };
+    if (!data.name || !data.name.trim()) {
+      return { success: false, error: "El nombre del horario es obligatorio" };
     }
-  });
+    if (!data.startDate || !data.endDate) {
+      return { success: false, error: "Las fechas de inicio y fin son obligatorias" };
+    }
 
-  const { auditLogger } = await import("@/features/admin/services/auditLogger");
-  await auditLogger.log({
-    action: "UPDATE",
-    entity: "SCHEDULE",
-    entityId: id,
-    userId: session.user.id,
-    userName: session.user.name || "Admin",
-    userRole: "admin",
-    description: `Actualización de datos básicos de horario: "${data.name}"`,
-    metadata: { scheduleId: id, name: data.name },
-    success: true
-  });
+    const currentSchedule = await prisma.academicSchedule.findUnique({
+      where: { id },
+      select: { id: true, name: true, startDate: true, endDate: true }
+    });
 
-  revalidatePath("/dashboard/admin/schedules");
-  return { success: true };
+    if (!currentSchedule) {
+      return { success: false, error: "El horario académico no existe" };
+    }
+
+    const startDate = new Date(data.startDate + (data.startDate.includes("T") ? "" : "T00:00:00.000Z"));
+    const endDate = new Date(data.endDate + (data.endDate.includes("T") ? "" : "T23:59:59.999Z"));
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return { success: false, error: "Las fechas proporcionadas no son válidas" };
+    }
+
+    if (startDate > endDate) {
+      return { success: false, error: "La fecha de inicio no puede ser posterior a la fecha de fin" };
+    }
+
+    // Validar nombre único excluyendo el horario actual
+    const nameConflict = await checkScheduleNameUnique(data.name, id);
+    if (nameConflict) {
+      return { success: false, error: nameConflict };
+    }
+
+    // Validar que ninguna parte del rango de fechas se traslape con otros horarios existentes
+    const dateConflict = await checkScheduleDateConflict(startDate, endDate, id);
+    if (dateConflict) {
+      return { success: false, error: dateConflict };
+    }
+
+    const newIsActive = isScheduleCurrent(startDate, endDate);
+
+    await prisma.academicSchedule.update({
+      where: { id },
+      data: {
+        name: data.name.trim(),
+        description: data.description ? data.description.trim() : null,
+        startDate,
+        endDate,
+        isActive: newIsActive
+      }
+    });
+
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+      action: "UPDATE",
+      entity: "SCHEDULE",
+      entityId: id,
+      userId: session.user.id,
+      userName: session.user.name || "Admin",
+      userRole: "admin",
+      description: `Actualización de datos básicos de horario: "${data.name}"`,
+      metadata: { scheduleId: id, name: data.name },
+      success: true
+    });
+
+    revalidatePath("/dashboard/admin/schedules");
+    revalidatePath("/dashboard/gestor/schedules");
+    return { success: true };
+  } catch (err: any) {
+    console.warn("updateBasicScheduleAction error:", err.message);
+    return { success: false, error: err.message || "Error al actualizar el horario" };
+  }
 }
 
 /**
@@ -519,13 +587,14 @@ export async function saveScheduleGroupSlotsAction(payload: SaveGroupSlotsPayloa
     entityId: scheduleId,
     userId: session.user.id,
     userName: session.user.name || "Admin",
-    userRole: "admin",
+    userRole: session.user.role || "admin",
     description: `Asignación de ${groupsConfig.length} grupos y franjas horarias al horario "${schedule.name}"`,
     metadata: { scheduleId, groupsCount: groupsConfig.length },
     success: true
   });
 
   revalidatePath("/dashboard/admin/schedules");
+  revalidatePath("/dashboard/gestor/schedules");
   return { success: true };
 }
 
@@ -553,13 +622,14 @@ export async function deleteScheduleAction(id: string) {
     entityId: id,
     userId: session.user.id,
     userName: session.user.name || "Admin",
-    userRole: "admin",
+    userRole: session.user.role || "admin",
     description: `Eliminación de horario académico: "${schedule?.name || id}"`,
     metadata: { scheduleId: id },
     success: true
   });
 
   revalidatePath("/dashboard/admin/schedules");
+  revalidatePath("/dashboard/gestor/schedules");
   return { success: true };
 }
 
@@ -598,13 +668,14 @@ export async function setActiveScheduleAction(id: string) {
     entityId: id,
     userId: session.user.id,
     userName: session.user.name || "Admin",
-    userRole: "admin",
+    userRole: session.user.role || "admin",
     description: `Activación de horario académico como vigente principal: "${schedule.name}"`,
     metadata: { scheduleId: id, name: schedule.name },
     success: true
   });
 
   revalidatePath("/dashboard/admin/schedules");
+  revalidatePath("/dashboard/gestor/schedules");
   return { success: true, scheduleName: schedule.name };
 }
 
@@ -623,8 +694,7 @@ export async function togglePublishScheduleAction(id: string) {
 
   if (!schedule) throw new Error("El horario académico no existe");
 
-  const now = new Date();
-  const isCurrent = now >= schedule.startDate && now <= schedule.endDate;
+  const isCurrent = isScheduleCurrent(schedule.startDate, schedule.endDate);
 
   if (!isCurrent) {
     throw new Error("Solo el horario vigente puede alternar su estado entre Público y Borrador. Los demás horarios son siempre públicos.");
@@ -645,12 +715,13 @@ export async function togglePublishScheduleAction(id: string) {
     entityId: id,
     userId: session.user.id,
     userName: session.user.name || "Admin",
-    userRole: "admin",
+    userRole: session.user.role || "admin",
     description: `Cambio de estado de publicación de horario: "${schedule.name}" a ${nextState ? "PÚBLICO" : "BORRADOR"}`,
     metadata: { scheduleId: id, name: schedule.name, isPublished: nextState },
     success: true
   });
 
   revalidatePath("/dashboard/admin/schedules");
+  revalidatePath("/dashboard/gestor/schedules");
   return { success: true, isPublished: nextState };
 }

@@ -96,3 +96,60 @@ export function getFormattedTodayDate(timeZone?: string): string {
     return new Intl.DateTimeFormat('es-ES', options).format(new Date());
 }
 
+/**
+ * Retorna la fecha de hoy en Colombia (America/Bogota) en formato ISO "YYYY-MM-DD".
+ * Garantiza que tanto en servidores en la nube (Vercel/Docker UTC) como en entornos locales
+ * la fecha de trabajo sea idéntica y consistente.
+ */
+export function getTodayColombianDate(): string {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+}
+
+/**
+ * Determina si una fecha o rango de fechas corresponde a la vigencia actual en Colombia (America/Bogota).
+ * Compara las fechas de calendario en formato YYYY-MM-DD para evitar desfases de zona horaria entre
+ * el servidor (generalmente UTC en producción/Vercel/Docker) y el cliente local en Colombia.
+ */
+export function isScheduleCurrent(startDate: Date | string, endDate: Date | string): boolean {
+    if (!startDate || !endDate) return false;
+    try {
+        const todayInColombia = getTodayColombianDate();
+        
+        const toYMD = (d: Date | string) => {
+            if (typeof d === "string") {
+                return d.slice(0, 10);
+            }
+            return d.toISOString().slice(0, 10);
+        };
+
+        const startYMD = toYMD(startDate);
+        const endYMD = toYMD(endDate);
+
+        return todayInColombia >= startYMD && todayInColombia <= endYMD;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Extrae el año de calendario en formato string ("2026") a partir de una fecha o nombre de horario,
+ * utilizando componentes UTC para ser completamente inmune a diferencias de zona horaria entre
+ * servidor y cliente local.
+ */
+export function getScheduleCalendarYear(s: { name?: string; startDate?: string | Date | null }): string {
+    if (s.startDate) {
+        try {
+            if (typeof s.startDate === "string" && s.startDate.length >= 4) {
+                const yrStr = s.startDate.slice(0, 4);
+                if (/^20\d\d$/.test(yrStr)) return yrStr;
+            }
+            const yr = new Date(s.startDate).getUTCFullYear();
+            if (!isNaN(yr)) return yr.toString();
+        } catch {}
+    }
+    const match = s.name?.match(/\b(20\d\d)\b/);
+    if (match) return match[1];
+    return new Date().getFullYear().toString();
+}
+
+

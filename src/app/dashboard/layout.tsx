@@ -19,6 +19,7 @@ import { AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { GestorProgramProvider } from "@/features/gestor/context/GestorProgramContext";
 import { DashboardSidebarTrigger } from "@/components/sidebar/DashboardSidebarTrigger";
+import { DashboardRoleHelpButton } from "@/components/navigation/DashboardRoleHelpButton";
 
 export default async function DashboardLayout({
   children,
@@ -178,6 +179,7 @@ export default async function DashboardLayout({
               </div>
 
               <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
+                <DashboardRoleHelpButton />
                 {showThemeSelector && <ThemeSelector themes={themes} />}
                 {showModeToggle && <ModeToggle />}
                 {showLicenseModal && (

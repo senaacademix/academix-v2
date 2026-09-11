@@ -2,6 +2,7 @@ import React from "react";
 import { pdf, Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { DayOfWeek } from "@/generated/prisma/client";
 import { ScheduleBuilderData } from "../actions/scheduleBuilderActions";
+import { formatCalendarDate } from "@/lib/dateUtils";
 
 const DAYS_ES: { key: DayOfWeek; label: string }[] = [
   { key: "MONDAY", label: "LUNES" },
@@ -229,13 +230,9 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
   schedule,
   groups,
 }) => {
-  const formatDate = (d: string) => {
+  const formatDate = (d: string | Date) => {
     if (!d) return "";
-    return new Date(d).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return formatCalendarDate(d, "dd MMM yyyy");
   };
 
   return (

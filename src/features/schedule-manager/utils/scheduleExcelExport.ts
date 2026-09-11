@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { DayOfWeek } from "@/generated/prisma/client";
 import { ScheduleBuilderData } from "../actions/scheduleBuilderActions";
+import { formatCalendarDate } from "@/lib/dateUtils";
 
 const DAYS_ES: { key: DayOfWeek; label: string; short: string }[] = [
   { key: "MONDAY", label: "LUNES", short: "LUN" },
@@ -20,13 +21,9 @@ const toFormat12h = (t24: string) => {
   return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ap}`;
 };
 
-const formatDate = (isoString: string) => {
+const formatDate = (isoString: string | Date) => {
   if (!isoString) return "";
-  return new Date(isoString).toLocaleDateString("es-ES", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatCalendarDate(isoString, "dd MMM yyyy");
 };
 
 export async function generateAndDownloadScheduleExcel(

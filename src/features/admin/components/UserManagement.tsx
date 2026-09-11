@@ -58,7 +58,8 @@ import {
 import {
     Search, Trash2, Eye, UserCog, Users as UsersIcon, UserPlus, ChevronLeft, ChevronRight,
     BookOpen, Calendar, MessageSquare, FileText, CheckCircle2, AlertCircle, X, GraduationCap,
-    Key, RefreshCw, Bookmark, MoreVertical, Pencil, ArrowRightLeft, ShieldAlert, Loader2, History
+    Key, RefreshCw, Bookmark, MoreVertical, Pencil, ArrowRightLeft, ShieldAlert, Loader2, History,
+    HelpCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { updateUserRoleAction, deleteUserAction, createUserAction, toggleUserBanAction, getAllUsersAction, resetUserPasswordToDocAction, getComprehensiveGroupAnalyticsAction, getAllFilteredUserIdsAction, getUserEmailsAction, updateStudentNovedadAction, updateStudentAction, assignStudentToGroupAction } from "@/app/admin-actions";
@@ -107,6 +108,7 @@ interface UserManagementProps {
     initialPrograms?: { id: string, name: string }[];
     isObserver?: boolean;
     hideMainHeader?: boolean;
+    onHelpClick?: () => void;
 }
 
 export function UserManagement({ 
@@ -116,7 +118,8 @@ export function UserManagement({
     initialGroups = [],
     initialPrograms = [],
     isObserver = false,
-    hideMainHeader = false
+    hideMainHeader = false,
+    onHelpClick
 }: UserManagementProps) {
     const router = useRouter();
     const [users, setUsers] = useState<User[]>(initialUsers);
@@ -687,6 +690,21 @@ export function UserManagement({
                             <Mail className="mr-2 h-4 w-4" />
                             Enviar a Seleccionados ({selectedUserIds.length})
                         </Button>
+                    )}
+                    {onHelpClick && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={onHelpClick}
+                                    className="h-10 w-10 rounded-2xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                                >
+                                    <HelpCircle className="w-4 h-4 text-primary" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Estudiantes</TooltipContent>
+                        </Tooltip>
                     )}
                     {!isObserver && (
                         <Button onClick={() => setCreateDialogOpen(true)}>

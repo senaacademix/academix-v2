@@ -29,11 +29,13 @@ import {
   CalendarClock,
   FolderKanban,
   BookOpen,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -65,6 +67,7 @@ import { ScheduleBasicModal } from "./ScheduleBasicModal";
 import { ScheduleGroupSlotsModal } from "./ScheduleGroupSlotsModal";
 import { ScheduleTeacherConfigModal } from "./ScheduleTeacherConfigModal";
 import { ScheduleWeekPreview } from "./ScheduleWeekPreview";
+import { ScheduleHelpModal } from "./ScheduleHelpModal";
 import {
   deleteScheduleAction,
   setActiveScheduleAction,
@@ -72,7 +75,7 @@ import {
 } from "../actions/scheduleManagerActions";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { formatCalendarDate } from "@/lib/dateUtils";
+import { formatCalendarDate, getTodayColombianDate } from "@/lib/dateUtils";
 import { useGestorProgram } from "@/features/gestor/context/GestorProgramContext";
 
 interface ScheduleManagerViewProps {
@@ -178,6 +181,9 @@ export function ScheduleManagerView({
 
   // Toggle Publication State
   const [togglingPublishId, setTogglingPublishId] = useState<string | null>(null);
+
+  // Help Modal State
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
 
   // Expanded Preview State (Schedule ID expanded for week preview - collapsed by default)
   const [expandedScheduleId, setExpandedScheduleId] = useState<string | null>(null);
@@ -320,12 +326,28 @@ export function ScheduleManagerView({
                 Horarios y Eventos
               </span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-              Gestiona tus períodos académicos, asignación de franjas horarias y cronograma de eventos institucionales para profesores y estudiantes.
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
+              Administra períodos académicos, franjas horarias por grupo, disponibilidad y cualificación docente, cronograma de eventos institucionales, control de novedades y publicación de horarios oficiales con exportación a PDF y Excel.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsHelpModalOpen(true)}
+                  className="w-10 h-10 rounded-2xl border-slate-300/80 dark:border-slate-700 bg-background/80 hover:bg-muted/80 text-foreground shadow-2xs hover:scale-105 transition-all"
+                >
+                  <HelpCircle className="w-5 h-5 text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                ¿Qué puedo hacer acá? Guía del módulo
+              </TooltipContent>
+            </Tooltip>
+
             <Button
               onClick={handleOpenCreateBasic}
               className="rounded-2xl gap-2 font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-[1.02]"
@@ -408,7 +430,7 @@ export function ScheduleManagerView({
           {/* Year Filter positioned on the right */}
           {isMounted && availableYears.length > 0 && (
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[130px] rounded-2xl text-xs bg-card border-border/80 h-9 font-semibold px-3 gap-2 shadow-xs">
+              <SelectTrigger className="w-[145px] rounded-2xl text-xs bg-card border-border/80 h-9 font-semibold px-2.5 gap-1.5 shadow-xs">
                 <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
                 <SelectValue placeholder="Año" />
               </SelectTrigger>
@@ -496,7 +518,9 @@ export function ScheduleManagerView({
             const scheduleGroups = Array.from(scheduleGroupsMap.values());
             const schedulePrograms = Array.from(scheduleProgramsMap.entries()).map(([id, name]) => ({ id, name }));
 
-            const isFuture = !schedule.isActive && new Date(schedule.startDate) > new Date();
+            const todayInColombia = getTodayColombianDate();
+            const schedStartStr = schedule.startDate ? schedule.startDate.slice(0, 10) : "";
+            const isFuture = !schedule.isActive && schedStartStr > todayInColombia;
 
             return (
               <Card
@@ -593,80 +617,120 @@ export function ScheduleManagerView({
 
                   {/* Right Actions Row */}
                   <div className="flex items-center gap-2 shrink-0 self-start sm:self-end xl:self-center flex-wrap">
-                    {schedule.groupSlots.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setExpandedScheduleId(isExpanded ? null : schedule.id)}
-                        className={`rounded-xl text-xs gap-1.5 h-9 px-3.5 font-bold transition-all ${
-                          isExpanded 
-                            ? "bg-primary/10 border-primary/40 text-primary shadow-xs" 
-                            : "border-border/80 bg-background hover:bg-muted/70 text-foreground shadow-2xs"
-                        }`}
-                      >
-                        <Eye className="w-3.5 h-3.5 text-primary" />
-                        <span>{isExpanded ? "Ocultar" : "Cronograma"}</span>
-                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </Button>
-                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExpandedScheduleId(isExpanded ? null : schedule.id)}
+                          className={`rounded-xl text-xs gap-1.5 h-9 px-3.5 font-bold transition-all ${
+                            isExpanded 
+                              ? "bg-primary/10 border-primary/40 text-primary shadow-xs" 
+                              : "border-border/80 bg-background hover:bg-muted/70 text-foreground shadow-2xs"
+                          }`}
+                        >
+                          <Eye className="w-3.5 h-3.5 text-primary" />
+                          <span>{isExpanded ? "Ocultar" : "Cronograma"}</span>
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {isExpanded ? "Ocultar vista previa" : "Ver vista previa semanal"}
+                      </TooltipContent>
+                    </Tooltip>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenConfigureSlots(schedule)}
-                      className="rounded-xl text-xs gap-1.5 font-bold border-border/80 bg-background hover:bg-muted/80 text-foreground shadow-2xs h-9 px-3.5 transition-all"
-                    >
-                      <Users className="w-3.5 h-3.5 text-primary" />
-                      <span>Grupos</span>
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenConfigureSlots(schedule)}
+                          className="rounded-xl text-xs gap-1.5 font-bold border-border/80 bg-background hover:bg-muted/80 text-foreground shadow-2xs h-9 px-3.5 transition-all"
+                        >
+                          <Users className="w-3.5 h-3.5 text-primary" />
+                          <span>Grupos</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Configurar fichas y franjas horarias de este horario
+                      </TooltipContent>
+                    </Tooltip>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedScheduleForTeacherModal(schedule.id);
-                        setTeacherModalOpen(true);
-                      }}
-                      className="rounded-xl text-xs gap-1.5 font-bold border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 bg-blue-500/10 shadow-2xs h-9 px-3.5 transition-all"
-                    >
-                      <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      <span>Profesores</span>
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedScheduleForTeacherModal(schedule.id);
+                            setTeacherModalOpen(true);
+                          }}
+                          className="rounded-xl text-xs gap-1.5 font-bold border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 bg-blue-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                        >
+                          <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <span>Profesores</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Gestionar disponibilidad y materias de los docentes
+                      </TooltipContent>
+                    </Tooltip>
 
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl text-xs gap-1.5 font-bold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 bg-purple-500/10 shadow-2xs h-9 px-3.5 transition-all"
-                    >
-                      <Link href={`${schedulesBaseUrl}/${schedule.id}/events`}>
-                        <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                        <span>Eventos</span>
-                      </Link>
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl text-xs gap-1.5 font-bold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 bg-purple-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                        >
+                          <Link href={`${schedulesBaseUrl}/${schedule.id}/events`}>
+                            <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                            <span>Eventos</span>
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Abrir cronograma de eventos institucionales
+                      </TooltipContent>
+                    </Tooltip>
 
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl text-xs gap-1.5 font-bold border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 bg-amber-500/10 shadow-2xs h-9 px-3.5 transition-all"
-                    >
-                      <Link href={`${schedulesBaseUrl}/${schedule.id}/novelties`}>
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        <span>Novedades</span>
-                      </Link>
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl text-xs gap-1.5 font-bold border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 bg-amber-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                        >
+                          <Link href={`${schedulesBaseUrl}/${schedule.id}/novelties`}>
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span>Novedades</span>
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Registrar y consultar contingencias o cambios de horario
+                      </TooltipContent>
+                    </Tooltip>
 
-                    <Button
-                      asChild
-                      size="sm"
-                      className="rounded-xl text-xs gap-2 font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] h-9 px-4 transition-all"
-                    >
-                      <Link href={`${schedulesBaseUrl}/${schedule.id}`}>
-                        <CalendarDays className="w-3.5 h-3.5" />
-                        <span>Horario</span>
-                      </Link>
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          asChild
+                          size="sm"
+                          className="rounded-xl text-xs gap-2 font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] h-9 px-4 transition-all"
+                        >
+                          <Link href={`${schedulesBaseUrl}/${schedule.id}`}>
+                            <CalendarDays className="w-3.5 h-3.5" />
+                            <span>Horario</span>
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Abrir matriz interactiva y constructor oficial de clases
+                      </TooltipContent>
+                    </Tooltip>
 
                     {isMounted && (
                       <DropdownMenu>
@@ -725,7 +789,7 @@ export function ScheduleManagerView({
                 </div>
 
                 {/* Collapsible Week Preview */}
-                {isExpanded && schedule.groupSlots.length > 0 && (
+                {isExpanded && (
                   <div className="border-t border-border/80 bg-muted/10 p-5 sm:p-6 animate-in fade-in-50 duration-200">
                     <div className="flex items-center justify-between mb-4">
                       <div className="space-y-0.5">
@@ -739,7 +803,31 @@ export function ScheduleManagerView({
                       </div>
                     </div>
 
-                    <ScheduleWeekPreview schedule={schedule} programId={effectiveProgramId !== "all" ? effectiveProgramId : undefined} />
+                    {schedule.groupSlots.length > 0 ? (
+                      <ScheduleWeekPreview
+                        schedule={schedule}
+                        programId={effectiveProgramId !== "all" ? effectiveProgramId : undefined}
+                      />
+                    ) : (
+                      <div className="text-center py-8 bg-background/50 border border-dashed border-border rounded-2xl p-6">
+                        <CalendarDays className="w-9 h-9 text-muted-foreground/40 mx-auto mb-2" />
+                        <p className="text-sm font-semibold text-foreground">
+                          Este horario aún no tiene grupos o franjas horarias configuradas
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                          Configura los grupos y sus franjas horarias semanales para visualizar la distribución en el cronograma.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenConfigureSlots(schedule)}
+                          className="mt-3 rounded-xl text-xs gap-1.5 font-bold border-primary/30 text-primary hover:bg-primary/10"
+                        >
+                          <Users className="w-3.5 h-3.5 text-primary" />
+                          <span>Configurar Grupos y Franjas</span>
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>
@@ -756,6 +844,11 @@ export function ScheduleManagerView({
             open={isBasicModalOpen}
             onOpenChange={setIsBasicModalOpen}
             editingSchedule={editingBasicSchedule}
+            existingSchedules={schedules}
+            programId={effectiveProgramId !== "all" ? effectiveProgramId : undefined}
+            programName={
+              availablePrograms.find((p) => p.id === effectiveProgramId)?.name
+            }
             onSuccess={handleRefresh}
           />
 
@@ -775,6 +868,13 @@ export function ScheduleManagerView({
             onOpenChange={setTeacherModalOpen}
             schedules={schedules}
             defaultScheduleId={selectedScheduleForTeacherModal}
+            programId={effectiveProgramId !== "all" ? effectiveProgramId : undefined}
+          />
+
+          {/* 4. Modal de Ayuda / ¿Qué puedo hacer acá? */}
+          <ScheduleHelpModal
+            open={isHelpModalOpen}
+            onOpenChange={setIsHelpModalOpen}
           />
 
           {/* 4. Confirm Delete Alert Dialog */}
@@ -792,12 +892,10 @@ export function ScheduleManagerView({
                 <AlertDialogTitle className="text-lg font-bold text-destructive flex items-center gap-2">
                   <Trash2 className="w-5 h-5" /> ¿Eliminar Horario Académico?
                 </AlertDialogTitle>
-                <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed space-y-2">
-                  <p>
-                    Esta acción eliminará permanentemente el horario{" "}
-                    <strong className="text-foreground">"{scheduleToDelete?.name}"</strong> y todas las
-                    franjas horarias configuradas para sus grupos. Esta acción <span className="text-destructive font-semibold">no se puede deshacer</span>.
-                  </p>
+                <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                  Esta acción eliminará permanentemente el horario{" "}
+                  <strong className="text-foreground">"{scheduleToDelete?.name}"</strong> y todas las
+                  franjas horarias configuradas para sus grupos. Esta acción <span className="text-destructive font-semibold">no se puede deshacer</span>.
                 </AlertDialogDescription>
               </AlertDialogHeader>
 

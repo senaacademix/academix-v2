@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,28 +13,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Sparkles } from "lucide-react";
+import { Calendar, Sparkles, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { AcademicScheduleItem, BasicSchedulePayload } from "../types";
 import {
   createBasicScheduleAction,
   updateBasicScheduleAction,
 } from "../actions/scheduleManagerActions";
+import { getTodayColombianDate, formatCalendarDate } from "@/lib/dateUtils";
 
 interface ScheduleBasicModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingSchedule?: AcademicScheduleItem | null;
+  existingSchedules?: AcademicScheduleItem[];
   onSuccess: (scheduleId?: string) => void;
+  programId?: string;
+  programName?: string;
 }
 
 export function ScheduleBasicModal({
   open,
   onOpenChange,
   editingSchedule,
+  existingSchedules = [],
   onSuccess,
+  programId,
+  programName,
 }: ScheduleBasicModalProps) {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   // Form Fields
   const [name, setName] = useState<string>("");
@@ -45,6 +54,7 @@ export function ScheduleBasicModal({
 
   useEffect(() => {
     if (!open) return;
+    setServerError(null);
 
     if (editingSchedule) {
       setName(editingSchedule.name);
@@ -53,20 +63,50 @@ export function ScheduleBasicModal({
       setEndDate(editingSchedule.endDate.slice(0, 10));
       setIsActive(editingSchedule.isActive);
     } else {
-      const today = new Date();
-      const nextSemester = new Date();
-      nextSemester.setMonth(today.getMonth() + 6);
+      const todayStr = getTodayColombianDate();
 
       setName("");
       setDescription("");
-      setStartDate(today.toISOString().slice(0, 10));
-      setEndDate(nextSemester.toISOString().slice(0, 10));
+      setStartDate(todayStr);
+      setEndDate(todayStr);
       setIsActive(true);
     }
   }, [open, editingSchedule]);
 
+  // Validar conflicto de fechas en tiempo real contra los horarios existentes
+  const dateConflict = useMemo(() => {
+    if (!startDate || !endDate || !existingSchedules || existingSchedules.length === 0) {
+      return null;
+    }
+
+    const start = new Date(startDate + (startDate.includes("T") ? "" : "T00:00:00.000Z"));
+    const end = new Date(endDate + (endDate.includes("T") ? "" : "T23:59:59.999Z"));
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+      return null;
+    }
+
+    const formatDate = (d: Date | string) => formatCalendarDate(d, "dd MMM yyyy");
+
+    const conflict = existingSchedules.find((s) => {
+      if (editingSchedule && s.id === editingSchedule.id) return false;
+      const sStart = new Date(s.startDate);
+      const sEnd = new Date(s.endDate);
+      // Dos rangos se traslapan si start <= sEnd && end >= sStart
+      return start <= sEnd && end >= sStart;
+    });
+
+    if (!conflict) return null;
+
+    return {
+      scheduleName: conflict.name,
+      period: `${formatDate(conflict.startDate)} a ${formatDate(conflict.endDate)}`,
+    };
+  }, [startDate, endDate, existingSchedules, editingSchedule]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError(null);
 
     if (!name.trim()) {
       toast.error("Por favor ingresa el nombre del horario");
@@ -81,22 +121,42 @@ export function ScheduleBasicModal({
       return;
     }
 
+    if (dateConflict) {
+      const msg = `Conflicto de Fechas: Se traslapa con "${dateConflict.scheduleName}" (${dateConflict.period}). Ninguna fecha puede pertenecer a más de un horario.`;
+      toast.error(msg);
+      setServerError(msg);
+      return;
+    }
+
+    const effectiveProgram = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
+
     const payload: BasicSchedulePayload = {
       name: name.trim(),
       description: description.trim() || null,
       startDate,
       endDate,
       isActive: editingSchedule ? editingSchedule.isActive : isActive,
+      programId: effectiveProgram,
     };
 
     setIsSubmitting(true);
     try {
       if (editingSchedule) {
-        await updateBasicScheduleAction(editingSchedule.id, payload);
+        const res = await updateBasicScheduleAction(editingSchedule.id, payload);
+        if (!res.success) {
+          toast.error(res.error || "Error al actualizar el horario");
+          setServerError(res.error || "Error al actualizar el horario");
+          return;
+        }
         toast.success("Horario actualizado exitosamente");
         onSuccess(editingSchedule.id);
       } else {
         const res = await createBasicScheduleAction(payload);
+        if (!res.success) {
+          toast.error(res.error || "Error al crear el horario");
+          setServerError(res.error || "Error al crear el horario");
+          return;
+        }
         toast.success("Horario creado exitosamente");
         onSuccess(res.scheduleId);
       }
@@ -104,6 +164,7 @@ export function ScheduleBasicModal({
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Error al guardar el horario");
+      setServerError(err.message || "Error al guardar el horario");
     } finally {
       setIsSubmitting(false);
     }
@@ -128,6 +189,16 @@ export function ScheduleBasicModal({
                     ? "Modifica el nombre, período de fechas o descripción."
                     : "Ingresa el nombre del horario, su fecha de inicio y fecha de fin."}
                 </DialogDescription>
+                {programName && (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-primary/10 text-primary border-primary/20"
+                    >
+                      Programa: {programName}
+                    </Badge>
+                  </div>
+                )}
               </div>
             </div>
           </DialogHeader>
@@ -142,7 +213,10 @@ export function ScheduleBasicModal({
                 id="sched-name"
                 placeholder="Ej. Horario Semestre 2026-I, Jornada Diurna..."
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setServerError(null);
+                }}
                 className="rounded-xl"
                 required
               />
@@ -157,7 +231,10 @@ export function ScheduleBasicModal({
                   id="sched-startDate"
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setServerError(null);
+                  }}
                   className="rounded-xl font-mono text-sm"
                   required
                 />
@@ -171,12 +248,39 @@ export function ScheduleBasicModal({
                   id="sched-endDate"
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setServerError(null);
+                  }}
                   className="rounded-xl font-mono text-sm"
                   required
                 />
               </div>
             </div>
+
+            {/* Alerta de Conflicto de Fechas en Tiempo Real */}
+            {dateConflict && (
+              <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200 flex items-start gap-2.5 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-300">Conflicto de Fechas detectado</p>
+                  <p className="mt-0.5 opacity-90 leading-relaxed">
+                    El rango propuesto se traslapa con el horario existente <strong className="font-bold underline decoration-amber-500/50">"{dateConflict.scheduleName}"</strong> ({dateConflict.period}). Ninguna fecha puede pertenecer a más de un horario.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Alerta de Error del Servidor (si ocurre) */}
+            {serverError && !dateConflict && (
+              <div className="p-3.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2.5 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">No se pudo guardar el horario</p>
+                  <p className="mt-0.5 leading-relaxed">{serverError}</p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="sched-description" className="text-sm font-semibold">
@@ -206,14 +310,20 @@ export function ScheduleBasicModal({
 
             <Button
               type="submit"
-              disabled={isSubmitting}
-              className="rounded-xl text-xs font-semibold bg-primary text-primary-foreground shadow-md"
+              disabled={isSubmitting || !!dateConflict}
+              className="rounded-xl text-xs font-semibold bg-primary text-primary-foreground shadow-md disabled:opacity-50"
             >
-              {isSubmitting
-                ? "Guardando..."
-                : editingSchedule
-                ? "Guardar Cambios"
-                : "Crear Horario"}
+              {isSubmitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-1.5" />
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                  <span>{editingSchedule ? "Guardar Cambios" : "Crear Horario"}</span>
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

@@ -96,6 +96,7 @@ export interface BasicSchedulePayload {
   endDate: string;   // "YYYY-MM-DD"
   isActive?: boolean;
   isPublished?: boolean;
+  programId?: string;
 }
 
 export interface GroupSlotItemPayload {

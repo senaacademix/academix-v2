@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet } from "lucide-react";
+import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
@@ -17,6 +17,7 @@ import { getStudentRecords, justifyAttendanceAction, markRemarkViewed, getStuden
 import { getStudentGrades, submitStudentSubmissionLink } from "@/features/teacher/actions/gradeActions";
 import { getStudentGroupHistoryAction } from "../actions/studentGroupHistoryActions";
 import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
+import { StudentHelpModal } from "./StudentHelpModal";
 import { exportStudentRecordExcel, exportStudentRecordPDF } from "../utils/studentExportUtils";
 import { notifyEmailSentBatchAction } from "@/features/teacher/actions/groupActions";
 import {
@@ -131,6 +132,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         return Object.values(groups).sort((a, b) => a.teacherName.localeCompare(b.teacherName));
     }, [improvementPlans]);
     const [improvementLoading, setImprovementLoading] = useState(true);
+    const [showHelpModal, setShowHelpModal] = useState(false);
     
     // Improvement Plan Dialogs
     const [planFormDialog, setPlanFormDialog] = useState<{
@@ -1187,37 +1189,58 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             ) : (
                 <Tabs defaultValue={onlyImprovement ? "improvement" : defaultTab} className="space-y-6">
                     {!onlyImprovement && (
-                        <TabsList className={cn(
-                            "flex w-full overflow-x-auto justify-start md:grid h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/60 backdrop-blur-md gap-1.5 shadow-2xs scrollbar-none",
-                            hideDocumentation ? "md:grid-cols-5" : "md:grid-cols-6"
-                        )}>
-                            <TabsTrigger value="attendance" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                <Clock className="w-4 h-4 text-primary shrink-0" />
-                                <span>Asistencia</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="grades" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                <GraduationCap className="w-4 h-4 text-primary shrink-0" />
-                                <span>Calificaciones</span>
-                            </TabsTrigger>
-                            {!hideDocumentation && (
-                                <TabsTrigger value="documentation" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                    <BookOpen className="w-4 h-4 text-primary shrink-0" />
-                                    <span>Documentación</span>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <TabsList className={cn(
+                                "flex w-full overflow-x-auto justify-start md:grid h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/60 backdrop-blur-md gap-1.5 shadow-2xs scrollbar-none flex-1",
+                                hideDocumentation ? "md:grid-cols-5" : "md:grid-cols-6"
+                            )}>
+                                <TabsTrigger value="attendance" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                                    <Clock className="w-4 h-4 text-primary shrink-0" />
+                                    <span>Asistencia</span>
                                 </TabsTrigger>
-                            )}
-                            <TabsTrigger value="remarks" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                <ShieldAlert className="w-4 h-4 text-primary shrink-0" />
-                                <span>Observaciones</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="improvement" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                <FileText className="w-4 h-4 text-primary shrink-0" />
-                                <span>Planes de Mejoramiento</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="analytics" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                <BarChart3 className="w-4 h-4 text-primary shrink-0" />
-                                <span>Analítica</span>
-                            </TabsTrigger>
-                        </TabsList>
+                                <TabsTrigger value="grades" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                                    <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+                                    <span>Calificaciones</span>
+                                </TabsTrigger>
+                                {!hideDocumentation && (
+                                    <TabsTrigger value="documentation" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                                        <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                                        <span>Documentación</span>
+                                    </TabsTrigger>
+                                )}
+                                <TabsTrigger value="remarks" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                                    <ShieldAlert className="w-4 h-4 text-primary shrink-0" />
+                                    <span>Observaciones</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="improvement" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                                    <FileText className="w-4 h-4 text-primary shrink-0" />
+                                    <span>Planes de Mejoramiento</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="analytics" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                                    <BarChart3 className="w-4 h-4 text-primary shrink-0" />
+                                    <span>Analítica</span>
+                                </TabsTrigger>
+                            </TabsList>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowHelpModal(true)}
+                                        className="h-10 px-3.5 rounded-2xl border-border/70 bg-card hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all text-xs font-bold gap-1.5 text-muted-foreground shadow-2xs cursor-pointer shrink-0"
+                                    >
+                                        <HelpCircle className="w-4 h-4 text-primary" />
+                                        <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
+                                        <span className="sm:hidden">Ayuda</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
+                                    Guía de asistencia, notas, justificaciones y planes
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
                     )}
 
                     {/* ── ATTENDANCE (table per course) ────────────────────── */}
@@ -3127,6 +3150,13 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     loadGrades();
                     loadGroupHistory();
                 }}
+            />
+
+            {/* Modal de Ayuda del Registro Académico del Estudiante */}
+            <StudentHelpModal
+                open={showHelpModal}
+                onOpenChange={setShowHelpModal}
+                initialTab={onlyImprovement ? "improvement" : (defaultTab as any || "attendance")}
             />
         </div>
     );

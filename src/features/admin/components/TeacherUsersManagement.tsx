@@ -47,7 +47,9 @@ import {
   IdCard,
   BookOpen,
   X,
+  HelpCircle,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { createUserAction, deleteUserAction, resetUserPasswordToDocAction, updateTeacherUserAction } from "@/features/admin/actions/adminActions";
@@ -72,11 +74,15 @@ export interface TeacherUser {
 interface TeacherUsersManagementProps {
   initialTeachers: TeacherUser[];
   hideMainHeader?: boolean;
+  programId?: string;
+  onHelpClick?: () => void;
 }
 
 export function TeacherUsersManagement({
   initialTeachers,
   hideMainHeader = false,
+  programId,
+  onHelpClick,
 }: TeacherUsersManagementProps) {
   const router = useRouter();
   const [teachers, setTeachers] = useState<TeacherUser[]>(initialTeachers);
@@ -298,16 +304,33 @@ export function TeacherUsersManagement({
           </div>
         )}
 
-        <Button
-          onClick={() => {
-            resetForm();
-            setCreateDialogOpen(true);
-          }}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium gap-2 ml-auto shadow-xs"
-        >
-          <UserPlus className="h-4 w-4" />
-          Registrar Docente
-        </Button>
+        <div className="flex items-center gap-2 ml-auto">
+          {onHelpClick && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={onHelpClick}
+                  className="h-9 w-9 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                >
+                  <HelpCircle className="w-4 h-4 text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Profesores</TooltipContent>
+            </Tooltip>
+          )}
+          <Button
+            onClick={() => {
+              resetForm();
+              setCreateDialogOpen(true);
+            }}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium gap-2 shadow-xs"
+          >
+            <UserPlus className="h-4 w-4" />
+            Registrar Docente
+          </Button>
+        </div>
       </div>
 
 
@@ -678,6 +701,7 @@ export function TeacherUsersManagement({
               <TeacherQualificationsView
                 teacherId={selectedTeacher.id}
                 isAdminMode={true}
+                programId={programId}
                 onAdminActionComplete={() => {}}
               />
             )}

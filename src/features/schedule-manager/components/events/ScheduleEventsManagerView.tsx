@@ -42,7 +42,10 @@ import {
   Info,
   ExternalLink,
   Link as LinkIcon,
+  HelpCircle,
 } from "lucide-react";
+import { SchedulePanelHelpModal } from "../SchedulePanelHelpModal";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +66,7 @@ import { toast } from "sonner";
 import { EventAudience, ScheduleEventItem } from "../../types";
 import { ScheduleEventModal } from "./ScheduleEventModal";
 import { deleteScheduleEventAction } from "../../actions/scheduleEventsActions";
+import { getTodayColombianDate } from "@/lib/dateUtils";
 
 interface ScheduleEventsManagerViewProps {
   schedule: {
@@ -154,6 +158,7 @@ export function ScheduleEventsManagerView({
   // Delete State
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Filtered Events
   const filteredEvents = useMemo(() => {
@@ -265,7 +270,7 @@ export function ScheduleEventsManagerView({
                   <Badge className="bg-emerald-600 text-white font-extrabold text-xs gap-1 shadow-xs">
                     <Star className="w-3 h-3 fill-white" /> VIGENTE
                   </Badge>
-                ) : new Date(schedule.startDate) > new Date() ? (
+                ) : scheduleStartStr > getTodayColombianDate() ? (
                   <Badge variant="outline" className="bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30 text-xs font-bold gap-1">
                     <Clock className="w-3 h-3 text-sky-600 dark:text-sky-400" /> Vigencia Futura
                   </Badge>
@@ -294,14 +299,30 @@ export function ScheduleEventsManagerView({
           </div>
         </div>
 
-        {/* Primary Action */}
-        <Button
-          onClick={() => handleOpenCreate()}
-          className="rounded-2xl font-bold bg-primary text-primary-foreground shadow-md hover:bg-primary/90 gap-2 h-11 px-5 self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Programar Evento
-        </Button>
+        {/* Primary Actions */}
+        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsHelpOpen(true)}
+                className="w-11 h-11 rounded-2xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+              >
+                <HelpCircle className="w-5 h-5 text-primary" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Eventos</TooltipContent>
+          </Tooltip>
+
+          <Button
+            onClick={() => handleOpenCreate()}
+            className="rounded-2xl font-bold bg-primary text-primary-foreground shadow-md hover:bg-primary/90 gap-2 h-11 px-5"
+          >
+            <Plus className="w-4 h-4" />
+            Programar Evento
+          </Button>
+        </div>
       </div>
 
       {/* Metric / Audience Stats Bar (Compact & Low Height) */}
@@ -782,6 +803,13 @@ export function ScheduleEventsManagerView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SchedulePanelHelpModal
+        panel="events"
+        open={isHelpOpen}
+        onOpenChange={setIsHelpOpen}
+        scheduleName={schedule.name}
+      />
     </div>
   );
 }

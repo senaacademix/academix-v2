@@ -25,8 +25,11 @@ import {
     RotateCcw,
     ChevronRight,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    HelpCircle
 } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { AdminDashboardHelpModal, AdminDashboardTabKey } from "./AdminDashboardHelpModal";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
@@ -108,6 +111,8 @@ export function AdminDashboard({
 
     // Selected Program State for Gestor
     const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
+    const [helpModalOpen, setHelpModalOpen] = useState(false);
+    const [helpInitialTab, setHelpInitialTab] = useState<AdminDashboardTabKey>("overview");
 
     const currentProgram = selectedProgramId 
         ? managedPrograms.find((p) => p.id === selectedProgramId) || null 
@@ -267,6 +272,30 @@ export function AdminDashboard({
                                 Selecciona uno de los programas de formación asignados por la Coordinación Académica para ingresar y administrar sus fichas, aprendices, horarios y módulos operativos.
                             </p>
                         </div>
+
+                        <div className="shrink-0 flex items-center gap-2">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setHelpInitialTab("programs");
+                                            setHelpModalOpen(true);
+                                        }}
+                                        className="gap-2 rounded-2xl h-11 px-4 text-xs font-bold border-border/80 text-foreground bg-background/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary shadow-2xs transition-all cursor-pointer"
+                                    >
+                                        <HelpCircle className="h-4 w-4 text-primary" />
+                                        <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
+                                        <span className="sm:hidden">Ayuda</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
+                                    Guía de programas y funciones para el Gestor
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
                     </div>
                 </motion.div>
 
@@ -356,6 +385,13 @@ export function AdminDashboard({
                         </div>
                     </div>
                 )}
+
+                {/* Modal de Ayuda del Dashboard de Administrador y Gestor */}
+                <AdminDashboardHelpModal
+                    open={helpModalOpen}
+                    onOpenChange={setHelpModalOpen}
+                    initialTab={helpInitialTab}
+                />
             </div>
         );
     }
@@ -412,6 +448,27 @@ export function AdminDashboard({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setHelpInitialTab(isGestor ? "programs" : "overview");
+                                        setHelpModalOpen(true);
+                                    }}
+                                    className="rounded-2xl h-11 px-4 border-border/80 bg-background/80 text-foreground hover:bg-primary/10 hover:border-primary/40 hover:text-primary text-xs font-bold shadow-2xs gap-2 cursor-pointer"
+                                >
+                                    <HelpCircle className="h-4 w-4 text-primary" />
+                                    <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
+                                    <span className="sm:hidden">Ayuda</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
+                                Guía de administración, monitoreo y gestión
+                            </TooltipContent>
+                        </Tooltip>
+
                         {isGestor ? (
                             <>
                                 {/* Botón para cambiar de programa */}
@@ -631,6 +688,13 @@ export function AdminDashboard({
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Modal de Ayuda del Dashboard de Administrador y Gestor */}
+            <AdminDashboardHelpModal
+                open={helpModalOpen}
+                onOpenChange={setHelpModalOpen}
+                initialTab={helpInitialTab}
+            />
         </div>
     );
 }

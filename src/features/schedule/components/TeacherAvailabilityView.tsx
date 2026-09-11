@@ -1,8 +1,7 @@
 "use client";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-
-
-import { useState, useEffect, useTransition } from "react";
+import { authClient } from "@/lib/auth-client";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +28,7 @@ import {
 } from "../actions/availabilityActions";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { cn } from "@/lib/utils";
+import { getScheduleCalendarYear } from "@/lib/dateUtils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -90,10 +90,72 @@ const getSchedulePeriodStyles = (startTimeStr: string) => {
     }
 };
 
+// 24-hour format options in 1-hour intervals (00:00 to 23:00)
+const TIME_OPTIONS_24H_1H: string[] = (() => {
+    const list: string[] = [];
+    for (let h = 0; h < 24; h++) {
+        const hh = String(h).padStart(2, "0");
+        list.push(`${hh}:00`);
+    }
+    return list;
+})();
+
+function getTimeOptions(currentVal?: string, isEndTime?: boolean): string[] {
+    const base = [...TIME_OPTIONS_24H_1H];
+    if (isEndTime && !base.includes("23:59")) {
+        base.push("23:59");
+    }
+    if (currentVal && !base.includes(currentVal)) {
+        base.push(currentVal);
+        base.sort();
+    }
+    return base;
+}
+
+function formatDuration(startTime: string, endTime: string): string {
+    if (!startTime || !endTime) return "";
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    const startMins = sh * 60 + sm;
+    const endMins = eh * 60 + em;
+    const diffMins = endMins - startMins;
+    if (diffMins <= 0) return "Inválido";
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}m`;
+}
+
+const getAuthorRoleLabel = (
+    user?: { id?: string | null; name?: string | null; role?: string | null } | null, 
+    targetTeacherId?: string
+): string => {
+    if (!user) return "";
+    if (user.id && targetTeacherId && user.id === targetTeacherId) {
+        return "Profesor";
+    }
+    const r = (user.role || "").toLowerCase().trim();
+    if (r === "gestor") return "Gestor";
+    if (r === "admin" || r === "administrator") return "Administrador";
+    if (r === "coordinador") return "Coordinador";
+    if (r === "teacher" || r === "profesor" || r === "docente") return "Profesor";
+    return "Gestor";
+};
+
+const getScheduleYear = (s: { name?: string; startDate?: string | Date | null }): string => {
+    return getScheduleCalendarYear(s);
+};
+
 interface TimeSlot {
+    id?: string;
     dayOfWeek: DayOfWeek;
     startTime: string; // "HH:mm"
     endTime: string; // "HH:mm"
+    createdBy?: {
+        id?: string | null;
+        name?: string | null;
+        role?: string | null;
+    } | null;
 }
 
 export function TeacherAvailabilityView({ 
@@ -107,10 +169,13 @@ export function TeacherAvailabilityView({
     isAdminMode?: boolean, 
     onAdminActionComplete?: () => void 
 }) {
+    const { data: session } = authClient.useSession();
     const [locked, setLocked] = useState(false);
     const [slots, setSlots] = useState<TimeSlot[]>([]);
     const [loading, setLoading] = useState(true);
-    const [lastModifiedBy, setLastModifiedBy] = useState<{name: string, role: string} | null>(null);
+    const [currentTeacherName, setCurrentTeacherName] = useState<string>("");
+    const [currentTeacherId, setCurrentTeacherId] = useState<string>(teacherId || "");
+    const [lastModifiedBy, setLastModifiedBy] = useState<{ id?: string; name: string; role?: string } | null>(null);
     const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
     const [isPending, startTransition] = useTransition();
 
@@ -125,8 +190,36 @@ export function TeacherAvailabilityView({
     const [editStartTime, setEditStartTime] = useState("");
     const [editEndTime, setEditEndTime] = useState("");
 
-    const [schedules, setSchedules] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+    const [schedules, setSchedules] = useState<{ id: string; name: string; isActive: boolean; startDate?: string | Date; endDate?: string | Date }[]>([]);
+    const [teacherPrograms, setTeacherPrograms] = useState<{ id: string; name: string }[]>([]);
     const [selectedScheduleId, setSelectedScheduleId] = useState<string>(scheduleId || "");
+    const currentYearStr = new Date().getFullYear().toString();
+    const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
+
+    const availableYears = useMemo(() => {
+        const yearsSet = new Set<string>();
+        const currentYear = new Date().getFullYear().toString();
+        yearsSet.add(currentYear);
+        schedules.forEach(s => {
+            yearsSet.add(getScheduleYear(s));
+        });
+        return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+    }, [schedules]);
+
+    const filteredSchedules = useMemo(() => {
+        if (selectedYear === "ALL") return schedules;
+        return schedules.filter(s => getScheduleYear(s) === selectedYear);
+    }, [schedules, selectedYear]);
+
+    const handleYearChange = (year: string) => {
+        setSelectedYear(year);
+        const filtered = year === "ALL" ? schedules : schedules.filter(s => getScheduleYear(s) === year);
+        if (filtered.length > 0) {
+            const active = filtered.find(s => s.isActive)?.id || filtered[0].id;
+            setSelectedScheduleId(active);
+            loadAvailability(active);
+        }
+    };
 
     useEffect(() => {
         if (scheduleId) {
@@ -147,12 +240,27 @@ export function TeacherAvailabilityView({
                 : await getTeacherAvailabilityAction(targetSched);
             setLocked(data.locked);
             setSlots(data.slots);
+            if ((data as any).teacherName) {
+                setCurrentTeacherName((data as any).teacherName);
+            }
+            if ((data as any).teacherId) {
+                setCurrentTeacherId((data as any).teacherId);
+            }
+            if ((data as any).programs) {
+                setTeacherPrograms((data as any).programs);
+            }
             if ((data as any).schedules) {
                 const list = (data as any).schedules;
                 setSchedules(list);
                 if ((!selectedScheduleId || selectedScheduleId === "all") && list.length > 0) {
-                    const active = list.find((s: any) => s.isActive)?.id || list[0].id;
+                    const currentYear = new Date().getFullYear().toString();
+                    const yearSchedules = list.filter((s: any) => getScheduleYear(s) === currentYear);
+                    const candidateList = yearSchedules.length > 0 ? yearSchedules : list;
+                    const active = candidateList.find((s: any) => s.isActive)?.id || candidateList[0].id;
                     setSelectedScheduleId(active);
+                    if (yearSchedules.length === 0 && candidateList.length > 0) {
+                        setSelectedYear(getScheduleYear(candidateList[0]));
+                    }
                 }
             }
             setLastModifiedBy((data as any).lastModifiedBy || null);
@@ -165,8 +273,8 @@ export function TeacherAvailabilityView({
     };
 
     const handleAddSlot = (day: DayOfWeek) => {
-        const start = inputStartTimes[day];
-        const end = inputEndTimes[day];
+        const start = inputStartTimes[day] || "06:00";
+        const end = inputEndTimes[day] || "12:00";
 
         if (!start || !end) {
             toast.error("Debes especificar la hora de inicio y fin");
@@ -199,12 +307,23 @@ export function TeacherAvailabilityView({
             return;
         }
 
-        const newSlot: TimeSlot = { dayOfWeek: day, startTime: start, endTime: end };
+        const currentUserRole = session?.user?.role || (isAdminMode ? "gestor" : "teacher");
+        const currentUserName = session?.user?.name || (isAdminMode ? "Gestor" : (currentTeacherName || "Profesor"));
+        const newSlot: TimeSlot = { 
+            dayOfWeek: day, 
+            startTime: start, 
+            endTime: end,
+            createdBy: {
+                id: session?.user?.id || "",
+                name: currentUserName,
+                role: currentUserRole
+            }
+        };
         setSlots((prev) => [...prev, newSlot].sort((a, b) => a.startTime.localeCompare(b.startTime)));
         
-        // Reset inputs
-        setInputStartTimes(prev => ({ ...prev, [day]: "" }));
-        setInputEndTimes(prev => ({ ...prev, [day]: "" }));
+        // Reset inputs to default
+        setInputStartTimes(prev => ({ ...prev, [day]: "06:00" }));
+        setInputEndTimes(prev => ({ ...prev, [day]: "12:00" }));
         toast.success("Hora añadida a la lista temporal");
     };
 
@@ -262,20 +381,44 @@ export function TeacherAvailabilityView({
             return;
         }
 
-        setSlots((prev) => {
-            const updated = prev.map((s, idx) => {
-                if (idx === indexToUpdate) {
-                    return { ...s, startTime: editStartTime, endTime: editEndTime };
-                }
-                return s;
-            });
-            return updated.sort((a, b) => a.startTime.localeCompare(b.startTime));
-        });
+        const currentUserRole = session?.user?.role || (isAdminMode ? "gestor" : "teacher");
+        const currentUserName = session?.user?.name || (isAdminMode ? "Gestor" : (currentTeacherName || "Profesor"));
+        const updatedSlots = slots.map((s, idx) => {
+            if (idx === indexToUpdate) {
+                return { 
+                    ...s, 
+                    startTime: editStartTime, 
+                    endTime: editEndTime,
+                    createdBy: {
+                        id: session?.user?.id || s.createdBy?.id || "",
+                        name: currentUserName,
+                        role: currentUserRole
+                    }
+                };
+            }
+            return s;
+        }).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
+        setSlots(updatedSlots);
         setEditingIndex(null);
         setEditStartTime("");
         setEditEndTime("");
-        toast.success("Hora editada temporalmente");
+
+        // Guardar inmediatamente en la base de datos como el botón de guardar general
+        startTransition(async () => {
+            try {
+                if (isAdminMode && teacherId) {
+                    await adminSaveTeacherAvailabilityAction(teacherId, updatedSlots, selectedScheduleId);
+                } else {
+                    await saveTeacherAvailabilityAction(updatedSlots, selectedScheduleId);
+                }
+                toast.success("Disponibilidad guardada exitosamente");
+                await loadAvailability(selectedScheduleId);
+                if (onAdminActionComplete) onAdminActionComplete();
+            } catch (e: any) {
+                toast.error(e.message || "Error al guardar los cambios");
+            }
+        });
     };
 
     const handleSaveChanges = () => {
@@ -348,22 +491,56 @@ export function TeacherAvailabilityView({
                             <Calendar className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Disponibilidad por Horario / Trimestre</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Disponibilidad por Horario / Trimestre</p>
+                                {teacherPrograms.length > 0 && (
+                                    <Badge variant="outline" className="text-[10px] font-extrabold bg-primary/10 border-primary/20 text-primary py-0 px-2 h-4.5 shrink-0">
+                                        {teacherPrograms.map(p => p.name).join(", ")}
+                                    </Badge>
+                                )}
+                            </div>
                             <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar la disponibilidad específica del docente.</p>
                         </div>
                     </div>
-                    <Select value={selectedScheduleId} onValueChange={(val) => { setSelectedScheduleId(val); loadAvailability(val); }}>
-                        <SelectTrigger className="w-full sm:w-[260px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
-                            <SelectValue placeholder="Seleccionar Horario..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {schedules.map((s) => (
-                                <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
-                                    {s.isActive ? "🟢" : "⚪"} {s.name} {s.isActive ? "(VIGENTE)" : ""}
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
+                        {/* Filtro por Año (por defecto año actual) */}
+                        <Select value={selectedYear} onValueChange={handleYearChange}>
+                            <SelectTrigger className="w-[145px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0 px-2.5 gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-primary mr-1 shrink-0" />
+                                <SelectValue placeholder="Año" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl text-xs">
+                                <SelectItem value="ALL" className="text-xs font-bold">
+                                    Todos los años
                                 </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                                {availableYears.map((yr) => (
+                                    <SelectItem key={yr} value={yr} className="text-xs font-bold">
+                                        Año {yr}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Selector de Horario */}
+                        <Select value={selectedScheduleId} onValueChange={(val) => { setSelectedScheduleId(val); loadAvailability(val); }}>
+                            <SelectTrigger className="w-full sm:w-[250px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
+                                <SelectValue placeholder="Seleccionar Horario..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl text-xs">
+                                {filteredSchedules.length === 0 ? (
+                                    <div className="px-3 py-2 text-xs text-muted-foreground italic">
+                                        Sin horarios para {selectedYear}
+                                    </div>
+                                ) : (
+                                    filteredSchedules.map((s) => (
+                                        <SelectItem key={s.id} value={s.id} className="text-xs font-bold">
+                                            {s.isActive ? "🟢" : "⚪"} {s.name} {s.isActive ? "(VIGENTE)" : ""}
+                                        </SelectItem>
+                                    ))
+                                )}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             )}
 
@@ -376,12 +553,14 @@ export function TeacherAvailabilityView({
                             <p className="font-semibold text-sm">Disponibilidad Publicada y Bloqueada</p>
                             <p className="text-xs opacity-90 mt-0.5">
                                 {isAdminMode 
-                                    ? "El profesor completó su registro y no puede editarlo. Desbloquea para permitir o realizar cambios."
+                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Profesor"
+                                        ? `La disponibilidad fue guardada y bloqueada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()}. Desbloquea para permitir o realizar cambios.`
+                                        : "El profesor completó su registro y no puede editarlo. Desbloquea para permitir o realizar cambios.")
                                     : "Tu disponibilidad horaria semanal está registrada y bloqueada para edición. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
                             </p>
                             {lastModifiedBy && (
                                 <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-block">
-                                    Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({lastModifiedBy.role === "admin" ? "Administrador" : "Profesor"}) 
+                                    Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, teacherId)}) 
                                     {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                                 </p>
                             )}
@@ -406,12 +585,14 @@ export function TeacherAvailabilityView({
                             <p className="font-semibold text-sm">Disponibilidad en Modo Borrador</p>
                             <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
                                 {isAdminMode 
-                                    ? "El profesor aún puede editar su disponibilidad." 
+                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Profesor"
+                                        ? `La disponibilidad fue editada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()} y permanece en modo borrador.`
+                                        : "El profesor aún puede editar su disponibilidad.")
                                     : "Puedes configurar y modificar tus horas de disponibilidad de lunes a domingo. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
                             </p>
                             {lastModifiedBy && (
                                 <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-block">
-                                    Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({lastModifiedBy.role === "admin" ? "Administrador" : (isAdminMode ? "Profesor" : "Tú")}) 
+                                    Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, teacherId)}) 
                                     {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                                 </p>
                             )}
@@ -500,26 +681,44 @@ export function TeacherAvailabilityView({
                                                     return (
                                                         <div 
                                                             key={index} 
-                                                            className="flex flex-col gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20 text-xs font-medium"
+                                                            className="flex flex-col gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20 text-xs font-medium"
                                                         >
-                                                            <div className="grid grid-cols-2 gap-1.5">
-                                                                <div className="space-y-0.5">
-                                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase">Inicio</span>
-                                                                    <Input 
-                                                                        type="time" 
-                                                                        className="h-7 text-xs px-1.5 py-0.5"
-                                                                        value={editStartTime}
-                                                                        onChange={(e) => setEditStartTime(e.target.value)}
-                                                                    />
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <div className="space-y-1">
+                                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase flex items-center gap-1">
+                                                                        <Clock className="w-3 h-3 text-primary" /> Inicio
+                                                                    </span>
+                                                                    <div className="flex items-center bg-background px-2 py-1 rounded-lg border border-input h-7">
+                                                                        <select 
+                                                                            className="bg-transparent font-mono text-xs font-semibold text-foreground focus:outline-none w-full cursor-pointer"
+                                                                            value={editStartTime}
+                                                                            onChange={(e) => setEditStartTime(e.target.value)}
+                                                                        >
+                                                                            {getTimeOptions(editStartTime, false).map((t) => (
+                                                                                <option key={t} value={t} className="bg-background text-foreground font-mono">
+                                                                                    {t}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="space-y-0.5">
-                                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase">Fin</span>
-                                                                    <Input 
-                                                                        type="time" 
-                                                                        className="h-7 text-xs px-1.5 py-0.5"
-                                                                        value={editEndTime}
-                                                                        onChange={(e) => setEditEndTime(e.target.value)}
-                                                                    />
+                                                                <div className="space-y-1">
+                                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase flex items-center gap-1">
+                                                                        <Clock className="w-3 h-3 text-primary" /> Fin
+                                                                    </span>
+                                                                    <div className="flex items-center bg-background px-2 py-1 rounded-lg border border-input h-7">
+                                                                        <select 
+                                                                            className="bg-transparent font-mono text-xs font-semibold text-foreground focus:outline-none w-full cursor-pointer"
+                                                                            value={editEndTime}
+                                                                            onChange={(e) => setEditEndTime(e.target.value)}
+                                                                        >
+                                                                            {getTimeOptions(editEndTime, true).map((t) => (
+                                                                                <option key={t} value={t} className="bg-background text-foreground font-mono">
+                                                                                    {t}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                             <div className="flex justify-end gap-1.5 border-t border-muted/20 pt-1.5 mt-0.5">
@@ -533,10 +732,19 @@ export function TeacherAvailabilityView({
                                                                 </Button>
                                                                 <Button 
                                                                     size="sm" 
-                                                                    className="h-6 px-2 text-[10px] bg-primary text-primary-foreground hover:bg-primary/90"
+                                                                    disabled={isPending}
+                                                                    className="h-6 px-2 text-[10px] bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                                                                     onClick={() => handleSaveEdit(index)}
                                                                 >
-                                                                    <Check className="w-3 h-3 mr-1" /> Guardar
+                                                                    {isPending ? (
+                                                                        <>
+                                                                            <div className="w-3 h-3 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-1" /> Guardando...
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Check className="w-3 h-3 mr-1" /> Guardar
+                                                                        </>
+                                                                    )}
                                                                 </Button>
                                                             </div>
                                                         </div>
@@ -545,9 +753,10 @@ export function TeacherAvailabilityView({
 
                                                 const styles = getSchedulePeriodStyles(slot.startTime);
                                                 const IconComp = styles.icon;
-                                                const slotAuthor = (slot as any).createdBy || lastModifiedBy;
-                                                const isProf = slotAuthor?.role === "teacher" || slotAuthor?.id === teacherId;
-                                                const authorRoleLabel = isProf ? "Profesor" : slotAuthor?.role === "admin" ? "Administrador" : "Gestor";
+                                                const effectiveTargetTeacherId = currentTeacherId || teacherId;
+                                                const slotAuthor = slot.createdBy || (effectiveTargetTeacherId ? { id: effectiveTargetTeacherId, name: currentTeacherName || "Profesor", role: "teacher" } : null);
+                                                const authorRoleLabel = getAuthorRoleLabel(slotAuthor, effectiveTargetTeacherId);
+                                                const isProf = authorRoleLabel === "Profesor";
                                                 const authorName = slotAuthor?.name || "Usuario registrado";
 
                                                 return (
@@ -558,7 +767,9 @@ export function TeacherAvailabilityView({
                                                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                                             <span className={`flex items-center gap-1.5 ${styles.text} truncate`}>
                                                                 <IconComp className="w-3.5 h-3.5 shrink-0" /> 
-                                                                {toFormat12h(slot.startTime)} – {toFormat12h(slot.endTime)} ({styles.label})
+                                                                <span className="font-mono font-bold tracking-tight">{slot.startTime} – {slot.endTime}</span>
+                                                                <span className="text-[10px] opacity-75 font-normal">({formatDuration(slot.startTime, slot.endTime)})</span>
+                                                                <span className="text-[10px] opacity-60">· {styles.label}</span>
                                                             </span>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -567,7 +778,9 @@ export function TeacherAvailabilityView({
                                                                         className={`text-[9px] font-bold px-1.5 py-0 rounded shrink-0 cursor-help ${
                                                                             isProf 
                                                                                 ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
-                                                                                : "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                                : authorRoleLabel === "Gestor"
+                                                                                ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
                                                                         }`}
                                                                     >
                                                                         <User className="w-2.5 h-2.5 mr-0.5 inline" />
@@ -610,24 +823,42 @@ export function TeacherAvailabilityView({
                                     <div className="border-t border-muted/40 pt-3 space-y-2 mt-2">
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="space-y-1">
-                                                <Label htmlFor={`start-${day}`} className="text-[10px] font-bold text-muted-foreground uppercase">Inicio</Label>
-                                                <Input 
-                                                    id={`start-${day}`}
-                                                    type="time" 
-                                                    className="h-8 text-xs px-2"
-                                                    value={inputStartTimes[day] || ""}
-                                                    onChange={(e) => setInputStartTimes(prev => ({ ...prev, [day]: e.target.value }))}
-                                                />
+                                                <Label htmlFor={`start-${day}`} className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                    <Clock className="w-3 h-3 text-primary" /> Inicio
+                                                </Label>
+                                                <div className="flex items-center bg-background px-2.5 py-1.5 rounded-lg border border-input shadow-2xs hover:border-primary/50 transition-colors">
+                                                    <select 
+                                                        id={`start-${day}`}
+                                                        className="bg-transparent font-mono text-xs font-bold text-foreground focus:outline-none w-full cursor-pointer"
+                                                        value={inputStartTimes[day] || "06:00"}
+                                                        onChange={(e) => setInputStartTimes(prev => ({ ...prev, [day]: e.target.value }))}
+                                                    >
+                                                        {getTimeOptions(inputStartTimes[day] || "06:00", false).map((t) => (
+                                                            <option key={t} value={t} className="bg-background text-foreground font-mono">
+                                                                {t}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <Label htmlFor={`end-${day}`} className="text-[10px] font-bold text-muted-foreground uppercase">Fin</Label>
-                                                <Input 
-                                                    id={`end-${day}`}
-                                                    type="time" 
-                                                    className="h-8 text-xs px-2"
-                                                    value={inputEndTimes[day] || ""}
-                                                    onChange={(e) => setInputEndTimes(prev => ({ ...prev, [day]: e.target.value }))}
-                                                />
+                                                <Label htmlFor={`end-${day}`} className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                    <Clock className="w-3 h-3 text-primary" /> Fin
+                                                </Label>
+                                                <div className="flex items-center bg-background px-2.5 py-1.5 rounded-lg border border-input shadow-2xs hover:border-primary/50 transition-colors">
+                                                    <select 
+                                                        id={`end-${day}`}
+                                                        className="bg-transparent font-mono text-xs font-bold text-foreground focus:outline-none w-full cursor-pointer"
+                                                        value={inputEndTimes[day] || "12:00"}
+                                                        onChange={(e) => setInputEndTimes(prev => ({ ...prev, [day]: e.target.value }))}
+                                                    >
+                                                        {getTimeOptions(inputEndTimes[day] || "12:00", true).map((t) => (
+                                                            <option key={t} value={t} className="bg-background text-foreground font-mono">
+                                                                {t}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             </div>
                                         </div>
                                         <Button 
