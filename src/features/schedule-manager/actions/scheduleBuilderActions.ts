@@ -552,11 +552,26 @@ export async function assignGroupClassScheduleAction(data: {
     }
   });
 
+  let courseDescription = data.description ? data.description.trim() : null;
+  if (!courseDescription && data.periodId) {
+    const templateCourse = await prisma.course.findFirst({
+      where: {
+        groupId: null,
+        periodId: data.periodId,
+        title: { equals: data.courseTitle.trim(), mode: "insensitive" }
+      },
+      select: { description: true }
+    });
+    if (templateCourse?.description) {
+      courseDescription = templateCourse.description;
+    }
+  }
+
   if (!groupCourse) {
     groupCourse = await prisma.course.create({
       data: {
         title: data.courseTitle.trim(),
-        description: data.description ? data.description.trim() : null,
+        description: courseDescription,
         groupId: data.groupId,
         academicScheduleId: data.scheduleId,
         periodId: data.periodId || null,
@@ -565,11 +580,19 @@ export async function assignGroupClassScheduleAction(data: {
       }
     });
   } else {
+    const updates: any = {};
     // Si el curso no tiene profesor asignado por defecto y este slot tiene uno, guardarlo como fallback
     if (!groupCourse.teacherId && resolvedTeacherId) {
+      updates.teacherId = resolvedTeacherId;
+    }
+    // Si el curso no tiene descripción y se resolvió una del template o input, actualizarla
+    if (!groupCourse.description && courseDescription) {
+      updates.description = courseDescription;
+    }
+    if (Object.keys(updates).length > 0) {
       await prisma.course.update({
         where: { id: groupCourse.id },
-        data: { teacherId: resolvedTeacherId }
+        data: updates
       });
     }
   }

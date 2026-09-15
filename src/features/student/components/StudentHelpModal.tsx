@@ -60,7 +60,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
   overview: {
     key: "overview",
     tabLabel: "Vista General",
-    title: "Panel Principal del Estudiante",
+    title: "Panel Principal del Aprendiz",
     badge: "Módulo: Resumen Académico",
     badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
     icon: <Sparkles className="w-5 h-5 text-purple-500" />,
@@ -69,7 +69,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
     features: [
       {
         title: "Materias y Asignaturas Activas",
-        description: "Accede al listado de materias que estás cursando en tu ficha actual con sus docentes encargados.",
+        description: "Accede al listado de materias que estás cursando en tu ficha actual con sus instructores encargados.",
         icon: <BookOpen className="w-4 h-4 text-purple-500" />,
       },
       {
@@ -112,8 +112,8 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
         icon: <CheckCircle2 className="w-4 h-4 text-blue-500" />,
       },
       {
-        title: "Docente Titular por Franja",
-        description: "Conoce qué profesor orienta cada franja horaria para coordinar consultas o entregas presenciales.",
+        title: "Instructor Titular por Franja",
+        description: "Conoce qué instructor orienta cada franja horaria para coordinar consultas o entregas presenciales.",
         icon: <UserCheck className="w-4 h-4 text-blue-500" />,
       },
       {
@@ -142,17 +142,17 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
       },
       {
         title: "Detalle de Inasistencias y Retardos",
-        description: "Revisa fecha exacta, materia y tipo de novedad registrada por tu docente.",
+        description: "Revisa fecha exacta, materia y tipo de novedad registrada por tu instructor.",
         icon: <AlertTriangle className="w-4 h-4 text-emerald-500" />,
       },
       {
         title: "Radicación de Justificaciones",
-        description: "Envía el enlace público a tu soporte médico (Google Drive, OneDrive) y un mensaje explicativo al docente.",
+        description: "Envía el enlace público a tu soporte médico (Google Drive, OneDrive) y un mensaje explicativo al instructor.",
         icon: <ExternalLink className="w-4 h-4 text-emerald-500" />,
       },
       {
         title: "Seguimiento al Estado de la Excusa",
-        description: "Verifica si el profesor ha validado tu justificación y cambiado la falta injustificada a justificada.",
+        description: "Verifica si el instructor ha validado tu justificación y cambiado la falta injustificada a justificada.",
         icon: <UserCheck className="w-4 h-4 text-emerald-500" />,
       },
       {
@@ -161,7 +161,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
         icon: <FileSpreadsheet className="w-4 h-4 text-emerald-500" />,
       },
     ],
-    workflowTip: "Radica tus justificaciones médicas dentro de los 3 días hábiles siguientes a la falta para que el docente pueda validar tu soporte a tiempo.",
+    workflowTip: "Radica tus justificaciones médicas dentro de los 3 días hábiles siguientes a la falta para que el instructor pueda validar tu soporte a tiempo.",
   },
 
   evaluations: {
@@ -172,7 +172,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
     badgeColor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
     icon: <GraduationCap className="w-5 h-5 text-indigo-500" />,
     bgIcon: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
-    subtitle: "Consulta de notas cuantitativas, actividades evaluativas programadas y retroalimentación de docentes.",
+    subtitle: "Consulta de notas cuantitativas, actividades evaluativas programadas y retroalimentación de instructores.",
     features: [
       {
         title: "Notas por Materia y Corte",
@@ -185,7 +185,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
         icon: <Upload className="w-4 h-4 text-indigo-500" />,
       },
       {
-        title: "Retroalimentación Docente",
+        title: "Retroalimentación de Instructores",
         description: "Lee los comentarios y sugerencias que tus instructores registraron en cada una de tus evaluaciones.",
         icon: <FileText className="w-4 h-4 text-indigo-500" />,
       },
@@ -195,7 +195,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
         icon: <CheckCircle2 className="w-4 h-4 text-indigo-500" />,
       },
     ],
-    workflowTip: "Verifica que el enlace de tus entregas compartidas en Drive tenga los permisos en modo 'Público / Cualquier persona con el enlace' para que el profesor pueda calificarlo.",
+    workflowTip: "Verifica que el enlace de tus entregas compartidas en Drive tenga los permisos en modo 'Público / Cualquier persona con el enlace' para que el instructor pueda calificarlo.",
   },
 
   remarks: {
@@ -210,7 +210,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
     features: [
       {
         title: "Revisión de Anotaciones",
-        description: "Lee las observaciones registradas por los docentes con fecha, materia y descripción del hecho.",
+        description: "Lee las observaciones registradas por los instructores con fecha, materia y descripción del hecho.",
         icon: <FileText className="w-4 h-4 text-amber-500" />,
       },
       {
@@ -224,7 +224,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
         icon: <Sparkles className="w-4 h-4 text-amber-500" />,
       },
     ],
-    workflowTip: "Si tienes alguna duda sobre una observación, acércate respetuosamente con tu docente para dialogar y fijar compromisos de mejora.",
+    workflowTip: "Si tienes alguna duda sobre una observación, acércate respetuosamente con tu instructor para dialogar y fijar compromisos de mejora.",
   },
 
   improvement: {
@@ -239,7 +239,7 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
     features: [
       {
         title: "Firma Digital del Compromiso",
-        description: "Revisa las actividades asignadas por el docente y firma digitalmente el acta para iniciar tu plan.",
+        description: "Revisa las actividades asignadas por el instructor y firma digitalmente el acta para iniciar tu plan.",
         icon: <CheckCircle2 className="w-4 h-4 text-rose-500" />,
       },
       {
@@ -269,11 +269,11 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
     badgeColor: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
     icon: <BookOpen className="w-5 h-5 text-cyan-500" />,
     bgIcon: "bg-cyan-500/10 border-cyan-500/20 text-cyan-600 dark:text-cyan-400",
-    subtitle: "Acceso centralizado a carpetas de Drive, repositorios de GitHub y material didáctico provisto por tus profesores.",
+    subtitle: "Acceso centralizado a carpetas de Drive, repositorios de GitHub y material didáctico provisto por tus instructores.",
     features: [
       {
         title: "Guías Curriculares y Talleres",
-        description: "Accede directamente a los documentos de trabajo estructurados por tus profesores para cada materia.",
+        description: "Accede directamente a los documentos de trabajo estructurados por tus instructores para cada materia.",
         icon: <FileText className="w-4 h-4 text-cyan-500" />,
       },
       {
@@ -420,7 +420,7 @@ export function StudentHelpModal({
         {/* Footer */}
         <DialogFooter className="p-3 px-5 border-t border-border/70 bg-muted/20 flex flex-row items-center justify-between shrink-0">
           <span className="text-xs text-muted-foreground font-medium hidden sm:inline-block">
-            AcademiX • Portal del Estudiante
+            AcademiX • Portal del Aprendiz
           </span>
           <Button
             onClick={() => onOpenChange(false)}

@@ -1788,10 +1788,26 @@ export async function scheduleGroupCourseAction(data: {
         throw new Error(`No es posible programar la clase por colisiones en el horario: ${conflictsResult.conflicts.join(" | ")}`);
     }
 
+    // Resolve description: use provided or fallback to template course description
+    let resolvedDescription = data.description ? data.description.trim() : null;
+    if (!resolvedDescription && data.periodId) {
+        const templateCourse = await prisma.course.findFirst({
+            where: {
+                groupId: null,
+                periodId: data.periodId,
+                title: { equals: data.title.trim(), mode: "insensitive" }
+            },
+            select: { description: true }
+        });
+        if (templateCourse?.description) {
+            resolvedDescription = templateCourse.description;
+        }
+    }
+
     const course = await prisma.course.create({
         data: {
             title: data.title,
-            description: data.description,
+            description: resolvedDescription,
             groupId: data.groupId,
             periodId: data.periodId,
             teacherId: data.teacherId || null,
@@ -1820,6 +1836,9 @@ export async function scheduleGroupCourseAction(data: {
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
+    revalidatePath("/dashboard/teacher");
+    revalidatePath("/dashboard/student");
     return course;
 }
 
@@ -1852,7 +1871,7 @@ export async function updateGroupCourseScheduleAction(courseId: string, data: {
 
     const currentCourse = await prisma.course.findUnique({
         where: { id: courseId },
-        select: { groupId: true }
+        select: { groupId: true, periodId: true }
     });
 
     if (!currentCourse || !currentCourse.groupId) {
@@ -1870,12 +1889,27 @@ export async function updateGroupCourseScheduleAction(courseId: string, data: {
         throw new Error(`No es posible actualizar la clase por colisiones en el horario: ${conflictsResult.conflicts.join(" | ")}`);
     }
 
+    let resolvedDescription = data.description !== undefined ? (data.description ? data.description.trim() : null) : undefined;
+    if (resolvedDescription === undefined && currentCourse.periodId) {
+        const templateCourse = await prisma.course.findFirst({
+            where: {
+                groupId: null,
+                periodId: currentCourse.periodId,
+                title: { equals: data.title.trim(), mode: "insensitive" }
+            },
+            select: { description: true }
+        });
+        if (templateCourse?.description) {
+            resolvedDescription = templateCourse.description;
+        }
+    }
+
     await prisma.$transaction(async (tx) => {
         await tx.course.update({
             where: { id: courseId },
             data: {
                 title: data.title,
-                description: data.description,
+                ...(resolvedDescription !== undefined ? { description: resolvedDescription } : {}),
                 teacherId: data.teacherId || null,
                 weeklyHours: data.weeklyHours || 0,
             }
@@ -1911,6 +1945,9 @@ export async function updateGroupCourseScheduleAction(courseId: string, data: {
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
+    revalidatePath("/dashboard/teacher");
+    revalidatePath("/dashboard/student");
     return { success: true };
 }
 

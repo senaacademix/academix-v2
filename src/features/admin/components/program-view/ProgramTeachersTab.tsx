@@ -39,13 +39,13 @@ export function ProgramTeachersTab({ program }: ProgramTeachersTabProps) {
 
     const handleExportPdf = async () => {
         setIsExportingPdf(true);
-        toast.info("Generando PDF del equipo docente con @react-pdf/renderer...");
+        toast.info("Generando PDF del equipo de instructores con @react-pdf/renderer...");
         try {
             await exportProgramTeachersPdf(program);
-            toast.success("PDF del equipo docente descargado exitosamente");
+            toast.success("PDF del equipo de instructores descargado exitosamente");
         } catch (e) {
             console.error(e);
-            toast.error("Error al exportar el equipo docente en PDF");
+            toast.error("Error al exportar el equipo de instructores en PDF");
         } finally {
             setIsExportingPdf(false);
         }
@@ -53,13 +53,13 @@ export function ProgramTeachersTab({ program }: ProgramTeachersTabProps) {
 
     const handleExportExcel = async () => {
         setIsExportingExcel(true);
-        toast.info("Generando Excel del equipo docente con ExcelJS...");
+        toast.info("Generando Excel del equipo de instructores con ExcelJS...");
         try {
             await exportProgramTeachersExcel(program);
-            toast.success("Excel del equipo docente descargado exitosamente");
+            toast.success("Excel del equipo de instructores descargado exitosamente");
         } catch (e) {
             console.error(e);
-            toast.error("Error al exportar el equipo docente en Excel");
+            toast.error("Error al exportar el equipo de instructores en Excel");
         } finally {
             setIsExportingExcel(false);
         }
@@ -125,7 +125,7 @@ export function ProgramTeachersTab({ program }: ProgramTeachersTabProps) {
                     <div className="relative w-full sm:w-60 shrink-0">
                         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Buscar docente por nombre o correo..."
+                            placeholder="Buscar instructor por nombre o correo..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-9 h-9 text-xs rounded-xl"
@@ -138,7 +138,7 @@ export function ProgramTeachersTab({ program }: ProgramTeachersTabProps) {
                         onClick={handleExportPdf}
                         disabled={isExportingPdf}
                         className="h-9 gap-1.5 rounded-xl text-xs font-bold border-red-500/30 text-red-700 dark:text-red-300 bg-red-500/10 hover:bg-red-500/20 shadow-xs shrink-0"
-                        title="Exportar equipo docente en PDF (@react-pdf/renderer)"
+                        title="Exportar equipo de instructores en PDF (@react-pdf/renderer)"
                     >
                         {isExportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
                         <span>Exportar PDF</span>
@@ -150,7 +150,7 @@ export function ProgramTeachersTab({ program }: ProgramTeachersTabProps) {
                         onClick={handleExportExcel}
                         disabled={isExportingExcel}
                         className="h-9 gap-1.5 rounded-xl text-xs font-bold border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-xs shrink-0"
-                        title="Exportar equipo docente en Excel estilizado (ExcelJS)"
+                        title="Exportar equipo de instructores en Excel estilizado (ExcelJS)"
                     >
                         {isExportingExcel ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
                         <span>Exportar Excel</span>
@@ -164,7 +164,7 @@ export function ProgramTeachersTab({ program }: ProgramTeachersTabProps) {
                     <UserCheck className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                     <h4 className="font-bold text-foreground text-sm">No se encontraron instructores</h4>
                     <p className="text-xs text-muted-foreground max-w-xs mx-auto mt-1">
-                        {searchQuery ? "Ningún docente coincide con la búsqueda." : "No hay instructores vinculados a este programa de formación."}
+                        {searchQuery ? "Ningún instructor coincide con la búsqueda." : "No hay instructores vinculados a este programa de formación."}
                     </p>
                 </div>
             ) : (
@@ -191,7 +191,7 @@ export function ProgramTeachersTab({ program }: ProgramTeachersTabProps) {
                                             </div>
                                             <div className="space-y-0.5 min-w-0">
                                                 <h4 className="text-sm font-extrabold text-foreground truncate">
-                                                    {formatName(teacher.name || "Docente")}
+                                                    {formatName(teacher.name || "Instructor")}
                                                 </h4>
                                                 <p className="text-xs text-muted-foreground truncate font-mono">
                                                     {teacher.email}

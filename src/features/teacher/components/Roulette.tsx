@@ -477,7 +477,7 @@ export function Roulette({ students: initialStudents, courseId }: RouletteProps)
                                         </Avatar>
                                         <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                                             <p className="font-medium text-sm bg-transparent">
-                                                {item.student ? getFullName(item.student) : "Estudiante desconocido"}
+                                                {item.student ? getFullName(item.student) : "Aprendiz desconocido"}
                                             </p>
 
                                             {editingId === item.student.id ? (

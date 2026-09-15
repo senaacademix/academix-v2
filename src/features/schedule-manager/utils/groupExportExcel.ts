@@ -52,8 +52,8 @@ export async function generateAndDownloadGroupExcel(
   schedSheet.addRow(["INFORMACIÓN GENERAL, PERÍODOS Y MÉTRICAS DE LA FICHA"]).font = { name: "Segoe UI", size: 11, bold: true, color: { argb: "FF1E1B4B" } };
   
   const metaRows = [
-    ["Nombre de Ficha", payload.groupName, "Total Estudiantes", `${payload.totalStudents} aprendices`],
-    ["Programa de Formación", payload.program, "Estudiantes Activos", `${payload.activeStudents} activos`],
+    ["Nombre de Ficha", payload.groupName, "Total Aprendices", `${payload.totalStudents} aprendices`],
+    ["Programa de Formación", payload.program, "Aprendices Activos", `${payload.activeStudents} activos`],
     ["Período Académico", payload.period || "Actual", "Promedio Académico", payload.averageGrade > 0 ? `${payload.averageGrade.toFixed(2)} pts` : "N/A"],
     ["Fecha Inicio Lectiva", payload.startDateStr || "No definida", "Fecha Fin Lectiva", payload.endDateStr || "No definida"],
     ["Jornada / Horario Diario", `${payload.startTime || "--:--"} - ${payload.endTime || "--:--"}`, "Aula / Ambiente Principal", payload.environment || "No asignado"],
@@ -151,7 +151,7 @@ export async function generateAndDownloadGroupExcel(
 
   courseSheet.addRow([]);
 
-  const courseHeaders = ["N°", "Asignatura / Curso", "Docente Instructor", "Promedio Grupo", "Total Evaluaciones"];
+  const courseHeaders = ["N°", "Asignatura / Curso", "Instructor", "Promedio Grupo", "Total Evaluaciones"];
   const cHeaderRow = courseSheet.addRow(courseHeaders);
   cHeaderRow.height = 22;
   cHeaderRow.eachCell((cell: any) => {
@@ -195,7 +195,7 @@ export async function generateAndDownloadGroupExcel(
   courseSheet.getColumn(5).width = 20;
 
   // -------------------------------------------------------------
-  // HOJA 3: DIRECTORIO COMPLETO Y CONSOLIDADO DE ESTUDIANTES
+  // HOJA 3: DIRECTORIO COMPLETO Y CONSOLIDADO DE APRENDICES
   // -------------------------------------------------------------
   const studSheet = wb.addWorksheet("Consolidado Aprendices");
 
@@ -346,7 +346,7 @@ export async function generateAndDownloadGroupExcel(
     r2.getCell(5).font = { name: "Segoe UI", size: 9, bold: true };
     r2.getCell(6).font = { name: "Segoe UI", size: 9, color: { argb: "FF2563EB" } };
 
-    const gSubHeader = indSheet.addRow(["Asignatura / Materia", "Docente Instructor", "Nota Aprendiz", "Promedio Grupo", "Estado"]);
+    const gSubHeader = indSheet.addRow(["Asignatura / Materia", "Instructor", "Nota Aprendiz", "Promedio Grupo", "Estado"]);
     gSubHeader.height = 20;
     gSubHeader.eachCell((cell: any) => {
       cell.font = { name: "Segoe UI", size: 8.5, bold: true, color: { argb: "FFFFFFFF" } };
@@ -495,7 +495,7 @@ export async function generateAndDownloadGroupExcel(
 
   remSheet.addRow([]);
 
-  const remHeaders = ["N°", "Fecha y Hora", "Aprendiz", "Tipo Observación", "Materia / Asignatura", "Docente", "Título y Descripción"];
+  const remHeaders = ["N°", "Fecha y Hora", "Aprendiz", "Tipo Observación", "Materia / Asignatura", "Instructor", "Título y Descripción"];
   const rHeaderRow = remSheet.addRow(remHeaders);
   rHeaderRow.height = 22;
   rHeaderRow.eachCell((cell: any) => {
@@ -570,7 +570,7 @@ export async function generateAndDownloadGroupExcel(
 
   planSheet.addRow([]);
 
-  const planHeaders = ["N°", "Código Plan", "Aprendiz", "Docente Responsable", "Estado", "Fecha Inicio", "Fecha Límite", "Observaciones / Motivo"];
+  const planHeaders = ["N°", "Código Plan", "Aprendiz", "Instructor Responsable", "Estado", "Fecha Inicio", "Fecha Límite", "Observaciones / Motivo"];
   const pHeaderRow = planSheet.addRow(planHeaders);
   pHeaderRow.height = 22;
   pHeaderRow.eachCell((cell: any) => {
@@ -650,7 +650,7 @@ export async function generateAndDownloadGroupExcel(
 
     missSheet.addRow([]);
 
-    const mHeaders = ["N°", "Asignatura / Curso", "Docente Instructor", "Sesiones Faltantes", "Fechas Sin Registro"];
+    const mHeaders = ["N°", "Asignatura / Curso", "Instructor", "Sesiones Faltantes", "Fechas Sin Registro"];
     const mHeaderRow = missSheet.addRow(mHeaders);
     mHeaderRow.height = 22;
     mHeaderRow.eachCell((cell: any) => {

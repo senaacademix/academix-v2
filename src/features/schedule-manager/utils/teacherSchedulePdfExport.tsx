@@ -382,7 +382,7 @@ export const TeacherSchedulePdfDocument: React.FC<TeacherSchedulePdfDocumentProp
         <Page size="A4" orientation="landscape" style={styles.page}>
           <View style={styles.headerContainer}>
             <View style={styles.headerLeft}>
-              <Text style={styles.mainTitle}>ACADEMIX - REPORTE DE CARGA Y HORAS DOCENTES</Text>
+              <Text style={styles.mainTitle}>ACADEMIX - REPORTE DE CARGA Y HORAS DE INSTRUCTORES</Text>
               <Text style={styles.subTitle}>
                 {schedule.name} - ANÁLISIS DE CARGA HORARIA Y ASIGNACIONES
               </Text>
@@ -400,7 +400,7 @@ export const TeacherSchedulePdfDocument: React.FC<TeacherSchedulePdfDocumentProp
             <View style={styles.kpiCard}>
               <Text style={styles.kpiTitle}>TOTAL INSTRUCTORES</Text>
               <Text style={styles.kpiValue}>{teachers.length}</Text>
-              <Text style={styles.kpiSub}>Docentes en nómina</Text>
+              <Text style={styles.kpiSub}>Instructores en nómina</Text>
             </View>
 
             <View style={styles.kpiCard}>
@@ -469,7 +469,7 @@ export const TeacherSchedulePdfDocument: React.FC<TeacherSchedulePdfDocumentProp
               <View key={t.id} style={styles.barChartCard}>
                 <View style={styles.barChartHeader}>
                   <Text style={styles.barChartName}>
-                    Docente: {t.name} ({t.email || "Sin correo"}) {hasExcess ? ` - EXCESO: +${excessHours}h` : ""}
+                    Instructor: {t.name} ({t.email || "Sin correo"}) {hasExcess ? ` - EXCESO: +${excessHours}h` : ""}
                   </Text>
                   <Text style={[styles.barChartStats, hasExcess ? { color: "#dc2626" } : {}]}>
                     {hours}h / {limit}h max - {percentOfLimit}% Carga Horaria
@@ -503,7 +503,7 @@ export const TeacherSchedulePdfDocument: React.FC<TeacherSchedulePdfDocumentProp
           })}
 
           <View style={styles.footer}>
-            <Text>AcademiX — Planilla Oficial de Carga Docente</Text>
+            <Text>AcademiX — Planilla Oficial de Carga de Instructores</Text>
             <Text>Generado el {new Date().toLocaleDateString("es-ES")}</Text>
           </View>
         </Page>
@@ -536,7 +536,7 @@ export const TeacherSchedulePdfDocument: React.FC<TeacherSchedulePdfDocumentProp
             {/* Header */}
             <View style={styles.headerContainer}>
               <View style={styles.headerLeft}>
-                <Text style={styles.mainTitle}>{schedule.name} — HORARIO DOCENTE</Text>
+                <Text style={styles.mainTitle}>{schedule.name} — HORARIO DE INSTRUCTORES</Text>
                 <Text style={styles.subTitle}>
                   Planilla Oficial de Carga Académica Semanal • Período: {formatDate(schedule.startDate)} al{" "}
                   {formatDate(schedule.endDate)}
@@ -553,7 +553,7 @@ export const TeacherSchedulePdfDocument: React.FC<TeacherSchedulePdfDocumentProp
             {/* Teacher Meta Info Card */}
             <View style={styles.teacherHeaderCard}>
               <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>Docente / Instructor</Text>
+                <Text style={styles.metaLabel}>Instructor</Text>
                 <Text style={styles.metaValue}>{teacher.name}</Text>
               </View>
 
@@ -647,7 +647,7 @@ export const TeacherSchedulePdfDocument: React.FC<TeacherSchedulePdfDocumentProp
 
             {/* Footer */}
             <View style={styles.footer}>
-              <Text>AcademiX — Planilla Oficial de Carga Docente</Text>
+              <Text>AcademiX — Planilla Oficial de Carga de Instructores</Text>
               <Text>
                 Página {pageIndex + 1} de {teachers.length} • Generado el{" "}
                 {new Date().toLocaleDateString("es-ES")}

@@ -213,10 +213,10 @@ export function UserManagement({
                     } : u.profile,
                     group: updated.group || null
                 } : u));
-                toast.success("Estudiante actualizado correctamente");
+                toast.success("Aprendiz actualizado correctamente");
                 setEditDialogOpen(false);
             } catch (error: any) {
-                toast.error(error.message || "Error al actualizar estudiante");
+                toast.error(error.message || "Error al actualizar aprendiz");
             }
         });
     };
@@ -277,7 +277,7 @@ export function UserManagement({
                 await toggleUserBanAction(studentId, true);
                 const { dismissBanRequestAction } = await import("@/features/admin/actions/adminActions");
                 await dismissBanRequestAction(remarkId);
-                toast.success("Estudiante baneado y solicitud cerrada.");
+                toast.success("Aprendiz bloqueado y solicitud cerrada.");
                 loadBanRequests();
                 refreshUsers(currentPage);
             } catch (err: any) {
@@ -511,9 +511,9 @@ export function UserManagement({
             case "admin":
                 return "Administrador";
             case "teacher":
-                return "Profesor";
+                return "Instructor";
             case "student":
-                return "Estudiante";
+                return "Aprendiz";
             default:
                 return role || "Sin rol";
         }
@@ -549,7 +549,7 @@ export function UserManagement({
                 }));
 
                 toast.success("Novedad actualizada", {
-                    description: `Se actualizó la novedad del estudiante.`
+                    description: `Se actualizó la novedad del aprendiz.`
                 });
                 setNovedadDialogOpen(false);
                 setUserForNovedad(null);
@@ -615,8 +615,8 @@ export function UserManagement({
                 setUsers(prev => [newUserItem, ...prev]);
                 setCurrentTotal(prev => prev + 1);
 
-                toast.success("Estudiante creado", {
-                    description: `Se ha registrado el estudiante ${fullName}`
+                toast.success("Aprendiz creado", {
+                    description: `Se ha registrado el aprendiz ${fullName}`
                 });
 
                 if (newGroupId !== "none" && groupFilter !== newGroupId && groupFilter !== "all") {
@@ -635,7 +635,7 @@ export function UserManagement({
                 router.refresh();
             } catch (error: any) {
                 toast.error("Error", {
-                    description: error.message || "No se pudo registrar el estudiante"
+                    description: error.message || "No se pudo registrar el aprendiz"
                 });
             }
         });
@@ -649,16 +649,16 @@ export function UserManagement({
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 {!hideMainHeader ? (
                     <div>
-                        <h2 className="text-3xl font-bold tracking-tight">Gestión de Estudiantes</h2>
+                        <h2 className="text-3xl font-bold tracking-tight">Gestión de Aprendices</h2>
                         <p className="text-muted-foreground">
-                            Administra los estudiantes de los grupos de formación
+                            Administra los aprendices de los grupos de formación
                         </p>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs font-semibold px-2.5 py-1">
                             <UsersIcon className="mr-1.5 h-3.5 w-3.5 text-primary" />
-                            {currentTotal} estudiantes registrados
+                            {currentTotal} aprendices registrados
                         </Badge>
                     </div>
                 )}
@@ -666,7 +666,7 @@ export function UserManagement({
                     {!hideMainHeader && (
                         <Badge variant="outline" className="text-sm">
                             <UsersIcon className="mr-2 h-3 w-3" />
-                            {currentTotal} estudiantes totales
+                            {currentTotal} aprendices totales
                         </Badge>
                     )}
                     
@@ -680,10 +680,10 @@ export function UserManagement({
                                     if (emails.length > 0) {
                                         window.location.href = `mailto:${emails.join(',')}`;
                                     } else {
-                                        toast.error("Ninguno de los estudiantes seleccionados tiene un correo registrado");
+                                        toast.error("Ninguno de los aprendices seleccionados tiene un correo registrado");
                                     }
                                 } catch (error) {
-                                    toast.error("Error al obtener los correos de los estudiantes");
+                                    toast.error("Error al obtener los correos de los aprendices");
                                 }
                             }}
                         >
@@ -703,13 +703,13 @@ export function UserManagement({
                                     <HelpCircle className="w-4 h-4 text-primary" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Estudiantes</TooltipContent>
+                            <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Aprendices</TooltipContent>
                         </Tooltip>
                     )}
                     {!isObserver && (
                         <Button onClick={() => setCreateDialogOpen(true)}>
                             <UserPlus className="mr-2 h-4 w-4" />
-                            Crear Estudiante
+                            Crear Aprendiz
                         </Button>
                     )}
                 </div>
@@ -724,13 +724,13 @@ export function UserManagement({
                         </div>
                         <div>
                             <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                Solicitudes de Baneo de Profesores
+                                Solicitudes de Baneo de Instructores
                                 <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold">
                                     {pendingBanRequests.length} pendiente(s)
                                 </Badge>
                             </h4>
                             <p className="text-xs text-slate-600 dark:text-slate-400">
-                                Profesores han enviado solicitudes para que revise y bloquee el acceso a ciertos estudiantes.
+                                Instructores han enviado solicitudes para que revise y bloquee el acceso a ciertos aprendices.
                             </p>
                         </div>
                     </div>
@@ -748,7 +748,7 @@ export function UserManagement({
             <Card>
                 <CardHeader className="pb-3">
                     <CardTitle>Filtros</CardTitle>
-                    <CardDescription>Busca y filtra estudiantes por ficha o etapa</CardDescription>
+                    <CardDescription>Busca y filtra aprendices por ficha o etapa</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <div className="flex flex-col md:flex-row gap-3 items-center">
@@ -855,9 +855,9 @@ export function UserManagement({
             {/* Users Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Estudiantes ({users.length})</CardTitle>
+                    <CardTitle>Aprendices ({users.length})</CardTitle>
                     <CardDescription>
-                        Lista de todos los estudiantes registrados
+                        Lista de todos los aprendices registrados
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -881,7 +881,7 @@ export function UserManagement({
                                                         });
                                                         setSelectedUserIds(ids);
                                                     } catch (e) {
-                                                        toast.error("Error al seleccionar todos los estudiantes");
+                                                        toast.error("Error al seleccionar todos los aprendices");
                                                     } finally {
                                                         setIsLoadingPage(false);
                                                     }
@@ -902,7 +902,7 @@ export function UserManagement({
                                 {users.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={5} className="h-24 text-center">
-                                            No se encontraron estudiantes
+                                            No se encontraron aprendices
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -989,7 +989,7 @@ export function UserManagement({
                                                                 <>
                                                                     <DropdownMenuItem onClick={() => handleOpenEditModal(user)}>
                                                                         <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                                                                        <span>Editar estudiante</span>
+                                                                        <span>Editar aprendiz</span>
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem onClick={() => setHistoryModalStudentId(user.id)}>
                                                                         <History className="mr-2 h-4 w-4 text-purple-600" />
@@ -1058,7 +1058,7 @@ export function UserManagement({
                                                                         }}
                                                                     >
                                                                         <Trash2 className="mr-2 h-4 w-4" />
-                                                                        <span>Eliminar estudiante</span>
+                                                                        <span>Eliminar aprendiz</span>
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}
@@ -1077,7 +1077,7 @@ export function UserManagement({
                     {totalPages > 1 && (
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
                             <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-                                Mostrando {((currentPage - 1) * usersPerPage) + 1} - {Math.min(currentPage * usersPerPage, currentTotal)} de {currentTotal} estudiantes
+                                Mostrando {((currentPage - 1) * usersPerPage) + 1} - {Math.min(currentPage * usersPerPage, currentTotal)} de {currentTotal} aprendices
                             </div>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -1137,9 +1137,9 @@ export function UserManagement({
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar estudiante?</AlertDialogTitle>
+                        <AlertDialogTitle>¿Eliminar aprendiz?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminará permanentemente el estudiante
+                            Esta acción no se puede deshacer. Se eliminará permanentemente el aprendiz
                             {userToDelete && ` "${userToDelete.name || userToDelete.email}"`} y todos sus datos asociados.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -1169,7 +1169,7 @@ export function UserManagement({
                         <DialogTitle>¿Cambiar rol de usuario?</DialogTitle>
                         <DialogDescription>
                             Estás a punto de cambiar el rol de <strong>{pendingRoleChange?.userName}</strong> a{" "}
-                            <strong>{pendingRoleChange?.newRole === "admin" ? "Administrador" : pendingRoleChange?.newRole === "teacher" ? "Profesor" : "Estudiante"}</strong>.
+                            <strong>{pendingRoleChange?.newRole === "admin" ? "Administrador" : pendingRoleChange?.newRole === "teacher" ? "Instructor" : "Aprendiz"}</strong>.
                             <br /><br />
                             Esta acción puede afectar los permisos y accesos del usuario en el sistema.
                             <br /><br />
@@ -1260,9 +1260,9 @@ export function UserManagement({
             }} >
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>Registrar Nuevo Estudiante</DialogTitle>
+                        <DialogTitle>Registrar Nuevo Aprendiz</DialogTitle>
                         <DialogDescription>
-                            Ingresa los datos personales del estudiante y asígnalo a un grupo.
+                            Ingresa los datos personales del aprendiz y asígnalo a un grupo.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -1361,7 +1361,7 @@ export function UserManagement({
                             onClick={handleCreateUser}
                             disabled={isPending}
                         >
-                            {isPending ? "Registrando..." : "Registrar Estudiante"}
+                            {isPending ? "Registrando..." : "Registrar Aprendiz"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1377,7 +1377,7 @@ export function UserManagement({
             }}>
                 <DialogContent className="sm:max-w-[450px]">
                     <DialogHeader>
-                        <DialogTitle>Registrar Novedad de Estudiante</DialogTitle>
+                        <DialogTitle>Registrar Novedad de Aprendiz</DialogTitle>
                         <DialogDescription>
                             Escribe la novedad o estado especial para {userForNovedad ? formatName(userForNovedad.name, userForNovedad.profile) : ""}. Esta novedad será visible para todos los roles.
                         </DialogDescription>
@@ -1452,9 +1452,9 @@ export function UserManagement({
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Editar Estudiante</DialogTitle>
+                        <DialogTitle>Editar Aprendiz</DialogTitle>
                         <DialogDescription>
-                            Modifica la información general del estudiante.
+                            Modifica la información general del aprendiz.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
@@ -1536,10 +1536,10 @@ export function UserManagement({
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-lg font-bold">
                             <AlertCircle className="w-5 h-5" />
-                            Solicitudes de Baneo de Profesores ({pendingBanRequests.length})
+                            Solicitudes de Baneo de Instructores ({pendingBanRequests.length})
                         </DialogTitle>
                         <DialogDescription>
-                            Revisa las solicitudes enviadas por los profesores para bloquear el acceso de estudiantes. Puedes aprobar el baneo o desestimar la solicitud.
+                            Revisa las solicitudes enviadas por los instructores para bloquear el acceso de aprendices. Puedes aprobar el baneo o desestimar la solicitud.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -1560,7 +1560,7 @@ export function UserManagement({
 
                                 <div className="space-y-1 text-xs">
                                     <p className="font-semibold text-slate-700 dark:text-slate-300">
-                                        Solicitado por: <span className="text-primary font-bold">{req.teacher?.name || "Profesor"}</span> ({req.teacher?.email})
+                                        Solicitado por: <span className="text-primary font-bold">{req.teacher?.name || "Instructor"}</span> ({req.teacher?.email})
                                     </p>
                                     {req.course?.title && (
                                         <p className="text-muted-foreground">Materia: {req.course.title}</p>

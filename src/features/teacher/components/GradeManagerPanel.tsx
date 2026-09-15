@@ -239,7 +239,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
       if (payload.length > 0) {
         const res = await saveStudentGrades(activityId, payload);
         if (res.success) {
-          toast.success(`Nota ${bulkGradeValue} asignada a ${assignedCount} estudiantes`);
+          toast.success(`Nota ${bulkGradeValue} asignada a ${assignedCount} aprendices`);
           setIsBulkGradeDialogOpen(false);
         } else {
           toast.error("Error guardando calificaciones en base de datos");
@@ -354,7 +354,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
             <div className="relative w-full sm:max-w-[300px]">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar estudiante..."
+                placeholder="Buscar aprendiz..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-9 bg-background shadow-sm border-border/60 w-full"
@@ -402,7 +402,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
             <Table className="min-w-[800px]">
               <TableHeader className="bg-muted/50 backdrop-blur-md sticky top-0 z-30">
                 <TableRow>
-                  <TableHead className="font-bold text-xs tracking-wider uppercase min-w-[250px] sticky left-0 bg-muted/80 backdrop-blur-md z-40 shadow-[1px_0_0_0_theme(colors.border)] pl-4">Estudiante</TableHead>
+                  <TableHead className="font-bold text-xs tracking-wider uppercase min-w-[250px] sticky left-0 bg-muted/80 backdrop-blur-md z-40 shadow-[1px_0_0_0_theme(colors.border)] pl-4">Aprendiz</TableHead>
                 {activities.map((act, index) => (
                   <TableHead key={act.id} className="w-[100px] min-w-[100px] max-w-[100px] px-1 py-2 align-top border-l border-muted/50 text-center">
                     <div className="flex flex-col h-full items-center justify-between group px-1">
@@ -535,7 +535,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
                       Permitir Enlace de Entrega
                     </Label>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Los estudiantes podrán enviar un enlace (URL) con su trabajo para esta actividad.
+                      Los aprendices podrán enviar un enlace (URL) con su trabajo para esta actividad.
                     </p>
                   </div>
                 </div>
@@ -572,7 +572,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
           <DialogHeader className="p-6 pb-4 border-b shrink-0">
             <DialogTitle>Asignación Masiva de Notas</DialogTitle>
             <DialogDescription>
-              Asigna una misma nota a varios estudiantes para la actividad <strong>{bulkGradeActivity?.title}</strong>.
+              Asigna una misma nota a varios aprendices para la actividad <strong>{bulkGradeActivity?.title}</strong>.
             </DialogDescription>
           </DialogHeader>
           
@@ -585,7 +585,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos los estudiantes</SelectItem>
+                    <SelectItem value="all">Todos los aprendices</SelectItem>
                     {workGroups.map(wg => (
                       <SelectItem key={wg.id} value={wg.id}>{wg.name}</SelectItem>
                     ))}
@@ -607,7 +607,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
                 />
               </div>
               <div className="flex-1">
-                <Label htmlFor="bulk-search" className="text-sm font-bold text-muted-foreground">Buscar Estudiante</Label>
+                <Label htmlFor="bulk-search" className="text-sm font-bold text-muted-foreground">Buscar Aprendiz</Label>
                 <Input 
                   id="bulk-search" 
                   placeholder="Filtrar por nombre..."
@@ -637,7 +637,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
                         aria-label="Seleccionar todos"
                       />
                     </TableHead>
-                    <TableHead>Estudiante</TableHead>
+                    <TableHead>Aprendiz</TableHead>
                     <TableHead className="text-right">Nota Actual</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -673,7 +673,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
                   {filteredStudents.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={activities.length + 2} className="h-24 text-center text-muted-foreground">
-                        No se encontraron estudiantes que coincidan con la búsqueda.
+                        No se encontraron aprendices que coincidan con la búsqueda.
                       </TableCell>
                     </TableRow>
                   )}
@@ -685,7 +685,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
           <DialogFooter className="p-6 border-t bg-muted/10 shrink-0">
             <Button variant="outline" onClick={() => setIsBulkGradeDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleApplyBulkGrade} disabled={isPending || !bulkGradeValue || bulkSelectedStudents.length === 0}>
-              Aplicar a {bulkSelectedStudents.length} {bulkSelectedStudents.length === 1 ? 'estudiante' : 'estudiantes'}
+              Aplicar a {bulkSelectedStudents.length} {bulkSelectedStudents.length === 1 ? 'aprendiz' : 'aprendices'}
             </Button>
           </DialogFooter>
         </DialogContent>

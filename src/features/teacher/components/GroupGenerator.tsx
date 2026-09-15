@@ -139,7 +139,7 @@ function DroppableContainer({
                 {children}
                 {items.length === 0 && (
                     <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground border-2 border-dashed rounded-lg m-1">
-                        Arrastra estudiantes aquí
+                        Arrastra aprendices aquí
                     </div>
                 )}
             </CardContent>
@@ -238,13 +238,13 @@ export function GroupGenerator({ students: initialStudents }: GroupGeneratorProp
             if (group.students.length === 0) {
                 data.push({
                     Grupo: group.name,
-                    Estudiante: "Sin estudiantes"
+                    Aprendiz: "Sin aprendices"
                 });
             } else {
                 group.students.forEach(student => {
                     data.push({
                         Grupo: group.name,
-                        Estudiante: formatName(student.name, student.profile)
+                        Aprendiz: formatName(student.name, student.profile)
                     });
                 });
             }
@@ -414,7 +414,7 @@ export function GroupGenerator({ students: initialStudents }: GroupGeneratorProp
                                 <span>Sin Grupo</span>
                                 <Badge variant="secondary">{ungrouped.length}</Badge>
                             </CardTitle>
-                            <CardDescription>Estudiantes disponibles</CardDescription>
+                            <CardDescription>Aprendices disponibles</CardDescription>
                             <div className="pt-4 flex gap-2">
                                 <Button
                                     className="w-full"
@@ -439,7 +439,7 @@ export function GroupGenerator({ students: initialStudents }: GroupGeneratorProp
                                     ))}
                                     {ungrouped.length === 0 && (
                                         <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
-                                            Todos los estudiantes asignados
+                                            Todos los aprendices asignados
                                         </div>
                                     )}
                                 </div>

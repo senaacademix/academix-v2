@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { populateCoursesFallbackDescriptions } from "@/features/teacher/services/courseService";
 
 
 async function getSession() {
@@ -280,6 +281,8 @@ export async function getStudentDocumentation(targetStudentId?: string) {
         ...enrollments.map((e) => e.course),
         ...groupCourses,
     ];
+
+    await populateCoursesFallbackDescriptions(all);
 
     return all.filter((c) => {
         if (seen.has(c.id)) return false;

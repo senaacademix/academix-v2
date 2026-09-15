@@ -58,16 +58,16 @@ interface UsersTabHelpConfig {
 const USERS_TABS_HELP_CONFIG: Record<UsersTabKey, UsersTabHelpConfig> = {
   students: {
     key: "students",
-    tabLabel: "Estudiantes y Matrícula",
-    title: "Directorio de Estudiantes, Fichas y Matrícula",
-    badge: "Módulo: Estudiantes",
+    tabLabel: "Aprendices y Matrícula",
+    title: "Directorio de Aprendices, Fichas y Matrícula",
+    badge: "Módulo: Aprendices",
     badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
     icon: <GraduationCap className="w-5 h-5 text-blue-500" />,
     bgIcon: "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
     subtitle: "Registro institucional de aprendices, control de fichas de formación, novedades y vinculación académica.",
     features: [
       {
-        title: "Creación Individual de Estudiantes",
+        title: "Creación Individual de Aprendices",
         description: "Registra aprendices con sus nombres, apellidos, documento de identidad, correo institucional, teléfono y ficha de formación.",
         icon: <UserPlus className="w-4 h-4 text-blue-500" />,
       },
@@ -97,32 +97,32 @@ const USERS_TABS_HELP_CONFIG: Record<UsersTabKey, UsersTabHelpConfig> = {
         icon: <ShieldCheck className="w-4 h-4 text-blue-500" />,
       },
     ],
-    workflowTip: "Verifica que el correo electrónico institucional y el número de ficha estén correctamente asignados a cada estudiante para que reciban automáticamente sus horarios semanales y notificaciones de clase.",
+    workflowTip: "Verifica que el correo electrónico institucional y el número de ficha estén correctamente asignados a cada aprendiz para que reciban automáticamente sus horarios semanales y notificaciones de clase.",
   },
 
   teachers: {
     key: "teachers",
-    tabLabel: "Cuerpo Docente",
-    title: "Gestión de Profesores, Disponibilidad y Cualificación",
-    badge: "Módulo: Docentes",
+    tabLabel: "Instructores",
+    title: "Gestión de Instructores, Disponibilidad y Cualificación",
+    badge: "Módulo: Instructores",
     badgeColor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
     icon: <School className="w-5 h-5 text-indigo-500" />,
     bgIcon: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
     subtitle: "Directorio de instructores, disponibilidades horarias semanales y cualificación de materias curriculares.",
     features: [
       {
-        title: "Registro y Directorio Docente",
-        description: "Registra nuevos profesores con su identificación, teléfono y correo electrónico para habilitar su acceso a la plataforma.",
+        title: "Registro y Directorio de Instructores",
+        description: "Registra nuevos instructores con su identificación, teléfono y correo electrónico para habilitar su acceso a la plataforma.",
         icon: <UserPlus className="w-4 h-4 text-indigo-500" />,
       },
       {
         title: "Matriz de Disponibilidad Horaria",
-        description: "Configura las jornadas (mañana, tarde, noche) y días de la semana en que cada docente está disponible para impartir clases.",
+        description: "Configura las jornadas (mañana, tarde, noche) y días de la semana en que cada instructor está disponible para impartir clases.",
         icon: <Clock className="w-4 h-4 text-indigo-500" />,
       },
       {
         title: "Cualificación de Competencias y Materias",
-        description: "Habilita las asignaturas del diseño curricular que el perfil técnico y pedagógico del profesor le faculta orientar.",
+        description: "Habilita las asignaturas del diseño curricular que el perfil técnico y pedagógico del instructor le faculta orientar.",
         icon: <BookOpen className="w-4 h-4 text-indigo-500" />,
       },
       {
@@ -132,16 +132,16 @@ const USERS_TABS_HELP_CONFIG: Record<UsersTabKey, UsersTabHelpConfig> = {
       },
       {
         title: "Restablecimiento Seguro de Claves",
-        description: "Restaura contraseñas de acceso al sistema para docentes que hayan olvidado sus credenciales.",
+        description: "Restaura contraseñas de acceso al sistema para instructores que hayan olvidado sus credenciales.",
         icon: <ShieldCheck className="w-4 h-4 text-indigo-500" />,
       },
       {
         title: "Vinculación a Fichas de Formación",
-        description: "Asocia a los profesores con los grupos y fichas a su cargo para permitirles registrar asistencia y calificaciones.",
+        description: "Asocia a los instructores con los grupos y fichas a su cargo para permitirles registrar asistencia y calificaciones.",
         icon: <Layers className="w-4 h-4 text-indigo-500" />,
       },
     ],
-    workflowTip: "Configura y bloquea la disponibilidad de tus profesores antes de usar el constructor de horarios. El sistema cruza automáticamente estos datos para impedir la sobreasignación o traslape de franjas.",
+    workflowTip: "Configura y bloquea la disponibilidad de tus instructores antes de usar el constructor de horarios. El sistema cruza automáticamente estos datos para impedir la sobreasignación o traslape de franjas.",
   },
 
   plans: {
@@ -160,8 +160,8 @@ const USERS_TABS_HELP_CONFIG: Record<UsersTabKey, UsersTabHelpConfig> = {
         icon: <ClipboardList className="w-4 h-4 text-rose-500" />,
       },
       {
-        title: "Asignación de Docente Tutor",
-        description: "Vincula al profesor responsable de concertar, revisar y calificar las actividades de nivelación acordadas.",
+        title: "Asignación de Instructor Tutor",
+        description: "Vincula al instructor responsable de concertar, revisar y calificar las actividades de nivelación acordadas.",
         icon: <School className="w-4 h-4 text-rose-500" />,
       },
       {

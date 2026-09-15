@@ -69,7 +69,7 @@ function DroppableColumn({ id, title, students, onNameChange, onDelete, isUnassi
         {isUnassigned ? (
           <div>
             <h3 className="font-bold text-sm">{title}</h3>
-            <p className="text-xs text-muted-foreground">{students.length} estudiantes</p>
+            <p className="text-xs text-muted-foreground">{students.length} aprendices</p>
           </div>
         ) : (
           <>
@@ -98,7 +98,7 @@ function DroppableColumn({ id, title, students, onNameChange, onDelete, isUnassi
           ))}
           {students.length === 0 && (
             <div className="h-24 border-2 border-dashed border-muted flex items-center justify-center rounded-lg text-xs text-muted-foreground">
-              Arrastra estudiantes aquí
+              Arrastra aprendices aquí
             </div>
           )}
         </div>
@@ -125,7 +125,7 @@ function DroppableUnassigned({ students }: { students: any[] }) {
         ))}
         {students.length === 0 && (
           <div className="h-32 border-2 border-dashed flex items-center justify-center rounded-lg text-xs text-muted-foreground">
-            Todos los estudiantes tienen equipo
+            Todos los aprendices tienen equipo
           </div>
         )}
       </div>
@@ -247,7 +247,7 @@ export function WorkGroupManagerDialog({
               Gestión de Equipos {courseName && <span className="text-muted-foreground font-normal ml-2">| {courseName}</span>}
             </DialogTitle>
             <DialogDescription className="text-xs mt-0.5">
-              Arrastra estudiantes desde la lista principal hacia los equipos para organizarlos.
+              Arrastra aprendices desde la lista principal hacia los equipos para organizarlos.
             </DialogDescription>
           </div>
           <div className="flex items-center gap-3">
@@ -268,8 +268,8 @@ export function WorkGroupManagerDialog({
             {/* Left Column: Unassigned */}
             <div className="w-[300px] xl:w-[350px] shadow-[1px_0_10px_rgba(0,0,0,0.05)] z-20 h-full bg-background border-r flex flex-col shrink-0">
               <div className="p-4 border-b bg-background sticky top-0 z-10">
-                <h3 className="font-bold">Estudiantes Disponibles</h3>
-                <p className="text-xs text-muted-foreground">{unassignedStudents.length} estudiantes sin equipo</p>
+                <h3 className="font-bold">Aprendices Disponibles</h3>
+                <p className="text-xs text-muted-foreground">{unassignedStudents.length} aprendices sin equipo</p>
               </div>
 <DroppableUnassigned students={unassignedStudents} />
             </div>

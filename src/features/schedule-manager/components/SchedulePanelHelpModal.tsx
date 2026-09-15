@@ -74,7 +74,7 @@ const PANEL_HELP_CONFIG: Record<SchedulePanelType, PanelHelpConfig> = {
       },
       {
         title: "Base para el Constructor de Clases",
-        description: "Las franjas definidas aquí crean automáticamente la estructura de celdas en el constructor interactivo de horarios donde se ubicarán los docentes y ambientes.",
+        description: "Las franjas definidas aquí crean automáticamente la estructura de celdas en el constructor interactivo de horarios donde se ubicarán los instructores y ambientes.",
         icon: <CalendarClock className="w-4 h-4 text-blue-500" />,
       },
     ],
@@ -82,8 +82,8 @@ const PANEL_HELP_CONFIG: Record<SchedulePanelType, PanelHelpConfig> = {
   },
 
   teachers: {
-    title: "Disponibilidad y Asignación Docente",
-    badge: "Panel de Profesores",
+    title: "Disponibilidad y Asignación de Instructores",
+    badge: "Panel de Instructores",
     badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
     icon: <UserCheck className="w-6 h-6 text-emerald-500" />,
     bgIcon: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
@@ -91,26 +91,26 @@ const PANEL_HELP_CONFIG: Record<SchedulePanelType, PanelHelpConfig> = {
     features: [
       {
         title: "Disponibilidad Horaria Semanal",
-        description: "Consulta y edita los bloques de tiempo (mañana, tarde o noche) en que cada profesor está disponible para orientar formación.",
+        description: "Consulta y edita los bloques de tiempo (mañana, tarde o noche) en que cada instructor está disponible para orientar formación.",
         icon: <Clock className="w-4 h-4 text-emerald-500" />,
       },
       {
         title: "Materias y Competencias Habilitadas",
-        description: "Activa o desactiva las asignaturas del programa formativo que cada docente tiene el perfil profesional para dictar.",
+        description: "Activa o desactiva las asignaturas del programa formativo que cada instructor tiene el perfil profesional para impartir.",
         icon: <BookOpen className="w-4 h-4 text-emerald-500" />,
       },
       {
-        title: "Trazabilidad por Rol (Profesor vs Gestor)",
-        description: "Cada modificación individual queda firmada por el rol que la realizó (Profesor o Gestor), garantizando auditoría clara de los acuerdos de jornada.",
+        title: "Trazabilidad por Rol (Instructor vs Gestor)",
+        description: "Cada modificación individual queda firmada por el rol que la realizó (Instructor o Gestor), garantizando auditoría clara de los acuerdos de jornada.",
         icon: <ShieldCheck className="w-4 h-4 text-emerald-500" />,
       },
       {
         title: "Bloqueo y Seguridad de Datos",
-        description: "Permite bloquear la edición de los profesores una vez concertada la disponibilidad, evitando modificaciones posteriores no autorizadas.",
+        description: "Permite bloquear la edición de los instructores una vez concertada la disponibilidad, evitando modificaciones posteriores no autorizadas.",
         icon: <Lock className="w-4 h-4 text-emerald-500" />,
       },
     ],
-    workflowTip: "Puedes guardar franjas individuales con el botón '✓ Guardar' de cada tarjeta o usar 'Guardar Cambios' para sincronizar todas las modificaciones del docente a la vez.",
+    workflowTip: "Puedes guardar franjas individuales con el botón '✓ Guardar' de cada tarjeta o usar 'Guardar Cambios' para sincronizar todas las modificaciones del instructor a la vez.",
   },
 
   events: {
@@ -128,7 +128,7 @@ const PANEL_HELP_CONFIG: Record<SchedulePanelType, PanelHelpConfig> = {
       },
       {
         title: "Segmentación por Audiencia",
-        description: "Elige quién puede ver el evento: Público General, Solo Profesores, Solo Estudiantes o Fichas/Grupos específicos.",
+        description: "Elige quién puede ver el evento: Público General, Solo Instructores, Solo Aprendices o Fichas/Grupos específicos.",
         icon: <Users className="w-4 h-4 text-purple-500" />,
       },
       {
@@ -137,8 +137,8 @@ const PANEL_HELP_CONFIG: Record<SchedulePanelType, PanelHelpConfig> = {
         icon: <Search className="w-4 h-4 text-purple-500" />,
       },
       {
-        title: "Integración con Horario de Estudiantes y Docentes",
-        description: "Los eventos públicos o dirigidos se reflejan automáticamente en la vista de horario semanal de los aprendices y docentes respectivos.",
+        title: "Integración con Horario de Aprendices e Instructores",
+        description: "Los eventos públicos o dirigidos se reflejan automáticamente en la vista de horario semanal de los aprendices e instructores respectivos.",
         icon: <ExternalLink className="w-4 h-4 text-purple-500" />,
       },
     ],
@@ -151,7 +151,7 @@ const PANEL_HELP_CONFIG: Record<SchedulePanelType, PanelHelpConfig> = {
     badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
     icon: <AlertTriangle className="w-6 h-6 text-amber-500" />,
     bgIcon: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
-    subtitle: "Registra incidencias, suspensiones, cambios de aula o docentes que alteren temporalmente la rutina de clases.",
+    subtitle: "Registra incidencias, suspensiones, cambios de aula o instructores que alteren temporalmente la rutina de clases.",
     features: [
       {
         title: "Suspensiones de Jornada y Festivos",
@@ -187,26 +187,26 @@ const PANEL_HELP_CONFIG: Record<SchedulePanelType, PanelHelpConfig> = {
     features: [
       {
         title: "Matriz de Asignación Semanal",
-        description: "Organiza las materias de cada ficha en su respectiva franja horaria arrastrando o seleccionando el profesor y ambiente adecuado.",
+        description: "Organiza las materias de cada ficha en su respectiva franja horaria arrastrando o seleccionando el instructor y ambiente adecuado.",
         icon: <CalendarDays className="w-4 h-4 text-blue-600" />,
       },
       {
         title: "Detección de Colisiones y Cruces",
-        description: "El sistema valida en tiempo real que ningún profesor ni aula de formación tenga dos clases asignadas a la misma hora.",
+        description: "El sistema valida en tiempo real que ningún instructor ni aula de formación tenga dos clases asignadas a la misma hora.",
         icon: <ShieldCheck className="w-4 h-4 text-blue-600" />,
       },
       {
         title: "Control de Intensidad Horaria",
-        description: "Monitorea las horas programadas por materia frente a las horas requeridas del trimestre y la carga laboral semanal del docente.",
+        description: "Monitorea las horas programadas por materia frente a las horas requeridas del trimestre y la carga laboral semanal del instructor.",
         icon: <Clock className="w-4 h-4 text-blue-600" />,
       },
       {
         title: "Exportación Oficial en PDF y Excel",
-        description: "Genera el consolidado general de fichas o los horarios individuales por profesor listos para imprimir o remitir a coordinación.",
+        description: "Genera el consolidado general de fichas o los horarios individuales por instructor listos para imprimir o remitir a coordinación.",
         icon: <FileText className="w-4 h-4 text-blue-600" />,
       },
     ],
-    workflowTip: "Antes de publicar el horario oficial a los estudiantes, verifica que no queden horas pendientes por asignar y que ningún docente exceda su tope semanal.",
+    workflowTip: "Antes de publicar el horario oficial a los aprendices, verifica que no queden horas pendientes por asignar y que ningún instructor exceda su tope semanal.",
   },
 };
 

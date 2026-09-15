@@ -32,7 +32,7 @@ export function SharedContentList({ contents }: SharedContentProps) {
                 <div className="space-y-1">
                     <p className="text-lg font-semibold">Sin recursos publicados</p>
                     <p className="text-sm text-muted-foreground max-w-xs">
-                        Tu profesor aún no ha compartido enlaces en esta materia.
+                        Tu instructor aún no ha compartido enlaces en esta materia.
                     </p>
                 </div>
             </div>

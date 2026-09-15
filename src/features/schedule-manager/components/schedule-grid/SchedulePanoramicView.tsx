@@ -164,7 +164,7 @@ export function SchedulePanoramicView({
                     if (classesByDay[s.dayOfWeek]) {
                       classesByDay[s.dayOfWeek].push({
                         courseTitle: c.title,
-                        teacherName: s.teacher?.name || c.teacher?.name || "Sin docente",
+                        teacherName: s.teacher?.name || c.teacher?.name || "Sin instructor",
                         startTime: s.startTime,
                         endTime: s.endTime,
                       });
@@ -298,7 +298,7 @@ export function SchedulePanoramicView({
                                     {cls.teacherName && (
                                       <p className="flex items-center gap-1.5 text-foreground">
                                         <GraduationCap className="w-3 h-3 text-primary shrink-0" />
-                                        <span>Docente: {getCleanTeacherName(cls.teacherName)}</span>
+                                        <span>Instructor: {getCleanTeacherName(cls.teacherName)}</span>
                                       </p>
                                     )}
 

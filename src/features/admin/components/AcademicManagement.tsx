@@ -51,8 +51,12 @@ import {
     ChevronRight, Layers, Clock, X, Info, GraduationCap, ArrowLeft, ArrowUpRight, GripVertical,
     AlertCircle, Building, Code, Database, Binary, MessageSquare, Terminal,
     ShieldCheck, Cloud, Rocket, NotebookTabs, Lock as LockIcon, Download,
-    Activity, Upload, AlertTriangle, School, Eye, HelpCircle
+    Activity, Upload, AlertTriangle, School, Eye, HelpCircle, FileText, Loader2,
+    ImageIcon, Link as LinkIcon
 } from "lucide-react";
+import { generateAndDownloadCurriculumPdf, CurriculumExportOptions } from "../utils/curriculumPdfExport";
+import { Switch } from "@/components/ui/switch";
+import { formatCalendarDate } from "@/lib/dateUtils";
 import {
     DndContext,
     closestCenter,
@@ -599,10 +603,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             try {
                 if (lock) {
                     await Promise.all(selectedTeacherIds.map(id => adminLockTeacherAvailabilityAction(id)));
-                    toast.success("Disponibilidad aprobada y bloqueada para los docentes seleccionados");
+                    toast.success("Disponibilidad aprobada y bloqueada para los instructores seleccionados");
                 } else {
                     await Promise.all(selectedTeacherIds.map(id => unlockTeacherAvailabilityAction(id)));
-                    toast.success("Disponibilidad desbloqueada para los docentes seleccionados");
+                    toast.success("Disponibilidad desbloqueada para los instructores seleccionados");
                 }
                 setSelectedTeacherIds([]);
                 await refreshAll();
@@ -618,10 +622,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             try {
                 if (lock) {
                     await Promise.all(selectedTeacherIds.map(id => adminLockTeacherQualificationsAction(id)));
-                    toast.success("Materias aprobadas y bloqueadas para los docentes seleccionados");
+                    toast.success("Materias aprobadas y bloqueadas para los instructores seleccionados");
                 } else {
                     await Promise.all(selectedTeacherIds.map(id => unlockTeacherQualificationsAction(id)));
-                    toast.success("Materias desbloqueadas para los docentes seleccionados");
+                    toast.success("Materias desbloqueadas para los instructores seleccionados");
                 }
                 setSelectedTeacherIds([]);
                 await refreshAll();
@@ -636,11 +640,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         startTransition(async () => {
             try {
                 await Promise.all(selectedTeacherIds.map(id => deleteUserAction(id)));
-                toast.success("Docentes seleccionados eliminados con éxito del sistema");
+                toast.success("Instructores seleccionados eliminados con éxito del sistema");
                 setSelectedTeacherIds([]);
                 await refreshAll();
             } catch (error: any) {
-                toast.error(error.message || "Error al eliminar los docentes seleccionados");
+                toast.error(error.message || "Error al eliminar los instructores seleccionados");
             }
         });
     };
@@ -1149,7 +1153,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 if (groupCourseToEdit) {
                     await updateGroupCourseScheduleAction(groupCourseToEdit.id, {
                         title: groupCourseTitle,
-                        description: "",
+                        description: groupCourseDescription || undefined,
                         weeklyHours: groupCourseWeeklyHours,
                         schedules
                     });
@@ -1162,7 +1166,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                     await scheduleGroupCourseAction({
                         title: groupCourseTitle,
-                        description: "",
+                        description: groupCourseDescription || undefined,
                         weeklyHours: groupCourseWeeklyHours,
                         groupId: managingGroup!.id,
                         periodId,
@@ -1427,7 +1431,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                         <span>Gestionar</span>
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent><p>Gestionar Estudiantes</p></TooltipContent>
+                                                <TooltipContent><p>Gestionar Aprendices</p></TooltipContent>
                                             </Tooltip>
                                             {!isObserver && (
                                                 <>
@@ -1493,12 +1497,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         startTransition(async () => {
             try {
                 await assignStudentToGroupAction(studentId, assign ? selectedGroupForStudents.id : null);
-                toast.success(assign ? "Estudiante agregado al grupo" : "Estudiante removido del grupo");
+                toast.success(assign ? "Aprendiz agregado al grupo" : "Aprendiz removido del grupo");
                 
                 await refreshAll();
                 await fetchSystemStudents();
             } catch (error: any) {
-                toast.error(error.message || "Error al asignar estudiante");
+                toast.error(error.message || "Error al asignar aprendiz");
             }
         });
     };
@@ -1514,12 +1518,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         startTransition(async () => {
             try {
                 await assignTeacherToProgramAction(selectedProgram.id, teacherToConfirm.id, teacherToConfirm.assign);
-                toast.success(teacherToConfirm.assign ? "Profesor asociado exitosamente" : "Profesor desasociado exitosamente");
+                toast.success(teacherToConfirm.assign ? "Instructor asociado exitosamente" : "Instructor desasociado exitosamente");
                 setTeacherConfirmOpen(false);
                 setTeacherToConfirm(null);
                 await refreshAll();
             } catch (error: any) {
-                toast.error(error.message || "Error al asociar profesor");
+                toast.error(error.message || "Error al asociar instructor");
             }
         });
     };
@@ -1554,7 +1558,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     telefono: manualTelefono || undefined
                 });
 
-                toast.success("Estudiante registrado exitosamente");
+                toast.success("Aprendiz registrado exitosamente");
                 
                 // Clear manual inputs
                 setManualIdentificacion("");
@@ -1566,7 +1570,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 await refreshAll();
                 await fetchSystemStudents();
             } catch (error: any) {
-                toast.error(error.message || "Error al registrar estudiante");
+                toast.error(error.message || "Error al registrar aprendiz");
             }
         });
     };
@@ -1597,7 +1601,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     const handleExportPeriodsJSON = () => {
         if (!selectedProgram) return;
-        simulateExportProgress("Generando archivo de periodos y materias...", () => {
+        simulateExportProgress("Generando archivo de malla curricular...", () => {
             try {
                 const dataToExport = selectedProgram.periods.map(period => ({
                     name: period.name,
@@ -1617,15 +1621,66 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 )}`;
                 const downloadAnchor = document.createElement("a");
                 downloadAnchor.setAttribute("href", jsonString);
-                downloadAnchor.setAttribute("download", `Periodos_y_Materias_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
+                downloadAnchor.setAttribute("download", `Malla_Curricular_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
                 document.body.appendChild(downloadAnchor);
                 downloadAnchor.click();
                 downloadAnchor.remove();
-                toast.success("Periodos y materias exportados con éxito");
+                toast.success("Malla curricular exportada con éxito");
             } catch (err: any) {
                 toast.error("Error al exportar: " + err.message);
             }
         });
+    };
+
+    const [isPdfConfigModalOpen, setIsPdfConfigModalOpen] = useState(false);
+    const [pdfConfig, setPdfConfig] = useState<CurriculumExportOptions>({
+        institutionTag: "AcademiX • Sistema Institucional de Gestión y Programación Académica",
+        mainTitle: "",
+        programName: "",
+        programDescription: "",
+        badgeText: "Plan de Estudios Oficial",
+        issueDate: "",
+        includeSpecialPeriods: false, // por defecto apagado
+        includeDetailedCatalogue: true,
+        logoUrl: "",
+        centerLogo: false,
+    });
+    const [isExportingCurriculumPDF, setIsExportingCurriculumPDF] = useState(false);
+
+    const openPdfConfigModal = () => {
+        if (!selectedProgram) {
+            toast.error("No hay un programa seleccionado");
+            return;
+        }
+        setPdfConfig(prev => ({
+            institutionTag: prev.institutionTag || "AcademiX • Sistema Institucional de Gestión y Programación Académica",
+            mainTitle: `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`,
+            programName: selectedProgram.name,
+            programDescription: selectedProgram.description || "",
+            badgeText: prev.badgeText || "Plan de Estudios Oficial",
+            issueDate: formatCalendarDate(new Date(), "dd 'de' MMMM, yyyy"),
+            includeSpecialPeriods: false, // por defecto apagado
+            includeDetailedCatalogue: true,
+            logoUrl: prev.logoUrl || "",
+            centerLogo: prev.centerLogo || false,
+        }));
+        setIsPdfConfigModalOpen(true);
+    };
+
+    const handleExecuteDownloadCurriculumPdf = async () => {
+        if (!selectedProgram) return;
+        setIsExportingCurriculumPDF(true);
+        const toastId = toast.loading("Generando Malla Curricular en PDF...");
+        try {
+            await generateAndDownloadCurriculumPdf(selectedProgram, pdfConfig);
+            toast.success("Malla Curricular descargada con éxito", { id: toastId });
+            setIsPdfConfigModalOpen(false);
+        } catch (err: any) {
+            console.error("Error al exportar Malla Curricular:", err);
+            toast.error("Error al generar el PDF: " + (err.message || "Error desconocido"), { id: toastId });
+        } finally {
+            setIsExportingCurriculumPDF(false);
+        }
     };
 
     const handleImportPeriodsJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1704,8 +1759,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 if (failedList.length > 0) {
                     setImportSummary({
                         isOpen: true,
-                        title: "Reporte de Importación de Periodos y Materias",
-                        description: "Resumen del proceso de guardado de periodos en este programa.",
+                        title: "Reporte de Importación de Malla Curricular",
+                        description: "Resumen del proceso de guardado de la malla curricular en este programa.",
                         entityName: "Periodos",
                         total: data.length,
                         successCount: successCount,
@@ -1737,7 +1792,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     periodName: null,
                     students: group.students.map(student => ({
                         identificacion: student.profile?.identificacion,
-                        nombres: student.profile?.nombres || student.name.split(" ")[0] || "Estudiante",
+                        nombres: student.profile?.nombres || student.name.split(" ")[0] || "Aprendiz",
                         apellido: student.profile?.apellido || student.name.split(" ").slice(1).join(" ") || "",
                         email: student.email,
                         telefono: student.profile?.telefono || null
@@ -1748,11 +1803,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 )}`;
                 const downloadAnchor = document.createElement("a");
                 downloadAnchor.setAttribute("href", jsonString);
-                downloadAnchor.setAttribute("download", `Grupos_y_Alumnos_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
+                downloadAnchor.setAttribute("download", `Grupos_y_Aprendices_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
                 document.body.appendChild(downloadAnchor);
                 downloadAnchor.click();
                 downloadAnchor.remove();
-                toast.success("Grupos y alumnos exportados con éxito");
+                toast.success("Grupos y aprendices exportados con éxito");
             } catch (err: any) {
                 toast.error("Error al exportar: " + err.message);
             }
@@ -1787,7 +1842,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                 setProgressModal({
                     isOpen: true,
-                    title: `Iniciando importación de ${data.length} grupos y ${totalStudentsInFile} estudiantes...`,
+                    title: `Iniciando importación de ${data.length} grupos y ${totalStudentsInFile} aprendices...`,
                     progress: 0,
                     currentCount: 0,
                     totalCount: totalOperations,
@@ -1821,7 +1876,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         if (!groupResult.success || !groupResult.groupId) {
                             failedList.push({
                                 name: groupResult.groupName || groupName,
-                                detail: `${students.length} estudiantes omitidos`,
+                                detail: `${students.length} aprendices omitidos`,
                                 error: groupResult.error || "Error al procesar el grupo",
                             });
                             // Advance skipped students
@@ -1844,13 +1899,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 continue;
                             }
 
-                            const studentName = `${student.nombres || student.name || "Estudiante"} ${student.apellido || ""}`.trim() || student.email || `Estudiante ${sIdx + 1}`;
+                            const studentName = `${student.nombres || student.name || "Aprendiz"} ${student.apellido || ""}`.trim() || student.email || `Aprendiz ${sIdx + 1}`;
                             completedOperations++;
                             const studentProgress = Math.round((completedOperations / totalOperations) * 100);
 
                             setProgressModal({
                                 isOpen: true,
-                                title: `Grupo ${groupName} (${i + 1}/${data.length}) → Guardando Alumno (${sIdx + 1}/${students.length}): ${studentName}`,
+                                title: `Grupo ${groupName} (${i + 1}/${data.length}) → Guardando Aprendiz (${sIdx + 1}/${students.length}): ${studentName}`,
                                 progress: studentProgress,
                                 currentCount: completedOperations,
                                 totalCount: totalOperations,
@@ -1861,7 +1916,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 const sResult = await registerSingleStudentAction(groupResult.groupId, {
                                     identificacion: student.identificacion,
                                     email: student.email,
-                                    nombres: student.nombres || student.name || "Estudiante",
+                                    nombres: student.nombres || student.name || "Aprendiz",
                                     apellido: student.apellido || "",
                                     telefono: student.telefono,
                                 });
@@ -1872,14 +1927,14 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     failedList.push({
                                         name: `${sResult.studentName || studentName} (Grupo ${groupName})`,
                                         detail: `Doc: ${sResult.identificacion || student.identificacion || "N/A"} • ${sResult.email || student.email || "Sin email"}`,
-                                        error: sResult.error || "Error al procesar estudiante",
+                                        error: sResult.error || "Error al procesar aprendiz",
                                     });
                                 }
                             } catch (sErr: any) {
                                 failedList.push({
                                     name: `${studentName} (Grupo ${groupName})`,
                                     detail: `Doc: ${student.identificacion || "N/A"}`,
-                                    error: sErr.message || "Error al registrar estudiante",
+                                    error: sErr.message || "Error al registrar aprendiz",
                                 });
                             }
                         }
@@ -1898,16 +1953,16 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 if (failedList.length > 0) {
                     setImportSummary({
                         isOpen: true,
-                        title: "Reporte de Importación de Grupos y Alumnos",
-                        description: "Resumen del proceso de guardado individual de grupos y sus estudiantes.",
+                        title: "Reporte de Importación de Grupos y Aprendices",
+                        description: "Resumen del proceso de guardado individual de grupos y sus aprendices.",
                         entityName: "Registros",
                         total: totalOperations,
                         successCount: successCount + totalStudentsCount,
                         failedList: failedList,
                     });
-                    toast.warning(`Importación finalizada: ${successCount} grupos y ${totalStudentsCount} alumnos guardados. ${failedList.length} registros con errores.`);
+                    toast.warning(`Importación finalizada: ${successCount} grupos y ${totalStudentsCount} aprendices guardados. ${failedList.length} registros con errores.`);
                 } else {
-                    toast.success(`¡Se guardaron exitosamente ${successCount} grupos y ${totalStudentsCount} estudiantes!`);
+                    toast.success(`¡Se guardaron exitosamente ${successCount} grupos y ${totalStudentsCount} aprendices!`);
                 }
 
                 await refreshAll();
@@ -1922,11 +1977,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     const handleExportTeachersJSON = () => {
         if (!selectedProgram) return;
-        simulateExportProgress("Generando archivo de profesores...", () => {
+        simulateExportProgress("Generando archivo de instructores...", () => {
             try {
                 const dataToExport = selectedProgram.teachers.map(teacher => ({
                     identificacion: teacher.profile?.identificacion,
-                    nombres: teacher.profile?.nombres || teacher.name?.split(" ")[0] || "Profesor",
+                    nombres: teacher.profile?.nombres || teacher.name?.split(" ")[0] || "Instructor",
                     apellido: teacher.profile?.apellido || teacher.name?.split(" ").slice(1).join(" ") || "",
                     email: teacher.email,
                     telefono: teacher.profile?.telefono || null
@@ -1936,11 +1991,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 )}`;
                 const downloadAnchor = document.createElement("a");
                 downloadAnchor.setAttribute("href", jsonString);
-                downloadAnchor.setAttribute("download", `Profesores_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
+                downloadAnchor.setAttribute("download", `Instructores_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
                 document.body.appendChild(downloadAnchor);
                 downloadAnchor.click();
                 downloadAnchor.remove();
-                toast.success("Profesores exportados con éxito");
+                toast.success("Instructores exportados con éxito");
             } catch (err: any) {
                 toast.error("Error al exportar: " + err.message);
             }
@@ -1955,12 +2010,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             try {
                 const data = JSON.parse(evt.target?.result as string);
                 if (!Array.isArray(data)) {
-                    toast.error("El archivo JSON debe contener un arreglo de profesores");
+                    toast.error("El archivo JSON debe contener un arreglo de instructores");
                     return;
                 }
                 const list = data.map(item => ({
                     identificacion: item.identificacion?.toString() || "",
-                    nombres: item.nombres || item.name || "Profesor",
+                    nombres: item.nombres || item.name || "Instructor",
                     apellido: item.apellido || "",
                     email: item.email?.toString() || "",
                     telefono: item.telefono?.toString() || undefined
@@ -1977,7 +2032,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                 setProgressModal({
                     isOpen: true,
-                    title: `Iniciando importación de ${list.length} profesores...`,
+                    title: `Iniciando importación de ${list.length} instructores...`,
                     progress: 0,
                     currentCount: 0,
                     totalCount: list.length,
@@ -1991,7 +2046,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     }
 
                     const teacher = list[i];
-                    const teacherName = `${teacher.nombres} ${teacher.apellido}`.trim() || teacher.email || "Profesor";
+                    const teacherName = `${teacher.nombres} ${teacher.apellido}`.trim() || teacher.email || "Instructor";
                     const currentCount = i + 1;
                     const progress = Math.round(((i) / list.length) * 100);
 
@@ -2012,7 +2067,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             failedList.push({
                                 name: result.teacherName || teacherName,
                                 detail: `Doc: ${result.identificacion || teacher.identificacion || 'N/A'} • ${result.email || teacher.email}`,
-                                error: result.error || "Error al procesar profesor",
+                                error: result.error || "Error al procesar instructor",
                             });
                         }
                     } catch (err: any) {
@@ -2038,7 +2093,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     });
                     toast.warning(`Importación finalizada: ${successCount} guardados, ${failedList.length} con observaciones.`);
                 } else {
-                    toast.success(`¡Todos los profesores (${successCount}) fueron registrados y asignados con éxito!`);
+                    toast.success(`¡Todos los instructores (${successCount}) fueron registrados y asignados con éxito!`);
                 }
 
                 await refreshAll();
@@ -2062,8 +2117,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet([...headers, ...data]);
             
-            XLSX.utils.book_append_sheet(wb, ws, "Plantilla Estudiantes");
-            XLSX.writeFile(wb, "Plantilla_Importar_Estudiantes.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "Plantilla Aprendices");
+            XLSX.writeFile(wb, "Plantilla_Importar_Aprendices.xlsx");
             toast.success("Plantilla de Excel descargada con éxito");
         } catch (err: any) {
             toast.error("Error al generar la plantilla: " + err.message);
@@ -2182,10 +2237,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 }
 
                 if (parsedList.length === 0) {
-                    toast.error("No se encontraron registros de estudiantes válidos en el archivo");
+                    toast.error("No se encontraron registros de aprendices válidos en el archivo");
                 } else {
                     setExcelStudents(parsedList);
-                    toast.success(`Se leyeron ${parsedList.length} estudiantes del archivo Excel.`);
+                    toast.success(`Se leyeron ${parsedList.length} aprendices del archivo Excel.`);
                 }
             } catch (err: any) {
                 toast.error("Error al procesar el archivo Excel: " + err.message);
@@ -2203,7 +2258,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
         setProgressModal({
             isOpen: true,
-            title: `Iniciando importación de ${excelStudents.length} estudiantes...`,
+            title: `Iniciando importación de ${excelStudents.length} aprendices...`,
             progress: 0,
             currentCount: 0,
             totalCount: excelStudents.length,
@@ -2217,7 +2272,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             }
 
             const student = excelStudents[i];
-            const studentName = `${student.nombres} ${student.apellido}`.trim() || student.email || "Estudiante";
+            const studentName = `${student.nombres} ${student.apellido}`.trim() || student.email || "Aprendiz";
             const currentCount = i + 1;
             const progress = Math.round((i / excelStudents.length) * 100);
 
@@ -2238,7 +2293,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     failedList.push({
                         name: result.studentName || studentName,
                         detail: `Doc: ${result.identificacion || student.identificacion || 'N/A'} • ${result.email || student.email}`,
-                        error: result.error || "Error al procesar estudiante",
+                        error: result.error || "Error al procesar aprendiz",
                     });
                 }
             } catch (err: any) {
@@ -2257,16 +2312,16 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         if (failedList.length > 0) {
             setImportSummary({
                 isOpen: true,
-                title: "Reporte de Importación de Estudiantes",
-                description: `Resumen del registro de estudiantes en el grupo ${selectedGroupForStudents.name}.`,
-                entityName: "Estudiantes",
+                title: "Reporte de Importación de Aprendices",
+                description: `Resumen del registro de aprendices en el grupo ${selectedGroupForStudents.name}.`,
+                entityName: "Aprendices",
                 total: excelStudents.length,
                 successCount: successCount,
                 failedList: failedList,
             });
             toast.warning(`Importación finalizada: ${successCount} guardados, ${failedList.length} con observaciones.`);
         } else {
-            toast.success(`¡Todos los estudiantes (${successCount}) fueron registrados y asignados con éxito!`);
+            toast.success(`¡Todos los aprendices (${successCount}) fueron registrados y asignados con éxito!`);
         }
 
         await refreshAll();
@@ -2304,11 +2359,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 });
 
                 if (res && !res.success) {
-                    toast.error(res.error || "Error al registrar profesor");
+                    toast.error(res.error || "Error al registrar instructor");
                     return;
                 }
 
-                toast.success("Profesor registrado exitosamente");
+                toast.success("Instructor registrado exitosamente");
                 
                 // Clear manual inputs
                 setManualTeacherIdentificacion("");
@@ -2320,7 +2375,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 await refreshAll();
                 await fetchSystemTeachers();
             } catch (error: any) {
-                toast.error(error.message || "Error al registrar profesor");
+                toast.error(error.message || "Error al registrar instructor");
             }
         });
     };
@@ -2414,10 +2469,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 }
 
                 if (parsedList.length === 0) {
-                    toast.error("No se encontraron registros de profesores válidos en el archivo");
+                    toast.error("No se encontraron registros de instructores válidos en el archivo");
                 } else {
                     setExcelTeachers(parsedList);
-                    toast.success(`Se leyeron ${parsedList.length} profesores del archivo Excel.`);
+                    toast.success(`Se leyeron ${parsedList.length} instructores del archivo Excel.`);
                 }
             } catch (err: any) {
                 toast.error("Error al procesar el archivo Excel: " + err.message);
@@ -2435,7 +2490,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
         setProgressModal({
             isOpen: true,
-            title: `Iniciando importación de ${excelTeachers.length} profesores...`,
+            title: `Iniciando importación de ${excelTeachers.length} instructores...`,
             progress: 0,
             currentCount: 0,
             totalCount: excelTeachers.length,
@@ -2449,7 +2504,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             }
 
             const teacher = excelTeachers[i];
-            const teacherName = `${teacher.nombres} ${teacher.apellido}`.trim() || teacher.email || "Profesor";
+            const teacherName = `${teacher.nombres} ${teacher.apellido}`.trim() || teacher.email || "Instructor";
             const currentCount = i + 1;
             const progress = Math.round(((i) / excelTeachers.length) * 100);
 
@@ -2470,7 +2525,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     failedList.push({
                         name: result.teacherName || teacherName,
                         detail: `Doc: ${result.identificacion || teacher.identificacion || 'N/A'} • ${result.email || teacher.email}`,
-                        error: result.error || "Error al procesar profesor",
+                        error: result.error || "Error al procesar instructor",
                     });
                 }
             } catch (err: any) {
@@ -2498,7 +2553,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             });
             toast.warning(`Importación finalizada: ${successCount} guardados, ${failedList.length} con observaciones.`);
         } else {
-            toast.success(`¡Todos los profesores (${successCount}) fueron registrados y asignados con éxito!`);
+            toast.success(`¡Todos los instructores (${successCount}) fueron registrados y asignados con éxito!`);
         }
 
         await refreshAll();
@@ -2554,12 +2609,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     email: editTeacherEmail,
                     telefono: editTeacherPhone || undefined,
                 });
-                toast.success("Información del profesor actualizada");
+                toast.success("Información del instructor actualizada");
                 setEditTeacherDialogOpen(false);
                 setTeacherToEdit(null);
                 await refreshAll();
             } catch (error: any) {
-                toast.error(error.message || "Error al actualizar profesor");
+                toast.error(error.message || "Error al actualizar instructor");
             }
         });
     };
@@ -2611,14 +2666,14 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 } else if (deleteType === "teacher") {
                     if (selectedProgram) {
                         await assignTeacherToProgramAction(selectedProgram.id, deleteItemId, false);
-                        toast.success("Profesor desvinculado del programa");
+                        toast.success("Instructor desvinculado del programa");
                     } else {
                         await deleteUserAction(deleteItemId);
-                        toast.success("Profesor eliminado del sistema");
+                        toast.success("Instructor eliminado del sistema");
                     }
                 } else if (deleteType === "student") {
                     await deleteUserAction(deleteItemId);
-                    toast.success("Estudiante eliminado del sistema");
+                    toast.success("Aprendiz eliminado del sistema");
                 }
                 setDeleteConfirmationOpen(false);
                 setDeleteConfirmText("");
@@ -2942,27 +2997,43 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 </p>
                             </div>
                         </div>
-                        {currentUserRole === "admin" && (
-                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                                <Button size="sm" variant="outline" className="h-8 text-xs font-bold rounded-xl" onClick={() => openEditProgram(selectedProgram)}>
-                                    <Edit className="h-3.5 w-3.5 mr-1.5" />
-                                    Editar
-                                </Button>
-                                <Button size="sm" variant="ghost" className="h-8 text-xs font-bold rounded-xl text-destructive hover:bg-destructive/10" onClick={() => triggerDelete("program", selectedProgram.id, selectedProgram.name)}>
-                                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                                    Eliminar
-                                </Button>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={openPdfConfigModal}
+                                disabled={isExportingCurriculumPDF}
+                                className="h-8 text-xs font-bold rounded-xl border-rose-500/20 text-rose-600 hover:text-rose-700 hover:bg-rose-500/5 dark:text-rose-400 shadow-2xs hover:scale-105 transition-all"
+                            >
+                                {isExportingCurriculumPDF ? (
+                                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                ) : (
+                                    <FileText className="h-3.5 w-3.5 mr-1.5" />
+                                )}
+                                Malla PDF
+                            </Button>
+                            {currentUserRole === "admin" && (
+                                <>
+                                    <Button size="sm" variant="outline" className="h-8 text-xs font-bold rounded-xl" onClick={() => openEditProgram(selectedProgram)}>
+                                        <Edit className="h-3.5 w-3.5 mr-1.5" />
+                                        Editar
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-8 text-xs font-bold rounded-xl text-destructive hover:bg-destructive/10" onClick={() => triggerDelete("program", selectedProgram.id, selectedProgram.name)}>
+                                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                                        Eliminar
+                                    </Button>
+                                </>
+                            )}
+                        </div>
                     </div>
 
                     <Tabs value={subTab} onValueChange={setSubTab} className="space-y-6">
                         <div className="flex items-center gap-2">
                             <TabsList className="flex flex-1 md:max-w-none overflow-x-auto bg-muted/40 p-1 rounded-xl scrollbar-none justify-start md:justify-center">
                                 <TabsTrigger value="overview" className="rounded-lg flex-1 shrink-0">Vista General</TabsTrigger>
-                                <TabsTrigger value="periods" className="rounded-lg flex-1 shrink-0">Periodos y Materias</TabsTrigger>
-                                <TabsTrigger value="groups" className="rounded-lg flex-1 shrink-0">Grupos y Alumnos</TabsTrigger>
-                                <TabsTrigger value="teachers" className="rounded-lg flex-1 shrink-0">Profesores</TabsTrigger>
+                                <TabsTrigger value="periods" className="rounded-lg flex-1 shrink-0">Malla Curricular</TabsTrigger>
+                                <TabsTrigger value="groups" className="rounded-lg flex-1 shrink-0">Grupos y Aprendices</TabsTrigger>
+                                <TabsTrigger value="teachers" className="rounded-lg flex-1 shrink-0">Instructores</TabsTrigger>
                                 <TabsTrigger value="environments" className="rounded-lg flex-1 shrink-0">Ambientes</TabsTrigger>
                             </TabsList>
 
@@ -3105,7 +3176,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
                                                 <div className="absolute top-0 left-0 w-1 h-full bg-violet-500" />
                                                 <div className="flex items-center justify-between pl-1">
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Estudiantes</span>
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Aprendices</span>
                                                     <div className="p-1.5 bg-violet-500/10 text-violet-500 rounded-xl shrink-0">
                                                         <Users className="h-4 w-4" />
                                                     </div>
@@ -3114,21 +3185,21 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                     <span className="text-2xl font-black text-foreground tracking-tight">
                                                         {selectedProgram.groups.reduce((acc, g) => acc + g.students.length, 0)}
                                                     </span>
-                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Alumnos matriculados en grupos</span>
+                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Aprendices matriculados en grupos</span>
                                                 </div>
                                             </Card>
 
                                             <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
                                                 <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
                                                 <div className="flex items-center justify-between pl-1">
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Docentes Vinculados</span>
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Instructores Vinculados</span>
                                                     <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
                                                         <GraduationCap className="h-4 w-4" />
                                                     </div>
                                                 </div>
                                                 <div className="flex items-baseline gap-2 pl-1 mt-1">
                                                     <span className="text-2xl font-black text-foreground tracking-tight">{selectedProgram.teachers?.length || 0}</span>
-                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Profesores autorizados</span>
+                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Instructores autorizados</span>
                                                 </div>
                                             </Card>
                                         </div>
@@ -3178,7 +3249,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                 <span className="font-bold text-foreground/90">{selectedProgram.scheduleTitle || "No asignado"}</span>
                                                             </div>
                                                             <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/5 border border-muted/20">
-                                                                <span className="text-xs text-muted-foreground font-medium">Horas Máximas por Docente</span>
+                                                                <span className="text-xs text-muted-foreground font-medium">Horas Máximas por Instructor</span>
                                                                 <span className="font-bold text-foreground/90">{selectedProgram.maxTeacherHours || 40} horas semanales</span>
                                                             </div>
                                                         </div>
@@ -3292,7 +3363,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                             {largestGroup ? (
                                                                 <div>
                                                                     <span className="font-bold text-foreground text-sm">{largestGroup.name}</span>
-                                                                    <span className="text-muted-foreground font-medium ml-1.5">({largestGroup.students.length} estudiantes)</span>
+                                                                    <span className="text-muted-foreground font-medium ml-1.5">({largestGroup.students.length} aprendices)</span>
                                                                 </div>
                                                             ) : (
                                                                 <span className="text-muted-foreground font-medium">Ninguno registrado</span>
@@ -3334,7 +3405,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         {/* SUB-TAB: PERIODS & COURSES */}
                         <TabsContent value="periods" className="space-y-6 mt-0">
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
-                                <h4 className="text-base font-semibold text-muted-foreground">Periodos y Materias de {selectedProgram.name}</h4>
+                                <h4 className="text-base font-semibold text-muted-foreground">Malla Curricular de {selectedProgram.name}</h4>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -3347,8 +3418,22 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 <HelpCircle className="w-3.5 h-3.5 text-primary" />
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Periodos y Materias</TooltipContent>
+                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Malla Curricular</TooltipContent>
                                     </Tooltip>
+                                    <Button
+                                        onClick={openPdfConfigModal}
+                                        disabled={isExportingCurriculumPDF}
+                                        variant="outline"
+                                        size="sm"
+                                        className="shadow-sm border-rose-500/20 text-rose-600 hover:text-rose-700 hover:bg-rose-500/5 dark:text-rose-400 font-semibold"
+                                    >
+                                        {isExportingCurriculumPDF ? (
+                                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                        ) : (
+                                            <FileText className="h-4 w-4 mr-1.5 text-rose-500" />
+                                        )}
+                                        Malla Curricular PDF
+                                    </Button>
                                     <Button onClick={handleExportPeriodsJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
                                         <Download className="h-4 w-4 mr-1.5" />
                                         Exportar JSON
@@ -3482,20 +3567,20 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     {/* Segmented sub-tab controller for Students vs Attendance */}
                                     <div className="space-y-4 mt-0">
                                         <div className="flex justify-between items-center">
-                                            <h5 className="text-sm font-semibold text-muted-foreground">Listado de Estudiantes ({managingGroup.students.length})</h5>
+                                            <h5 className="text-sm font-semibold text-muted-foreground">Listado de Aprendices ({managingGroup.students.length})</h5>
                                             <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => openAssignStudents(managingGroup)}>
                                                 <Plus className="h-3 w-3 mr-1.5" />
-                                                Asociar Estudiantes
+                                                Asociar Aprendices
                                             </Button>
                                         </div>
                                         <Card className="border-none shadow-sm bg-background">
                                             <CardContent className="p-5">
                                                 {managingGroup.students.length === 0 ? (
                                                     <div className="text-center py-16 text-muted-foreground text-sm bg-muted/5 border border-dashed border-muted/50 rounded-xl">
-                                                        No hay estudiantes asignados en este grupo.
+                                                        No hay aprendices asignados en este grupo.
                                                         <br />
                                                         <Button size="sm" variant="outline" className="mt-4 text-xs" onClick={() => openAssignStudents(managingGroup)}>
-                                                            <Plus className="h-3.5 w-3.5 mr-1.5" /> Asociar Estudiantes
+                                                            <Plus className="h-3.5 w-3.5 mr-1.5" /> Asociar Aprendices
                                                         </Button>
                                                     </div>
                                                 ) : (
@@ -3531,7 +3616,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                                     onClick={() => triggerDelete("student", student.id, student.name)}
                                                                                 >
                                                                                     <Trash2 className="h-4 w-4" />
-                                                                                </Button></TooltipTrigger><TooltipContent><p>Eliminar estudiante del sistema</p></TooltipContent></Tooltip>
+                                                                                </Button></TooltipTrigger><TooltipContent><p>Eliminar aprendiz del sistema</p></TooltipContent></Tooltip>
                                                                             </div>
                                                                         </TableCell>
                                                                     </TableRow>
@@ -3548,7 +3633,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 /* GROUPS LIST TABLE VIEW */
                                 <div className="space-y-4">
                                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
-                                        <h4 className="text-base font-semibold text-muted-foreground">Grupos de Alumnos de {selectedProgram.name}</h4>
+                                        <h4 className="text-base font-semibold text-muted-foreground">Grupos de Aprendices de {selectedProgram.name}</h4>
                                         <div className="flex flex-wrap items-center gap-2">
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
@@ -3561,7 +3646,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                         <HelpCircle className="w-3.5 h-3.5 text-primary" />
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Grupos y Alumnos</TooltipContent>
+                                                <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Grupos y Aprendices</TooltipContent>
                                             </Tooltip>
                                             <Button onClick={handleExportGroupsJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
                                                 <Download className="h-4 w-4 mr-1.5" />
@@ -3595,7 +3680,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             <Layers className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                                             <h4 className="font-semibold">Sin Grupos</h4>
                                             <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
-                                                Crea el primer grupo en este programa para empezar a asociar estudiantes.
+                                                Crea el primer grupo en este programa para empezar a asociar aprendices.
                                             </p>
                                             {!isObserver && (
                                                 <Button onClick={openCreateGroup} className="mt-4" size="sm">
@@ -3652,7 +3737,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     <div className="min-w-0">
                                         <p className="text-xs font-bold text-indigo-900 dark:text-indigo-200">Gestión por Horario / Trimestre</p>
                                         <p className="text-[11px] text-indigo-700 dark:text-indigo-300 truncate">
-                                            La disponibilidad y materias habilitadas de profesores se configuran por cada trimestre en el panel de Horarios.
+                                            La disponibilidad y materias habilitadas de instructores se configuran por cada trimestre en el panel de Horarios.
                                         </p>
                                     </div>
                                 </div>
@@ -3668,7 +3753,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             </div>
 
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
-                                <h4 className="text-base font-semibold text-muted-foreground">Profesores de {selectedProgram.name}</h4>
+                                <h4 className="text-base font-semibold text-muted-foreground">Instructores de {selectedProgram.name}</h4>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -3681,7 +3766,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 <HelpCircle className="w-3.5 h-3.5 text-primary" />
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Profesores</TooltipContent>
+                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Instructores</TooltipContent>
                                     </Tooltip>
                                     <Button onClick={handleExportTeachersJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
                                         <Download className="h-4 w-4 mr-1.5" />
@@ -3703,7 +3788,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             </div>
                                             <Button onClick={() => setAssignTeachersDialogOpen(true)} size="sm" className="shadow-sm">
                                                 <Plus className="h-4 w-4 mr-1.5" />
-                                                Registrar Profesor
+                                                Registrar Instructor
                                             </Button>
                                         </>
                                     )}
@@ -3713,13 +3798,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             {(!selectedProgram.teachers || selectedProgram.teachers.length === 0) ? (
                                 <div className="text-center py-16 bg-muted/10 rounded-2xl border border-dashed border-muted/50">
                                     <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                                    <h4 className="font-semibold">Sin Profesores</h4>
+                                    <h4 className="font-semibold">Sin Instructores</h4>
                                     <p className="text-muted-foreground text-sm mt-1 max-w-xs mx-auto">
-                                        Registra profesores en este programa de formación para que puedan ser asignados a impartir materias.
+                                        Registra instructores en este programa de formación para que puedan ser asignados a impartir materias.
                                     </p>
                                     {!isObserver && (
                                         <Button onClick={() => setAssignTeachersDialogOpen(true)} className="mt-4" size="sm">
-                                            <Plus className="mr-1.5 h-4 w-4" /> Registrar Profesor
+                                            <Plus className="mr-1.5 h-4 w-4" /> Registrar Instructor
                                         </Button>
                                     )}
                                 </div>
@@ -3875,10 +3960,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                                 size="icon" 
                                                                                 variant="ghost" 
                                                                                 className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                                                                                onClick={() => triggerDelete("teacher", teacher.id, teacher.name || "Profesor")}
+                                                                                onClick={() => triggerDelete("teacher", teacher.id, teacher.name || "Instructor")}
                                                                             >
                                                                                 <Trash2 className="h-3.5 w-3.5" />
-                                                                            </Button></TooltipTrigger><TooltipContent><p>Desvincular Profesor</p></TooltipContent></Tooltip>
+                                                                            </Button></TooltipTrigger><TooltipContent><p>Desvincular Instructor</p></TooltipContent></Tooltip>
                                                                         )}
                                                                     </div>
                                                                 </TableCell>
@@ -3932,6 +4017,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 placeholder="Detalles o descripción breve del programa formativo..."
                                 value={programDescription}
                                 onChange={(e) => setProgramDescription(e.target.value)}
+                                className="h-24 min-h-[60px] max-h-[140px] overflow-y-auto resize-y text-xs leading-relaxed [field-sizing:fixed]"
                                 rows={3}
                             />
                         </div>
@@ -4004,6 +4090,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 placeholder="Notas opcionales del periodo..."
                                 value={periodDescription}
                                 onChange={(e) => setPeriodDescription(e.target.value)}
+                                className="h-20 min-h-[50px] max-h-[120px] overflow-y-auto resize-y text-xs leading-relaxed [field-sizing:fixed]"
                                 rows={2}
                             />
                         </div>
@@ -4034,7 +4121,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 <DialogContent className="max-w-[450px]">
                     <DialogHeader>
                         <DialogTitle>{groupToEdit ? "Editar Grupo Académico" : "Crear Grupo Académico"}</DialogTitle>
-                        <DialogDescription>Define un grupo de estudiantes (Ej: Ficha 25567, Grupo A) bajo {selectedProgram?.name}.</DialogDescription>
+                        <DialogDescription>Define un grupo de aprendices (Ej: Ficha 25567, Grupo A) bajo {selectedProgram?.name}.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
                         <div className="space-y-2">
@@ -4066,6 +4153,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 placeholder="Detalles de este grupo..."
                                 value={groupDescription}
                                 onChange={(e) => setGroupDescription(e.target.value)}
+                                className="h-20 min-h-[50px] max-h-[120px] overflow-y-auto resize-y text-xs leading-relaxed [field-sizing:fixed]"
                                 rows={2}
                             />
                         </div>
@@ -4085,8 +4173,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             <Dialog open={assignStudentsDialogOpen} onOpenChange={setAssignStudentsDialogOpen}>
                 <DialogContent className="max-w-[550px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Asociar Estudiantes al Grupo {selectedGroupForStudents?.name}</DialogTitle>
-                        <DialogDescription>Registra estudiantes manualmente o impórtalos desde un archivo de Excel.</DialogDescription>
+                        <DialogTitle>Asociar Aprendices al Grupo {selectedGroupForStudents?.name}</DialogTitle>
+                        <DialogDescription>Registra aprendices manualmente o impórtalos desde un archivo de Excel.</DialogDescription>
                     </DialogHeader>
                     
                     <Tabs defaultValue="manual" className="w-full mt-2">
@@ -4213,7 +4301,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                                 {excelStudents.length > 0 && (
                                     <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 flex justify-between items-center">
-                                        <span className="text-xs font-medium text-primary">Se leyeron {excelStudents.length} estudiantes listos para importar.</span>
+                                        <span className="text-xs font-medium text-primary">Se leyeron {excelStudents.length} aprendices listos para importar.</span>
                                         <Button 
                                             size="sm" 
                                             onClick={handleImportExcel} 
@@ -4264,8 +4352,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             <Dialog open={assignTeachersDialogOpen} onOpenChange={setAssignTeachersDialogOpen}>
                 <DialogContent className="max-w-[550px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Registrar Profesor en {selectedProgram?.name}</DialogTitle>
-                        <DialogDescription>Crea un profesor manualmente o impórtalo desde Excel. Quedará automáticamente asociado a este programa.</DialogDescription>
+                        <DialogTitle>Registrar Instructor en {selectedProgram?.name}</DialogTitle>
+                        <DialogDescription>Crea un instructor manualmente o impórtalo desde Excel. Quedará automáticamente asociado a este programa.</DialogDescription>
                     </DialogHeader>
                     
                     <Tabs defaultValue="manual" className="w-full mt-2">
@@ -4342,7 +4430,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     className="w-full mt-2 h-9 text-xs"
                                     disabled={isPending}
                                 >
-                                    {isPending ? "Registrando..." : "Registrar Profesor"}
+                                    {isPending ? "Registrando..." : "Registrar Instructor"}
                                 </Button>
                             </div>
                         </TabsContent>
@@ -4377,7 +4465,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                                 {excelTeachers.length > 0 && (
                                     <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 flex justify-between items-center">
-                                        <span className="text-xs font-medium text-primary">Se leyeron {excelTeachers.length} profesores listos para importar.</span>
+                                        <span className="text-xs font-medium text-primary">Se leyeron {excelTeachers.length} instructores listos para importar.</span>
                                         <Button 
                                             size="sm" 
                                             onClick={handleImportTeacherExcel} 
@@ -4428,8 +4516,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             <Dialog open={editTeacherDialogOpen} onOpenChange={setEditTeacherDialogOpen}>
                 <DialogContent className="max-w-[450px]">
                     <DialogHeader>
-                        <DialogTitle>Editar Profesor</DialogTitle>
-                        <DialogDescription>Actualiza la información del profesor seleccionado.</DialogDescription>
+                        <DialogTitle>Editar Instructor</DialogTitle>
+                        <DialogDescription>Actualiza la información del instructor seleccionado.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
                         <div className="space-y-2">
@@ -4468,7 +4556,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             {qualTeacher ? `Materias de ${qualTeacher.name}` : "Cargando..."}
                         </DialogTitle>
                         <DialogDescription>
-                            Selecciona las materias que este docente está calificado para dictar.
+                            Selecciona las materias que este instructor está calificado para impartir.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto p-4 max-h-[70vh]">
@@ -4511,6 +4599,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     placeholder="Temario, objetivos generales, competencias y resultados de aprendizaje (RAP) asociados a la materia..."
                                     value={courseDescription}
                                     onChange={(e) => setCourseDescription(e.target.value)}
+                                    className="h-28 min-h-[80px] max-h-[160px] overflow-y-auto resize-y text-xs leading-relaxed [field-sizing:fixed]"
                                     rows={3}
                                 />
                                 <p className="text-[10px] text-muted-foreground mt-1">
@@ -4648,16 +4737,273 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 </DialogContent>
             </Dialog>
 
+            {/* ============ DIALOG: CURRICULUM PDF CONFIG ============ */}
+            <Dialog open={isPdfConfigModalOpen} onOpenChange={setIsPdfConfigModalOpen}>
+                <DialogContent className="max-w-3xl sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold">
+                            <FileText className="w-5 h-5 text-rose-500 shrink-0" />
+                            Configurar y Exportar Malla Curricular
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                            Personaliza el membrete, logo institucional y parámetros del documento antes de generar el PDF oficial.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 py-2">
+                        {/* ── COLUMNA IZQUIERDA: Membrete, Logo y Sello ── */}
+                        <div className="space-y-4">
+                            <div className="border border-border/70 rounded-xl p-3.5 bg-muted/20 space-y-3.5">
+                                <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                        <ImageIcon className="w-3.5 h-3.5 text-rose-500" />
+                                        Membrete e Identidad Gráfica
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground font-medium">Encabezado</span>
+                                </div>
+
+                                {/* Membrete institucional */}
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="pdfInstTag" className="text-xs font-semibold">Membrete / Institución</Label>
+                                    <Input
+                                        id="pdfInstTag"
+                                        value={pdfConfig.institutionTag}
+                                        onChange={(e) => setPdfConfig(prev => ({ ...prev, institutionTag: e.target.value }))}
+                                        className="h-8 text-xs"
+                                        placeholder="Nombre o membrete institucional..."
+                                    />
+                                </div>
+
+                                {/* Enlace del logo */}
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="pdfLogoUrl" className="text-xs font-semibold">
+                                            Enlace para Logo (Opcional)
+                                        </Label>
+                                        {pdfConfig.logoUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setPdfConfig(prev => ({ ...prev, logoUrl: "" }))}
+                                                className="text-[10px] text-muted-foreground hover:text-destructive underline"
+                                            >
+                                                Limpiar enlace
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="relative">
+                                        <Input
+                                            id="pdfLogoUrl"
+                                            value={pdfConfig.logoUrl || ""}
+                                            onChange={(e) => setPdfConfig(prev => ({ ...prev, logoUrl: e.target.value }))}
+                                            className="h-8 text-xs pr-8"
+                                            placeholder="https://ejemplo.com/logo-institucional.png"
+                                        />
+                                        <LinkIcon className="w-3.5 h-3.5 absolute right-2.5 top-2.5 text-muted-foreground pointer-events-none" />
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        {pdfConfig.logoUrl?.trim()
+                                            ? "Se creará el encabezado con el logo de tamaño fijo y acorde."
+                                            : "Si no se suministra un enlace, no se crea encabezado con logo en el documento."}
+                                    </p>
+
+                                    {/* Vista previa del logo si hay URL */}
+                                    {pdfConfig.logoUrl?.trim() && (
+                                        <div className="mt-2 p-2 bg-background rounded-lg border border-border/70 flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="w-12 h-9 rounded border border-border bg-white flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src={pdfConfig.logoUrl}
+                                                        alt="Logo preview"
+                                                        className="max-h-full max-w-full object-contain"
+                                                        onError={(e) => {
+                                                            (e.currentTarget as HTMLElement).style.opacity = '0.3';
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="min-w-0 text-[11px]">
+                                                    <span className="font-semibold text-foreground block truncate">Vista previa del logo</span>
+                                                    <span className="text-[10px] text-muted-foreground truncate block max-w-[200px]">
+                                                        {pdfConfig.logoUrl}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Switch: Centrar Logo */}
+                                <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/50">
+                                    <div className="space-y-0.5 pr-2">
+                                        <Label
+                                            htmlFor="switch-center-logo"
+                                            className={cn(
+                                                "text-xs font-semibold cursor-pointer",
+                                                !pdfConfig.logoUrl?.trim() && "opacity-60 pointer-events-none"
+                                            )}
+                                        >
+                                            Centrar Logo en Encabezado
+                                        </Label>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {pdfConfig.centerLogo
+                                                ? "El logo se posiciona centrado en la parte superior."
+                                                : "El logo se alinea a la izquierda junto a los títulos institucionales."}
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        id="switch-center-logo"
+                                        checked={Boolean(pdfConfig.centerLogo)}
+                                        disabled={!pdfConfig.logoUrl?.trim()}
+                                        onCheckedChange={(checked) => setPdfConfig(prev => ({ ...prev, centerLogo: checked }))}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Sello Oficial y Fecha */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="pdfBadgeText" className="text-xs font-semibold">Texto del Sello / Distintivo</Label>
+                                    <Input
+                                        id="pdfBadgeText"
+                                        value={pdfConfig.badgeText}
+                                        onChange={(e) => setPdfConfig(prev => ({ ...prev, badgeText: e.target.value }))}
+                                        className="h-8 text-xs"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="pdfIssueDate" className="text-xs font-semibold">Fecha de Emisión</Label>
+                                    <Input
+                                        id="pdfIssueDate"
+                                        value={pdfConfig.issueDate}
+                                        onChange={(e) => setPdfConfig(prev => ({ ...prev, issueDate: e.target.value }))}
+                                        className="h-8 text-xs"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ── COLUMNA DERECHA: Datos del Programa y Opciones de Contenido ── */}
+                        <div className="space-y-4">
+                            {/* Título Principal */}
+                            <div className="space-y-1.5">
+                                <Label htmlFor="pdfMainTitle" className="text-xs font-semibold">Título Principal del Documento</Label>
+                                <Input
+                                    id="pdfMainTitle"
+                                    value={pdfConfig.mainTitle}
+                                    onChange={(e) => setPdfConfig(prev => ({ ...prev, mainTitle: e.target.value }))}
+                                    className="h-8 text-xs font-medium"
+                                    placeholder="Malla Curricular..."
+                                />
+                            </div>
+
+                            {/* Nombre del Programa */}
+                            <div className="space-y-1.5">
+                                <Label htmlFor="pdfProgName" className="text-xs font-semibold">Nombre del Programa</Label>
+                                <Input
+                                    id="pdfProgName"
+                                    value={pdfConfig.programName}
+                                    onChange={(e) => setPdfConfig(prev => ({ ...prev, programName: e.target.value }))}
+                                    className="h-8 text-xs font-bold"
+                                />
+                            </div>
+
+                            {/* Descripción / Subtítulo */}
+                            <div className="space-y-1.5">
+                                <Label htmlFor="pdfProgDesc" className="text-xs font-semibold">Descripción o Subtítulo del Programa</Label>
+                                <Textarea
+                                    id="pdfProgDesc"
+                                    value={pdfConfig.programDescription}
+                                    onChange={(e) => setPdfConfig(prev => ({ ...prev, programDescription: e.target.value }))}
+                                    rows={2}
+                                    className="min-h-[50px] max-h-[85px] overflow-y-auto resize-y text-xs [field-sizing:fixed]"
+                                    placeholder="Descripción curricular del programa..."
+                                />
+                            </div>
+
+                            {/* Opciones y Switches */}
+                            <div className="bg-muted/30 p-3.5 rounded-xl border border-border/70 space-y-3">
+                                <h5 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Opciones de Contenido</h5>
+
+                                {/* Switch: Periodos Especiales (Por defecto apagado) */}
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="space-y-0.5 pr-2">
+                                        <Label htmlFor="switch-special-periods" className="text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+                                            Incluir Periodos Especiales
+                                            {selectedProgram && (
+                                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal">
+                                                    {selectedProgram.periods.filter(p => p.esEspecial).length} disponibles
+                                                </Badge>
+                                            )}
+                                        </Label>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {pdfConfig.includeSpecialPeriods
+                                                ? "Se incluirán todos los periodos regulares y especiales en la malla."
+                                                : "Por defecto apagado. Solo se exportan los periodos académicos regulares."}
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        id="switch-special-periods"
+                                        checked={pdfConfig.includeSpecialPeriods}
+                                        onCheckedChange={(checked) => setPdfConfig(prev => ({ ...prev, includeSpecialPeriods: checked }))}
+                                    />
+                                </div>
+
+                                {/* Switch: Catálogo detallado de RAP */}
+                                <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/50">
+                                    <div className="space-y-0.5 pr-2">
+                                        <Label htmlFor="switch-detailed-rap" className="text-xs font-bold cursor-pointer">
+                                            Incluir Desglose Detallado de Competencias y RAP
+                                        </Label>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Añade las páginas con la tabla completa de temarios, competencias y RAP de cada asignatura.
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        id="switch-detailed-rap"
+                                        checked={pdfConfig.includeDetailedCatalogue}
+                                        onCheckedChange={(checked) => setPdfConfig(prev => ({ ...prev, includeDetailedCatalogue: checked }))}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/50">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsPdfConfigModalOpen(false)}
+                            disabled={isExportingCurriculumPDF}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleExecuteDownloadCurriculumPdf}
+                            disabled={isExportingCurriculumPDF}
+                            size="sm"
+                            className="bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+                        >
+                            {isExportingCurriculumPDF ? (
+                                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                            ) : (
+                                <FileText className="h-4 w-4 mr-1.5" />
+                            )}
+                            Descargar Malla en PDF
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* ============ DIALOG: BULK DELETE CONFIRMATION ============ */}
             <AlertDialog open={bulkDeleteConfirmationOpen} onOpenChange={setBulkDeleteConfirmationOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2 text-destructive">
                             <Trash2 className="w-5 h-5" />
-                            ¿Eliminar profesores seleccionados?
+                            ¿Eliminar instructores seleccionados?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta acción eliminará de forma permanente a los <strong>{selectedTeacherIds.length}</strong> profesores seleccionados de este programa y del sistema. Esta acción no se puede deshacer.
+                            Esta acción eliminará de forma permanente a los <strong>{selectedTeacherIds.length}</strong> instructores seleccionados de este programa y del sistema. Esta acción no se puede deshacer.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -4750,7 +5096,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 </div>
                                                 <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
                                                     <span className="text-sm font-black text-foreground block">{teachersCount}</span>
-                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Docentes</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Instructores</span>
                                                 </div>
                                                 <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
                                                     <span className="text-sm font-black text-foreground block">Mallas</span>
@@ -4794,7 +5140,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     </div>
                                 ) : deleteType === "teacher" ? (
                                     <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
-                                        Desvincularás al profesor <strong>{deleteItemName}</strong> de <strong>{selectedProgram?.name}</strong>. El profesor mantendrá su cuenta en el sistema pero ya no estará asociado a este programa de formación.
+                                        Desvincularás al instructor <strong>{deleteItemName}</strong> de <strong>{selectedProgram?.name}</strong>. El instructor mantendrá su cuenta en el sistema pero ya no estará asociado a este programa de formación.
                                     </AlertDialogDescription>
                                 ) : (
                                     <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
@@ -4867,7 +5213,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <span>Disponibilidad: {selectedTeacherForAvailability?.name}</span>
                         </DialogTitle>
                         <DialogDescription>
-                            Visualiza la disponibilidad horaria configurada por el profesor para la semana.
+                            Visualiza la disponibilidad horaria configurada por el instructor para la semana.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -4907,7 +5253,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <Label htmlFor="gcCatalogCourse">Seleccionar Asignatura del Catálogo *</Label>
                             {catalogCourses.length === 0 ? (
                                 <div className="p-3 text-xs bg-yellow-500/10 border border-yellow-500/20 text--600 dark:text--400 rounded-xl">
-                                    No hay asignaturas en el catálogo. Agrégalas en la pestaña "Periodos y Materias".
+                                    No hay asignaturas en el catálogo. Agrégalas en la pestaña "Malla Curricular".
                                 </div>
                             ) : (
                                 <Select 
@@ -4940,7 +5286,17 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             )}
                         </div>
 
-
+                        <div className="space-y-1 mt-3">
+                            <Label htmlFor="gcDesc" className="text-xs">Descripción / Temario (Opcional)</Label>
+                            <Textarea
+                                id="gcDesc"
+                                placeholder="Temario, objetivos generales, competencias y resultados de aprendizaje (RAP)..."
+                                value={groupCourseDescription}
+                                onChange={(e) => setGroupCourseDescription(e.target.value)}
+                                rows={2}
+                                className="h-24 min-h-[60px] max-h-[140px] overflow-y-auto resize-y text-xs leading-relaxed [field-sizing:fixed]"
+                            />
+                        </div>
 
                         <div className="space-y-1 mt-3">
                             <Label htmlFor="gcWeeklyHours" className="text-xs">Horas Semanales Asignadas</Label>

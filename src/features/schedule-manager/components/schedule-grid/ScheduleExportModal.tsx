@@ -163,7 +163,7 @@ export function ScheduleExportModal({
       }
     } else if (exportTarget === "teachers") {
       if (selectedTeacherIds.length === 0) {
-        toast.error("Selecciona al menos un docente para exportar");
+        toast.error("Selecciona al menos un instructor para exportar");
         return;
       }
       const teachersToExport = teachersWithClasses.filter((t) =>
@@ -173,13 +173,13 @@ export function ScheduleExportModal({
 
       try {
         if (formatType === "pdf") {
-          toast.info("Generando PDF por docente con @react-pdf/renderer...");
+          toast.info("Generando PDF por instructor con @react-pdf/renderer...");
           await generateAndDownloadTeacherSchedulePdf(schedule, teachersToExport);
-          toast.success("PDF por docente descargado exitosamente");
+          toast.success("PDF por instructor descargado exitosamente");
         } else {
-          toast.info("Generando Excel por docente con ExcelJS...");
+          toast.info("Generando Excel por instructor con ExcelJS...");
           await generateAndDownloadTeacherScheduleExcel(schedule, teachersToExport);
-          toast.success("Excel por docente descargado exitosamente");
+          toast.success("Excel por instructor descargado exitosamente");
         }
         onOpenChange(false);
       } catch (err: any) {
@@ -245,7 +245,7 @@ export function ScheduleExportModal({
                   Exportar Horario Académico
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  {schedule.name} • Exporta por Fichas, Docentes o Ambientes en PDF o Excel.
+                  {schedule.name} • Exporta por Fichas, Instructores o Ambientes en PDF o Excel.
                 </DialogDescription>
               </div>
             </div>
@@ -253,7 +253,7 @@ export function ScheduleExportModal({
 
           {/* Body Content */}
           <div className="p-6 space-y-4">
-            {/* Target Mode Tabs (Por Ficha vs Por Docente vs Por Ambiente) */}
+            {/* Target Mode Tabs (Por Ficha vs Por Instructor vs Por Ambiente) */}
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-foreground uppercase tracking-wider">
                 1. Tipo de Vista a Exportar
@@ -276,7 +276,7 @@ export function ScheduleExportModal({
                     className="rounded-lg text-xs font-bold gap-1 data-[state=active]:bg-background data-[state=active]:text-indigo-600"
                   >
                     <GraduationCap className="w-3.5 h-3.5" />
-                    Docentes ({teachersWithClasses.length})
+                    Instructores ({teachersWithClasses.length})
                   </TabsTrigger>
                   <TabsTrigger
                     value="environments"
@@ -416,7 +416,7 @@ export function ScheduleExportModal({
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
-                    3. Docentes a Incluir ({selectedTeacherIds.length}/{teachersWithClasses.length})
+                    3. Instructores a Incluir ({selectedTeacherIds.length}/{teachersWithClasses.length})
                   </Label>
 
                   <Button
@@ -441,7 +441,7 @@ export function ScheduleExportModal({
                 <div className="border border-border/70 rounded-2xl p-2 max-h-44 overflow-y-auto space-y-1 bg-muted/20 scrollbar-thin">
                   {teachersWithClasses.length === 0 ? (
                     <div className="text-center py-6 text-xs text-muted-foreground">
-                      No hay docentes con clases programadas en este horario.
+                      No hay instructores con clases programadas en este horario.
                     </div>
                   ) : (
                     teachersWithClasses.map((t) => {

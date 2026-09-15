@@ -354,7 +354,7 @@ export function GroupContentShare({ courseId, initialContent = [] }: { courseId:
                             <SheetHeader className="px-6 py-4 border-b shrink-0">
                                 <SheetTitle>{editId ? "Editar" : "Compartir Nuevo"} Contenido</SheetTitle>
                                 <SheetDescription>
-                                    Comparte enlaces y múltiples fragmentos de código con tus estudiantes.
+                                    Comparte enlaces y múltiples fragmentos de código con tus aprendices.
                                 </SheetDescription>
                             </SheetHeader>
 
@@ -724,7 +724,7 @@ export function GroupContentShare({ courseId, initialContent = [] }: { courseId:
                         <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
                         <AlertDialogDescription>
                             Esta acción no se puede deshacer. Esto eliminará permanentemente el contenido compartido
-                            y dejará de estar disponible para los estudiantes.
+                            y dejará de estar disponible para los aprendices.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

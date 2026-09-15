@@ -463,7 +463,7 @@ export function ScheduleClassModal({
                         ? "bg-primary text-primary-foreground shadow-2xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
-                    title="Mostrar todos los docentes"
+                    title="Mostrar todos los instructores"
                   >
                     <Users className="w-3 h-3" />
                     <span>Todos ({teachers.length})</span>
@@ -477,7 +477,7 @@ export function ScheduleClassModal({
                         ? "bg-emerald-600 text-white shadow-2xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
-                    title="Solo profesores que pueden dictar esta materia"
+                    title="Solo instructores que pueden impartir esta materia"
                   >
                     <GraduationCap className="w-3 h-3" />
                     <span>Calificados ({qualifiedTeachers.length})</span>
@@ -491,7 +491,7 @@ export function ScheduleClassModal({
                         ? "bg-blue-600 text-white shadow-2xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
-                    title="Solo profesores disponibles en este horario"
+                    title="Solo instructores disponibles en este horario"
                   >
                     <Clock className="w-3 h-3" />
                     <span>Disponibles</span>
@@ -505,7 +505,7 @@ export function ScheduleClassModal({
                         ? "bg-violet-600 text-white shadow-2xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
-                    title="Profesores que cumplen todo (Calificados y Disponibles)"
+                    title="Instructores que cumplen todo (Calificados y Disponibles)"
                   >
                     <Sparkles className="w-3 h-3" />
                     <span>Cumplen Todo</span>
@@ -515,15 +515,15 @@ export function ScheduleClassModal({
 
               <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
                 <SelectTrigger className="rounded-xl text-xs bg-card">
-                  <SelectValue placeholder="Seleccionar profesor..." />
+                  <SelectValue placeholder="Seleccionar instructor..." />
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl text-xs max-h-64">
                   <SelectItem value="NONE" className="cursor-pointer text-muted-foreground">
-                    Sin profesor asignado (Pendiente)
+                    Sin instructor asignado (Pendiente)
                   </SelectItem>
                   {filteredTeachers.length === 0 ? (
                     <div className="p-3 text-xs text-muted-foreground text-center">
-                      No hay profesores que cumplan este filtro.
+                      No hay instructores que cumplan este filtro.
                     </div>
                   ) : (
                     filteredTeachers.map((teacher) => {
@@ -570,7 +570,7 @@ export function ScheduleClassModal({
               </Select>
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-0.5">
                 <Sparkles className="w-3 h-3 text-primary shrink-0" />
-                <span>Asignación flexible: puedes programar diferentes profesores para distintos días o franjas horarias de la misma materia.</span>
+                <span>Asignación flexible: puedes programar diferentes instructores para distintos días o franjas horarias de la misma materia.</span>
               </p>
             </div>
 

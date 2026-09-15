@@ -74,7 +74,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
     subtitle: "Registro en tiempo real de presencia, inasistencias justificadas o injustificadas y retardos de cada aprendiz.",
     features: [
       {
-        title: "Toma Rápida por Estudiante",
+        title: "Toma Rápida por Aprendiz",
         description: "Marca el estado con un clic: Presente (verde), Falta Injustificada (rojo), Falta Justificada (amarillo) o Retardo (naranja).",
         icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
       },
@@ -85,7 +85,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Gestión de Justificaciones",
-        description: "Revisa los enlaces a soportes médicos o laborales cargados por los estudiantes y valida si procede la excusa.",
+        description: "Revisa los enlaces a soportes médicos o laborales cargados por los aprendices y valida si procede la excusa.",
         icon: <ExternalLink className="w-4 h-4 text-emerald-500" />,
       },
       {
@@ -109,13 +109,13 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
 
   students: {
     key: "students",
-    tabLabel: "Estudiantes",
+    tabLabel: "Aprendices",
     title: "Directorio de Aprendices y Dinámicas de Aula",
     badge: "Módulo: Directorio y Dinámicas",
     badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
     icon: <Users className="w-5 h-5 text-blue-500" />,
     bgIcon: "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
-    subtitle: "Listado de estudiantes matriculados en la ficha, herramientas interactivas de participación y comunicación directa.",
+    subtitle: "Listado de aprendices matriculados en la ficha, herramientas interactivas de participación y comunicación directa.",
     features: [
       {
         title: "Búsqueda y Filtros Rápidos",
@@ -129,7 +129,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Generador Automático de Grupos",
-        description: "Organiza equipos de trabajo de 2 a 6 integrantes de forma equitativa o arrastra estudiantes manualmente.",
+        description: "Organiza equipos de trabajo de 2 a 6 integrantes de forma equitativa o arrastra aprendices manualmente.",
         icon: <Shuffle className="w-4 h-4 text-blue-500" />,
       },
       {
@@ -144,7 +144,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Restablecimiento de Clave Doc",
-        description: "Ayuda a los estudiantes que olvidaron su clave restableciéndola a su número de documento en un solo clic.",
+        description: "Ayuda a los aprendices que olvidaron su clave restableciéndola a su número de documento en un solo clic.",
         icon: <RotateCcw className="w-4 h-4 text-blue-500" />,
       },
     ],
@@ -173,7 +173,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Acuse de Lectura del Aprendiz",
-        description: "Verifica si el estudiante ya abrió y leyó la observación registrada en su panel personal.",
+        description: "Verifica si el aprendiz ya abrió y leyó la observación registrada en su panel personal.",
         icon: <CheckCircle2 className="w-4 h-4 text-amber-500" />,
       },
       {
@@ -183,7 +183,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Notificación Automática",
-        description: "El aprendiz recibe una alerta inmediata en su portal informando la novedad registrada por el docente.",
+        description: "El aprendiz recibe una alerta inmediata en su portal informando la novedad registrada por el instructor.",
         icon: <Mail className="w-4 h-4 text-amber-500" />,
       },
       {
@@ -217,7 +217,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Recepción de Enlaces y Evidencias",
-        description: "Recibe los enlaces de Google Drive, GitHub o documentos con las evidencias de recuperación cargadas por el estudiante.",
+        description: "Recibe los enlaces de Google Drive, GitHub o documentos con las evidencias de recuperación cargadas por el aprendiz.",
         icon: <ExternalLink className="w-4 h-4 text-indigo-500" />,
       },
       {
@@ -227,7 +227,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Firma del Instructor y Cierre",
-        description: "Cierra el acta del plan con la firma docente y genera el soporte en PDF para archivo institucional.",
+        description: "Cierra el acta del plan con la firma del instructor y genera el soporte en PDF para archivo institucional.",
         icon: <FileSpreadsheet className="w-4 h-4 text-indigo-500" />,
       },
       {
@@ -271,7 +271,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Recepción de Entregas Digitales",
-        description: "Revisa los enlaces de proyectos enviados directamente por los aprendices desde su interfaz de estudiante.",
+        description: "Revisa los enlaces de proyectos enviados directamente por los aprendices desde su portal del aprendiz.",
         icon: <ExternalLink className="w-4 h-4 text-purple-500" />,
       },
       {
@@ -314,7 +314,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
         icon: <RotateCcw className="w-4 h-4 text-cyan-500" />,
       },
     ],
-    workflowTip: "Centraliza aquí los enlaces a tus diapositivas y guías de taller para evitar que los estudiantes pierdan los vínculos en chats informales.",
+    workflowTip: "Centraliza aquí los enlaces a tus diapositivas y guías de taller para evitar que los aprendices pierdan los vínculos en chats informales.",
   },
 
   analytics: {
@@ -334,7 +334,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
       {
         title: "Radar de Aprendices en Riesgo",
-        description: "Identifica rápidamente a los estudiantes con acumulación crítica de faltas o rendimiento académico bajo.",
+        description: "Identifica rápidamente a los aprendices con acumulación crítica de faltas o rendimiento académico bajo.",
         icon: <AlertTriangle className="w-4 h-4 text-rose-500" />,
       },
       {
@@ -359,7 +359,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
     badgeColor: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
     icon: <Calendar className="w-5 h-5 text-teal-500" />,
     bgIcon: "bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400",
-    subtitle: "Visualización de franjas horarias asignadas, ambientes de formación asignados y configuración de disponibilidad docente.",
+    subtitle: "Visualización de franjas horarias asignadas, ambientes de formación asignados y configuración de disponibilidad del instructor.",
     features: [
       {
         title: "Calendario Semanal Interactivo",
@@ -425,7 +425,7 @@ export function TeacherHelpModal({
                   </Badge>
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Guía de herramientas, buenas prácticas y flujo de trabajo para el docente.
+                  Guía de herramientas, buenas prácticas y flujo de trabajo para el instructor.
                 </DialogDescription>
               </div>
             </div>
@@ -515,7 +515,7 @@ export function TeacherHelpModal({
         {/* Footer */}
         <DialogFooter className="p-3 px-5 border-t border-border/70 bg-muted/20 flex flex-row items-center justify-between shrink-0">
           <span className="text-xs text-muted-foreground font-medium hidden sm:inline-block">
-            AcademiX • Guía del Docente
+            AcademiX • Guía del Instructor
           </span>
           <Button
             onClick={() => onOpenChange(false)}

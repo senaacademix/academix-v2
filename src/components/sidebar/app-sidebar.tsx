@@ -137,6 +137,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             isActive: false,
           },
           {
+            title: "Herramientas",
+            url: "/dashboard/gestor/tools",
+            icon: Wrench,
+            isActive: false,
+          },
+          {
             title: "Configuración",
             url: "/dashboard/admin/settings",
             icon: Settings2,
@@ -167,6 +173,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               title: "Programación Horaria",
               url: effectiveGestorProgramId ? `/dashboard/gestor/schedules?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/schedules",
               icon: CalendarClock,
+              isActive: false,
+            },
+            {
+              title: "Herramientas",
+              url: effectiveGestorProgramId ? `/dashboard/gestor/tools?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/tools",
+              icon: Wrench,
               isActive: false,
             },
           ]
@@ -209,6 +221,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   title: "Programación Horaria",
                   url: "/dashboard/teacher/schedule",
                   icon: CalendarClock,
+                  isActive: false,
+                },
+                {
+                  title: "Herramientas",
+                  url: "/dashboard/teacher/tools",
+                  icon: Wrench,
                   isActive: false,
                 },
               ]

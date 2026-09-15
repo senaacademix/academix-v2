@@ -93,9 +93,9 @@ export function CourseCatalog({ courses, pendingEnrollments = [] }: { courses: a
                                         {course.teacher ? formatName(course.teacher.name, course.teacher.profile).charAt(0) : "?"}
                                     </div>
                                     <div className="flex flex-col items-center">
-                                        <span className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter leading-none">Docente</span>
+                                        <span className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter leading-none">Instructor</span>
                                         <span className="text-[10px] font-bold truncate leading-tight mt-0.5">
-                                            {course.teacher ? formatName(course.teacher.name, course.teacher.profile) : "Sin docente asignado"}
+                                            {course.teacher ? formatName(course.teacher.name, course.teacher.profile) : "Sin instructor asignado"}
                                         </span>
                                     </div>
                                 </div>

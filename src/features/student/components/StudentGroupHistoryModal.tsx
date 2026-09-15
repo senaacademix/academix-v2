@@ -98,7 +98,7 @@ export function StudentGroupHistoryModal({
         toast.error(res.error || "No se pudo cargar el historial de fichas.");
       }
     } catch (err: any) {
-      toast.error("Error al cargar historial del estudiante.");
+      toast.error("Error al cargar historial del aprendiz.");
     } finally {
       setLoading(false);
     }
@@ -129,7 +129,7 @@ export function StudentGroupHistoryModal({
         toast.error(res.error || "Error al realizar el traslado.");
       }
     } catch (err: any) {
-      toast.error("Error inesperado al transferir al estudiante.");
+      toast.error("Error inesperado al transferir al aprendiz.");
     } finally {
       setIsTransferring(false);
     }
@@ -138,7 +138,7 @@ export function StudentGroupHistoryModal({
   const handleExecuteAddHistorical = async () => {
     if (!studentId) return;
     if (targetGroupId === "none") {
-      toast.error("Por favor selecciona la ficha previa del estudiante.");
+      toast.error("Por favor selecciona la ficha previa del aprendiz.");
       return;
     }
 
@@ -151,7 +151,7 @@ export function StudentGroupHistoryModal({
       });
 
       if (res.success) {
-        toast.success("Ficha histórica vinculada exitosamente al expediente del estudiante.");
+        toast.success("Ficha histórica vinculada exitosamente al expediente del aprendiz.");
         setShowTransferForm(false);
         setTransferReason("");
         await loadHistory();
@@ -203,7 +203,7 @@ export function StudentGroupHistoryModal({
           </div>
         ) : !data ? (
           <div className="py-8 text-center text-xs text-muted-foreground">
-            No se pudo obtener información para este estudiante.
+            No se pudo obtener información para este aprendiz.
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto space-y-4 py-3 px-3 scrollbar-thin">
@@ -321,7 +321,7 @@ export function StudentGroupHistoryModal({
 
               {data.history.length === 0 ? (
                 <div className="p-6 text-center text-xs text-muted-foreground border border-dashed rounded-xl bg-card">
-                  No hay registros históricos de fichas para este estudiante.
+                  No hay registros históricos de fichas para este aprendiz.
                 </div>
               ) : (
                 <div className="relative ml-4 pl-6 border-l-2 border-indigo-500/30 space-y-4">

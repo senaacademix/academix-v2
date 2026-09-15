@@ -5,27 +5,94 @@ import { formatName } from "@/lib/utils";
 // Persistent cache for resilience
 const courseStudentsCache = new Map<string, any>();
 
-async function populateCoursesFallbackDescriptions(courses: any[]) {
-    const coursesToLookup = courses.filter(c => c && !c.description && c.periodId && c.groupId);
+export async function populateCoursesFallbackDescriptions(courses: any[]) {
+    if (!courses || courses.length === 0) return courses;
+
+    const coursesToLookup = courses.filter(c => c && (!c.description || !c.description.trim()) && c.title);
     if (coursesToLookup.length === 0) return courses;
+
+    const titles = Array.from(new Set(coursesToLookup.map(c => c.title.trim()).filter(Boolean)));
+    if (titles.length === 0) return courses;
 
     const templates = await prisma.course.findMany({
         where: {
             groupId: null,
-            title: { in: coursesToLookup.map(c => c.title) },
-            periodId: { in: coursesToLookup.map(c => c.periodId).filter(Boolean) as string[] }
+            description: { not: null },
+            OR: titles.map(t => ({
+                title: { equals: t, mode: "insensitive" }
+            }))
         },
-        select: { title: true, periodId: true, description: true }
+        select: {
+            id: true,
+            title: true,
+            periodId: true,
+            description: true,
+            period: {
+                select: {
+                    id: true,
+                    programId: true
+                }
+            }
+        },
+        orderBy: { updatedAt: "desc" }
     });
 
+    if (templates.length === 0) return courses;
+
+    const updatesToPersist: { id: string; description: string }[] = [];
+
     courses.forEach(c => {
-        if (c && !c.description && c.periodId && c.groupId) {
-            const match = templates.find(t => t.title.toLowerCase().trim() === c.title.toLowerCase().trim() && t.periodId === c.periodId);
-            if (match?.description) {
-                c.description = match.description;
+        if (c && (!c.description || !c.description.trim()) && c.title) {
+            const cTitle = c.title.trim().toLowerCase();
+            const matchingTemplates = templates.filter(
+                t => t.title.trim().toLowerCase() === cTitle && t.description && t.description.trim().length > 0
+            );
+
+            if (matchingTemplates.length > 0) {
+                // 1. Match by periodId if present
+                let bestMatch = c.periodId
+                    ? matchingTemplates.find(t => t.periodId === c.periodId)
+                    : null;
+
+                // 2. Match by programId if present
+                const targetProgId = c.group?.programId || c.programId;
+                if (!bestMatch && targetProgId) {
+                    bestMatch = matchingTemplates.find(t => t.period?.programId === targetProgId);
+                }
+
+                // 3. Match any template with the same title
+                if (!bestMatch) {
+                    bestMatch = matchingTemplates[0];
+                }
+
+                if (bestMatch?.description) {
+                    c.description = bestMatch.description;
+                    if (c.id) {
+                        updatesToPersist.push({ id: c.id, description: bestMatch.description });
+                    }
+                }
             }
         }
     });
+
+    // Auto-heal: persist resolved descriptions back to the database for group courses
+    if (updatesToPersist.length > 0) {
+        (async () => {
+            try {
+                for (const item of updatesToPersist) {
+                    await prisma.course.updateMany({
+                        where: {
+                            id: item.id,
+                            OR: [{ description: null }, { description: "" }]
+                        },
+                        data: { description: item.description }
+                    });
+                }
+            } catch (err) {
+                console.error("Error auto-healing course descriptions in database:", err);
+            }
+        })();
+    }
 
     return courses;
 }
@@ -48,10 +115,20 @@ export const courseService = {
             endTime: string;
         }>;
     }) {
-        const { schedules, ...courseData } = data;
+        const { schedules, docProjectId: _ignored, ...courseData } = data;
+
+        const cleanData: any = {
+            title: courseData.title.trim(),
+            description: courseData.description ? courseData.description.trim() : null,
+            externalUrl: courseData.externalUrl || null,
+            periodId: courseData.periodId || null,
+            weeklyHours: courseData.weeklyHours || 0,
+            badge: courseData.badge || null,
+            badgeColor: courseData.badgeColor || null,
+        };
 
         const course = await prisma.course.create({
-            data: courseData,
+            data: cleanData,
         });
 
         // Create schedules if provided
@@ -95,9 +172,19 @@ export const courseService = {
         }
 
         // 2. Create new course
-        const { schedules, ...courseData } = data;
+        const { schedules, docProjectId: _ignored, ...courseData } = data;
+        const cleanData: any = {
+            title: courseData.title.trim(),
+            description: courseData.description ? courseData.description.trim() : null,
+            externalUrl: courseData.externalUrl || null,
+            periodId: courseData.periodId || null,
+            weeklyHours: courseData.weeklyHours || 0,
+            badge: courseData.badge || null,
+            badgeColor: courseData.badgeColor || null,
+        };
+
         const newCourse = await prisma.course.create({
-            data: courseData,
+            data: cleanData,
         });
 
         // 3. Clone schedules: use provided ones if any, otherwise clone from source
@@ -138,12 +225,48 @@ export const courseService = {
             endTime: string;
         }>;
     }) {
-        const { schedules, ...courseData } = data;
+        const { schedules, docProjectId: _ignored, ...rawCourseData } = data;
+
+        const currentCourse = await prisma.course.findUnique({
+            where: { id: courseId },
+            select: { id: true, title: true, periodId: true, groupId: true }
+        });
+
+        const cleanCourseData: any = {};
+        if (rawCourseData.title !== undefined) cleanCourseData.title = rawCourseData.title.trim();
+        if (rawCourseData.description !== undefined) {
+            cleanCourseData.description = rawCourseData.description ? rawCourseData.description.trim() : null;
+        }
+        if (rawCourseData.externalUrl !== undefined) cleanCourseData.externalUrl = rawCourseData.externalUrl;
+        if (rawCourseData.periodId !== undefined) cleanCourseData.periodId = rawCourseData.periodId;
+        if (rawCourseData.weeklyHours !== undefined) cleanCourseData.weeklyHours = rawCourseData.weeklyHours;
+        if (rawCourseData.badge !== undefined) cleanCourseData.badge = rawCourseData.badge;
+        if (rawCourseData.badgeColor !== undefined) cleanCourseData.badgeColor = rawCourseData.badgeColor;
 
         const course = await prisma.course.update({
             where: { id: courseId },
-            data: courseData,
+            data: cleanCourseData,
         });
+
+        // If this is a template/curricular course (groupId is null), cascade description, weeklyHours, badge, badgeColor, title to all group courses
+        if (currentCourse && !currentCourse.groupId) {
+            const groupCourseUpdates: any = {};
+            if (cleanCourseData.description !== undefined) groupCourseUpdates.description = cleanCourseData.description;
+            if (cleanCourseData.weeklyHours !== undefined) groupCourseUpdates.weeklyHours = cleanCourseData.weeklyHours;
+            if (cleanCourseData.badge !== undefined) groupCourseUpdates.badge = cleanCourseData.badge;
+            if (cleanCourseData.badgeColor !== undefined) groupCourseUpdates.badgeColor = cleanCourseData.badgeColor;
+            if (cleanCourseData.title !== undefined) groupCourseUpdates.title = cleanCourseData.title;
+
+            if (Object.keys(groupCourseUpdates).length > 0) {
+                await prisma.course.updateMany({
+                    where: {
+                        groupId: { not: null },
+                        title: { equals: currentCourse.title, mode: "insensitive" }
+                    },
+                    data: groupCourseUpdates
+                });
+            }
+        }
 
         // Update schedules if provided
         if (schedules !== undefined) {
@@ -169,7 +292,7 @@ export const courseService = {
     },
 
     async getTeacherCourses(teacherId: string) {
-        return await prisma.course.findMany({
+        const courses = await prisma.course.findMany({
             where: {
                 OR: [
                     { teacherId: teacherId },
@@ -190,10 +313,11 @@ export const courseService = {
                 }
             },
         });
+        return await populateCoursesFallbackDescriptions(courses);
     },
 
     async getTeacherGroups(teacherId: string) {
-        return await prisma.group.findMany({
+        const groups = await prisma.group.findMany({
             where: {
                 OR: [
                     { teachers: { some: { id: teacherId } } },
@@ -253,6 +377,13 @@ export const courseService = {
                 }
             }
         });
+
+        const allGroupCourses = groups.flatMap(g => g.courses || []);
+        if (allGroupCourses.length > 0) {
+            await populateCoursesFallbackDescriptions(allGroupCourses);
+        }
+
+        return groups;
     },
 
     async getStudentCourses(userId: string) {
@@ -328,9 +459,10 @@ export const courseService = {
     },
 
     async getCourseById(courseId: string) {
-        return await prisma.course.findUnique({
+        const course = await prisma.course.findUnique({
             where: { id: courseId },
             include: {
+                group: true,
                 _count: {
                     select: {
                         enrollments: true
@@ -338,6 +470,10 @@ export const courseService = {
                 },
             },
         });
+        if (course && (!course.description || !course.description.trim())) {
+            await populateCoursesFallbackDescriptions([course]);
+        }
+        return course;
     },
 
     async deleteCourse(courseId: string) {

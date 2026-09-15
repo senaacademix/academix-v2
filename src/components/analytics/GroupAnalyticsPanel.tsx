@@ -202,7 +202,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                 .filter((p) => p.studentId === s.id || p.student?.id === s.id || p.student?.profile?.identificacion === s.identificacion)
                 .map((p) => ({
                     planNumber: p.planNumber || `PLAN-${p.id.slice(-4)}`,
-                    teacherName: p.teacher?.name || formatName(p.teacher?.profile?.nombres, p.teacher?.profile?.apellido) || "Docente",
+                    teacherName: p.teacher?.name || formatName(p.teacher?.profile?.nombres, p.teacher?.profile?.apellido) || "Instructor",
                     status: p.status || "PENDIENTE",
                     startDate: p.startDate ? format(fromUTC(new Date(p.startDate)), "dd/MM/yyyy", { locale: es }) : undefined,
                     endDate: p.endDate ? format(fromUTC(new Date(p.endDate)), "dd/MM/yyyy", { locale: es }) : undefined,
@@ -259,7 +259,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
 
         const remarksList: GroupExportRemark[] = (analyticsData.remarks || []).map((rem) => {
             const dateStr = rem.date ? format(fromUTC(new Date(rem.date)), "dd/MM/yyyy p", { locale: es }) : "";
-            const studentName = rem.user?.name || formatName(rem.user?.profile?.nombres, rem.user?.profile?.apellido) || "Estudiante";
+            const studentName = rem.user?.name || formatName(rem.user?.profile?.nombres, rem.user?.profile?.apellido) || "Aprendiz";
             const studentDoc = rem.user?.profile?.identificacion || "S/I";
             const teacherName = rem.teacher?.name || formatName(rem.teacher?.profile?.nombres, rem.teacher?.profile?.apellido) || "Sistema";
 
@@ -277,9 +277,9 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
         });
 
         const improvementPlansList: GroupExportImprovementPlan[] = (improvementPlans || []).map((p) => {
-            const studentName = p.student?.name || formatName(p.student?.profile?.nombres, p.student?.profile?.apellido) || "Estudiante";
+            const studentName = p.student?.name || formatName(p.student?.profile?.nombres, p.student?.profile?.apellido) || "Aprendiz";
             const studentDoc = p.student?.profile?.identificacion || "S/I";
-            const teacherName = p.teacher?.name || formatName(p.teacher?.profile?.nombres, p.teacher?.profile?.apellido) || "Docente";
+            const teacherName = p.teacher?.name || formatName(p.teacher?.profile?.nombres, p.teacher?.profile?.apellido) || "Instructor";
 
             return {
                 id: p.id,
@@ -904,7 +904,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                         Analítica del Grupo: {analyticsData?.groupName || "Cargando..."}
                     </DialogTitle>
                     <DialogDescription>
-                        Vista general de rendimiento, asistencia y comportamiento de todos los estudiantes.
+                        Vista general de rendimiento, asistencia y comportamiento de todos los aprendices.
                     </DialogDescription>
                 </DialogHeader>
             )}
@@ -1149,7 +1149,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                         <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                                             <span className="flex items-center gap-2">
                                                 <GraduationCap className="w-5 h-5 text-indigo-500 shrink-0" />
-                                                <span className="text-base sm:text-lg font-black leading-tight">Ranking de Estudiantes (Rendimiento Integral)</span>
+                                                <span className="text-base sm:text-lg font-black leading-tight">Ranking de Aprendices (Rendimiento Integral)</span>
                                             </span>
                                             <Button 
                                                 variant="ghost" 
@@ -1162,7 +1162,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                             </Button>
                                         </CardTitle>
                                         <CardDescription>
-                                            Estudiantes ordenados de mayor a menor puntaje integral. El cálculo pondera: Calificaciones ({academicWeight}%), Asistencia ({attendanceWeight}%) y Disciplina ({disciplineWeight}%).
+                                            Aprendices ordenados de mayor a menor puntaje integral. El cálculo pondera: Calificaciones ({academicWeight}%), Asistencia ({attendanceWeight}%) y Disciplina ({disciplineWeight}%).
                                         </CardDescription>
 
                                         {showWeightsConfig && (
@@ -1239,7 +1239,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                         <p className="font-extrabold text-foreground text-xs">Orígenes de Datos e Impacto:</p>
                                                         <ul className="list-disc pl-4 space-y-1.5">
                                                             <li>
-                                                                <strong className="text-foreground">Calificaciones:</strong> Promedio de notas de las actividades calificables creadas por el docente para el curso. Una nota de 5.0 representa 100 puntos académicos; calificaciones menores se ponderan proporcionalmente.
+                                                                <strong className="text-foreground">Calificaciones:</strong> Promedio de notas de las actividades calificables creadas por el instructor para el curso. Una nota de 5.0 representa 100 puntos académicos; calificaciones menores se ponderan proporcionalmente.
                                                             </li>
                                                             <li>
                                                                 <strong className="text-foreground">Asistencia:</strong> Calculado sobre el registro diario. Cada inasistencia (Falta) resta <span className="text-red-600 font-bold">-10 puntos</span>, cada llegada tarde resta <span className="text-amber-600 font-bold">-4 puntos</span>, y cada retiro temprano resta <span className="text-blue-600 font-bold">-4 puntos</span> de un máximo de 100 puntos.
@@ -1326,7 +1326,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                             <BarChart className="w-5 h-5 text-indigo-500" />
                                             Rendimiento Individual por Materia
                                         </CardTitle>
-                                        <CardDescription>Visualiza las calificaciones de cada estudiante en la materia seleccionada.</CardDescription>
+                                        <CardDescription>Visualiza las calificaciones de cada aprendiz en la materia seleccionada.</CardDescription>
                                     </CardHeader>
                                     <CardContent className="h-[350px] w-full">
                                         {studentGradesData.length > 0 && studentGradesData.some(s => s.nota > 0) ? (
@@ -1427,9 +1427,9 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                                            Asistencia por Estudiante
+                                            Asistencia por Aprendiz
                                         </CardTitle>
-                                        <CardDescription>Visualiza las ausencias y llegadas tarde de cada estudiante.</CardDescription>
+                                        <CardDescription>Visualiza las ausencias y llegadas tarde de cada aprendiz.</CardDescription>
                                     </CardHeader>
                                     <CardContent className="h-[350px] w-full">
                                         {studentAttendanceBarsData.length > 0 && studentAttendanceBarsData.some(s => s.ausente > 0 || s.tarde > 0 || (s.retiro || 0) > 0) ? (
@@ -1490,16 +1490,16 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                 </Card>
 
 
-                                {/* Docentes sin Asistencia Registrada (Solo visible para Administradores) */}
+                                {/* Instructores sin Asistencia Registrada (Solo visible para Administradores) */}
                                 {!isTeacherView && (
                                     <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
                                         <CardHeader className="pb-3">
                                             <CardTitle className="flex items-center gap-2 text-base font-black">
                                                 <AlertCircle className="w-5 h-5 text-red-500" />
-                                                Seguimiento de Asistencia Docente (Clases sin Registro)
+                                                Seguimiento de Asistencia de Instructores (Clases sin Registro)
                                             </CardTitle>
                                             <CardDescription>
-                                                Muestra los días en que cada docente tenía clase programada pero no se registró asistencia de ningún estudiante.
+                                                Muestra los días en que cada instructor tenía clase programada pero no se registró asistencia de ningún aprendiz.
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>
@@ -1509,7 +1509,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                         <TableHeader className="bg-muted/30">
                                                             <TableRow>
                                                                 <TableHead className="font-semibold text-xs py-3 pl-6">Materia</TableHead>
-                                                                <TableHead className="font-semibold text-xs py-3">Docente</TableHead>
+                                                                <TableHead className="font-semibold text-xs py-3">Instructor</TableHead>
                                                                 <TableHead className="font-semibold text-xs py-3 text-center w-[120px]">Días Pendientes</TableHead>
                                                                 <TableHead className="font-semibold text-xs py-3 pr-6">Fechas sin Asistencia</TableHead>
                                                             </TableRow>
@@ -1546,7 +1546,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                     <div>
                                                         <h4 className="font-bold text-sm">¡Control al día!</h4>
                                                         <p className="text-xs text-muted-foreground max-w-xs mt-0.5">
-                                                            Todos los docentes han registrado la asistencia de los estudiantes en todas sus fechas programadas.
+                                                            Todos los instructores han registrado la asistencia de los aprendices en todas sus fechas programadas.
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1581,7 +1581,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                          <UserX className="w-5 h-5 text-red-500" />
                                                          Registro de Inasistencias (Faltas)
                                                      </CardTitle>
-                                                     <CardDescription>Total de días no asistidos por cada estudiante sobre el total de días programados.</CardDescription>
+                                                     <CardDescription>Total de días no asistidos por cada aprendiz sobre el total de días programados.</CardDescription>
                                                  </CardHeader>
                                                  <CardContent className="space-y-4">
                                                      {detailedMetricsData.map(({ student, absentCount, attendanceDaysRate, totalClassDays, details }: any) => {
@@ -1626,7 +1626,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                          <Clock className="w-5 h-5 text-amber-500" />
                                                          Registro de Llegadas Tarde (Tardanzas)
                                                      </CardTitle>
-                                                     <CardDescription>Cantidad de días en los que el estudiante registró ingreso tarde sobre los días programados.</CardDescription>
+                                                     <CardDescription>Cantidad de días en los que el aprendiz registró ingreso tarde sobre los días programados.</CardDescription>
                                                  </CardHeader>
                                                  <CardContent className="space-y-4">
                                                      {detailedMetricsData.map(({ student, lateCount, lateDaysRate, totalClassDays, details }: any) => (
@@ -1668,7 +1668,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                          <LogOut className="w-5 h-5 text-blue-500" />
                                                          Registro de Retiros Tempranos (Retiros)
                                                      </CardTitle>
-                                                     <CardDescription>Cantidad de días en los que el estudiante se retiró antes de finalizar la clase sobre los días programados.</CardDescription>
+                                                     <CardDescription>Cantidad de días en los que el aprendiz se retiró antes de finalizar la clase sobre los días programados.</CardDescription>
                                                  </CardHeader>
                                                  <CardContent className="space-y-4">
                                                      {detailedMetricsData.map(({ student, leaveEarlyCount, leaveEarlyDaysRate, totalClassDays, details }: any) => (
@@ -1831,7 +1831,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                         onValueChange={setDisciplineStudentFilter}
                                                     >
                                                         <SelectTrigger className="h-10 rounded-xl">
-                                                            <SelectValue placeholder="Filtrar por estudiante" />
+                                                            <SelectValue placeholder="Filtrar por aprendiz" />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             <SelectItem value="all">Todos los aprendices</SelectItem>
@@ -1933,7 +1933,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                         <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-muted/5 text-muted-foreground">
                                             <FileText className="w-12 h-12 mb-4 opacity-50 text-muted-foreground" />
                                             <p className="font-semibold text-base">Sin Planes de Mejoramiento</p>
-                                            <p className="text-xs text-center mt-1">No se registran planes de mejoramiento asignados para los estudiantes en este grupo.</p>
+                                            <p className="text-xs text-center mt-1">No se registran planes de mejoramiento asignados para los aprendices en este grupo.</p>
                                         </div>
                                     ) : (() => {
                                         // Group plans by student
@@ -1973,9 +1973,9 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                 const daysPassed = Math.max(0, Math.round((nowMs - startMs) / 86400000));
 
                                                                 const steps = [
-                                                                    { label: "Plan creado", sub: "Docente", done: step1Done, active: !step1Done, locked: false, desc: "El instructor crea el plan de mejoramiento académico detallando compromisos, fechas y subiendo el documento inicial." },
+                                                                    { label: "Plan creado", sub: "Instructor", done: step1Done, active: !step1Done, locked: false, desc: "El instructor crea el plan de mejoramiento académico detallando compromisos, fechas y subiendo el documento inicial." },
                                                                     { label: "Est. firma", sub: "Aprendiz", done: step2Done, active: step1Done && !step2Done, locked: false, desc: "El aprendiz descarga el documento, lo firma digitalmente y sube la copia firmada como aceptación del plan." },
-                                                                    { label: "Doc. firma", sub: "Docente", done: step3Done, active: step2Done && !step3Done, locked: false, desc: "El instructor revisa la firma del aprendiz, realiza la contrafirma docente y sube el documento final firmado." },
+                                                                    { label: "Doc. firma", sub: "Instructor", done: step3Done, active: step2Done && !step3Done, locked: false, desc: "El instructor revisa la firma del aprendiz, realiza la contrafirma del instructor y sube el documento final firmado." },
                                                                     { label: "Evaluación", sub: isPastEnd ? "Disponible" : "Al finalizar", done: !!step4Done, active: step3Done && isPastEnd && !step4Done, locked: !isPastEnd && !step4Done, desc: isPastEnd ? "El instructor califica el plan (0.0 a 5.0) evaluando las evidencias subidas por el aprendiz." : "La evaluación estará disponible una vez que el plan haya vencido y el aprendiz haya subido sus evidencias." },
                                                                 ];
 
@@ -1995,7 +1995,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                                     )}
                                                                                 </div>
                                                                                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                                                                                    {format(fromUTC(plan.startDate), "dd/MM/yyyy")} → {format(fromUTC(plan.endDate), "dd/MM/yyyy")} · Docente: {formatName(plan.teacher?.name, plan.teacher?.profile)}
+                                                                                    {format(fromUTC(plan.startDate), "dd/MM/yyyy")} → {format(fromUTC(plan.endDate), "dd/MM/yyyy")} · Instructor: {formatName(plan.teacher?.name, plan.teacher?.profile)}
                                                                                 </div>
                                                                             </div>
                                                                             <div className="flex items-center gap-1 shrink-0">
@@ -2103,7 +2103,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                     <p className="font-semibold text-sm">{formatName(viewPlanDetail.student?.name, viewPlanDetail.student?.profile)}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Docente</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Instructor</p>
                                     <p className="font-semibold text-sm">{formatName(viewPlanDetail.teacher?.name, viewPlanDetail.teacher?.profile)}</p>
                                 </div>
                                 <div className="space-y-1">
@@ -2124,7 +2124,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                             <div className="grid grid-cols-2 gap-3 border-t pt-3">
                                 {viewPlanDetail.teacherDocUrl && (
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paso 1 — Plan Docente</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paso 1 — Plan del Instructor</p>
                                         <a href={viewPlanDetail.teacherDocUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5" /> Ver Documento</a>
                                     </div>
                                 )}
@@ -2136,7 +2136,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                 )}
                                 {viewPlanDetail.teacherSignedDocUrl && (
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paso 3 — Firma Docente</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Paso 3 — Firma del Instructor</p>
                                         <a href={viewPlanDetail.teacherSignedDocUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-bold flex items-center gap-1"><ExternalLink className="w-3.5 h-3.5" /> Ver Contrafirma</a>
                                     </div>
                                 )}

@@ -75,7 +75,7 @@ export function StudentRemarks({ courseId, userId }: StudentRemarksProps) {
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-2xl font-bold flex items-center gap-2">
                     <MessageSquareWarning className="h-4 w-4" />
-                    Observaciones del Profesor
+                    Observaciones del Instructor
                 </h3>
                 <div className="text-xs text-muted-foreground flex flex-wrap gap-2 mt-1">
                     <span>{remarks.filter(r => r.type === "ATTENTION").length} atenciones</span>
@@ -93,7 +93,7 @@ export function StudentRemarks({ courseId, userId }: StudentRemarksProps) {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Fecha</TableHead>
-                            <TableHead>Profesor</TableHead>
+                            <TableHead>Instructor</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Título</TableHead>
                             <TableHead className="text-center">Estado</TableHead>
@@ -209,7 +209,7 @@ export function StudentRemarks({ courseId, userId }: StudentRemarksProps) {
                                 </div>
 
                                 <div className="space-y-1">
-                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Profesor:</span>
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Instructor:</span>
                                     <span className="text-sm font-semibold">
                                         {viewingRemark && formatName(viewingRemark.teacher.name, viewingRemark.teacher.profile)}
                                     </span>

@@ -77,7 +77,7 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
       },
       {
         title: "Distribución de Fichas y Aprendices",
-        description: "Revisa la población de estudiantes por etapas formativas (Lectiva, Productiva y Egresados) e identifica el grupo más numeroso.",
+        description: "Revisa la población de aprendices por etapas formativas (Lectiva, Productiva y Egresados) e identifica el grupo más numeroso.",
         icon: <Users className="w-4 h-4 text-blue-500" />,
       },
       {
@@ -96,13 +96,13 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
 
   periods: {
     key: "periods",
-    tabLabel: "Periodos y Materias",
+    tabLabel: "Malla Curricular",
     title: "Malla Curricular, Periodos y Asignaturas",
-    badge: "Pestaña: Periodos y Materias",
+    badge: "Pestaña: Malla Curricular",
     badgeColor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
     icon: <BookOpen className="w-5 h-5 text-indigo-500" />,
     bgIcon: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
-    subtitle: "Estructuración de periodos lectivos y catálogo de materias con intensidades horarias por semana.",
+    subtitle: "Estructuración de la malla curricular, periodos lectivos y catálogo de materias con intensidades horarias por semana.",
     features: [
       {
         title: "Periodos Normales y Especiales",
@@ -116,7 +116,7 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
       },
       {
         title: "Reordenamiento Drag & Drop",
-        description: "Arrastra y suelta periodos y materias para ordenar secuencialmente la ruta de aprendizaje de forma intuitiva.",
+        description: "Arrastra y suelta periodos y asignaturas para ordenar secuencialmente la ruta de aprendizaje de forma intuitiva.",
         icon: <Layers className="w-4 h-4 text-indigo-500" />,
       },
       {
@@ -135,13 +135,13 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
 
   groups: {
     key: "groups",
-    tabLabel: "Grupos y Alumnos",
+    tabLabel: "Grupos y Aprendices",
     title: "Fichas de Caracterización y Aprendices",
-    badge: "Pestaña: Grupos y Alumnos",
+    badge: "Pestaña: Grupos y Aprendices",
     badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
     icon: <Users className="w-5 h-5 text-emerald-500" />,
     bgIcon: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-    subtitle: "Administración de grupos/fichas de formación, matrícula de estudiantes y novedades académicas.",
+    subtitle: "Administración de grupos/fichas de formación, matrícula de aprendices y novedades académicas.",
     features: [
       {
         title: "Fichas y Jornadas Formativas",
@@ -174,22 +174,22 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
 
   teachers: {
     key: "teachers",
-    tabLabel: "Profesores",
-    title: "Cuerpo Docente, Disponibilidad y Materias",
-    badge: "Pestaña: Profesores",
+    tabLabel: "Instructores",
+    title: "Equipo de Instructores, Disponibilidad y Materias",
+    badge: "Pestaña: Instructores",
     badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
     icon: <GraduationCap className="w-5 h-5 text-amber-500" />,
     bgIcon: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
     subtitle: "Vinculación de instructores al programa, disponibilidad horaria semanal y habilitación de materias.",
     features: [
       {
-        title: "Vinculación Docente al Programa",
-        description: "Asocia profesores del centro al programa de formación o registra nuevos docentes de forma individual o por archivo.",
+        title: "Vinculación de Instructores al Programa",
+        description: "Asocia instructores del centro al programa de formación o registra nuevos instructores de forma individual o por archivo.",
         icon: <Users className="w-4 h-4 text-amber-500" />,
       },
       {
         title: "Disponibilidad Horaria Semanal",
-        description: "Establece las franjas (mañana, tarde, noche) y días en los que cada profesor puede orientar clases presenciales o virtuales.",
+        description: "Establece las franjas (mañana, tarde, noche) y días en los que cada instructor puede orientar clases presenciales o virtuales.",
         icon: <Clock className="w-4 h-4 text-amber-500" />,
       },
       {
@@ -204,11 +204,11 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
       },
       {
         title: "Acciones Masivas en Lote",
-        description: "Selecciona múltiples profesores para aprobar su disponibilidad, desbloquear materias o desvincularlos en un solo clic.",
+        description: "Selecciona múltiples instructores para aprobar su disponibilidad, desbloquear materias o desvincularlos en un solo clic.",
         icon: <CheckCircle2 className="w-4 h-4 text-amber-500" />,
       },
     ],
-    workflowTip: "Cualifica las materias de cada docente antes de generar el horario general; así el sistema filtrará únicamente a los docentes que cumplen tanto con la disponibilidad como con el perfil de la materia.",
+    workflowTip: "Cualifica las materias de cada instructor antes de generar el horario general; así el sistema filtrará únicamente a los instructores que cumplen tanto con la disponibilidad como con el perfil de la materia.",
   },
 
   environments: {

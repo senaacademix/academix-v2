@@ -131,7 +131,7 @@ export function CourseDocLinks({
                         Material de Documentación
                     </h3>
                     <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                        Los estudiantes ven estos enlaces en la pestaña <strong>Documentación</strong>
+                        Los aprendices ven estos enlaces en la pestaña <strong>Documentación</strong>
                     </p>
                 </div>
                 <Button onClick={openCreate} className="gap-2 rounded-xl h-10 px-5 font-bold w-full sm:w-auto shrink-0 flex items-center justify-center">
@@ -148,7 +148,7 @@ export function CourseDocLinks({
                     </div>
                     <p className="font-semibold text-muted-foreground">No hay enlaces publicados</p>
                     <p className="text-sm text-muted-foreground">
-                        Agrega el primer enlace para compartir con tus estudiantes
+                        Agrega el primer enlace para compartir con tus aprendices
                     </p>
                     <Button variant="outline" onClick={openCreate} className="mt-2 gap-2 rounded-xl">
                         <Plus className="w-4 h-4" /> Agregar Enlace
@@ -211,7 +211,7 @@ export function CourseDocLinks({
                             Agregar Enlace de Documentación
                         </DialogTitle>
                         <DialogDescription>
-                            Comparte un recurso externo con tus estudiantes.
+                            Comparte un recurso externo con tus aprendices.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -276,7 +276,7 @@ export function CourseDocLinks({
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Eliminar este enlace?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            El enlace <strong>"{deleteTarget?.title}"</strong> dejará de estar disponible para los estudiantes. Esta acción no se puede deshacer.
+                            El enlace <strong>"{deleteTarget?.title}"</strong> dejará de estar disponible para los aprendices. Esta acción no se puede deshacer.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

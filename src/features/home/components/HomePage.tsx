@@ -18,7 +18,8 @@ import {
   ClipboardList,
   Sparkles,
   ArrowRight,
-  BarChart3
+  BarChart3,
+  Wrench
 } from "lucide-react";
 
 import { PageTransition, StaggerGroup, StaggerItem } from "@/components/ui/animated-container";
@@ -80,7 +81,7 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
       return [
         {
           title: "Gestión de Usuarios",
-          description: "Estudiantes, planes de mejoramiento, docentes, gestores y coordinadores.",
+          description: "Aprendices, planes de mejoramiento, instructores, gestores y coordinadores.",
           url: "/dashboard/admin/users",
           icon: Users,
           color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
@@ -118,7 +119,7 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
       return [
         {
           title: "Gestión y Matrícula",
-          description: "Matrícula de estudiantes, carga masiva en Excel y asignación de docentes.",
+          description: "Matrícula de aprendices, carga masiva en Excel y asignación de instructores.",
           url: "/dashboard/admin/users",
           icon: Users,
           color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
@@ -149,7 +150,7 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
       return [
         {
           title: "Gestión de Usuarios",
-          description: "Consulta de estudiantes, docentes y planes de mejoramiento.",
+          description: "Consulta de aprendices, instructores y planes de mejoramiento.",
           url: "/dashboard/admin/users",
           icon: Users,
           color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
@@ -180,7 +181,7 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
       return [
         {
           title: "Mis Grupos",
-          description: "Toma asistencia, califica actividades y gestiona estudiantes de tus fichas.",
+          description: "Toma asistencia, califica actividades y gestiona aprendices de tus fichas.",
           url: "/dashboard/teacher",
           icon: Users,
           color: "bg-primary/10 text-primary border-primary/20"
@@ -191,6 +192,13 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
           url: "/dashboard/teacher/schedule",
           icon: CalendarClock,
           color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+        },
+        {
+          title: "Reporte de Juicios Evaluativos",
+          description: "Procesa archivos Sofia Plus, analítica de juicios y matrices por ficha.",
+          url: "/dashboard/teacher/tools",
+          icon: Wrench,
+          color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
         }
       ];
     } else {
@@ -220,11 +228,11 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
       case "gestor":
         return "Gestor Académico";
       case "teacher":
-        return "Docente / Instructor";
+        return "Instructor";
       case "observer":
         return "Observador / Auditor";
       case "student":
-        return "Estudiante / Aprendiz";
+        return "Aprendiz";
       default:
         return "Usuario";
     }
@@ -257,7 +265,7 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-3xl sm:text-5xl font-extrabold text-foreground tracking-tight leading-tight text-balance"
           >
-            ¡Hola, <span className="bg-gradient-to-r from-foreground via-foreground/80 to-primary bg-clip-text text-transparent">{userName ? formatName(userName) : 'Docente'}</span>!
+            ¡Hola, <span className="bg-gradient-to-r from-foreground via-foreground/80 to-primary bg-clip-text text-transparent">{userName ? formatName(userName) : 'Instructor'}</span>!
           </motion.h1>
 
           <motion.p

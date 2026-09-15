@@ -362,7 +362,7 @@ export function ScheduleGeneralBuilderView({
             title="Matriz de horario y horas asignadas por instructor"
           >
             <GraduationCap className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-            <span>Docentes</span>
+            <span>Instructores</span>
           </Button>
 
           <div className="h-4 w-px bg-border hidden sm:block shrink-0" />

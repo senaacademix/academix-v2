@@ -42,14 +42,14 @@ export function HeaderRoleBadge() {
         };
       case "teacher":
         return {
-          shortLabel: "Docente",
-          fullLabel: "Docente / Instructor",
+          shortLabel: "Instructor",
+          fullLabel: "Instructor",
           icon: UserCheck,
         };
       case "student":
         return {
           shortLabel: "Aprendiz",
-          fullLabel: "Estudiante / Aprendiz",
+          fullLabel: "Aprendiz",
           icon: GraduationCap,
         };
       default:

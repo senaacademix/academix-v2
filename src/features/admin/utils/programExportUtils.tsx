@@ -249,7 +249,7 @@ export async function exportProgramOverviewExcel(program: any) {
     const metaRows = [
         ["Nombre Oficial", program.name, "Gestores Académicos", gestores.map((g: any) => g.name).join(", ") || "No asignados"],
         ["Descripción", program.description || "Sin descripción oficial", "Total Aprendices", `${totalStudents} matriculados`],
-        ["Fichas de Formación", `${groups.length} fichas`, "Equipo Docente", `${teachers.length} instructores`],
+        ["Fichas de Formación", `${groups.length} fichas`, "Equipo de Instructores", `${teachers.length} instructores`],
         ["Periodos Curriculares", `${periods.length} periodos`, "Límite Horas Instructor", `${program.maxWeeklyHoursPerInstructor || 40} h/semana`],
         ["Fecha Inicio", formatDateSafe(program.startDate), "Fecha Fin", formatDateSafe(program.endDate)],
         ["Duración Lectiva", `${program.duracionLectiva || "No definida"} meses`, "Duración Productiva", `${program.duracionProductiva || "No definida"} meses`],
@@ -382,7 +382,7 @@ export async function exportProgramOverviewPdf(program: any) {
                     </View>
                     <View style={pdfStyles.kpiBox}>
                         <Text style={pdfStyles.kpiNum}>{teachers.length}</Text>
-                        <Text style={pdfStyles.kpiLabel}>Equipo Docente</Text>
+                        <Text style={pdfStyles.kpiLabel}>Equipo de Instructores</Text>
                     </View>
                 </View>
 
@@ -659,7 +659,7 @@ export async function exportProgramCurriculumPdf(program: any) {
 }
 
 // =============================================================
-// 3. PESTAÑA: EQUIPO DOCENTE
+// 3. PESTAÑA: EQUIPO DE INSTRUCTORES
 // =============================================================
 
 export async function exportProgramTeachersExcel(program: any) {
@@ -670,11 +670,11 @@ export async function exportProgramTeachersExcel(program: any) {
     const teachers = program.teachers || [];
     const groups = program.groups || [];
 
-    const sheet = wb.addWorksheet("Equipo Docente");
+    const sheet = wb.addWorksheet("Equipo de Instructores");
 
     sheet.mergeCells("A1:F1");
     const titleCell = sheet.getCell("A1");
-    titleCell.value = `ACADEMIX — EQUIPO DOCENTE: ${program.name.toUpperCase()}`;
+    titleCell.value = `ACADEMIX — EQUIPO DE INSTRUCTORES: ${program.name.toUpperCase()}`;
     titleCell.font = { name: "Segoe UI", size: 14, bold: true, color: { argb: "FFFFFFFF" } };
     titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4338CA" } };
     titleCell.alignment = { vertical: "middle", horizontal: "center" };
@@ -682,7 +682,7 @@ export async function exportProgramTeachersExcel(program: any) {
 
     sheet.mergeCells("A2:F2");
     const subCell = sheet.getCell("A2");
-    subCell.value = `Directorio y Cargas Docentes del Programa | Generado el ${format(new Date(), "dd/MM/yyyy HH:mm")}`;
+    subCell.value = `Directorio y Cargas de Instructores del Programa | Generado el ${format(new Date(), "dd/MM/yyyy HH:mm")}`;
     subCell.font = { name: "Segoe UI", size: 10, italic: true, color: { argb: "FF334155" } };
     subCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEF2FF" } };
     subCell.alignment = { vertical: "middle", horizontal: "center" };
@@ -690,7 +690,7 @@ export async function exportProgramTeachersExcel(program: any) {
 
     sheet.addRow([]);
 
-    const header = sheet.addRow(["N°", "Docente Instructor", "Documento", "Correo Electrónico", "Horas Semanales", "Materias y Fichas Asignadas"]);
+    const header = sheet.addRow(["N°", "Instructor", "Documento", "Correo Electrónico", "Horas Semanales", "Materias y Fichas Asignadas"]);
     header.height = 22;
     header.eachCell((cell: any) => {
         cell.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FFFFFFFF" } };
@@ -742,7 +742,7 @@ export async function exportProgramTeachersExcel(program: any) {
     sheet.getColumn(5).width = 18;
     sheet.getColumn(6).width = 50;
 
-    await triggerExcelDownload(wb, `Equipo_Docente_${program.name.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`);
+    await triggerExcelDownload(wb, `Equipo_Instructores_${program.name.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`);
 }
 
 export async function exportProgramTeachersPdf(program: any) {
@@ -750,22 +750,22 @@ export async function exportProgramTeachersPdf(program: any) {
     const groups = program.groups || [];
 
     const doc = (
-        <Document title={`Equipo Docente - ${program.name}`}>
+        <Document title={`Equipo de Instructores - ${program.name}`}>
             <Page size="A4" style={pdfStyles.page}>
                 <View style={pdfStyles.headerBanner}>
                     <View style={pdfStyles.headerTitleBlock}>
-                        <Text style={pdfStyles.brandTitle}>ACADEMIX — EQUIPO DOCENTE</Text>
+                        <Text style={pdfStyles.brandTitle}>ACADEMIX — EQUIPO DE INSTRUCTORES</Text>
                         <Text style={pdfStyles.subTitle}>Instructores Vinculados • Programa: {program.name}</Text>
                     </View>
                     <View style={pdfStyles.badge}>
-                        <Text style={pdfStyles.badgeText}>{teachers.length} Docentes</Text>
+                        <Text style={pdfStyles.badgeText}>{teachers.length} Instructores</Text>
                     </View>
                 </View>
 
                 <View style={pdfStyles.table}>
                     <View style={pdfStyles.tableHeaderRow}>
                         <Text style={[pdfStyles.tableHeaderCell, { width: "6%", textAlign: "center" }]}>#</Text>
-                        <Text style={[pdfStyles.tableHeaderCell, { width: "32%" }]}>Docente Instructor</Text>
+                        <Text style={[pdfStyles.tableHeaderCell, { width: "32%" }]}>Instructor</Text>
                         <Text style={[pdfStyles.tableHeaderCell, { width: "18%" }]}>Identificación</Text>
                         <Text style={[pdfStyles.tableHeaderCell, { width: "26%" }]}>Correo</Text>
                         <Text style={[pdfStyles.tableHeaderCell, { width: "18%", textAlign: "center" }]}>Horas Asignadas</Text>
@@ -796,14 +796,14 @@ export async function exportProgramTeachersPdf(program: any) {
                 </View>
 
                 <View style={pdfStyles.footer}>
-                    <Text style={pdfStyles.footerText}>AcademiX Platform • Directorio Docente</Text>
+                    <Text style={pdfStyles.footerText}>AcademiX Platform • Directorio de Instructores</Text>
                     <Text style={pdfStyles.footerText}>Generado el {format(new Date(), "dd/MM/yyyy HH:mm")}</Text>
                 </View>
             </Page>
         </Document>
     );
 
-    await triggerPdfDownload(doc, `Equipo_Docente_${program.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
+    await triggerPdfDownload(doc, `Equipo_Instructores_${program.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
 }
 
 // =============================================================
@@ -1058,7 +1058,7 @@ export async function exportGroupStudentsExcel(group: any, programName: string) 
 
         cSheet.addRow([]);
 
-        const cHeader = cSheet.addRow(["N°", "Asignatura / Competencia", "Docente Asignado", "Horas Semanales"]);
+        const cHeader = cSheet.addRow(["N°", "Asignatura / Competencia", "Instructor Asignado", "Horas Semanales"]);
         cHeader.height = 22;
         cHeader.eachCell((cell: any) => {
             cell.font = { name: "Segoe UI", size: 9.5, bold: true, color: { argb: "FFFFFFFF" } };
@@ -1070,7 +1070,7 @@ export async function exportGroupStudentsExcel(group: any, programName: string) 
             const row = cSheet.addRow([
                 idx + 1,
                 c.title,
-                c.teacher ? formatName(c.teacher.name || "Docente") : "Sin docente asignado",
+                c.teacher ? formatName(c.teacher.name || "Instructor") : "Sin instructor asignado",
                 `${c.weeklyHours || 0} h/sem`
             ]);
             row.height = 20;
@@ -1168,14 +1168,14 @@ export async function exportGroupStudentsPdf(group: any, programName: string) {
                             <View style={pdfStyles.tableHeaderRow}>
                                 <Text style={[pdfStyles.tableHeaderCell, { width: "6%", textAlign: "center" }]}>#</Text>
                                 <Text style={[pdfStyles.tableHeaderCell, { width: "44%" }]}>Asignatura / Competencia</Text>
-                                <Text style={[pdfStyles.tableHeaderCell, { width: "32%" }]}>Docente</Text>
+                                <Text style={[pdfStyles.tableHeaderCell, { width: "32%" }]}>Instructor</Text>
                                 <Text style={[pdfStyles.tableHeaderCell, { width: "18%", textAlign: "center" }]}>Horas Semanales</Text>
                             </View>
                             {courses.map((c: any, idx: number) => (
                                 <View key={c.id} style={[pdfStyles.tableRow, idx % 2 === 1 ? pdfStyles.tableRowEven : {}]}>
                                     <Text style={[pdfStyles.tableCell, { width: "6%", textAlign: "center" }]}>{idx + 1}</Text>
                                     <Text style={[pdfStyles.tableCell, { width: "44%", fontFamily: "Helvetica-Bold" }]}>{c.title}</Text>
-                                    <Text style={[pdfStyles.tableCell, { width: "32%" }]}>{c.teacher ? formatName(c.teacher.name || "Docente") : "Sin docente"}</Text>
+                                    <Text style={[pdfStyles.tableCell, { width: "32%" }]}>{c.teacher ? formatName(c.teacher.name || "Instructor") : "Sin instructor"}</Text>
                                     <Text style={[pdfStyles.tableCell, { width: "18%", textAlign: "center", fontFamily: "Helvetica-Bold", color: "#4338ca" }]}>{c.weeklyHours || 0} h/sem</Text>
                                 </View>
                             ))}

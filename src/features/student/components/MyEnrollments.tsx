@@ -267,34 +267,6 @@ export function MyEnrollments({
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
-
-                        {/* Course Description Dialog */}
-                        <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
-                            <DialogContent className="sm:max-w-lg">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2 font-black text-lg text-primary">
-                                        <BookOpen className="w-5 h-5" />
-                                        {enrollment.course.title}
-                                    </DialogTitle>
-                                    <DialogDescription className="text-xs uppercase tracking-wider font-bold">
-                                        Información de la Materia
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="mt-4 space-y-4 text-sm leading-relaxed text-foreground">
-                                    <div>
-                                        <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground mb-1">Descripción, Competencias y RAP</h4>
-                                        <div className="bg-muted/30 p-4 rounded-xl border border-border/50 max-h-[300px] overflow-y-auto whitespace-pre-wrap">
-                                            {enrollment.course.description || "Esta materia no tiene descripción, competencias o resultados de aprendizaje registrados todavía."}
-                                        </div>
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button onClick={() => setIsInfoDialogOpen(false)} className="rounded-xl font-bold">
-                                        Cerrar
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
                     </div>
                 );
             })}

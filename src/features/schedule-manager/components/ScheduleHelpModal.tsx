@@ -46,7 +46,7 @@ export function ScheduleHelpModal({ open, onOpenChange }: ScheduleHelpModalProps
       items: [
         "Definición de rango de fechas sin conflicto ni solapamiento entre horarios.",
         "Detección automática del horario Vigente según la fecha actual.",
-        "Control de publicación: alterna entre Borrador (en planeación) y Público (visible a estudiantes y docentes).",
+        "Control de publicación: alterna entre Borrador (en planeación) y Público (visible a aprendices e instructores).",
       ],
     },
     {
@@ -66,15 +66,15 @@ export function ScheduleHelpModal({ open, onOpenChange }: ScheduleHelpModalProps
     {
       icon: <UserCheck className="w-5 h-5 text-emerald-500" />,
       bgIcon: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-      title: "3. Disponibilidad y Docentes (Botón «Profesores»)",
-      badge: "Gestión Docente",
+      title: "3. Disponibilidad e Instructores (Botón «Instructores»)",
+      badge: "Gestión de Instructores",
       badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
       description:
         "Gestiona las franjas horarias disponibles de los instructores y las materias que impartirán.",
       items: [
-        "Registro de disponibilidad horaria semanal por cada docente.",
+        "Registro de disponibilidad horaria semanal por cada instructor.",
         "Habilitación de competencias y materias curriculares asignables.",
-        "Trazabilidad granular: marca cada franja o materia con el rol que la guardó (Profesor o Gestor).",
+        "Trazabilidad granular: marca cada franja o materia con el rol que la guardó (Instructor o Gestor).",
         "Bloqueo y desbloqueo de edición para proteger la planeación académica.",
       ],
     },
@@ -85,10 +85,10 @@ export function ScheduleHelpModal({ open, onOpenChange }: ScheduleHelpModalProps
       badge: "Matriz Oficial",
       badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
       description:
-        "Matriz gráfica de clases para asignar materias, profesores y ambientes de aprendizaje.",
+        "Matriz gráfica de clases para asignar materias, instructores y ambientes de aprendizaje.",
       items: [
         "Distribución de clases por grupo, jornada y ambiente de formación.",
-        "Validación en tiempo real para evitar colisiones de docentes y aulas.",
+        "Validación en tiempo real para evitar colisiones de instructores y aulas.",
         "Exportación oficial a PDF de alta fidelidad y hojas de cálculo Excel.",
       ],
     },
@@ -102,7 +102,7 @@ export function ScheduleHelpModal({ open, onOpenChange }: ScheduleHelpModalProps
         "Organiza y publica actividades especiales que ocurrirán durante el período académico.",
       items: [
         "Programación de conferencias, inducciones, talleres y reuniones institucionales.",
-        "Segmentación por audiencia: Público General, Solo Profesores, Solo Estudiantes o Fichas.",
+        "Segmentación por audiencia: Público General, Solo Instructores, Solo Aprendices o Fichas.",
         "Vista en calendario interactivo mensual y lista detallada con enlaces y ubicaciones.",
       ],
     },
@@ -116,7 +116,7 @@ export function ScheduleHelpModal({ open, onOpenChange }: ScheduleHelpModalProps
         "Registra incidencias que modifiquen la rutina habitual de las clases.",
       items: [
         "Reporte de suspensiones de jornada, días festivos y cierres de sede.",
-        "Cambios temporales de ambiente/aula o asignación de docentes suplentes.",
+        "Cambios temporales de ambiente/aula o asignación de instructores suplentes.",
         "Visualización en vistas mensual y semanal con descarga de reportes en PDF y Excel.",
       ],
     },
@@ -194,7 +194,7 @@ export function ScheduleHelpModal({ open, onOpenChange }: ScheduleHelpModalProps
                 💡 Consejo para un flujo de trabajo óptimo:
               </span>
               <p className="leading-relaxed text-[11px]">
-                Empieza creando el período en <strong>Nuevo Horario</strong> → asigna las fichas y franjas en <strong>Grupos</strong> → define las materias en <strong>Profesores</strong> → y finalmente ubica las clases en la matriz del <strong>Horario</strong>.
+                Empieza creando el período en <strong>Nuevo Horario</strong> → asigna las fichas y franjas en <strong>Grupos</strong> → define las materias en <strong>Instructores</strong> → y finalmente ubica las clases en la matriz del <strong>Horario</strong>.
               </p>
             </div>
           </div>

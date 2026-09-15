@@ -1668,7 +1668,7 @@ const handleOpenAnalytics = async () => {
 
     const handleSaveRemarks = async () => {
         if (!remarkCourseId) return toast.error("Selecciona una materia");
-        if (selectedStudents.length === 0) return toast.error("Selecciona al menos un estudiante");
+        if (selectedStudents.length === 0) return toast.error("Selecciona al menos un aprendiz");
         if (!remarkTitle.trim() || !remarkDesc.trim()) return toast.error("Completa el título y la descripción");
 
         setIsSavingRemark(true);
@@ -1688,7 +1688,7 @@ const handleOpenAnalytics = async () => {
                     // Notify students via push
                     notifyEmailSentBatchAction(selectedStudents, "REMARK");
                 } else {
-                    toast.warning("No hay correos registrados para los estudiantes seleccionados.");
+                    toast.warning("No hay correos registrados para los aprendices seleccionados.");
                 }
             }
 
@@ -1812,7 +1812,7 @@ const handleOpenAnalytics = async () => {
                             </Badge>
                             <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border">
                                 <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                                {selectedGroup.students?.length || 0} Estudiantes
+                                {selectedGroup.students?.length || 0} Aprendices
                             </Badge>
                             {groupScheduleInfo && (
                                 <div className="w-full sm:w-auto flex items-center gap-1.5 text-xs bg-muted/60 px-3 py-1 rounded-xl border border-border/70 font-medium">
@@ -1867,7 +1867,7 @@ const handleOpenAnalytics = async () => {
                                     <TabsTrigger value="students" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:border-border/60 shrink-0 transition-all">
                                         <span className="flex items-center gap-2 justify-center">
                                             <Users className="w-4 h-4 text-primary shrink-0" />
-                                            <span>Estudiantes</span>
+                                            <span>Aprendices</span>
                                         </span>
                                     </TabsTrigger>
 
@@ -1959,7 +1959,7 @@ const handleOpenAnalytics = async () => {
                                     
                                     <div className="flex items-center justify-between gap-2.5 flex-wrap sm:flex-nowrap">
                                         <Badge variant="outline" className="text-xs font-bold text-muted-foreground bg-background px-3 py-1.5 rounded-xl shrink-0 border-border shadow-2xs">
-                                            Total: <strong className="text-primary font-black ml-1">{filteredStudents.length}</strong> {filteredStudents.length === 1 ? "estudiante" : "estudiantes"}
+                                            Total: <strong className="text-primary font-black ml-1">{filteredStudents.length}</strong> {filteredStudents.length === 1 ? "aprendiz" : "aprendices"}
                                         </Badge>
 
                                         <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
@@ -2108,7 +2108,7 @@ const handleOpenAnalytics = async () => {
                                                         try {
                                                             const res = await resetStudentDailyAttempts(s.id);
                                                             if (res.success) {
-                                                                toast.success("Intentos diarios del estudiante reiniciados.");
+                                                                toast.success("Intentos diarios del aprendiz reiniciados.");
                                                             } else {
                                                                 toast.error(res.error || "No se pudieron reiniciar los intentos.");
                                                             }
@@ -2142,7 +2142,7 @@ const handleOpenAnalytics = async () => {
                                     ))}
                                     {filteredStudents.length === 0 && (
                                         <div className="text-center py-8 text-muted-foreground text-xs bg-muted/20 rounded-2xl border border-dashed border-border">
-                                            No se encontraron estudiantes
+                                            No se encontraron aprendices
                                         </div>
                                     )}
                                 </div>
@@ -2158,7 +2158,7 @@ const handleOpenAnalytics = async () => {
                                                         onCheckedChange={toggleAllStudents}
                                                     />
                                                 </TableHead>
-                                                <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">Estudiante</TableHead>
+                                                <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground">Aprendiz</TableHead>
                                                 <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground hidden md:table-cell">Documento</TableHead>
                                                 <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Contacto</TableHead>
                                                 <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-muted-foreground text-right pr-6">Acciones</TableHead>
@@ -2321,7 +2321,7 @@ const handleOpenAnalytics = async () => {
                                             {filteredStudents.length === 0 && (
                                                 <TableRow>
                                                     <TableCell colSpan={5} className="text-center py-12 text-muted-foreground text-sm font-medium">
-                                                        No se encontraron estudiantes que coincidan con la búsqueda
+                                                        No se encontraron aprendices que coincidan con la búsqueda
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -2870,7 +2870,7 @@ const handleOpenAnalytics = async () => {
                                                 Resumen de Inasistencias y Tardanzas de Hoy
                                             </Badge>
                                             <span className="text-xs font-semibold text-muted-foreground">
-                                                {Object.values(attRecords).filter((r: any) => r.status === "ABSENT" || r.status === "LATE" || r.status === "LEAVE_EARLY").length} Estudiantes con novedades marcadas
+                                                {Object.values(attRecords).filter((r: any) => r.status === "ABSENT" || r.status === "LATE" || r.status === "LEAVE_EARLY").length} Aprendices con novedades marcadas
                                             </span>
                                         </div>
 
@@ -2881,7 +2881,7 @@ const handleOpenAnalytics = async () => {
                                                 </div>
                                                 <div className="space-y-1">
                                                     <h3 className="font-black text-lg text-foreground">¡Todo en orden!</h3>
-                                                    <p className="text-sm text-muted-foreground max-w-sm">No hay inasistencias o tardanzas registradas para esta clase. Todos los estudiantes están marcados como presentes.</p>
+                                                    <p className="text-sm text-muted-foreground max-w-sm">No hay inasistencias o tardanzas registradas para esta clase. Todos los aprendices están marcados como presentes.</p>
                                                 </div>
                                             </div>
                                         ) : (
@@ -2889,7 +2889,7 @@ const handleOpenAnalytics = async () => {
                                                 <Table>
                                                     <TableHeader className="bg-muted/30">
                                                         <TableRow>
-                                                            <TableHead className="pl-6">Estudiante</TableHead>
+                                                            <TableHead className="pl-6">Aprendiz</TableHead>
                                                             <TableHead className="w-[150px] text-center">Identificación</TableHead>
                                                             <TableHead className="w-[150px] text-center">Novedad</TableHead>
                                                             <TableHead className="w-[180px] text-center">Detalle</TableHead>
@@ -3314,7 +3314,7 @@ const handleOpenAnalytics = async () => {
                                                 <div className="bg-card border rounded-2xl p-5 shadow-sm space-y-4 w-full">
                                                     <div>
                                                         <h3 className="text-base font-black text-foreground">Registro de Inasistencias (Faltas)</h3>
-                                                        <p className="text-xs text-muted-foreground mt-0.5">Total de días no asistidos por cada estudiante sobre el total de días programados.</p>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">Total de días no asistidos por cada aprendiz sobre el total de días programados.</p>
                                                     </div>
 
                                                     <div className="space-y-4">
@@ -3347,7 +3347,7 @@ const handleOpenAnalytics = async () => {
                                                 <div className="bg-card border rounded-2xl p-5 shadow-sm space-y-4 w-full">
                                                     <div>
                                                         <h3 className="text-base font-black text-foreground">Registro de Llegadas Tarde (Tardanzas)</h3>
-                                                        <p className="text-xs text-muted-foreground mt-0.5">Cantidad de días en los que el estudiante registró ingreso tarde sobre los días programados.</p>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">Cantidad de días en los que el aprendiz registró ingreso tarde sobre los días programados.</p>
                                                     </div>
 
                                                     <div className="space-y-4">
@@ -3377,7 +3377,7 @@ const handleOpenAnalytics = async () => {
                                                 <div className="bg-card border rounded-2xl p-5 shadow-sm space-y-4 w-full">
                                                     <div>
                                                         <h3 className="text-base font-black text-foreground">Registro de Retiros Tempranos</h3>
-                                                        <p className="text-xs text-muted-foreground mt-0.5">Cantidad de días en los que el estudiante registró retiro temprano sobre los días programados.</p>
+                                                        <p className="text-xs text-muted-foreground mt-0.5">Cantidad de días en los que el aprendiz registró retiro temprano sobre los días programados.</p>
                                                     </div>
 
                                                     <div className="space-y-4">
@@ -3503,7 +3503,7 @@ const handleOpenAnalytics = async () => {
                                                 {/* CHART 1: Faltas */}
                                                 <div className="print-avoid-break" style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '24px', backgroundColor: '#ffffff' }}>
                                                     <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '4px', margin: 0 }}>Registro de Inasistencias (Faltas)</h3>
-                                                    <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px', margin: '4px 0 16px 0' }}>Total de días no asistidos por estudiante</p>
+                                                    <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px', margin: '4px 0 16px 0' }}>Total de días no asistidos por aprendiz</p>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                         {studentMetrics.map(({ student, absentCount, attendanceDaysRate }: any) => {
                                                             const absenceRate = 100 - attendanceDaysRate;
@@ -3525,7 +3525,7 @@ const handleOpenAnalytics = async () => {
                                                 {/* CHART 2: Tardanzas */}
                                                 <div className="print-avoid-break" style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '24px', backgroundColor: '#ffffff' }}>
                                                     <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '4px', margin: 0 }}>Registro de Llegadas Tarde (Tardanzas)</h3>
-                                                    <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px', margin: '4px 0 16px 0' }}>Total de días con llegada tarde por estudiante</p>
+                                                    <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px', margin: '4px 0 16px 0' }}>Total de días con llegada tarde por aprendiz</p>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                         {studentMetrics.map(({ student, lateCount, lateDaysRate }: any) => (
                                                             <div key={student.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }} className="print-avoid-break">
@@ -3544,7 +3544,7 @@ const handleOpenAnalytics = async () => {
                                                 {/* CHART 2b: Retiros */}
                                                 <div className="print-avoid-break" style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '24px', backgroundColor: '#ffffff' }}>
                                                     <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '4px', margin: 0 }}>Registro de Retiros Tempranos</h3>
-                                                    <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px', margin: '4px 0 16px 0' }}>Total de días con retiro temprano por estudiante</p>
+                                                    <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px', margin: '4px 0 16px 0' }}>Total de días con retiro temprano por aprendiz</p>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                         {studentMetrics.map(({ student, leaveCount }: any) => {
                                                             const leaveDaysRate = totalClassDays > 0 ? (leaveCount / totalClassDays) * 100 : 0;
@@ -3635,10 +3635,10 @@ const handleOpenAnalytics = async () => {
                                                 <div className="flex flex-col gap-1">
                                                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 w-fit">
                                                         <History className="w-3.5 h-3.5 mr-1" />
-                                                        Historial de Asistencia Agrupado por Estudiante
+                                                        Historial de Asistencia Agrupado por Aprendiz
                                                     </Badge>
                                                     <span className="text-xs font-semibold text-muted-foreground">
-                                                        {totalRecordsCount} Registros en total ({sortedStudentsWithNovedades.length} Estudiantes)
+                                                        {totalRecordsCount} Registros en total ({sortedStudentsWithNovedades.length} Aprendices)
                                                     </span>
                                                 </div>
                                                 <div className="flex gap-2">
@@ -3653,13 +3653,13 @@ const handleOpenAnalytics = async () => {
 
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border/40 mb-4 w-full">
                                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest shrink-0">Filtrar Estudiante:</span>
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest shrink-0">Filtrar Aprendiz:</span>
                                                     <Select value={historyStudentFilter} onValueChange={setHistoryStudentFilter}>
                                                         <SelectTrigger className="h-9 rounded-lg border-muted-foreground/20 font-semibold bg-background text-xs w-full sm:w-[250px]">
-                                                            <SelectValue placeholder="Seleccionar Estudiante" />
+                                                            <SelectValue placeholder="Seleccionar Aprendiz" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="all" className="font-semibold text-xs">👥 Todos los estudiantes</SelectItem>
+                                                            <SelectItem value="all" className="font-semibold text-xs">👥 Todos los aprendices</SelectItem>
                                                             {selectedGroup.students?.map((s: any) => (
                                                                 <SelectItem key={s.id} value={s.id} className="font-semibold text-xs">
                                                                     {formatName(s.name, s.profile)}
@@ -4025,7 +4025,7 @@ const handleOpenAnalytics = async () => {
                                                         })}
                                                     </div>
 
-                                                    <span className="ml-auto text-xs text-muted-foreground shrink-0">{displayedDays.length} clases · {selectedGroup.students?.length || 0} estudiantes</span>
+                                                    <span className="ml-auto text-xs text-muted-foreground shrink-0">{displayedDays.length} clases · {selectedGroup.students?.length || 0} aprendices</span>
                                                 </div>
 
                                                 {displayedDays.length === 0 ? (
@@ -4041,7 +4041,7 @@ const handleOpenAnalytics = async () => {
                                                             <thead>
                                                                 <tr className="print-avoid-break bg-muted/40 sticky top-0 z-10">
                                                                     <th className="sm:sticky sm:left-0 z-20 bg-muted text-left px-4 py-3 font-bold text-foreground min-w-[180px] border-b border-r border-border/60">
-                                                                        Estudiante
+                                                                        Aprendiz
                                                                     </th>
                                                                     {displayedDays.map(d => {
                                                                         const ds = toUTCDateStr(d);
@@ -4148,7 +4148,7 @@ const handleOpenAnalytics = async () => {
                                     <div className="relative z-10">
                                         <h3 className="text-xl sm:text-2xl font-black text-foreground mb-2">Registrar Observación Disciplinaria / Académica</h3>
                                         <p className="text-xs text-muted-foreground mb-6">
-                                            Ten en cuenta que todas las observaciones registradas pueden ser visualizadas y modificadas por todos los profesores.
+                                            Ten en cuenta que todas las observaciones registradas pueden ser visualizadas y modificadas por todos los instructores.
                                         </p>
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -4221,7 +4221,7 @@ const handleOpenAnalytics = async () => {
                                         </div>
 
                                         <div className="space-y-2 mb-6">
-                                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Estudiantes a aplicar</Label>
+                                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Aprendices a aplicar</Label>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button 
@@ -4231,10 +4231,10 @@ const handleOpenAnalytics = async () => {
                                                         >
                                                             <span className="truncate">
                                                                 {selectedStudents.length === 0 
-                                                                    ? "Seleccionar estudiantes" 
+                                                                    ? "Seleccionar aprendices" 
                                                                     : selectedStudents.length === 1 
-                                                                        ? "1 estudiante seleccionado" 
-                                                                        : `${selectedStudents.length} estudiantes seleccionados`}
+                                                                        ? "1 aprendiz seleccionado" 
+                                                                        : `${selectedStudents.length} aprendices seleccionados`}
                                                             </span>
                                                             <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
                                                         </Button>
@@ -4242,7 +4242,7 @@ const handleOpenAnalytics = async () => {
                                                     <DropdownMenuContent className="w-[300px] max-h-[350px] overflow-y-auto p-2" align="start">
                                                         <div className="p-1.5 border-b mb-2 flex gap-1">
                                                             <Input 
-                                                                placeholder="Buscar estudiante..." 
+                                                                placeholder="Buscar aprendiz..." 
                                                                 className="h-9 rounded-lg bg-muted/30 border-0 focus-visible:ring-1" 
                                                                 value={remarkStudentSearch}
                                                                 onChange={e => setRemarkStudentSearch(e.target.value)}
@@ -4276,7 +4276,7 @@ const handleOpenAnalytics = async () => {
                                                         </div>
                                                         <div className="space-y-1">
                                                             {filteredStudentsForRemark.length === 0 ? (
-                                                                <p className="text-xs text-muted-foreground text-center py-4">No se encontraron estudiantes</p>
+                                                                <p className="text-xs text-muted-foreground text-center py-4">No se encontraron aprendices</p>
                                                             ) : (
                                                                 filteredStudentsForRemark.map((s: any) => {
                                                                     const isChecked = selectedStudents.includes(s.id);
@@ -4359,7 +4359,7 @@ const handleOpenAnalytics = async () => {
                                         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 mt-8 bg-background/50 p-4 rounded-xl border border-primary/10">
                                             <div className="text-sm font-semibold flex items-center justify-center lg:justify-start gap-2 w-full lg:w-auto">
                                                 <Users className="w-5 h-5 text-primary shrink-0" />
-                                                <span>Aplicará a <Badge className="text-sm px-3">{selectedStudents.length}</Badge> estudiantes seleccionados.</span>
+                                                <span>Aplicará a <Badge className="text-sm px-3">{selectedStudents.length}</Badge> aprendices seleccionados.</span>
                                             </div>
                                             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                                                 <Button 
@@ -4388,7 +4388,7 @@ const handleOpenAnalytics = async () => {
                                                             // Notify students via push
                                                             notifyEmailSentBatchAction(selectedStudents, "REMARK");
                                                         } else {
-                                                            toast.warning("No hay correos registrados para los estudiantes seleccionados.");
+                                                            toast.warning("No hay correos registrados para los aprendices seleccionados.");
                                                         }
                                                     }}
                                                     size="lg" 
@@ -4503,7 +4503,7 @@ const handleOpenAnalytics = async () => {
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             <p className="leading-relaxed">
-                                                <strong>Información Importante:</strong> Los planes de mejoramiento no afectan de forma automática la analítica de rendimiento académico del estudiante en la plataforma. Es responsabilidad exclusiva del profesor/instructor pasar y registrar los resultados definitivos en el módulo de calificaciones de forma manual.
+                                                <strong>Información Importante:</strong> Los planes de mejoramiento no afectan de forma automática la analítica de rendimiento académico del aprendiz en la plataforma. Es responsabilidad exclusiva del instructor pasar y registrar los resultados definitivos en el módulo de calificaciones de forma manual.
                                             </p>
                                         </div>
                                     </div>
@@ -4604,7 +4604,7 @@ const handleOpenAnalytics = async () => {
                                                             const steps = [
                                                                 { 
                                                                     label: "Plan creado", 
-                                                                    sub: "Docente", 
+                                                                    sub: "Instructor", 
                                                                     done: step1Done, 
                                                                     active: !step1Done, 
                                                                     locked: false,
@@ -4620,11 +4620,11 @@ const handleOpenAnalytics = async () => {
                                                                 },
                                                                 { 
                                                                     label: "Doc. firma", 
-                                                                    sub: "Docente", 
+                                                                    sub: "Instructor", 
                                                                     done: step3Done, 
                                                                     active: step2Done && !step3Done, 
                                                                     locked: !step2Done,
-                                                                    desc: "El instructor revisa la firma del aprendiz, realiza la contrafirma docente y sube el documento final firmado."
+                                                                    desc: "El instructor revisa la firma del aprendiz, realiza la contrafirma del instructor y sube el documento final firmado."
                                                                 },
                                                                 { 
                                                                     label: "Evidencias", 
@@ -4636,7 +4636,7 @@ const handleOpenAnalytics = async () => {
                                                                 },
                                                                 { 
                                                                     label: "Evaluación", 
-                                                                    sub: "Docente", 
+                                                                    sub: "Instructor", 
                                                                     done: step5Done, 
                                                                     active: step4Done && !step5Done, 
                                                                     locked: !step4Done,
@@ -4927,7 +4927,7 @@ const handleOpenAnalytics = async () => {
                                                             <p className="font-semibold text-foreground">{formatName(viewGroupPlanDetail.student?.name, viewGroupPlanDetail.student?.profile)}</p>
                                                         </div>
                                                         <div className="space-y-0.5">
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Docente</p>
+                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Instructor</p>
                                                             <p className="font-semibold text-primary">{formatName(viewGroupPlanDetail.teacher?.name, viewGroupPlanDetail.teacher?.profile)}</p>
                                                         </div>
                                                         <div className="space-y-0.5">
@@ -4968,7 +4968,7 @@ const handleOpenAnalytics = async () => {
                                                                     {step1Done ? "✓" : "1"}
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <h4 className="text-xs font-bold text-foreground">Paso 1: Plan Docente <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
+                                                                    <h4 className="text-xs font-bold text-foreground">Paso 1: Plan del Instructor <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
                                                                     <p className="text-[11px] text-muted-foreground leading-snug">El instructor crea el plan de mejoramiento académico detallando compromisos, fechas y cargando el documento inicial.</p>
                                                                     {viewGroupPlanDetail.teacherDocUrl ? (
                                                                         <a href={viewGroupPlanDetail.teacherDocUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-bold mt-1">
@@ -5012,8 +5012,8 @@ const handleOpenAnalytics = async () => {
                                                                     {step3Done ? "✓" : "3"}
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <h4 className="text-xs font-bold text-foreground">Paso 3: Firma del Docente <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
-                                                                    <p className="text-[11px] text-muted-foreground leading-snug">El instructor revisa la firma del aprendiz, realiza la contrafirma docente y sube el documento final firmado.</p>
+                                                                    <h4 className="text-xs font-bold text-foreground">Paso 3: Firma del Instructor <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
+                                                                    <p className="text-[11px] text-muted-foreground leading-snug">El instructor revisa la firma del aprendiz, realiza la contrafirma del instructor y sube el documento final firmado.</p>
                                                                     {viewGroupPlanDetail.teacherSignedDocUrl ? (
                                                                         <a href={viewGroupPlanDetail.teacherSignedDocUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline font-bold mt-1">
                                                                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
@@ -5056,7 +5056,7 @@ const handleOpenAnalytics = async () => {
                                                                     {step5Done ? "✓" : "5"}
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <h4 className="text-xs font-bold text-foreground">Paso 5: Calificación Final <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
+                                                                    <h4 className="text-xs font-bold text-foreground">Paso 5: Calificación Final <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
                                                                     <p className="text-[11px] text-muted-foreground leading-snug">El instructor califica el plan (0.0 a 5.0) evaluando el enlace de evidencias subido por el aprendiz.</p>
                                                                     {viewGroupPlanDetail.finalGrade !== null && viewGroupPlanDetail.finalGrade !== undefined ? (
                                                                         <div className="mt-1 bg-emerald-50 dark:bg-emerald-950/10 p-2.5 border border-emerald-200 rounded-xl inline-block">
@@ -5094,7 +5094,7 @@ const handleOpenAnalytics = async () => {
                                         {impTeacherSignDialog && (
                                             <form onSubmit={handleImpTeacherSign} className="space-y-4 pt-2">
                                                 <div className="space-y-1">
-                                                    <Label htmlFor="teacher-sign-url">URL del Documento Firmado por el Docente *</Label>
+                                                    <Label htmlFor="teacher-sign-url">URL del Documento Firmado por el Instructor *</Label>
                                                     <Input id="teacher-sign-url" type="url" required placeholder="https://drive.google.com/..." value={impTeacherSignDialog.url} onChange={(e) => setImpTeacherSignDialog(prev => prev ? { ...prev, url: e.target.value } : prev)} />
                                                 </div>
                                                 <DialogFooter>
@@ -5130,9 +5130,9 @@ const handleOpenAnalytics = async () => {
                                                             <SelectValue placeholder="Selecciona el paso" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="1">Paso 1: Plan creado (Solo Docente)</SelectItem>
+                                                            <SelectItem value="1">Paso 1: Plan creado (Solo Instructor)</SelectItem>
                                                             <SelectItem value="2">Paso 2: Firma del Aprendiz (Esperando firma)</SelectItem>
-                                                            <SelectItem value="3">Paso 3: Firma del Docente (Esperando contrafirma)</SelectItem>
+                                                            <SelectItem value="3">Paso 3: Firma del Instructor (Esperando contrafirma)</SelectItem>
                                                             <SelectItem value="4">Paso 4: Evidencias (Esperando evidencias)</SelectItem>
                                                             <SelectItem value="5">Paso 5: Evaluación (Esperando calificación)</SelectItem>
                                                         </SelectContent>
@@ -5231,7 +5231,7 @@ const handleOpenAnalytics = async () => {
                             Gestionar Plantillas de Observaciones
                         </DialogTitle>
                         <DialogDescription className="text-sm text-muted-foreground">
-                            Crea y edita plantillas de observaciones. Todos los profesores pueden visualizar y modificar estas plantillas. Están organizadas por tipo de observación.
+                            Crea y edita plantillas de observaciones. Todos los instructores pueden visualizar y modificar estas plantillas. Están organizadas por tipo de observación.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -5484,7 +5484,7 @@ const handleOpenAnalytics = async () => {
                                                     className="h-6 px-2 text-[11px] font-semibold text-primary border-primary/30 hover:bg-primary/10 rounded-lg gap-1 shadow-xs"
                                                     onClick={() => setViewJustificationDialog({
                                                         open: true,
-                                                        studentName: detailStudent ? formatName(detailStudent.name, detailStudent.profile) : "Estudiante",
+                                                        studentName: detailStudent ? formatName(detailStudent.name, detailStudent.profile) : "Aprendiz",
                                                         studentId: detailStudent?.profile?.identificacion,
                                                         date: dateLabel,
                                                         status: isAbsent ? "Falta" : "Tarde",
@@ -5968,7 +5968,7 @@ const handleOpenAnalytics = async () => {
                         })() : (
                             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
                                 <Users className="w-16 h-16 mb-4 opacity-40" />
-                                <p className="text-lg font-bold">No hay estudiantes en el grupo para llamar asistencia</p>
+                                <p className="text-lg font-bold">No hay aprendices en el grupo para llamar asistencia</p>
                             </div>
                         )}
                     </motion.div>
@@ -5986,7 +5986,7 @@ const handleOpenAnalytics = async () => {
                             </div>
                             <div>
                                 <h2 className="text-xl font-black text-foreground">Ruleta de Participación y Notas</h2>
-                                <p className="text-xs text-muted-foreground">Selecciona aleatoriamente estudiantes del grupo {selectedGroup.name}</p>
+                                <p className="text-xs text-muted-foreground">Selecciona aleatoriamente aprendices del grupo {selectedGroup.name}</p>
                             </div>
                         </div>
                         <Button 
@@ -6020,7 +6020,7 @@ const handleOpenAnalytics = async () => {
                             </div>
                             <div>
                                 <h2 className="text-xl font-black text-foreground">Creador de Grupos de Trabajo</h2>
-                                <p className="text-xs text-muted-foreground">Genera grupos automáticos o arrastra estudiantes manualmente para organizarlos</p>
+                                <p className="text-xs text-muted-foreground">Genera grupos automáticos o arrastra aprendices manualmente para organizarlos</p>
                             </div>
                         </div>
                         <Button 
@@ -6048,7 +6048,7 @@ const handleOpenAnalytics = async () => {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-lg font-black text-foreground">¿Confirmar eliminación?</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-muted-foreground">
-                            ¿Estás seguro de que deseas eliminar este registro de inasistencia/tardanza para <strong className="text-foreground">{attendanceToDelete?.studentName}</strong>? El estudiante será marcado como presente en esa fecha.
+                            ¿Estás seguro de que deseas eliminar este registro de inasistencia/tardanza para <strong className="text-foreground">{attendanceToDelete?.studentName}</strong>? El aprendiz será marcado como presente en esa fecha.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-2">
@@ -6097,7 +6097,7 @@ const handleOpenAnalytics = async () => {
                             Solicitar Baneo al Administrador
                         </DialogTitle>
                         <DialogDescription>
-                            Envía un reporte formal al Administrador Global para bloquear el acceso de este estudiante a la plataforma.
+                            Envía un reporte formal al Administrador Global para bloquear el acceso de este aprendiz a la plataforma.
                         </DialogDescription>
                     </DialogHeader>
                     {studentToBan && (
@@ -6139,7 +6139,7 @@ const handleOpenAnalytics = async () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Modal de Ayuda del Panel de Docente */}
+            {/* Modal de Ayuda del Panel de Instructor */}
             <TeacherHelpModal
                 open={isHelpModalOpen}
                 onOpenChange={setIsHelpModalOpen}

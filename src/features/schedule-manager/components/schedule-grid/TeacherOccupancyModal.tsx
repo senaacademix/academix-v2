@@ -530,7 +530,7 @@ export function TeacherOccupancyModal({
           : teachers;
       const label =
         teacherViewMode === "single"
-          ? currentTeacherData?.cleanName || "Docente"
+          ? currentTeacherData?.cleanName || "Instructor"
           : teacherViewMode === "all"
           ? "Todos_Los_Instructores"
           : "Reporte_Carga_Instructores";
@@ -541,7 +541,7 @@ export function TeacherOccupancyModal({
         schedule,
         allTeachersData,
         teacherViewMode,
-        `Horario_Docente_${label.replace(/\s+/g, "_")}.pdf`,
+        `Horario_Instructor_${label.replace(/\s+/g, "_")}.pdf`,
         maxHoursThreshold
       );
       toast.success("PDF generado y descargado correctamente");
@@ -562,7 +562,7 @@ export function TeacherOccupancyModal({
           : teachers;
       const label =
         teacherViewMode === "single"
-          ? currentTeacherData?.cleanName || "Docente"
+          ? currentTeacherData?.cleanName || "Instructor"
           : teacherViewMode === "all"
           ? "Todos_Los_Instructores"
           : "Reporte_Carga_Instructores";
@@ -573,7 +573,7 @@ export function TeacherOccupancyModal({
         schedule,
         allTeachersData,
         teacherViewMode,
-        `Horario_Docente_${label.replace(/\s+/g, "_")}.xlsx`
+        `Horario_Instructor_${label.replace(/\s+/g, "_")}.xlsx`
       );
       toast.success("Excel generado y descargado correctamente");
     } catch (err: any) {
@@ -698,7 +698,7 @@ export function TeacherOccupancyModal({
                     {teachersWithMetrics.length}
                   </p>
                   <p className="text-[10px] text-muted-foreground font-medium">
-                    Docentes registrados en la sede
+                    Instructores registrados en la sede
                   </p>
                 </div>
 
@@ -711,7 +711,7 @@ export function TeacherOccupancyModal({
                     {teachersWithMetrics.filter((t) => t.totalHours > 0).length} / {teachersWithMetrics.length}
                   </p>
                   <p className="text-[10px] text-muted-foreground font-medium">
-                    Docentes con horas asignadas
+                    Instructores con horas asignadas
                   </p>
                 </div>
 
@@ -923,7 +923,7 @@ export function TeacherOccupancyModal({
                     {teachersWithMetrics.length} Instructores Registrados
                   </Badge>
                   <span className="text-xs text-muted-foreground font-medium">
-                    (Matriz completa de ocupación por profesor, una fila por docente)
+                    (Matriz completa de ocupación por instructor, una fila por instructor)
                   </span>
                 </div>
 
@@ -932,7 +932,7 @@ export function TeacherOccupancyModal({
                   <Input
                     value={teacherSearch}
                     onChange={(e) => setTeacherSearch(e.target.value)}
-                    placeholder="Buscar por profesor, email, materia o ficha..."
+                    placeholder="Buscar por instructor, email, materia o ficha..."
                     className="pl-8 text-xs h-8 rounded-xl bg-background border-border/80 font-medium"
                   />
                 </div>
@@ -944,7 +944,7 @@ export function TeacherOccupancyModal({
                   {/* Table Header with Solid Background */}
                   <div className="grid grid-cols-12 divide-x divide-border/80 border-b border-border/80 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 sticky top-0 z-30 text-[11px] font-black shadow-xs">
                     <div className="col-span-3 p-3 flex items-center justify-between bg-slate-100 dark:bg-slate-900">
-                      <span>Instructor / Docente</span>
+                      <span>Instructor</span>
                       <span className="text-[10px] font-normal text-muted-foreground">Horas & Fichas</span>
                     </div>
                     {DAYS_ES.map((d) => (
@@ -1071,7 +1071,7 @@ export function TeacherOccupancyModal({
                                         <TooltipContent side="top" className="rounded-2xl p-3 max-w-xs space-y-1.5 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
                                           <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
                                             <Badge className="bg-indigo-600 text-white font-bold text-[10px]">
-                                              Docente: {t.cleanName}
+                                              Instructor: {t.cleanName}
                                             </Badge>
                                             <span className="text-[10px] font-mono text-muted-foreground font-semibold">
                                               {d.label}
@@ -1524,7 +1524,7 @@ export function TeacherOccupancyModal({
 
                 {coursesBreakdown.length === 0 ? (
                   <div className="text-center py-10 text-xs text-muted-foreground">
-                    Este docente no tiene materias reportadas en su perfil ni asignaciones activas.
+                    Este instructor no tiene materias reportadas en su perfil ni asignaciones activas.
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1643,7 +1643,7 @@ export function TeacherOccupancyModal({
                 )}
                 <span>
                   {teacherViewMode === "single"
-                    ? `PDF (${currentTeacherData?.cleanName || "Docente"})`
+                    ? `PDF (${currentTeacherData?.cleanName || "Instructor"})`
                     : teacherViewMode === "all"
                     ? "PDF (Todos los Instructores)"
                     : "PDF (Reporte Carga Horaria)"}
@@ -1666,7 +1666,7 @@ export function TeacherOccupancyModal({
                 )}
                 <span>
                   {teacherViewMode === "single"
-                    ? `Excel (${currentTeacherData?.cleanName || "Docente"})`
+                    ? `Excel (${currentTeacherData?.cleanName || "Instructor"})`
                     : teacherViewMode === "all"
                     ? "Excel (Todos los Instructores)"
                     : "Excel (Reporte Carga Horaria)"}

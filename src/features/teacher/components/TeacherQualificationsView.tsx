@@ -53,13 +53,13 @@ const getAuthorRoleLabel = (
 ): string => {
     if (!user) return "";
     if (user.id && targetTeacherId && user.id === targetTeacherId) {
-        return "Profesor";
+        return "Instructor";
     }
     const r = (user.role || "").toLowerCase().trim();
     if (r === "gestor") return "Gestor";
     if (r === "admin" || r === "administrator") return "Administrador";
     if (r === "coordinador") return "Coordinador";
-    if (r === "teacher" || r === "profesor" || r === "docente") return "Profesor";
+    if (r === "teacher" || r === "profesor" || r === "docente") return "Instructor";
     return "Gestor";
 };
 
@@ -268,11 +268,11 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                     </Badge>
                                 )}
                             </div>
-                            <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar las materias específicas del docente.</p>
+                            <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar las materias específicas del instructor.</p>
                         </div>
                     </div>
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
-                        {/* Selector de Programa de Formación (si el docente tiene más de 1 programa asignado) */}
+                        {/* Selector de Programa de Formación (si el instructor tiene más de 1 programa asignado) */}
                         {qualPrograms.length > 1 && (
                             <Select value={effectiveProgramId} onValueChange={(val) => { setSelectedProgramId(val); }}>
                                 <SelectTrigger className="w-full sm:w-[180px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
@@ -338,9 +338,9 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                         <p className="font-semibold text-sm">Materias Publicadas y Bloqueadas</p>
                         <p className="text-xs opacity-90 mt-0.5">
                             {isAdminMode 
-                                ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Profesor"
+                                ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Instructor"
                                     ? `Las materias fueron guardadas y bloqueadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()}. Desbloquea para permitir o realizar cambios.`
-                                    : "El profesor ha publicado sus materias y no puede editarlas.")
+                                    : "El instructor ha publicado sus materias y no puede editarlas.")
                                 : "Las materias que dictas están registradas y bloqueadas para edición. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
                         </p>
                         {lastModifiedBy && (
@@ -369,9 +369,9 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                             <p className="font-semibold text-sm">Materias en Modo Borrador</p>
                             <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
                                 {isAdminMode
-                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Profesor"
+                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Instructor"
                                         ? `Las materias fueron editadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()} y permanecen en modo borrador.`
-                                        : "El profesor aún puede editar sus materias.")
+                                        : "El instructor aún puede editar sus materias.")
                                     : "Puedes configurar qué materias de tu programa estás en capacidad de dictar. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
                             </p>
                             {lastModifiedBy && (
@@ -502,9 +502,9 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2">
                                                                 {periodCourses.map((course: any) => {
                                                                     const isChecked = selectedQualCourses.includes(course.id);
-                                                                    const creator = qualificationsCreatedBy[course.id] || (targetTeacherId ? { id: targetTeacherId, name: loadedTeacherName || "Profesor", role: "teacher" } : null);
+                                                                    const creator = qualificationsCreatedBy[course.id] || (targetTeacherId ? { id: targetTeacherId, name: loadedTeacherName || "Instructor", role: "teacher" } : null);
                                                                     const authorRoleLabel = getAuthorRoleLabel(creator, targetTeacherId);
-                                                                    const isProf = authorRoleLabel === "Profesor";
+                                                                    const isProf = authorRoleLabel === "Instructor";
                                                                     const authorName = creator?.name || "Usuario registrado";
 
                                                                     return (
@@ -525,7 +525,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                                                                         if (checked) {
                                                                                             setSelectedQualCourses(prev => [...prev, course.id]);
                                                                                             const currentRole = session?.user?.role || (isAdminMode ? "gestor" : "teacher");
-                                                                                            const currentName = session?.user?.name || (isAdminMode ? "Gestor" : (loadedTeacherName || "Profesor"));
+                                                                                            const currentName = session?.user?.name || (isAdminMode ? "Gestor" : (loadedTeacherName || "Instructor"));
                                                                                             setQualificationsCreatedBy(prev => ({
                                                                                                 ...prev,
                                                                                                 [course.id]: {

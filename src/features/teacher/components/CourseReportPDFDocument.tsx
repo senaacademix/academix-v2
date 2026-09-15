@@ -458,11 +458,11 @@ export const CourseReportPDFDocument = ({
                 {/* Student Info */}
                 <View style={styles.infoGrid}>
                     <View style={styles.infoColumn}>
-                        <Text style={styles.infoLabel}>Estudiante</Text>
+                        <Text style={styles.infoLabel}>Aprendiz</Text>
                         <Text style={styles.infoValue}>{studentName}</Text>
                     </View>
                     <View style={styles.infoColumn}>
-                        <Text style={styles.infoLabel}>Profesor</Text>
+                        <Text style={styles.infoLabel}>Instructor</Text>
                         <Text style={styles.infoValueTeacher}>{teacherName}</Text>
                     </View>
                 </View>

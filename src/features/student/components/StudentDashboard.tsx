@@ -146,12 +146,12 @@ export function StudentDashboard({
                         <div className="space-y-2">
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
                                 <Sparkles className="w-3.5 h-3.5" />
-                                <span>Panel de Estudiante</span>
+                                <span>Panel de Aprendiz</span>
                             </div>
                             <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                                 ¡Hola,{" "}
                                 <span className="bg-gradient-to-r from-slate-900 via-slate-700 to-primary dark:from-white dark:via-slate-200 dark:to-primary bg-clip-text text-transparent">
-                                    {studentName ? formatName(studentName) : 'Estudiante'}
+                                    {studentName ? formatName(studentName) : 'Aprendiz'}
                                 </span>
                                 !
                             </h1>
@@ -179,7 +179,7 @@ export function StudentDashboard({
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
-                                    Guía del portal del estudiante y herramientas
+                                    Guía del portal del aprendiz y herramientas
                                 </TooltipContent>
                             </Tooltip>
 
@@ -199,7 +199,7 @@ export function StudentDashboard({
 
             {pendingEnrollments.length > 0 && !isInsideCourse && (
                 <div className="bg--50 dark:bg--950/20 dark:bg-yellow-900/20 border border--200 dark:border--800/50 dark:border-yellow-800 rounded-lg p-4 text-sm text-yellow-800 dark:text-yellow-200 ml-4 sm:ml-6 md:ml-8 mr-4 sm:mr-6 md:mr-8">
-                    Tienes {pendingEnrollments.length} solicitud{pendingEnrollments.length !== 1 ? 'es' : ''} de inscripción pendiente{pendingEnrollments.length !== 1 ? 's' : ''} de aprobación por el profesor.
+                    Tienes {pendingEnrollments.length} solicitud{pendingEnrollments.length !== 1 ? 'es' : ''} de inscripción pendiente{pendingEnrollments.length !== 1 ? 's' : ''} de aprobación por el instructor.
                 </div>
             )}
 
@@ -364,7 +364,7 @@ export function StudentDashboard({
                 </DialogContent>
             </Dialog>
 
-            {/* Modal: Histórico de Fichas para el Estudiante */}
+            {/* Modal: Histórico de Fichas para el Aprendiz */}
             <StudentGroupHistoryModal
                 open={showHistoryModal}
                 onOpenChange={setShowHistoryModal}
@@ -372,7 +372,7 @@ export function StudentDashboard({
                 isStaffManager={false}
             />
 
-            {/* Modal de Ayuda del Portal de Estudiante */}
+            {/* Modal de Ayuda del Portal de Aprendiz */}
             <StudentHelpModal
                 open={showHelpModal}
                 onOpenChange={setShowHelpModal}

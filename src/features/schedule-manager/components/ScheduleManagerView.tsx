@@ -327,7 +327,7 @@ export function ScheduleManagerView({
               </span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
-              Administra períodos académicos, franjas horarias por grupo, disponibilidad y cualificación docente, cronograma de eventos institucionales, control de novedades y publicación de horarios oficiales con exportación a PDF y Excel.
+              Administra períodos académicos, franjas horarias por grupo, disponibilidad y cualificación de instructores, cronograma de eventos institucionales, control de novedades y publicación de horarios oficiales con exportación a PDF y Excel.
             </p>
           </div>
 
@@ -668,11 +668,11 @@ export function ScheduleManagerView({
                           className="rounded-xl text-xs gap-1.5 font-bold border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 bg-blue-500/10 shadow-2xs h-9 px-3.5 transition-all"
                         >
                           <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                          <span>Profesores</span>
+                          <span>Instructores</span>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top">
-                        Gestionar disponibilidad y materias de los docentes
+                        Gestionar disponibilidad y materias de los instructores
                       </TooltipContent>
                     </Tooltip>
 

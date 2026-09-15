@@ -444,7 +444,7 @@ export function GradesManager({ courseId, courseTitle = "Materia", initialData }
                     <div className="flex items-center gap-2 max-w-sm">
                         <Search className="h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Buscar estudiante..." 
+                            placeholder="Buscar aprendiz..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="h-9"
@@ -460,7 +460,7 @@ export function GradesManager({ courseId, courseTitle = "Materia", initialData }
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted/50">
-                                    <TableHead className="w-[250px] font-bold" rowSpan={2}>Estudiante</TableHead>
+                                    <TableHead className="w-[250px] font-bold" rowSpan={2}>Aprendiz</TableHead>
                                     {categories.map((cat: any, idx: number) => (
                                         <TableHead 
                                             key={cat.id} 

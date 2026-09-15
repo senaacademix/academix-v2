@@ -219,7 +219,7 @@ export async function generateAndDownloadAttendanceMatrixExcel(data: MatrixExpor
   // Subtitle
   sheet.mergeCells(`A2:${lastColLetter}2`);
   const subtitleCell = sheet.getCell("A2");
-  subtitleCell.value = `Grupo: ${data.groupName} | Materia: ${data.courseTitle} | Estudiantes: ${data.students.length} | Sesiones: ${data.allDates.length} | Generado: ${new Date().toLocaleDateString("es-ES")}`;
+  subtitleCell.value = `Grupo: ${data.groupName} | Materia: ${data.courseTitle} | Aprendices: ${data.students.length} | Sesiones: ${data.allDates.length} | Generado: ${new Date().toLocaleDateString("es-ES")}`;
   subtitleCell.font = { name: "Segoe UI", size: 9, italic: true, color: { argb: "FF334155" } };
   subtitleCell.alignment = { vertical: "middle", horizontal: "center" };
   subtitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
@@ -228,7 +228,7 @@ export async function generateAndDownloadAttendanceMatrixExcel(data: MatrixExpor
   // Headers
   const headerValues = [
     "N°",
-    "Estudiante",
+    "Aprendiz",
     "Identificación",
     ...data.allDates.map(d => {
       const parts = d.split("-");
@@ -369,7 +369,7 @@ const MatrixPdfDocument: React.FC<{ data: MatrixExportData }> = ({ data }) => {
             <Text style={pdfStyles.metaValue}>{data.courseTitle}</Text>
           </View>
           <View style={pdfStyles.metaItem}>
-            <Text style={pdfStyles.metaLabel}>Total Estudiantes</Text>
+            <Text style={pdfStyles.metaLabel}>Total Aprendices</Text>
             <Text style={pdfStyles.metaValue}>{data.students.length}</Text>
           </View>
           <View style={pdfStyles.metaItem}>
@@ -386,7 +386,7 @@ const MatrixPdfDocument: React.FC<{ data: MatrixExportData }> = ({ data }) => {
         <View style={pdfStyles.gridTable}>
           <View style={pdfStyles.tableHeaderRow}>
             <Text style={[pdfStyles.tableHeaderCell, { width: "4%" }]}>N°</Text>
-            <Text style={[pdfStyles.tableHeaderCell, { width: "24%", textAlign: "left" }]}>Estudiante</Text>
+            <Text style={[pdfStyles.tableHeaderCell, { width: "24%", textAlign: "left" }]}>Aprendiz</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "12%" }]}>Documento</Text>
             {data.allDates.map((d, i) => (
               <Text
@@ -535,7 +535,7 @@ export async function generateAndDownloadAttendanceHistoryExcel(
 
   // Headers
   const headers = [
-    "Estudiante",
+    "Aprendiz",
     "Identificación",
     "Fecha",
     "Tipo de Novedad",
@@ -663,7 +663,7 @@ const HistoryPdfDocument: React.FC<{
         {/* Table */}
         <View style={pdfStyles.gridTable}>
           <View style={pdfStyles.tableHeaderRow}>
-            <Text style={[pdfStyles.tableHeaderCell, { width: "26%", textAlign: "left" }]}>Estudiante</Text>
+            <Text style={[pdfStyles.tableHeaderCell, { width: "26%", textAlign: "left" }]}>Aprendiz</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "14%" }]}>Documento</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "12%" }]}>Fecha</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "16%" }]}>Tipo Novedad</Text>
@@ -795,20 +795,20 @@ export async function generateAndDownloadAttendanceMetricsExcel(data: MetricsExp
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E1B4B" } };
   });
 
-  sheet.addRow(["Total Estudiantes Matriculados", data.totalStudents]);
+  sheet.addRow(["Total Aprendices Matriculados", data.totalStudents]);
   sheet.addRow(["Sesiones de Clase Realizadas", data.totalSessions]);
   sheet.addRow(["Tasa Global de Asistencia", `${data.overallAttendanceRate.toFixed(1)}%`]);
   sheet.addRow(["Total Inasistencias (Faltas)", data.totalAbsences]);
   sheet.addRow(["Total Llegadas Tarde", data.totalLates]);
   sheet.addRow(["Total Retiros Anticipados", data.totalLeaves]);
-  sheet.addRow(["Estudiantes en Riesgo Académico (<80%)", data.riskStudents.length]);
+  sheet.addRow(["Aprendices en Riesgo Académico (<80%)", data.riskStudents.length]);
 
   sheet.addRow([]);
   sheet.addRow([]);
 
   // Students Table
   const tableHeader = sheet.addRow([
-    "Estudiante",
+    "Aprendiz",
     "Identificación",
     "Faltas",
     "Tardes",
@@ -904,7 +904,7 @@ const MetricsPdfDocument: React.FC<{ data: MetricsExportData }> = ({ data }) => 
         {/* KPI Cards Row */}
         <View style={[pdfStyles.metaCard, { marginBottom: 12 }]}>
           <View style={pdfStyles.metaItem}>
-            <Text style={pdfStyles.metaLabel}>Estudiantes</Text>
+            <Text style={pdfStyles.metaLabel}>Aprendices</Text>
             <Text style={pdfStyles.metaValue}>{data.totalStudents}</Text>
           </View>
           <View style={pdfStyles.metaItem}>
@@ -934,7 +934,7 @@ const MetricsPdfDocument: React.FC<{ data: MetricsExportData }> = ({ data }) => 
         {/* Breakdown Table */}
         <View style={pdfStyles.gridTable}>
           <View style={pdfStyles.tableHeaderRow}>
-            <Text style={[pdfStyles.tableHeaderCell, { width: "36%", textAlign: "left" }]}>Estudiante</Text>
+            <Text style={[pdfStyles.tableHeaderCell, { width: "36%", textAlign: "left" }]}>Aprendiz</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "18%" }]}>Identificación</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "11%" }]}>Faltas</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "11%" }]}>Tardes</Text>

@@ -149,7 +149,7 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
         bodyText += `Detalles del Plan:\n`;
         bodyText += `- Fecha de Inicio: ${format(new Date(plan.startDate), "dd/MM/yyyy")}\n`;
         bodyText += `- Fecha de Finalización: ${format(new Date(plan.endDate), "dd/MM/yyyy")}\n`;
-        bodyText += `- Docente: ${teacherName}\n`;
+        bodyText += `- Instructor: ${teacherName}\n`;
         if (plan.teacherDocUrl) bodyText += `- Documento del Plan: ${plan.teacherDocUrl}\n`;
         if (plan.observations) bodyText += `- Observaciones/Criterios: ${plan.observations}\n`;
         bodyText += `\nPor favor ingresa a la plataforma AcademiX para revisar el plan en detalle, firmarlo y cargar el documento firmado.\n\nAtentamente,\n${teacherName}`;
@@ -173,7 +173,7 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <p className="leading-relaxed text-left">
-                            <strong>Información Importante:</strong> Los planes de mejoramiento no afectan de forma automática la analítica de rendimiento académico del estudiante en la plataforma. Es responsabilidad exclusiva del profesor/instructor pasar y registrar los resultados definitivos en el módulo de calificaciones de forma manual.
+                            <strong>Información Importante:</strong> Los planes de mejoramiento no afectan de forma automática la analítica de rendimiento académico del aprendiz en la plataforma. Es responsabilidad exclusiva del instructor pasar y registrar los resultados definitivos en el módulo de calificaciones de forma manual.
                         </p>
                     </div>
                 </div>
@@ -406,7 +406,7 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
                                         <span className="text-[10px] text-muted-foreground block">{viewPlanDetail.student?.email}</span>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Docente</p>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Instructor</p>
                                         <p className="font-semibold text-primary">{formatName(viewPlanDetail.teacher?.name, viewPlanDetail.teacher?.profile)}</p>
                                     </div>
                                     <div className="space-y-0.5">
@@ -467,13 +467,13 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
                                                 </TooltipTrigger>
                                                 <TooltipContent side="right" className="max-w-[220px] p-3 text-xs rounded-xl shadow-lg bg-popover text-popover-foreground border border-border">
                                                     <div className="space-y-1 text-left">
-                                                        <p className="font-bold text-primary">Paso 1: Plan Docente <span className="font-normal text-muted-foreground">(Docente)</span></p>
+                                                        <p className="font-bold text-primary">Paso 1: Plan del Instructor <span className="font-normal text-muted-foreground">(Instructor)</span></p>
                                                         <p className="text-muted-foreground leading-snug">El instructor crea el plan de mejoramiento académico detallando compromisos, fechas y subiendo el documento inicial.</p>
                                                     </div>
                                                 </TooltipContent>
                                             </Tooltip>
                                             <div className="space-y-1">
-                                                <h4 className="text-xs font-bold text-foreground">Paso 1: Plan Docente <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
+                                                <h4 className="text-xs font-bold text-foreground">Paso 1: Plan del Instructor <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
                                                 <p className="text-[11px] text-muted-foreground leading-snug">El instructor crea el plan de mejoramiento académico detallando compromisos, fechas y cargando el documento inicial.</p>
                                                 {viewPlanDetail.teacherDocUrl ? (
                                                     <a href={viewPlanDetail.teacherDocUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-bold mt-1">
@@ -531,14 +531,14 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
                                                 </TooltipTrigger>
                                                 <TooltipContent side="right" className="max-w-[220px] p-3 text-xs rounded-xl shadow-lg bg-popover text-popover-foreground border border-border">
                                                     <div className="space-y-1 text-left">
-                                                        <p className="font-bold text-primary">Paso 3: Firma del Docente <span className="font-normal text-muted-foreground">(Docente)</span></p>
-                                                        <p className="text-muted-foreground leading-snug">El instructor revisa la firma del aprendiz, realiza la contrafirma docente y sube el documento final firmado.</p>
+                                                        <p className="font-bold text-primary">Paso 3: Firma del Instructor <span className="font-normal text-muted-foreground">(Instructor)</span></p>
+                                                        <p className="text-muted-foreground leading-snug">El instructor revisa la firma del aprendiz, realiza la contrafirma del instructor y sube el documento final firmado.</p>
                                                     </div>
                                                 </TooltipContent>
                                             </Tooltip>
                                             <div className="space-y-1">
-                                                <h4 className="text-xs font-bold text-foreground">Paso 3: Firma del Docente <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
-                                                <p className="text-[11px] text-muted-foreground leading-snug">El instructor revisa la firma del aprendiz, realiza la contrafirma docente y sube el documento final firmado.</p>
+                                                <h4 className="text-xs font-bold text-foreground">Paso 3: Firma del Instructor <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
+                                                <p className="text-[11px] text-muted-foreground leading-snug">El instructor revisa la firma del aprendiz, realiza la contrafirma del instructor y sube el documento final firmado.</p>
                                                 {viewPlanDetail.teacherSignedDocUrl ? (
                                                     <a href={viewPlanDetail.teacherSignedDocUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline font-bold mt-1">
                                                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
@@ -595,13 +595,13 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
                                                 </TooltipTrigger>
                                                 <TooltipContent side="right" className="max-w-[220px] p-3 text-xs rounded-xl shadow-lg bg-popover text-popover-foreground border border-border">
                                                     <div className="space-y-1 text-left">
-                                                        <p className="font-bold text-primary">Paso 5: Evaluación Final <span className="font-normal text-muted-foreground">(Docente)</span></p>
+                                                        <p className="font-bold text-primary">Paso 5: Evaluación Final <span className="font-normal text-muted-foreground">(Instructor)</span></p>
                                                         <p className="text-muted-foreground leading-snug">El instructor califica el plan (0.0 a 5.0) evaluando el enlace de evidencias subido por el aprendiz.</p>
                                                     </div>
                                                 </TooltipContent>
                                             </Tooltip>
                                             <div className="space-y-1">
-                                                <h4 className="text-xs font-bold text-foreground">Paso 5: Calificación Final <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
+                                                <h4 className="text-xs font-bold text-foreground">Paso 5: Calificación Final <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
                                                 <p className="text-[11px] text-muted-foreground leading-snug">El instructor califica el plan (0.0 a 5.0) evaluando el enlace de evidencias subido por el aprendiz.</p>
                                                 {viewPlanDetail.finalGrade !== null && viewPlanDetail.finalGrade !== undefined ? (
                                                     <div className="mt-1 bg-emerald-50 dark:bg-emerald-950/10 p-2.5 border border-emerald-200 rounded-xl inline-block">

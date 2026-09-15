@@ -11,6 +11,16 @@ async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
 }
 
+function revalidateCoursePaths() {
+    revalidatePath("/dashboard/teacher");
+    revalidatePath("/dashboard/admin");
+    revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor");
+    revalidatePath("/dashboard/gestor/courses");
+    revalidatePath("/dashboard/student/courses");
+    revalidatePath("/dashboard/student");
+}
+
 export async function createCourseAction(formData: FormData) {
     const session = await getSession();
     if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
@@ -62,7 +72,7 @@ export async function createCourseAction(formData: FormData) {
         session.user.name || "Usuario"
     );
 
-    revalidatePath("/dashboard/teacher");
+    revalidateCoursePaths();
 }
 
 export async function cloneCourseAction(formData: FormData) {
@@ -110,7 +120,7 @@ export async function cloneCourseAction(formData: FormData) {
         session.user.name || "Usuario"
     );
 
-    revalidatePath("/dashboard/teacher");
+    revalidateCoursePaths();
 }
 
 export async function updateCourseAction(formData: FormData) {
@@ -167,8 +177,7 @@ export async function updateCourseAction(formData: FormData) {
         { title, description, externalUrl }
     );
 
-    revalidatePath("/dashboard/teacher");
-    revalidatePath("/dashboard/admin");
+    revalidateCoursePaths();
 }
 
 export async function deleteCourseAction(formData: FormData) {
@@ -201,8 +210,7 @@ export async function deleteCourseAction(formData: FormData) {
         session.user.name || "Profesor"
     );
 
-    revalidatePath("/dashboard/teacher");
-    revalidatePath("/dashboard/admin");
+    revalidateCoursePaths();
 }
 
 

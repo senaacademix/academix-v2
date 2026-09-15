@@ -466,7 +466,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
             <Text style={styles.kpiSub}>Desempeño general de la ficha</Text>
           </View>
           <View style={styles.kpiCard}>
-            <Text style={styles.kpiTitle}>Estudiantes Activos</Text>
+            <Text style={styles.kpiTitle}>Aprendices Activos</Text>
             <Text style={[styles.kpiValue, { color: "#059669" }]}>
               {payload.activeStudents} / {payload.totalStudents}
             </Text>
@@ -548,7 +548,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
         />
       </Page>
 
-      {/* SECCIÓN 2: PLAN DE ESTUDIOS (ASIGNATURAS Y DOCENTES) */}
+      {/* SECCIÓN 2: PLAN DE ESTUDIOS (ASIGNATURAS E INSTRUCTORES) */}
       <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.headerContainer}>
           <View style={styles.headerLeft}>
@@ -567,7 +567,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderCell, { width: "6%" }]}>N°</Text>
             <Text style={[styles.tableHeaderCell, { width: "40%" }]}>Asignatura / Curso</Text>
-            <Text style={[styles.tableHeaderCell, { width: "34%" }]}>Docente Instructor</Text>
+            <Text style={[styles.tableHeaderCell, { width: "34%" }]}>Instructor</Text>
             <Text style={[styles.tableHeaderCell, { width: "10%", textAlign: "center" }]}>Promedio</Text>
             <Text style={[styles.tableHeaderCell, { width: "10%", textAlign: "center" }]}>Evaluaciones</Text>
           </View>
@@ -618,7 +618,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Consolidado General de Estudiantes</Text>
+        <Text style={styles.sectionTitle}>Consolidado General de Aprendices</Text>
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderCell, { width: "4%" }]}>N°</Text>
@@ -681,7 +681,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
             <View style={styles.headerLeft}>
               <Text style={styles.mainTitle}>MATRIZ DE RENDIMIENTO ACADÉMICO POR MATERIA</Text>
               <Text style={styles.subTitle}>
-                Ficha {payload.groupName} — Detalle de Promedios por Estudiante y Asignatura
+                Ficha {payload.groupName} — Detalle de Promedios por Aprendiz y Asignatura
               </Text>
             </View>
             <View style={styles.badge}>
@@ -689,7 +689,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
             </View>
           </View>
 
-          <Text style={styles.sectionTitle}>Notas por Asignatura por Estudiante</Text>
+          <Text style={styles.sectionTitle}>Notas por Asignatura por Aprendiz</Text>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { width: "4%" }]}>N°</Text>
@@ -756,7 +756,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
             <Text style={[styles.tableHeaderCell, { width: "20%" }]}>Aprendiz</Text>
             <Text style={[styles.tableHeaderCell, { width: "14%" }]}>Tipo</Text>
             <Text style={[styles.tableHeaderCell, { width: "18%" }]}>Materia</Text>
-            <Text style={[styles.tableHeaderCell, { width: "16%" }]}>Docente</Text>
+            <Text style={[styles.tableHeaderCell, { width: "16%" }]}>Instructor</Text>
             <Text style={[styles.tableHeaderCell, { width: "20%" }]}>Título / Observación</Text>
           </View>
 
@@ -823,7 +823,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderCell, { width: "10%" }]}>Código</Text>
             <Text style={[styles.tableHeaderCell, { width: "22%" }]}>Aprendiz</Text>
-            <Text style={[styles.tableHeaderCell, { width: "18%" }]}>Docente Responsable</Text>
+            <Text style={[styles.tableHeaderCell, { width: "18%" }]}>Instructor Responsable</Text>
             <Text style={[styles.tableHeaderCell, { width: "12%", textAlign: "center" }]}>Estado</Text>
             <Text style={[styles.tableHeaderCell, { width: "11%", textAlign: "center" }]}>Inicio</Text>
             <Text style={[styles.tableHeaderCell, { width: "11%", textAlign: "center" }]}>Límite</Text>
@@ -887,18 +887,18 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
         />
       </Page>
 
-      {/* SECCIÓN 7: CONTROL DE FECHAS DE ASISTENCIA PENDIENTES POR DOCENTE */}
+      {/* SECCIÓN 7: CONTROL DE FECHAS DE ASISTENCIA PENDIENTES POR INSTRUCTOR */}
       {payload.missingAttendanceList && payload.missingAttendanceList.length > 0 && (
         <Page size="A4" orientation="landscape" style={styles.page}>
           <View style={styles.headerContainer}>
             <View style={styles.headerLeft}>
               <Text style={styles.mainTitle}>CONTROL DE ASISTENCIAS PENDIENTES DE REGISTRO</Text>
               <Text style={styles.subTitle}>
-                Ficha {payload.groupName} — Sesiones Programadas Sin Registro de Asistencia por Docente
+                Ficha {payload.groupName} — Sesiones Programadas Sin Registro de Asistencia por Instructor
               </Text>
             </View>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>SEGUIMIENTO DOCENTE</Text>
+              <Text style={styles.badgeText}>SEGUIMIENTO DE INSTRUCTORES</Text>
             </View>
           </View>
 
@@ -907,7 +907,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { width: "5%" }]}>N°</Text>
               <Text style={[styles.tableHeaderCell, { width: "30%" }]}>Asignatura / Curso</Text>
-              <Text style={[styles.tableHeaderCell, { width: "25%" }]}>Docente Instructor</Text>
+              <Text style={[styles.tableHeaderCell, { width: "25%" }]}>Instructor</Text>
               <Text style={[styles.tableHeaderCell, { width: "15%", textAlign: "center" }]}>Sesiones Pendientes</Text>
               <Text style={[styles.tableHeaderCell, { width: "25%" }]}>Fechas Sin Registro</Text>
             </View>
@@ -994,7 +994,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { width: "35%" }]}>Asignatura / Curso</Text>
-              <Text style={[styles.tableHeaderCell, { width: "30%" }]}>Docente Instructor</Text>
+              <Text style={[styles.tableHeaderCell, { width: "30%" }]}>Instructor</Text>
               <Text style={[styles.tableHeaderCell, { width: "15%", textAlign: "center" }]}>Nota Aprendiz</Text>
               <Text style={[styles.tableHeaderCell, { width: "20%", textAlign: "center" }]}>Promedio Ficha</Text>
             </View>
@@ -1040,7 +1040,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
               <Text style={[styles.tableHeaderCell, { width: "15%" }]}>Fecha</Text>
               <Text style={[styles.tableHeaderCell, { width: "18%" }]}>Tipo</Text>
               <Text style={[styles.tableHeaderCell, { width: "22%" }]}>Materia</Text>
-              <Text style={[styles.tableHeaderCell, { width: "20%" }]}>Docente</Text>
+              <Text style={[styles.tableHeaderCell, { width: "20%" }]}>Instructor</Text>
               <Text style={[styles.tableHeaderCell, { width: "25%" }]}>Título / Observación</Text>
             </View>
             {!st.studentRemarks || st.studentRemarks.length === 0 ? (
@@ -1080,7 +1080,7 @@ export const GroupSchedulePdfDocument: React.FC<{ payload: GroupExportPayload }>
               <View style={styles.table}>
                 <View style={styles.tableHeader}>
                   <Text style={[styles.tableHeaderCell, { width: "15%" }]}>Código Plan</Text>
-                  <Text style={[styles.tableHeaderCell, { width: "25%" }]}>Docente Responsable</Text>
+                  <Text style={[styles.tableHeaderCell, { width: "25%" }]}>Instructor Responsable</Text>
                   <Text style={[styles.tableHeaderCell, { width: "15%", textAlign: "center" }]}>Estado</Text>
                   <Text style={[styles.tableHeaderCell, { width: "15%", textAlign: "center" }]}>Fecha Límite</Text>
                   <Text style={[styles.tableHeaderCell, { width: "30%" }]}>Observaciones</Text>

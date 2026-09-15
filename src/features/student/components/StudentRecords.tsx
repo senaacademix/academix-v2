@@ -123,7 +123,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         const sortedPlans = [...improvementPlans].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         sortedPlans.forEach((plan) => {
             const teacherId = plan.teacher?.id || "unknown";
-            const teacherName = plan.teacher ? formatName(plan.teacher.name, plan.teacher.profile) : "Docente no asignado";
+            const teacherName = plan.teacher ? formatName(plan.teacher.name, plan.teacher.profile) : "Instructor no asignado";
             if (!groups[teacherId]) {
                 groups[teacherId] = { teacherName, plans: [] };
             }
@@ -376,7 +376,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         bodyText += `Detalles del Plan:\n`;
         bodyText += `- Fecha de Inicio: ${format(fromUTC(plan.startDate), "dd/MM/yyyy")}\n`;
         bodyText += `- Fecha de Finalización: ${format(fromUTC(plan.endDate), "dd/MM/yyyy")}\n`;
-        bodyText += `- Docente: ${teacherName}\n`;
+        bodyText += `- Instructor: ${teacherName}\n`;
         if (plan.teacherDocUrl) {
             bodyText += `- Documento del Plan: ${plan.teacherDocUrl}\n`;
         }
@@ -409,7 +409,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             const data = {
                 student: {
                     id: studentId || records?.targetUser?.id || "",
-                    name: records?.targetUser?.name || "Estudiante",
+                    name: records?.targetUser?.name || "Aprendiz",
                     email: records?.targetUser?.email || "",
                     identificacion: records?.targetUser?.profile?.identificacion || "S/I",
                     currentGroup: records?.targetUser?.groupName || "Sin Ficha Activa",
@@ -437,7 +437,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             const data = {
                 student: {
                     id: studentId || records?.targetUser?.id || "",
-                    name: records?.targetUser?.name || "Estudiante",
+                    name: records?.targetUser?.name || "Aprendiz",
                     email: records?.targetUser?.email || "",
                     identificacion: records?.targetUser?.profile?.identificacion || "S/I",
                     currentGroup: records?.targetUser?.groupName || "Sin Ficha Activa",
@@ -1408,7 +1408,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                     </h4>
                                                                     {m.course.teacher && (
                                                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                                                            Docente: {formatName(m.course.teacher.name, m.course.teacher.profile)}
+                                                                            Instructor: {formatName(m.course.teacher.name, m.course.teacher.profile)}
                                                                         </p>
                                                                     )}
                                                                 </div>
@@ -1722,7 +1722,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                             <CardContent className="p-0">
                                                 {course.activities.length === 0 ? (
                                                     <div className="p-8 text-center text-muted-foreground text-sm">
-                                                        El profesor aún no ha asignado actividades evaluativas en esta materia.
+                                                        El instructor aún no ha asignado actividades evaluativas en esta materia.
                                                     </div>
                                                 ) : (
                                                     <div className="w-full overflow-x-auto scrollbar-none">
@@ -1868,7 +1868,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                 {links.length === 0 ? (
                                                     <div className="flex items-center gap-3 py-6 text-center justify-center text-muted-foreground">
                                                         <BookOpen className="w-5 h-5 opacity-40 shrink-0" />
-                                                        <p className="text-sm">El profesor aún no ha publicado recursos en esta materia.</p>
+                                                        <p className="text-sm">El instructor aún no ha publicado recursos en esta materia.</p>
                                                     </div>
                                                 ) : (
                                                     <div className="space-y-2">
@@ -2032,7 +2032,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         <p className="leading-relaxed text-left">
-                                            <strong>Información Importante:</strong> Los planes de mejoramiento no afectan de forma automática la analítica de rendimiento académico del estudiante en la plataforma. Es responsabilidad exclusiva del profesor/instructor pasar y registrar los resultados definitivos en el módulo de calificaciones de forma manual.
+                                            <strong>Información Importante:</strong> Los planes de mejoramiento no afectan de forma automática la analítica de rendimiento académico del aprendiz en la plataforma. Es responsabilidad exclusiva del instructor pasar y registrar los resultados definitivos en el módulo de calificaciones de forma manual.
                                         </p>
                                     </div>
                                 </div>
@@ -2064,7 +2064,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                 <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-muted/5 text-muted-foreground">
                                     <FileText className="w-12 h-12 mb-4 opacity-50 text-muted-foreground" />
                                     <p className="font-semibold text-base">Sin Planes de Mejoramiento</p>
-                                    <p className="text-sm text-center mt-1">No se registran planes de mejoramiento asignados para este estudiante.</p>
+                                    <p className="text-sm text-center mt-1">No se registran planes de mejoramiento asignados para este aprendiz.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-8">
@@ -2073,7 +2073,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
 <div className="flex items-center gap-2 pb-2 border-b">
                                                 <GraduationCap className="w-5 h-5 text-primary" />
                                                 <h3 className="text-sm font-bold text-foreground">
-                                                    Docente: {teacherName}
+                                                    Instructor: {teacherName}
                                                     <span className="ml-2 text-xs font-normal text-muted-foreground">
                                                         ({plans.length} {plans.length === 1 ? "plan de mejoramiento" : "planes de mejoramiento"})
                                                     </span>
@@ -2099,7 +2099,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                     const steps = [
                                                          { 
                                                              label: "Plan creado", 
-                                                             sub: "Docente", 
+                                                             sub: "Instructor", 
                                                              done: step1Done, 
                                                              active: !step1Done, 
                                                              locked: false,
@@ -2115,11 +2115,11 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                          },
                                                          { 
                                                              label: "Prof. firma", 
-                                                             sub: "Docente", 
+                                                             sub: "Instructor", 
                                                              done: step3Done, 
                                                              active: step2Done && !step3Done, 
                                                              locked: !step2Done,
-                                                             desc: "El instructor revisa la firma del aprendiz, realiza la contrafirma docente y sube el documento final firmado."
+                                                             desc: "El instructor revisa la firma del aprendiz, realiza la contrafirma del instructor y sube el documento final firmado."
                                                          },
                                                          { 
                                                              label: "Evidencias", 
@@ -2131,7 +2131,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                          },
                                                          { 
                                                              label: "Evaluación", 
-                                                             sub: "Docente", 
+                                                             sub: "Instructor", 
                                                              done: step5Done, 
                                                              active: step4Done && !step5Done, 
                                                              locked: !step4Done,
@@ -2291,7 +2291,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                                         size="icon" 
                                                                                         onClick={() => handleDeleteSignedDoc(plan.id)}
                                                                                         className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md shrink-0 cursor-pointer"
-                                                                                        title="Eliminar firma del estudiante"
+                                                                                        title="Eliminar firma del aprendiz"
                                                                                     >
                                                                                         <UserX className="w-3.5 h-3.5" />
                                                                                     </Button>
@@ -2314,9 +2314,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                         )}
                                                                     </div>
 
-                                                                    {/* Paso 3 — Firma Docente */}
+                                                                    {/* Paso 3 — Firma Instructor */}
                                                                     <div className="p-3 bg-background border rounded-xl flex flex-col gap-1 text-left">
-                                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Paso 3 — Firma Docente</span>
+                                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Paso 3 — Firma Instructor</span>
                                                                         {plan.teacherSignedDocUrl ? (
                                                                             <div className="flex items-center justify-between gap-2 mt-1">
                                                                                 <a href={plan.teacherSignedDocUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline font-bold flex items-center gap-1 truncate">
@@ -2324,7 +2324,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                                 </a>
                                                                             </div>
                                                                         ) : (
-                                                                            <span className="text-xs text-muted-foreground italic mt-1">Pendiente de firma docente</span>
+                                                                            <span className="text-xs text-muted-foreground italic mt-1">Pendiente de firma del instructor</span>
                                                                         )}
                                                                     </div>
 
@@ -2478,7 +2478,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                         ) : (
                             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                                 <FileText className="w-12 h-12 mb-3 opacity-40" />
-                                <p className="text-sm">El profesor no ha agregado instrucciones para esta actividad.</p>
+                                <p className="text-sm">El instructor no ha agregado instrucciones para esta actividad.</p>
                             </div>
                         )}
 
@@ -2552,7 +2552,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                             value={submissionLinkInput}
                             onChange={e => setSubmissionLinkInput(e.target.value)}
                         />
-                        <p className="text-xs text-muted-foreground">Asegúrate de que el enlace sea accesible para el docente (sin restricciones de acceso).</p>
+                        <p className="text-xs text-muted-foreground">Asegúrate de que el enlace sea accesible para el instructor (sin restricciones de acceso).</p>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSubmissionDialog(null)} disabled={isSubmittingLink}>Cancelar</Button>
@@ -2573,7 +2573,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                         <div className="flex-1 min-w-0">
                             <DialogTitle className="text-xl font-black leading-tight">{remarkDetail?.title}</DialogTitle>
                             <DialogDescription className="text-xs mt-0.5">
-                                Observación de {remarkDetail?.course?.title} — Docente: {remarkDetail ? formatTeacherName(remarkDetail.teacher) : ""}
+                                Observación de {remarkDetail?.course?.title} — Instructor: {remarkDetail ? formatTeacherName(remarkDetail.teacher) : ""}
                             </DialogDescription>
                         </div>
                         <Button variant="outline" size="sm" className="shrink-0" onClick={() => setRemarkDetail(null)}>
@@ -2673,7 +2673,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Eliminar esta justificación?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            ¿Estás seguro de que deseas eliminar esta justificación? El estudiante tendrá que volver a justificar esta inasistencia/retardo para que pueda ser considerada válida.
+                            ¿Estás seguro de que deseas eliminar esta justificación? El aprendiz tendrá que volver a justificar esta inasistencia/retardo para que pueda ser considerada válida.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -2863,9 +2863,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                         <SelectValue placeholder="Selecciona el paso" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="1">Paso 1: Plan creado (Solo Docente)</SelectItem>
+                                        <SelectItem value="1">Paso 1: Plan creado (Solo Instructor)</SelectItem>
                                         <SelectItem value="2">Paso 2: Firma del Aprendiz (Esperando firma)</SelectItem>
-                                        <SelectItem value="3">Paso 3: Firma del Docente (Esperando contrafirma)</SelectItem>
+                                        <SelectItem value="3">Paso 3: Firma del Instructor (Esperando contrafirma)</SelectItem>
                                         <SelectItem value="4">Paso 4: Evidencias (Esperando evidencias)</SelectItem>
                                         <SelectItem value="5">Paso 5: Evaluación (Esperando calificación)</SelectItem>
                                     </SelectContent>
@@ -2948,7 +2948,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                             <div className="space-y-5 py-2 text-left text-sm">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-4">
                                     <div className="space-y-0.5">
-                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Docente Asignador</span>
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Instructor Asignador</span>
                                         <span className="text-sm font-semibold text-primary">{formatName(viewPlanDetail.teacher.name, viewPlanDetail.teacher.profile)}</span>
                                     </div>
                                     <div className="space-y-0.5">
@@ -2995,7 +2995,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                 {step1Done ? "✓" : "1"}
                                             </div>
                                             <div className="space-y-1">
-                                                <h4 className="text-xs font-bold text-foreground">Paso 1: Plan Docente <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
+                                                <h4 className="text-xs font-bold text-foreground">Paso 1: Plan del Instructor <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
                                                 <p className="text-[11px] text-muted-foreground leading-snug">El instructor crea el plan de mejoramiento académico detallando compromisos, fechas y cargando el documento inicial.</p>
                                                 {viewPlanDetail.teacherDocUrl ? (
                                                     <a href={viewPlanDetail.teacherDocUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-bold mt-1">
@@ -3039,8 +3039,8 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                 {step3Done ? "✓" : "3"}
                                             </div>
                                             <div className="space-y-1">
-                                                <h4 className="text-xs font-bold text-foreground">Paso 3: Firma del Docente <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
-                                                <p className="text-[11px] text-muted-foreground leading-snug">El instructor revisa la firma del aprendiz, realiza la contrafirma docente y sube el documento final firmado.</p>
+                                                <h4 className="text-xs font-bold text-foreground">Paso 3: Firma del Instructor <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
+                                                <p className="text-[11px] text-muted-foreground leading-snug">El instructor revisa la firma del aprendiz, realiza la contrafirma del instructor y sube el documento final firmado.</p>
                                                 {viewPlanDetail.teacherSignedDocUrl ? (
                                                     <a href={viewPlanDetail.teacherSignedDocUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline font-bold mt-1">
                                                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
@@ -3083,7 +3083,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                 {step5Done ? "✓" : "5"}
                                             </div>
                                             <div className="space-y-1">
-                                                <h4 className="text-xs font-bold text-foreground">Paso 5: Calificación Final <span className="text-[10px] font-normal text-muted-foreground">(Docente)</span></h4>
+                                                <h4 className="text-xs font-bold text-foreground">Paso 5: Calificación Final <span className="text-[10px] font-normal text-muted-foreground">(Instructor)</span></h4>
                                                 <p className="text-[11px] text-muted-foreground leading-snug">El instructor califica el plan (0.0 a 5.0) evaluando el enlace de evidencias subido por el aprendiz.</p>
                                                 {viewPlanDetail.finalGrade !== null && viewPlanDetail.finalGrade !== undefined ? (
                                                     <div className="mt-1 bg-emerald-50 dark:bg-emerald-950/10 p-2.5 border border-emerald-200 rounded-xl inline-block">
@@ -3129,7 +3129,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Eliminar Documento Firmado?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            ¿Estás seguro de que deseas eliminar la firma/documento del estudiante? Esta acción no se puede deshacer.
+                            ¿Estás seguro de que deseas eliminar la firma/documento del aprendiz? Esta acción no se puede deshacer.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -3152,7 +3152,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                 }}
             />
 
-            {/* Modal de Ayuda del Registro Académico del Estudiante */}
+            {/* Modal de Ayuda del Registro Académico del Aprendiz */}
             <StudentHelpModal
                 open={showHelpModal}
                 onOpenChange={setShowHelpModal}

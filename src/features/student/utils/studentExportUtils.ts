@@ -34,7 +34,7 @@ export interface StudentExportData {
 
 export async function exportStudentRecordExcel(data: StudentExportData) {
   const workbook = new ExcelJS.Workbook();
-  const studentName = data.student.name || "Estudiante";
+  const studentName = data.student.name || "Aprendiz";
 
   // ── Sheet 1: Resumen y Trayectoria de Fichas ─────────────────────────────
   const wsHistory = workbook.addWorksheet("Trayectoria de Fichas");
@@ -109,7 +109,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
 
   // ── Sheet 3: Calificaciones ──────────────────────────────────────────
   const wsGrades = workbook.addWorksheet("Calificaciones por Ficha");
-  const gradeHeaders = ["Ficha / Grupo", "Materia / Asignatura", "Docente", "Actividades Evaluadas", "Promedio Final"];
+  const gradeHeaders = ["Ficha / Grupo", "Materia / Asignatura", "Instructor", "Actividades Evaluadas", "Promedio Final"];
   const rGradesHeader = wsGrades.addRow(gradeHeaders);
   rGradesHeader.font = { bold: true, color: { argb: "FFFFFF" } };
   rGradesHeader.eachCell((cell) => {
@@ -131,7 +131,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
     wsGrades.addRow([
       c.group?.name || c.groupId || "General",
       c.title,
-      c.teacher?.name || "Docente no asignado",
+      c.teacher?.name || "Instructor no asignado",
       c.activities?.length || 0,
       finalScore
     ]);
@@ -141,7 +141,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
 
   // ── Sheet 4: Observaciones Disciplinarias ─────────────────────────────
   const wsRemarks = workbook.addWorksheet("Observaciones");
-  const remarkHeaders = ["Ficha / Grupo", "Fecha", "Tipo", "Docente", "Materia / Curso", "Observación / Detalle"];
+  const remarkHeaders = ["Ficha / Grupo", "Fecha", "Tipo", "Instructor", "Materia / Curso", "Observación / Detalle"];
   const rRemHeader = wsRemarks.addRow(remarkHeaders);
   rRemHeader.font = { bold: true, color: { argb: "FFFFFF" } };
   rRemHeader.eachCell((cell) => {
@@ -153,7 +153,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
       r.course?.group?.name || r.course?.groupId || "General",
       r.date ? format(new Date(r.date), "dd/MM/yyyy") : "S/I",
       r.type === "ATTENTION" ? "Llamado de Atención" : r.type,
-      r.teacher?.name || "Docente",
+      r.teacher?.name || "Instructor",
       r.course?.title || "Materia",
       r.content || "-"
     ]);
@@ -163,7 +163,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
 
   // ── Sheet 5: Planes de Mejoramiento ──────────────────────────────────
   const wsPlans = workbook.addWorksheet("Planes de Mejoramiento");
-  const planHeaders = ["Ficha / Grupo", "N° Plan", "Docente", "Fecha Inicio", "Fecha Fin", "Calificación Final"];
+  const planHeaders = ["Ficha / Grupo", "N° Plan", "Instructor", "Fecha Inicio", "Fecha Fin", "Calificación Final"];
   const rPlanHeader = wsPlans.addRow(planHeaders);
   rPlanHeader.font = { bold: true, color: { argb: "FFFFFF" } };
   rPlanHeader.eachCell((cell) => {
@@ -174,7 +174,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
     wsPlans.addRow([
       p.group?.name || "General",
       p.planNumber,
-      p.teacher?.name || "Docente",
+      p.teacher?.name || "Instructor",
       p.startDate ? format(new Date(p.startDate), "dd/MM/yyyy") : "S/I",
       p.endDate ? format(new Date(p.endDate), "dd/MM/yyyy") : "S/I",
       p.finalGrade !== undefined && p.finalGrade !== null ? p.finalGrade.toFixed(1) : "Sin calificar"
@@ -198,7 +198,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
 
 export function exportStudentRecordPDF(data: StudentExportData) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const studentName = data.student.name || "Estudiante";
+  const studentName = data.student.name || "Aprendiz";
 
   // Title & Institution Header
   doc.setFontSize(16);
@@ -268,7 +268,7 @@ export function exportStudentRecordPDF(data: StudentExportData) {
     return [
       c.group?.name || c.groupId || "General",
       c.title,
-      c.teacher?.name || "Docente no asignado",
+      c.teacher?.name || "Instructor no asignado",
       c.activities?.length || 0,
       finalScore
     ];
@@ -276,7 +276,7 @@ export function exportStudentRecordPDF(data: StudentExportData) {
 
   autoTable(doc, {
     startY: currentY + 3,
-    head: [["Ficha / Grupo", "Materia / Asignatura", "Docente", "Actividades", "Promedio Final"]],
+    head: [["Ficha / Grupo", "Materia / Asignatura", "Instructor", "Actividades", "Promedio Final"]],
     body: gradeRows.length > 0 ? gradeRows : [["-", "Sin materias registradas", "-", "-", "-"]],
     styles: { fontSize: 8, cellPadding: 2.5 },
     headStyles: { fillColor: [5, 150, 105], textColor: 255, fontStyle: "bold" },
@@ -296,13 +296,13 @@ export function exportStudentRecordPDF(data: StudentExportData) {
     r.course?.group?.name || r.course?.groupId || "General",
     r.date ? format(new Date(r.date), "dd/MM/yyyy") : "S/I",
     r.type === "ATTENTION" ? "Llamado de Atención" : r.type,
-    r.teacher?.name || "Docente",
+    r.teacher?.name || "Instructor",
     r.content || "-"
   ]);
 
   autoTable(doc, {
     startY: currentY + 3,
-    head: [["Ficha / Grupo", "Fecha", "Tipo", "Docente", "Observación / Detalle"]],
+    head: [["Ficha / Grupo", "Fecha", "Tipo", "Instructor", "Observación / Detalle"]],
     body: remarkRows.length > 0 ? remarkRows : [["-", "-", "-", "-", "Sin observaciones registradas"]],
     styles: { fontSize: 8, cellPadding: 2.5 },
     headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: "bold" },

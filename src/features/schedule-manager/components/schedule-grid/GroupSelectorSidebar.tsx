@@ -530,11 +530,11 @@ export function GroupSelectorSidebar({
                                 />
                                 <div
                                   className={`w-1.5 h-1.5 rounded-full ${dispColor} mx-auto`}
-                                  title="Docente disponible"
+                                  title="Instructor disponible"
                                 />
                                 <div
                                   className={`w-1.5 h-1.5 rounded-full ${califColor} mx-auto`}
-                                  title="Docente calificado"
+                                  title="Instructor calificado"
                                 />
                                 <div
                                   className={`w-1.5 h-1.5 rounded-full ${envColor} mx-auto`}
@@ -580,11 +580,11 @@ export function GroupSelectorSidebar({
                               {/* 2. Docente Disponible */}
                               <div className="flex items-center justify-between gap-2">
                                 <span className="flex items-center gap-1 text-muted-foreground">
-                                  <GraduationCap className="w-3 h-3 text-primary" /> Disponibilidad docente:
+                                  <GraduationCap className="w-3 h-3 text-primary" /> Disponibilidad del instructor:
                                 </span>
                                 {hasNoTeacher ? (
                                   <span className="text-amber-600 font-semibold flex items-center gap-0.5">
-                                    <AlertTriangle className="w-3 h-3" /> Sin docente
+                                    <AlertTriangle className="w-3 h-3" /> Sin instructor
                                   </span>
                                 ) : hasTeacherConflict ? (
                                   <span className="text-destructive font-bold flex items-center gap-0.5">
@@ -667,10 +667,10 @@ export function GroupSelectorSidebar({
                     <span className="flex items-center gap-1" title="Horario Completo">
                       🕒 Hor
                     </span>
-                    <span className="flex items-center gap-1" title="Docente Disponible">
+                    <span className="flex items-center gap-1" title="Instructor Disponible">
                       👨‍🏫 Disp
                     </span>
-                    <span className="flex items-center gap-1" title="Docente Calificado">
+                    <span className="flex items-center gap-1" title="Instructor Calificado">
                       🎓 Calif
                     </span>
                     <span className="flex items-center gap-1" title="Ambiente Asignado">

@@ -169,11 +169,11 @@ export function TeacherUsersManagement({
           )
         );
 
-        toast.success("Información del docente actualizada exitosamente");
+        toast.success("Información del instructor actualizada exitosamente");
         setEditDialogOpen(false);
         router.refresh();
       } catch (error: any) {
-        toast.error("Error al actualizar docente", {
+        toast.error("Error al actualizar instructor", {
           description: error.message || "Ocurrió un error inesperado",
         });
       }
@@ -226,13 +226,13 @@ export function TeacherUsersManagement({
         };
 
         setTeachers((prev) => [newTeacher, ...prev]);
-        toast.success("Docente registrado exitosamente");
+        toast.success("Instructor registrado exitosamente");
         setCreateDialogOpen(false);
         resetForm();
         setSearchQuery("");
         router.refresh();
       } catch (error: any) {
-        toast.error("Error al registrar docente", {
+        toast.error("Error al registrar instructor", {
           description: error.message || "Ocurrió un error inesperado",
         });
       }
@@ -245,12 +245,12 @@ export function TeacherUsersManagement({
       try {
         await deleteUserAction(selectedTeacher.id);
         setTeachers((prev) => prev.filter((t) => t.id !== selectedTeacher.id));
-        toast.success("Docente eliminado exitosamente");
+        toast.success("Instructor eliminado exitosamente");
         setDeleteDialogOpen(false);
         setSelectedTeacher(null);
         router.refresh();
       } catch (error: any) {
-        toast.error("Error al eliminar docente", {
+        toast.error("Error al eliminar instructor", {
           description: error.message || "Ocurrió un error inesperado",
         });
       }
@@ -290,7 +290,7 @@ export function TeacherUsersManagement({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {!hideMainHeader ? (
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">Gestión de Docentes</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Gestión de Instructores</h2>
             <p className="text-muted-foreground text-xs sm:text-sm">
               Directorio de instructores, disponibilidades y habilitaciones pedagógicas.
             </p>
@@ -299,7 +299,7 @@ export function TeacherUsersManagement({
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs font-semibold px-2.5 py-1">
               <GraduationCap className="mr-1.5 h-3.5 w-3.5 text-indigo-600" />
-              {teachers.length} docentes registrados
+              {teachers.length} instructores registrados
             </Badge>
           </div>
         )}
@@ -317,7 +317,7 @@ export function TeacherUsersManagement({
                   <HelpCircle className="w-4 h-4 text-primary" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Profesores</TooltipContent>
+              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Instructores</TooltipContent>
             </Tooltip>
           )}
           <Button
@@ -328,7 +328,7 @@ export function TeacherUsersManagement({
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium gap-2 shadow-xs"
           >
             <UserPlus className="h-4 w-4" />
-            Registrar Docente
+            Registrar Instructor
           </Button>
         </div>
       </div>
@@ -342,7 +342,7 @@ export function TeacherUsersManagement({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar docente por nombre, correo o número de documento..."
+                placeholder="Buscar instructor por nombre, correo o número de documento..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-9"
@@ -378,7 +378,7 @@ export function TeacherUsersManagement({
         <Table>
           <TableHeader className="bg-muted/40">
             <TableRow>
-              <TableHead className="w-[300px]">Docente / Instructor</TableHead>
+              <TableHead className="w-[300px]">Instructor</TableHead>
               <TableHead>Identificación</TableHead>
               <TableHead>Contacto</TableHead>
               <TableHead className="text-right pr-6">Acciones</TableHead>
@@ -388,7 +388,7 @@ export function TeacherUsersManagement({
             {filteredTeachers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-10 text-muted-foreground text-sm">
-                  No se encontraron docentes registrados.
+                  No se encontraron instructores registrados.
                 </TableCell>
               </TableRow>
             ) : (
@@ -436,7 +436,7 @@ export function TeacherUsersManagement({
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-indigo-600 hover:bg-indigo-500/10"
-                        title="Editar información del docente"
+                        title="Editar información del instructor"
                         onClick={() => handleOpenEditTeacher(teacher)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -461,7 +461,7 @@ export function TeacherUsersManagement({
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-red-600 hover:bg-red-500/10"
-                        title="Eliminar docente"
+                        title="Eliminar instructor"
                         onClick={() => {
                           setSelectedTeacher(teacher);
                           setDeleteDialogOpen(true);
@@ -484,7 +484,7 @@ export function TeacherUsersManagement({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-indigo-600" />
-              <span>Editar Información del Docente</span>
+              <span>Editar Información del Instructor</span>
             </DialogTitle>
             <DialogDescription>
               Modifica los datos personales y de acceso del instructor.
@@ -560,7 +560,7 @@ export function TeacherUsersManagement({
               disabled={isPending}
               onClick={handleUpdateTeacher}
             >
-              {isPending ? "Guardando..." : "Actualizar Docente"}
+              {isPending ? "Guardando..." : "Actualizar Instructor"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -572,7 +572,7 @@ export function TeacherUsersManagement({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-indigo-600" />
-              <span>Registrar Nuevo Docente</span>
+              <span>Registrar Nuevo Instructor</span>
             </DialogTitle>
             <DialogDescription>
               Crea la cuenta del instructor en el sistema.
@@ -648,7 +648,7 @@ export function TeacherUsersManagement({
               disabled={isPending}
               onClick={handleCreateTeacher}
             >
-              {isPending ? "Registrando..." : "Guardar Docente"}
+              {isPending ? "Registrando..." : "Guardar Instructor"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -663,7 +663,7 @@ export function TeacherUsersManagement({
               <span>Disponibilidad Horaria: {selectedTeacher?.name}</span>
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Visualiza y gestiona las franjas de disponibilidad declaradas por el docente para la programación de horarios.
+              Visualiza y gestiona las franjas de disponibilidad declaradas por el instructor para la programación de horarios.
             </DialogDescription>
           </DialogHeader>
 
@@ -692,7 +692,7 @@ export function TeacherUsersManagement({
               <span>Habilitaciones Curriculares: {selectedTeacher?.name}</span>
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Configura y valida las materias y competencias que este docente está habilitado para impartir.
+              Configura y valida las materias y competencias que este instructor está habilitado para impartir.
             </DialogDescription>
           </DialogHeader>
 
@@ -738,9 +738,9 @@ export function TeacherUsersManagement({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar Docente?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar Instructor?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará la cuenta del docente <strong>{selectedTeacher?.name}</strong>. Esta acción no se puede deshacer.
+              Esta acción eliminará la cuenta del instructor <strong>{selectedTeacher?.name}</strong>. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

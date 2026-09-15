@@ -128,7 +128,7 @@ export function AdminDashboard({
         {
             title: "Aprendices Matriculados",
             value: currentProgram.studentsCount ?? 0,
-            description: `${currentProgram.studentsCount ?? 0} estudiantes en este programa`,
+            description: `${currentProgram.studentsCount ?? 0} aprendices en este programa`,
             icon: GraduationCap,
             color: "text-blue-500",
             bg: "bg-blue-500/10",
@@ -153,7 +153,7 @@ export function AdminDashboard({
             link: `/dashboard/admin/courses?programId=${currentProgram.id}`
         },
         {
-            title: "Docentes Vinculados",
+            title: "Instructores Vinculados",
             value: currentProgram.teachersCount ?? currentProgram._count?.teachers ?? 0,
             description: "Instructores en el programa",
             icon: UserCheck,
@@ -202,7 +202,7 @@ export function AdminDashboard({
 
     const userDistribution = isGestor && currentProgram ? [
         { label: "Aprendices", value: currentProgram.studentsCount ?? 0, icon: GraduationCap, color: "bg-blue-500" },
-        { label: "Docentes", value: currentProgram.teachersCount ?? 0, icon: UserCheck, color: "bg-indigo-500" },
+        { label: "Instructores", value: currentProgram.teachersCount ?? 0, icon: UserCheck, color: "bg-indigo-500" },
     ] : [
         { label: "Administradores", value: stats.users.admin, icon: ShieldCheck, color: "bg-blue-500" },
         { label: "Gestores Académicos", value: (stats.users as any).gestor || 0, icon: UserCheck, color: "bg-indigo-500" },
@@ -367,7 +367,7 @@ export function AdminDashboard({
                                                 <span className="font-bold text-foreground text-sm">{prog.coursesCount ?? 0}</span>
                                             </div>
                                             <div>
-                                                <span className="text-muted-foreground block text-[10px] font-semibold uppercase">Docentes</span>
+                                                <span className="text-muted-foreground block text-[10px] font-semibold uppercase">Instructores</span>
                                                 <span className="font-bold text-foreground text-sm">{prog.teachersCount ?? 0}</span>
                                             </div>
                                         </div>

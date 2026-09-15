@@ -31,7 +31,7 @@ export async function generateAndDownloadTeacherScheduleExcel(
   schedule: ScheduleBuilderData["schedule"],
   teachersData: TeacherExportData[],
   exportMode: "single" | "all" | "chart" = "single",
-  filename = `Horario_Docentes_${schedule.name}.xlsx`
+  filename = `Horario_Instructores_${schedule.name}.xlsx`
 ) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "AcademiX";
@@ -44,14 +44,14 @@ export async function generateAndDownloadTeacherScheduleExcel(
   // =========================================================================
   if (exportMode !== "single") {
     const summarySheet = workbook.addWorksheet(
-      exportMode === "chart" ? "Reporte Carga Docente" : "Consolidado Docentes",
+      exportMode === "chart" ? "Reporte Carga Instructores" : "Consolidado Instructores",
       { views: [{ showGridLines: true }] }
     );
 
   // Banner
   summarySheet.mergeCells("A1:G1");
   const titleCell = summarySheet.getCell("A1");
-  titleCell.value = `${schedule.name.toUpperCase()} — CONSOLIDADO DE CARGA HORARIA DOCENTE`;
+  titleCell.value = `${schedule.name.toUpperCase()} — CONSOLIDADO DE CARGA HORARIA DE INSTRUCTORES`;
   titleCell.font = { name: "Segoe UI", size: 14, bold: true, color: { argb: "FFFFFFFF" } };
   titleCell.alignment = { vertical: "middle", horizontal: "center" };
   titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF312E81" } }; // Deep Indigo
@@ -62,14 +62,14 @@ export async function generateAndDownloadTeacherScheduleExcel(
   const subtitleCell = summarySheet.getCell("A2");
   subtitleCell.value = `Período: ${formatDate(schedule.startDate)} al ${formatDate(
     schedule.endDate
-  )} | Total Docentes: ${teachersData.length} | Generado: ${new Date().toLocaleDateString("es-ES")}`;
+  )} | Total Instructores: ${teachersData.length} | Generado: ${new Date().toLocaleDateString("es-ES")}`;
   subtitleCell.font = { name: "Segoe UI", size: 10, italic: true, color: { argb: "FF334155" } };
   subtitleCell.alignment = { vertical: "middle", horizontal: "center" };
   subtitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
   summarySheet.getRow(2).height = 24;
 
   const headers = [
-    "Docente / Instructor",
+    "Instructor",
     "Correo Electrónico",
     "Fichas Asignadas",
     "Materia / Actividad",
@@ -246,7 +246,7 @@ export async function generateAndDownloadTeacherScheduleExcel(
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `Horario_Docentes_${schedule.name.replace(/[^a-zA-Z0-9]/g, "_")}_${
+  link.download = `Horario_Instructores_${schedule.name.replace(/[^a-zA-Z0-9]/g, "_")}_${
     teachersData.length === 1 ? teachersData[0].name.replace(/[^a-zA-Z0-9]/g, "_") : "Completo"
   }.xlsx`;
   document.body.appendChild(link);

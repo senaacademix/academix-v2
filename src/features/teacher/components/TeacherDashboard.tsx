@@ -14,7 +14,7 @@ const GroupManager = dynamic(
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
         <LoadingSpinner className="w-10 h-10 text-primary" />
         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 animate-pulse">
-          Cargando panel del profesor...
+          Cargando panel del instructor...
         </span>
       </div>
     ),

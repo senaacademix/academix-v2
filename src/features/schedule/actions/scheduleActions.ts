@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { courseService } from "../../teacher/services/courseService";
+import { courseService, populateCoursesFallbackDescriptions } from "../../teacher/services/courseService";
 import prisma from "@/lib/prisma";
 import { isScheduleCurrent } from "@/lib/dateUtils";
 
@@ -115,6 +115,8 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
               group: c.group,
               environment: slot.group.environment,
               period: c.period,
+              periodId: c.periodId,
+              programId: slot.group.program?.id,
               schedules: (c.schedules || []).map((s: any) => ({
                 id: s.id,
                 dayOfWeek: s.dayOfWeek,
@@ -129,6 +131,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
     });
 
     const courses = Array.from(courseMap.values());
+    await populateCoursesFallbackDescriptions(courses);
     const studentEvents = (vigenteSchedule.events || []).filter(
       (e: any) => e.targetAudience === "PUBLIC" || e.targetAudience === "STUDENTS"
     );
@@ -225,6 +228,8 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
               group: c.group,
               environment: slot.group.environment,
               period: c.period,
+              periodId: c.periodId,
+              programId: slot.group.program?.id,
               schedules: matchingSchedules.map((s: any) => ({
                 id: s.id,
                 dayOfWeek: s.dayOfWeek,
@@ -239,6 +244,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
     });
 
     const courses = Array.from(courseMap.values());
+    await populateCoursesFallbackDescriptions(courses);
     const teacherEvents = (selectedSchedule.events || []).filter(
       (e: any) => e.targetAudience === "PUBLIC" || (role === "teacher" && e.targetAudience === "TEACHERS")
     );

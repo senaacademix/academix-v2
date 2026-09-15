@@ -80,7 +80,7 @@ export function StudentGrades() {
             <CardContent className="p-0">
               {course.activities.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground text-sm">
-                  El profesor aún no ha asignado actividades evaluativas en esta materia.
+                  El instructor aún no ha asignado actividades evaluativas en esta materia.
                 </div>
               ) : (
                 <Table>

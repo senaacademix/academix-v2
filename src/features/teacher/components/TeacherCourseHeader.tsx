@@ -141,7 +141,7 @@ export function TeacherCourseHeader({
                 {/* Row 2: Content Navigation (h-10) */}
                 <div className="px-4 h-10 flex items-center justify-center bg-muted/5 border-b border-foreground/10 shadow-[0_1px_10px_rgba(0,0,0,0.05)] dark:shadow-none">
                     <TabsList className="flex w-full md:w-auto h-10 p-0 bg-transparent gap-0 overflow-x-auto scrollbar-none justify-center">
-                        <NavTab value="students" icon={<Users className="h-3.5 w-3.5" />} label="Estudiantes" />
+                        <NavTab value="students" icon={<Users className="h-3.5 w-3.5" />} label="Aprendices" />
                         <div className="h-5 w-[1px] bg-foreground/15 self-center hidden sm:block" />
                         <NavTab value="grades" icon={<LayoutDashboard className="h-3.5 w-3.5" />} label="Calificaciones" />
                         <div className="h-5 w-[1px] bg-foreground/15 self-center hidden sm:block" />

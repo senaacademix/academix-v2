@@ -125,7 +125,7 @@ export function UnifiedUserManagement({
                   Gestión de Usuarios
                 </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  Centro de control institucional para estudiantes, docentes y administradores.
+                  Centro de control institucional para aprendices, instructores y administradores.
                 </p>
               </div>
             </div>
@@ -133,13 +133,13 @@ export function UnifiedUserManagement({
 
           <div className="flex items-center gap-2.5 self-start md:self-auto">
             <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-2xl bg-muted/60 p-1.5 gap-1.5 border border-border/50 shadow-xs">
-              {/* Tab 1: Estudiantes */}
+              {/* Tab 1: Aprendices */}
               <TabsTrigger
                 value="students"
                 className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all shrink-0"
               >
                 <GraduationCap className="w-4 h-4" />
-                <span>Estudiantes</span>
+                <span>Aprendices</span>
                 <Badge
                   variant="secondary"
                   className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-primary/10 text-primary border-primary/20 rounded-lg"
@@ -148,13 +148,13 @@ export function UnifiedUserManagement({
                 </Badge>
               </TabsTrigger>
 
-              {/* Tab 2: Docentes */}
+              {/* Tab 2: Instructores */}
               <TabsTrigger
                 value="teachers"
                 className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm transition-all shrink-0"
               >
                 <School className="w-4 h-4 text-indigo-600" />
-                <span>Docentes</span>
+                <span>Instructores</span>
                 <Badge
                   variant="secondary"
                   className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 rounded-lg"
@@ -236,7 +236,7 @@ export function UnifiedUserManagement({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    {activeStudentSubTab === "plans" ? "¿Qué puedo hacer acá? Guía de Planes de Mejoramiento" : "¿Qué puedo hacer acá? Guía de Estudiantes"}
+                    {activeStudentSubTab === "plans" ? "¿Qué puedo hacer acá? Guía de Planes de Mejoramiento" : "¿Qué puedo hacer acá? Guía de Aprendices"}
                   </TooltipContent>
                 </Tooltip>
               </div>

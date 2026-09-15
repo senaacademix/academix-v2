@@ -59,21 +59,21 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
     badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
     icon: <Activity className="w-5 h-5 text-blue-500" />,
     bgIcon: "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
-    subtitle: "Consolidado institucional de aprendices matriculados, docentes activos, fichas vigentes y programas.",
+    subtitle: "Consolidado institucional de aprendices matriculados, instructores activos, fichas vigentes y programas.",
     features: [
       {
         title: "Tarjetas de Indicadores Clave",
-        description: "Monitorea en tiempo real el censo de aprendices, fichas activas, competencias y docentes vinculados.",
+        description: "Monitorea en tiempo real el censo de aprendices, fichas activas, competencias y instructores vinculados.",
         icon: <BarChart3 className="w-4 h-4 text-blue-500" />,
       },
       {
         title: "Distribución Poblacional",
-        description: "Visualiza gráficas de distribución de roles (coordinadores, gestores, docentes e instructores).",
+        description: "Visualiza gráficas de distribución de roles (coordinadores, gestores e instructores).",
         icon: <Users className="w-4 h-4 text-blue-500" />,
       },
       {
         title: "Registro de Actividad Reciente",
-        description: "Audita las últimas acciones ejecutadas en la plataforma como creación de fichas, asignación de docentes y cambios de estado.",
+        description: "Audita las últimas acciones ejecutadas en la plataforma como creación de fichas, asignación de instructores y cambios de estado.",
         icon: <Activity className="w-4 h-4 text-blue-500" />,
       },
       {
@@ -102,7 +102,7 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
       },
       {
         title: "Métricas por Programa",
-        description: "Conoce el conteo específico de aprendices, asignaturas y docentes de cada programa de formación.",
+        description: "Conoce el conteo específico de aprendices, asignaturas e instructores de cada programa de formación.",
         icon: <Layers className="w-4 h-4 text-emerald-500" />,
       },
       {
@@ -122,11 +122,11 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
     badgeColor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
     icon: <Users className="w-5 h-5 text-indigo-500" />,
     bgIcon: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
-    subtitle: "Control de aprendices, docentes, gestores y directivos con carga masiva de Excel y restablecimiento de claves.",
+    subtitle: "Control de aprendices, instructores, gestores y directivos con carga masiva de Excel y restablecimiento de claves.",
     features: [
       {
         title: "Directorio Segmentado por Roles",
-        description: "Gestiona de manera independiente a estudiantes, profesores, planes de mejoramiento y administradores.",
+        description: "Gestiona de manera independiente a aprendices, instructores, planes de mejoramiento y administradores.",
         icon: <Users className="w-4 h-4 text-indigo-500" />,
       },
       {
@@ -156,7 +156,7 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
     badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
     icon: <CalendarClock className="w-5 h-5 text-amber-500" />,
     bgIcon: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
-    subtitle: "Programación semanal de franjas horarias con validación automática de solapamientos entre docentes y aulas.",
+    subtitle: "Programación semanal de franjas horarias con validación automática de solapamientos entre instructores y aulas.",
     features: [
       {
         title: "Creación de Horarios con Vigencia",
@@ -165,7 +165,7 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
       },
       {
         title: "Prevención de Cruces",
-        description: "Algoritmo en tiempo real que alerta si un docente o aula ya se encuentra ocupado en esa franja.",
+        description: "Algoritmo en tiempo real que alerta si un instructor o aula ya se encuentra ocupado en esa franja.",
         icon: <Building2 className="w-4 h-4 text-amber-500" />,
       },
       {
@@ -174,7 +174,7 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
         icon: <Activity className="w-4 h-4 text-amber-500" />,
       },
     ],
-    workflowTip: "Asegúrate de que las fechas de vigencia del horario coincidan con el trimestre oficial para habilitar la toma de asistencia docente.",
+    workflowTip: "Asegúrate de que las fechas de vigencia del horario coincidan con el trimestre oficial para habilitar la toma de asistencia de instructores.",
   },
 
   settings: {
@@ -185,11 +185,11 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
     badgeColor: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
     icon: <Settings className="w-5 h-5 text-cyan-500" />,
     bgIcon: "bg-cyan-500/10 border-cyan-500/20 text-cyan-600 dark:text-cyan-400",
-    subtitle: "Configuración de límites de acceso diario para estudiantes, temas visuales y parámetros institucionales.",
+    subtitle: "Configuración de límites de acceso diario para aprendices, temas visuales y parámetros institucionales.",
     features: [
       {
-        title: "Límite Diario de Accesos a Estudiantes",
-        description: "Configura el número máximo de sesiones diarias permitidas para los estudiantes (control de congestión y hábitos).",
+        title: "Límite Diario de Accesos a Aprendices",
+        description: "Configura el número máximo de sesiones diarias permitidas para los aprendices (control de congestión y hábitos).",
         icon: <Sliders className="w-4 h-4 text-cyan-500" />,
       },
       {

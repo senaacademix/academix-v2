@@ -105,12 +105,12 @@ export function StudentManager({
     const handleExportZipReport = async () => {
         setIsExportingZip(true);
         try {
-            toast.loading("Obteniendo datos de los estudiantes...", { id: "zip-export" });
+            toast.loading("Obteniendo datos de los aprendices...", { id: "zip-export" });
             const { getCourseStudentsCompleteDataAction } = await import("@/features/teacher/actions/reportActions");
             const studentsData = await getCourseStudentsCompleteDataAction(courseId);
 
             if (!studentsData || studentsData.length === 0) {
-                toast.error("No hay estudiantes matriculados o datos disponibles.", { id: "zip-export" });
+                toast.error("No hay aprendices matriculados o datos disponibles.", { id: "zip-export" });
                 setIsExportingZip(false);
                 return;
             }
@@ -131,7 +131,7 @@ export function StudentManager({
             const url = window.URL.createObjectURL(zipBlob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `Reportes_Estudiantes_${courseId.slice(0, 8)}.zip`;
+            a.download = `Reportes_Aprendices_${courseId.slice(0, 8)}.zip`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -235,7 +235,7 @@ export function StudentManager({
                 <div className="relative flex-1 max-w-full sm:max-w-sm">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Filtrar estudiantes..."
+                        placeholder="Filtrar aprendices..."
                         value={filterQuery}
                         onChange={(e) => setFilterQuery(e.target.value)}
                         className="pl-8"
@@ -245,20 +245,20 @@ export function StudentManager({
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <Sheet open={isOpen} onOpenChange={setIsOpen}>
                             <SheetTrigger asChild>
-                                <Button className="flex-1 sm:flex-none"><UserPlus className="mr-2 h-4 w-4" /> Agregar Estudiante</Button>
+                                <Button className="flex-1 sm:flex-none"><UserPlus className="mr-2 h-4 w-4" /> Agregar Aprendiz</Button>
                             </SheetTrigger>
                             <SheetContent side="right" className="w-full max-w-none sm:max-w-none p-0">
                                 <SheetHeader className="px-6 py-4 border-b">
-                                    <SheetTitle>Agregar Estudiante a la Materia</SheetTitle>
+                                    <SheetTitle>Agregar Aprendiz a la Materia</SheetTitle>
                                     <SheetDescription>
-                                        Busca estudiantes por nombre, apellido, identificación o correo electrónico
+                                        Busca aprendices por nombre, apellido, identificación o correo electrónico
                                     </SheetDescription>
                                 </SheetHeader>
 
                                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                                     {/* Search Input */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="search">Buscar Estudiante</Label>
+                                        <Label htmlFor="search">Buscar Aprendiz</Label>
                                         <div className="relative">
                                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                             <Input
@@ -374,7 +374,7 @@ export function StudentManager({
                                     {/* Selected Student Card */}
                                     {selectedStudent && (
                                         <div className="rounded-lg border p-4 bg-muted/50">
-                                            <h4 className="text-sm font-semibold mb-3">Estudiante Seleccionado</h4>
+                                            <h4 className="text-sm font-semibold mb-3">Aprendiz Seleccionado</h4>
                                             <div className="flex items-center gap-4">
                                                 <Avatar className="h-12 w-12 text-lg">
                                                     <AvatarImage src={selectedStudent.image} />
@@ -558,11 +558,11 @@ export function StudentManager({
                                                         </DialogTrigger>
                                                         <DialogContent>
                                                             <DialogHeader>
-                                                                <DialogTitle>Retirar Estudiante</DialogTitle>
+                                                                <DialogTitle>Retirar Aprendiz</DialogTitle>
                                                                 <DialogDescription>
                                                                     Esto retirará a <strong>{formatName(enrollment.user.name, enrollment.user.profile)}</strong> de la materia actual.
                                                                     <br /><br />
-                                                                    No te preocupes, el estudiante <strong>no será eliminado de la base de datos</strong> y sus registros históricos se conservarán en el sistema.
+                                                                    No te preocupes, el aprendiz <strong>no será eliminado de la base de datos</strong> y sus registros históricos se conservarán en el sistema.
                                                                     <br /><br />
                                                                     Escribe <strong>retirar</strong> para confirmar.
                                                                 </DialogDescription>
@@ -582,7 +582,7 @@ export function StudentManager({
                                                                     formData.append("userId", enrollment.user.id);
                                                                     formData.append("courseId", courseId);
                                                                     await removeStudentFromCourseAction(formData);
-                                                                    toast.success("Estudiante retirado de la materia exitosamente");
+                                                                    toast.success("Aprendiz retirado de la materia exitosamente");
                                                                 }}>
                                                                     <Button
                                                                         id={`delete-btn-${enrollment.user.id}`}
@@ -606,7 +606,7 @@ export function StudentManager({
                         {filteredStudents.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={8} className="h-24 text-center">
-                                    No hay estudiantes inscritos.
+                                    No hay aprendices inscritos.
                                 </TableCell>
                             </TableRow>
                         )}
@@ -623,7 +623,7 @@ export function StudentManager({
                             Solicitar Baneo al Administrador
                         </DialogTitle>
                         <DialogDescription>
-                            Envía una solicitud al administrador global para bloquear el acceso de este estudiante a la plataforma.
+                            Envía una solicitud al administrador global para bloquear el acceso de este aprendiz a la plataforma.
                         </DialogDescription>
                     </DialogHeader>
                     {studentToRequestBan && (

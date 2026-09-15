@@ -72,9 +72,9 @@ export function NavUser({
       case "gestor":
         return { label: "Gestor Académico", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 shadow-2xs" };
       case "teacher":
-        return { label: "Docente / Instructor", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 shadow-2xs" };
+        return { label: "Instructor", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 shadow-2xs" };
       case "student":
-        return { label: "Estudiante / Aprendiz", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs" };
+        return { label: "Aprendiz", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs" };
       default:
         return { label: "Usuario", color: "bg-primary/15 text-primary border-primary/30 shadow-2xs" };
     }
