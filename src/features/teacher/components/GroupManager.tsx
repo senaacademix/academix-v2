@@ -1923,7 +1923,7 @@ const handleOpenAnalytics = async () => {
                             </div>
 
                             {/* FILA INFERIOR: Pestañas de Navegación Desplazables en Móvil */}
-                            <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center justify-between gap-2">
+                            <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center justify-between gap-2 touch-pan-x overscroll-x-contain">
                                 <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 dark:bg-muted/30 rounded-2xl gap-1.5 backdrop-blur-md w-max border border-border/60 shadow-2xs">
                                     {/* ── ESTUDIANTES ── */}
                                     <TabsTrigger value="students" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
@@ -2005,7 +2005,7 @@ const handleOpenAnalytics = async () => {
                             </div>
                         </div>
 
-                        <div className="flex-1 p-3 sm:p-6 overflow-y-auto overflow-x-auto w-full min-w-0 max-w-full touch-pan-x">
+                        <div className="flex-1 p-3 sm:p-6 overflow-y-visible sm:overflow-y-auto overflow-x-auto w-full min-w-0 max-w-full touch-pan-y">
                             {/* TAB 1: STUDENTS */}
                             <TabsContent value="students" className="m-0 space-y-4 outline-none animate-in fade-in-50 duration-200">
                                 {/* Header Hero Banner */}

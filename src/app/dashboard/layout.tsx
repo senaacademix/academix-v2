@@ -194,7 +194,7 @@ export default async function DashboardLayout({
               </div>
             </div>
           </header>
-          <div className="flex flex-1 flex-col gap-3 sm:gap-4 p-3 sm:p-4 md:p-5 min-h-[calc(100vh-4rem)] relative overflow-hidden min-w-0">
+          <div className="flex flex-1 flex-col gap-3 sm:gap-4 p-3 sm:p-4 md:p-5 min-h-[calc(100vh-4rem)] relative overflow-x-clip min-w-0">
             {/* Subtle Grid Background */}
             <div className="absolute inset-0 bg-grid-pattern [mask-image:radial-gradient(ellipse_at_center,white,transparent)] pointer-events-none -z-10" />
             {children}

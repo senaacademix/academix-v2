@@ -384,9 +384,9 @@ export function Roulette({ students: initialStudents, courseId, groupName, group
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 h-[calc(100vh-170px)] max-h-[calc(100vh-170px)] w-full overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 h-auto lg:h-[calc(100vh-170px)] lg:max-h-[calc(100vh-170px)] w-full overflow-visible lg:overflow-hidden">
             {/* Main Stage (Wheel) */}
-            <div className="lg:col-span-7 xl:col-span-8 flex flex-col min-h-0 h-full overflow-hidden">
+            <div className="lg:col-span-7 xl:col-span-8 flex flex-col min-h-0 h-auto lg:h-full overflow-visible lg:overflow-hidden">
                 <Card className="flex-1 min-h-0 flex flex-col items-center justify-between p-3 sm:p-4 relative overflow-hidden border border-border/70 shadow-2xs bg-card gap-0 py-0">
                     {/* Top Bar inside Card */}
                     <div className="w-full flex items-center justify-between z-10 shrink-0">
@@ -511,8 +511,8 @@ export function Roulette({ students: initialStudents, courseId, groupName, group
             </div>
 
             {/* Right Stage: History List */}
-            <div className="lg:col-span-5 xl:col-span-4 flex flex-col min-h-0 h-full overflow-hidden">
-                <Card className="flex-1 min-h-0 flex flex-col h-full overflow-hidden border border-border/70 shadow-2xs bg-card gap-0 py-0">
+            <div className="lg:col-span-5 xl:col-span-4 flex flex-col min-h-0 h-auto lg:h-full overflow-visible lg:overflow-hidden">
+                <Card className="flex-1 min-h-[380px] lg:min-h-0 flex flex-col h-auto lg:h-full overflow-hidden border border-border/70 shadow-2xs bg-card gap-0 py-0">
                     <CardHeader className="p-3 sm:p-3.5 pb-2.5 shrink-0 border-b border-border/50">
                         <div className="flex items-center justify-between gap-2">
                             <CardTitle className="text-xs sm:text-sm font-bold flex items-center gap-2">

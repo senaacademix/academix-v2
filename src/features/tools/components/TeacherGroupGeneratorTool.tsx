@@ -51,7 +51,7 @@ export function TeacherGroupGeneratorTool({ groups = [], onBack }: TeacherGroupG
     }, [activeGroup]);
 
     return (
-        <div className="h-full flex-1 flex flex-col min-h-0 gap-2.5 animate-in fade-in duration-300 overflow-hidden">
+        <div className="h-auto md:h-full flex-1 flex flex-col min-h-0 gap-2.5 animate-in fade-in duration-300 overflow-visible md:overflow-hidden">
             {/* Compact Institutional Action Bar */}
             <div className="flex items-center justify-between gap-3 bg-card px-3 sm:px-4 py-2 rounded-2xl border border-border/70 shadow-2xs shrink-0">
                 {/* Left Side: Back + Icon + Title + Role Badge */}
@@ -133,7 +133,7 @@ export function TeacherGroupGeneratorTool({ groups = [], onBack }: TeacherGroupG
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 min-h-0 w-full overflow-hidden">
+                <div className="flex-1 min-h-0 w-full overflow-visible md:overflow-hidden">
                     <GroupGenerator
                         students={studentCandidates}
                         groupName={activeGroup?.name}

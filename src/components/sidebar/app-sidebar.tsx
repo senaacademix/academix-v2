@@ -212,7 +212,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   isActive: false,
                 },
                 {
-                  title: "Gestión de Usuarios",
+                  title: "Mis Grupos y Fichas",
                   url: "/dashboard/teacher",
                   icon: Users,
                   isActive: false,

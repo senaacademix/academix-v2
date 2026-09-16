@@ -52,7 +52,7 @@ export function TeacherRouletteTool({ groups = [], onBack }: TeacherRouletteTool
     }, [activeGroup]);
 
     return (
-        <div className="h-full flex-1 flex flex-col min-h-0 gap-2.5 animate-in fade-in duration-300 overflow-hidden">
+        <div className="h-auto lg:h-full flex-1 flex flex-col min-h-0 gap-2.5 animate-in fade-in duration-300 overflow-visible lg:overflow-hidden">
             {/* Compact Institutional Action Bar */}
             <div className="flex items-center justify-between gap-3 bg-card px-3 sm:px-4 py-2 rounded-2xl border border-border/70 shadow-2xs shrink-0">
                 {/* Left Side: Back + Icon + Title + Role Badge */}
@@ -134,7 +134,7 @@ export function TeacherRouletteTool({ groups = [], onBack }: TeacherRouletteTool
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 min-h-0 w-full overflow-hidden">
+                <div className="flex-1 min-h-0 w-full overflow-visible lg:overflow-hidden">
                     <Roulette
                         students={studentCandidates}
                         courseId={activeGroup?.id || ""}

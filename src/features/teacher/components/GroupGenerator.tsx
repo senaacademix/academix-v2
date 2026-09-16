@@ -426,10 +426,10 @@ export function GroupGenerator({ students: initialStudents, groupName, groupCode
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
-            <div className="h-[calc(100vh-170px)] max-h-[calc(100vh-170px)] flex flex-col md:flex-row gap-3 sm:gap-4 w-full overflow-hidden">
+            <div className="h-auto md:h-[calc(100vh-170px)] md:max-h-[calc(100vh-170px)] flex flex-col md:flex-row gap-3 sm:gap-4 w-full overflow-visible md:overflow-hidden">
 
                 {/* Left Panel: Ungrouped */}
-                <div className="w-full md:w-72 lg:w-80 flex flex-col h-full max-h-full min-h-0 shrink-0 overflow-hidden">
+                <div className="w-full md:w-72 lg:w-80 flex flex-col h-[340px] md:h-full max-h-full min-h-0 shrink-0 overflow-hidden">
                     <Card className="h-full max-h-full flex flex-col min-h-0 bg-card border border-border/70 overflow-hidden shadow-2xs rounded-2xl gap-0 py-0">
                         <CardHeader className="p-3 pb-2 shrink-0 border-b border-border/50">
                             <CardTitle className="text-sm font-bold flex items-center justify-between">
@@ -471,7 +471,7 @@ export function GroupGenerator({ students: initialStudents, groupName, groupCode
                 </div>
 
                 {/* Right Panel: Groups & Controls */}
-                <div className="flex-1 h-full max-h-full min-h-0 flex flex-col gap-2.5 overflow-hidden">
+                <div className="flex-1 h-auto md:h-full max-h-full min-h-0 flex flex-col gap-2.5 overflow-visible md:overflow-hidden">
                     {/* Controls Toolbar */}
                     <div className="flex flex-wrap items-center justify-between gap-2.5 p-2.5 bg-card border border-border/70 rounded-2xl shadow-2xs shrink-0">
                         <div className="flex items-center gap-2">
