@@ -8,13 +8,14 @@ import { TeacherRouletteTool } from "./TeacherRouletteTool";
 import { TeacherGroupGeneratorTool } from "./TeacherGroupGeneratorTool";
 import { ArrowLeft, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TOOLS_REGISTRY } from "../constants/toolsRegistry";
 
 interface ToolsDashboardProps {
     initialGroups?: any[];
     userRole?: string;
 }
 
-function ToolsDashboardContent({ initialGroups = [], userRole = "teacher" }: ToolsDashboardProps) {
+function ToolsDashboardContent({ initialGroups = [], userRole = "gestor" }: ToolsDashboardProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -35,28 +36,34 @@ function ToolsDashboardContent({ initialGroups = [], userRole = "teacher" }: Too
         router.push(query ? `${pathname}?${query}` : pathname);
     };
 
-    if (selectedToolId === "sofia-reports") {
-        return (
-            <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
-                <SofiaReportsTool onBack={handleBackToHub} />
-            </div>
-        );
-    }
+    // Validar si la herramienta solicitada existe y está permitida para el rol actual
+    const currentTool = TOOLS_REGISTRY.find((t) => t.id === selectedToolId);
+    const isAllowed = currentTool && (!currentTool.allowedRoles || currentTool.allowedRoles.includes(userRole as any));
 
-    if (selectedToolId === "roulette") {
-        return (
-            <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
-                <TeacherRouletteTool groups={initialGroups} onBack={handleBackToHub} />
-            </div>
-        );
-    }
+    if (selectedToolId && isAllowed) {
+        if (selectedToolId === "sofia-reports") {
+            return (
+                <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
+                    <SofiaReportsTool onBack={handleBackToHub} />
+                </div>
+            );
+        }
 
-    if (selectedToolId === "group-generator") {
-        return (
-            <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
-                <TeacherGroupGeneratorTool groups={initialGroups} onBack={handleBackToHub} />
-            </div>
-        );
+        if (selectedToolId === "roulette") {
+            return (
+                <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
+                    <TeacherRouletteTool groups={initialGroups} onBack={handleBackToHub} />
+                </div>
+            );
+        }
+
+        if (selectedToolId === "group-generator") {
+            return (
+                <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
+                    <TeacherGroupGeneratorTool groups={initialGroups} onBack={handleBackToHub} />
+                </div>
+            );
+        }
     }
 
     return (
@@ -66,7 +73,7 @@ function ToolsDashboardContent({ initialGroups = [], userRole = "teacher" }: Too
     );
 }
 
-export function ToolsDashboard({ initialGroups = [], userRole = "teacher" }: ToolsDashboardProps) {
+export function ToolsDashboard({ initialGroups = [], userRole = "gestor" }: ToolsDashboardProps) {
     return (
         <Suspense
             fallback={

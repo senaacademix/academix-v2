@@ -17,7 +17,7 @@ export default async function GestorToolsPage() {
 
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-[1900px] mx-auto w-full">
-            <ToolsDashboard />
+            <ToolsDashboard userRole={session.user.role} />
         </div>
     );
 }

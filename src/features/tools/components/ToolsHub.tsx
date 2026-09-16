@@ -16,7 +16,7 @@ interface ToolsHubProps {
     userRole?: string;
 }
 
-export function ToolsHub({ onSelectTool, userRole = "teacher" }: ToolsHubProps) {
+export function ToolsHub({ onSelectTool, userRole = "gestor" }: ToolsHubProps) {
     const availableTools = TOOLS_REGISTRY.filter(
         (t) => t.status === "available" && (!t.allowedRoles || t.allowedRoles.includes(userRole as any))
     );
