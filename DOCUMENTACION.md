@@ -22,8 +22,10 @@ La plataforma conecta a cinco actores principales bajo una arquitectura basada e
    - [4.4. Observador Digital y Bitácora Formativa](#44-observador-digital-y-bitácora-formativa)
    - [4.5. Flujo de Planes de Mejoramiento (Compromisos y Firmas)](#45-flujo-de-planes-de-mejoramiento-compromisos-y-firmas)
    - [4.6. Suplantación de Sesión Segura (Impersonation) y Auditoría](#46-suplantación-de-sesión-segura-impersonation-y-auditoría)
+   - [4.7. Centro de Herramientas Pedagógicas e Institucionales](#47-centro-de-herramientas-pedagógicas-e-institucionales)
+   - [4.8. Estandarización Visual, Responsividad y Motor de Exportación Corporativa](#48-estandarización-visual-responsividad-y-motor-de-exportación-corporativa)
 5. [Diccionario del Modelo de Datos (Prisma ORM)](#5-diccionario-del-modelo-de-datos-prisma-orm)
-6. [Catálogo de Server Actions y APIs](#6-catálogo-de-server-actions-y-apis)
+6. [Catálogo de Server Actions, Utilidades y APIs](#6-catálogo-de-server-actions-utilidades-y-apis)
 7. [Scripts de Despliegue, Mantenimiento y CLI](#7-scripts-de-despliegue-mantenimiento-y-cli)
 
 ---
@@ -36,9 +38,10 @@ AcademiX V2 sigue los principios de **Clean Architecture** bajo el patrón **Fea
 *   **Lenguaje:** TypeScript estricto con tipado estático en frontend, backend y esquema de datos.
 *   **Base de Datos y ORM:** PostgreSQL (Neon Serverless) operado mediante **Prisma ORM** con características avanzadas de `relationJoins`.
 *   **Autenticación y Seguridad:** **Better Auth** integrado con proveedores de credenciales locales, hash criptográfico de contraseñas, control de sesiones persistentes y suplantación segura de identidad (*impersonation*).
-*   **Diseño y UI:** Tailwind CSS, Radix UI Primitives, componentes Shadcn UI, Lucid Icons y paletas temáticas dinámicas HSL.
+*   **Diseño y UI:** Tailwind CSS v4, Radix UI Primitives, componentes Shadcn UI, Lucide Icons y paletas temáticas dinámicas HSL.
 *   **Notificaciones:** Alertas y toasts reactivos del sistema con `Sonner`.
-*   **Exportación y Reportes:** Generación de planillas Excel multinivel con formato condicional (`xlsx`) y exportación a PDF nativa.
+*   **Exportación y Reportes Corporativos:** Generación avanzada de libros de cálculo multihoja con formato condicional y banners institucionales mediante **`exceljs`**, y generación declarativa en cliente de documentos vectoriales oficiales A4 con **`@react-pdf/renderer`**.
+*   **Interacciones y Animación:** Arrastrar y soltar (*drag and drop*) accesible mediante **`@dnd-kit/core`** y **`@dnd-kit/sortable`**, animaciones físicas con **`Framer Motion`**, síntesis de sonido en tiempo real con **Web Audio API** y efectos de confeti con **`canvas-confetti`**.
 
 ### Estructura de Directorios Modular (Feature-First):
 ```text
@@ -47,10 +50,10 @@ src/
 │   ├── api/auth/                     # Endpoints Better Auth
 │   ├── api/themes/                   # Configuración y temas dinámicos
 │   ├── dashboard/                    # Rutas protegidas por rol
-│   │   ├── admin/                    # Consola de administración general
-│   │   ├── gestor/                   # Consola del Gestor Académico
-│   │   ├── teacher/                  # Consola del Instructor
-│   │   └── student/                  # Portal del Aprendiz
+│   │   ├── admin/                    # Consola de administración general (/tools, /users, etc.)
+│   │   ├── gestor/                   # Consola del Gestor Académico (/tools, /schedules, etc.)
+│   │   ├── teacher/                  # Consola del Instructor (/tools, /attendance, /courses)
+│   │   └── student/                  # Portal del Aprendiz (/records, /evaluations, /schedule)
 ├── features/                         # Lógica dividida por dominio de negocio
 │   ├── admin/                        # Componentes, acciones y servicios de administración
 │   │   ├── actions/                  # Server Actions (adminActions, academicActions)
@@ -59,8 +62,12 @@ src/
 │   ├── auth/                         # Lógica de inicio de sesión, roles y sesiones
 │   ├── schedule/                     # Motor de mallas horarias, colisiones y calendarios
 │   ├── student/                      # Expedientes, inasistencias, planes de mejora
-│   └── teacher/                      # Planillas de asistencia, notas, observador
-├── components/                       # Componentes UI globales (Sidebar, Navbar, Theme)
+│   ├── teacher/                      # Planillas de asistencia, notas, ruleta, grupos
+│   └── tools/                        # Centro de Herramientas Pedagógicas e Institucionales
+│       ├── components/               # ToolsHub, ToolsDashboard, SofiaReportsTool, TeacherRouletteTool, etc.
+│       ├── constants/                # toolsRegistry.ts (catálogo centralizado y permisos RBAC)
+│       └── utils/                    # Exportadores corporativos (exceljs y @react-pdf/renderer)
+├── components/                       # Componentes UI globales (Sidebar, Navbar, Theme, Modals)
 ├── lib/                              # Cliente Prisma, Auth, utilitarios y constantes
 └── scripts/                          # Scripts de inicialización y CLI (create-admin, etc.)
 ```
@@ -90,6 +97,10 @@ src/
 | **Observador Digital (Anotaciones Formativas)** | Auditoría Global | Auditoría en Programas | Auditoría Solo Lectura | Crear y Gestionar | Leer y Acuse de Recibo |
 | **Calificaciones y Ponderaciones Jerárquicas** | Supervisión General | Supervisión en Programas | Solo Lectura | Configurar y Calificar | Ver Notas y Cortes |
 | **Planes de Mejoramiento Académico** | Supervisión General | Supervisión en Programas | Solo Lectura | Crear, Asignar y Evaluar | Firmar y Cargar Evidencias |
+| **Centro de Herramientas Pedagógicas (Tools Hub)** | Total | Total | Solo Lectura | Total | ❌ Denegado |
+| **Herramienta: Juicios Evaluativos de Sofía Plus** | Total | Total | Solo Lectura | Total | ❌ Denegado |
+| **Herramienta: Ruleta de Participación y Notas** | ❌ Denegado | ❌ Denegado | ❌ Denegado | **Exclusivo Instructor** | ❌ Denegado |
+| **Herramienta: Creador de Grupos de Trabajo** | ❌ Denegado | ❌ Denegado | ❌ Denegado | **Exclusivo Instructor** | ❌ Denegado |
 | **Suplantación de Identidad (*Impersonation*)** | Total con Auditoría | ❌ Denegado | ❌ Denegado | ❌ Denegado | ❌ Denegado |
 | **Configuración Institucional (Branding/Temas)** | Total | ❌ Denegado | ❌ Denegado | ❌ Denegado | Preferencias Locales |
 | **Restablecimiento de Contraseñas a Documento** | Total | Aprendices y Docentes | ❌ Denegado | ❌ Denegado | ❌ Denegado |
@@ -292,10 +303,24 @@ El Instructor es el líder pedagógico del aula y administra las fichas a las qu
 *   **Recepción y Revisión:** Verificación del documento firmado subido por el aprendiz (`signedDocUrl`).
 *   **Contrafirma Docente y Evaluación:** Carga del documento con contrafirma del instructor (`teacherSignedDocUrl`), evidencia de sustentación (`evidenceUrl`) y nota definitiva de superación del plan.
 
-#### F. Dinámicas y Recursos de Aula
-*   **Ruleta de Participación (`Roulette.tsx`):** Selección aleatoria animada de aprendices de la ficha para dinamizar intervenciones en clase.
-*   **Gestor de Subgrupos de Trabajo (`WorkGroupManagerDialog.tsx`):** Organización de equipos de trabajo colaborativo dentro de la ficha.
-*   **Contenido Compartido (`SharedContent`):** Publicación de enlaces de interés, archivos de código y recursos bibliográficos para la ficha.
+#### F. Centro de Herramientas Pedagógicas del Instructor (`/dashboard/teacher/tools`)
+*   **Ruleta de Participación y Notas (`Roulette.tsx`):**
+    *   Dinámica interactiva con animación física de giro y efectos sonoros retro sintetizados en tiempo real mediante Web Audio API.
+    *   Asignación y registro inmediato de calificaciones cuantitativas (0.0 a 5.0).
+    *   **Reincorporación No Destructiva de Aprendices:** Permite volver a incluir en la rueda a aprendices que ya salieron sin perder su turno ni su nota registrada en el historial.
+    *   Opción de retención inmediata en el modal del ganador (*¡TENEMOS UN GANADOR!*) para permitir que un aprendiz continúe en la ruleta en rondas consecutivas.
+    *   Botón de acción masiva *"Reincorporar todos"* para rearmar la ruleta completa conservando todas las calificaciones registradas.
+    *   Exportación corporativa de resultados a **Excel (.xlsx)** mediante `exceljs` y **PDF (.pdf)** oficial con `@react-pdf/renderer`.
+*   **Creador de Grupos de Trabajo (`GroupGenerator.tsx`):**
+    *   Distribución y conformación automática y balanceada de equipos de trabajo mediante algoritmo aleatorio.
+    *   Tablero interactivo de organización manual con tecnología Drag & Drop accesible (`@dnd-kit`).
+    *   Edición de nombres de equipos en tiempo real, persistencia local y guardado/importación de proyectos en formato `.json`.
+    *   Exportación corporativa multihoja a **Excel (.xlsx)** (*Equipos de Trabajo* y *Listado Consolidado Maestro*) y tarjetas estructuradas a **PDF (.pdf)**.
+*   **Reporte de Juicios Evaluativos de Sofía Plus (`SofiaReportsTool.tsx`):**
+    *   Carga y auditoría de archivos de Sofia Plus con procesamiento 100% en cliente sin almacenamiento externo.
+    *   Matriz dinámica de juicios (*Aprobados* y *Por Evaluar*), organizador curricular de Resultados de Aprendizaje (RA) y analítica gráfica.
+    *   Exportación ejecutiva a Excel y PDF con estética institucional.
+*   **Contenido Compartido (`SharedContent`):** Publicación de enlaces de interés, repositorios, guías y recursos bibliográficos para la ficha.
 
 #### G. Gestión de Disponibilidad Horaria (`/dashboard/teacher/schedule`)
 *   Visualización de su horario de clases semanal por ambiente y ficha.
@@ -447,7 +472,104 @@ Implementado mediante Better Auth y [auditLogger.ts](file:///c:/Users/Jhon/Docum
 *   **Propósito:** Soporte remoto inmediato y reproducción de incidencias reportadas por aprendices o instructores sin vulnerar ni solicitar contraseñas.
 *   **Mecanismo:** Generación de un token de sesión temporal donde el campo `impersonatedBy` almacena el identificador del administrador que opera la sesión.
 *   **Banner de Advertencia:** En la interfaz superior aparece una barra flotante que indica: *"Sesión suplantada activa como [Nombre Usuario] - Salir de la suplantación"*.
-*   **Trazabilidad en Base de Datos:** Toda acción ejecutada bajo suplantación queda registrada en el registro de auditoría con la referencia de ambos usuarios.
+---
+
+### 4.7. Centro de Herramientas Pedagógicas e Institucionales (`src/features/tools/`)
+
+El Centro de Herramientas es un subsistema modular de utilidades de productividad docente y auditoría curricular gobernado por el registro centralizado [toolsRegistry.ts](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/tools/constants/toolsRegistry.ts).
+
+```mermaid
+graph TD
+    Hub[Centro de Herramientas - ToolsHub] --> Sofia[Reporte Juicios Sofia Plus]
+    Hub --> Roulette[Ruleta de Participación y Notas]
+    Hub --> Groups[Creador de Grupos de Trabajo]
+
+    Sofia --> ExcelS[Excel Corporativo Sofia]
+    Sofia --> PdfS[PDF Institucional Sofia]
+
+    Roulette --> Wheel[Animación Física + Web Audio API]
+    Roulette --> Readd[Reincorporación No Destructiva]
+    Roulette --> ExcelR[Excel Corporativo exceljs]
+    Roulette --> PdfR[PDF Oficial react-pdf]
+
+    Groups --> Dnd[Tablero Kanban Drag & Drop]
+    Groups --> Json[Guardar / Cargar JSON]
+    Groups --> ExcelG[Excel Multihoja exceljs]
+    Groups --> PdfG[PDF Oficial react-pdf]
+```
+
+#### A. Reporte de Juicios Evaluativos de Sofía Plus (`SofiaReportsTool.tsx`)
+*   **Procesamiento 100% en Cliente:** Carga y análisis inmediato de archivos de reporte exportados desde Sofía Plus sin subir datos sensibles a servidores remotos.
+*   **Matriz Dinámica de Juicios:** Cruce matricial de aprendices vs. Resultados de Aprendizaje (RA) clasificados por estado: *Aprobado (A)* y *Por Evaluar (D / Pendiente)*.
+*   **Organizador Curricular Interactivo:** Permite distribuir y reasignar los Resultados de Aprendizaje por periodo formativo mediante interfaz de arrastrar y soltar.
+*   **Analítica Visual de la Ficha:** Gráficos e indicadores de porcentaje de avance evaluativo, aprendices al día vs. aprendices con juicios pendientes.
+*   **Exportación Corporativa:** Descarga de informes formateados con la identidad SENA tanto en Excel (`sofiaCorporateExcelExport.ts`) como en PDF (`sofiaCorporatePdfExport.tsx`).
+
+#### B. Ruleta de Participación y Notas (`Roulette.tsx` / `TeacherRouletteTool.tsx`)
+Exclusiva para el rol de **Instructor** (`allowedRoles: ["teacher"]`).
+*   **Simulación Física y Audiovisual:**
+    *   Cálculo angular de detención con animación easing en desaceleración suave (`Framer Motion`).
+    *   Efectos sonoros retro sintetizados en tiempo real mediante **Web Audio API** (osciladores triangulares con rampas exponenciales de frecuencia sincronizados con el paso de cada casilla).
+    *   Arpegio musical de victoria y lluvia de confeti de partículas al seleccionar al ganador.
+*   **Calificación en Vivo:** Ventana modal inmediata para asignar notas cuantitativas (1.0 a 5.0) o ingreso decimal manual.
+*   **Reincorporación No Destructiva de Aprendices:**
+    *   **Preservación Total del Historial:** A diferencia de sistemas simples que eliminan el registro al volver a colocar a un aprendiz en la ruleta, AcademiX conserva intacto el turno, la fecha y la calificación asignada en la columna de seleccionados y en los reportes finales.
+    *   **Indicador de Estado en Vivo:** Si el aprendiz ya está activo en la ruleta, muestra el badge **`✓ En ruleta`**. Si fue seleccionado y retirado, muestra el botón **`[+ Reincorporar]`**.
+    *   **Opción Directa en Modal de Ganador:** Casilla interactiva `[ ] Mantener en la ruleta (permitir repetir)` para decidir en el instante de la calificación si el aprendiz continúa disponible para las siguientes rondas.
+    *   **Acción Masiva "Reincorporar todos":** Botón en cabecera que permite recargar la rueda completa con toda la ficha sin borrar ninguna de las notas previamente asignadas (ideal para rondas múltiples de evaluación).
+    *   **Gestión Individual de Notas:** Edición de calificaciones vinculada a la marca temporal (`timestamp`) de cada turno particular, evitando sobreescrituras si un aprendiz participa más de una vez.
+    *   **Eliminación Segura (`Trash2`):** Botón para descartar giros erróneos o pruebas del historial.
+*   **Exportación Corporativa (`rouletteCorporateExport.tsx`):**
+    *   Menú desplegable `<DropdownMenu>` con estado de carga animado (`Loader2`).
+    *   **Excel (.xlsx) con `exceljs`:** Encabezado institucional *Slate 900*, metadatos de ficha y fecha, barra KPI de totales, promedio y tasa de aprobación, encabezados verde esmeralda (`#15803D`), filas cebra y formato condicional con badges para notas aprobadas ($\ge 3.0$) y por mejorar ($< 3.0$).
+    *   **PDF (.pdf) con `@react-pdf/renderer`:** Documento A4 vertical oficial, membrete verde institucional, barra resumen de estadísticas, tabla de notas y pie de página con paginación automática.
+
+#### C. Creador de Grupos de Trabajo Colaborativo (`GroupGenerator.tsx` / `TeacherGroupGeneratorTool.tsx`)
+Exclusivo para el rol de **Instructor** (`allowedRoles: ["teacher"]`).
+*   **Generador Aleatorio Equitativo:** Algoritmo de distribución aleatoria balanceada para conformar $N$ equipos de trabajo según la cantidad deseada.
+*   **Tablero Kanban con Drag & Drop (`@dnd-kit`):**
+    *   Panel lateral con el listado de aprendices disponibles ("Sin Grupo") con buscador y contador dinámico.
+    *   Arrastre fluido entre columnas y hacia las tarjetas de los equipos de trabajo.
+    *   Renombramiento interactivo del nombre de cada grupo en línea.
+*   **Persistencia y Exportación JSON:** Posibilidad de guardar el estado completo de conformación grupal en archivo `.json` y recargarlo en sesiones posteriores.
+*   **Exportación Corporativa Multihoja (`groupCorporateExport.tsx`):**
+    *   **Excel (.xlsx) con `exceljs`:**
+        *   *Hoja 1 ("Equipos de Trabajo"):* Bloques independientes por cada equipo con cabeceras verde esmeralda suave (`#D1FAE5`), conteo de integrantes, identificación, nombre del aprendiz, rol asignado (*Líder de Equipo*, *Integrante*), columna de firmas/observaciones y sección especial para aprendices sin asignar.
+        *   *Hoja 2 ("Listado Consolidado"):* Tabla maestra consolidada ideal para ordenar, filtrar e imprimir toda la ficha.
+    *   **PDF (.pdf) con `@react-pdf/renderer`:**
+        *   Tarjetas modulares por equipo que evitan saltos de página inadecuados (`wrap={false}`).
+        *   Bloque destacado para aprendices pendientes de asignación.
+        *   Barra KPI con promedio de aprendices por equipo.
+        *   Pie de página institucional numerado.
+
+---
+
+### 4.8. Estandarización Visual, Responsividad y Motor de Exportación Corporativa
+
+#### A. Patrón "Hero Banner Estándar Dorado"
+Todas las pestañas de ficha de formación (*Aprendices, Asistencia, Observaciones, Planes de Mejoramiento, Calificaciones, Documentación, Analítica*) y los módulos directivos fueron estandarizados bajo un lenguaje visual idéntico:
+*   **Contenedor Translúcido:** `bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 relative overflow-hidden shadow-2xs`.
+*   **Marca de Agua SVG Temática:** Ícono vectorial de alta resolución en la esquina superior derecha (`text-primary/5 -right-3 -bottom-6 w-32 h-32 pointer-events-none`).
+*   **Jerarquía Tipográfica:** Títulos en `font-black text-xl sm:text-2xl text-foreground` con subtítulo explicativo y badges de contexto en `bg-primary/10 text-primary border-primary/20`.
+
+#### B. Contención Estricta al Viewport y Eliminación de Scroll de Ventana
+*   Se eliminaron las alturas mínimas rígidas (`min-h-[600px]`) y paddings duplicados que obligaban a la página a desbordarse verticalmente.
+*   Las herramientas pedagógicas operan bajo un límite estricto de altura respecto a la ventana del navegador (`h-[calc(100vh-170px)]` o `h-full min-h-0 overflow-hidden`).
+*   La página del navegador **no genera scroll vertical**.
+*   Toda navegación extensa (listados de aprendices, historial de ruleta, tableros de grupos) se maneja mediante **scrolls internos asíncronos e independientes** (`overflow-y-auto custom-scrollbar`), preservando siempre visibles la ruleta, la barra de herramientas y los controles de acción.
+*   La rueda de la ruleta se autoescala proporcionalmente según la altura disponible del monitor (`max-h-[min(540px,calc(100vh-210px))]`).
+
+#### C. Consistencia Temática Global en el Sidebar
+*   Sincronización total con la paleta activa (Ocean Breeze, Cyberpunk, Forest, Sunset, Slate, etc.) en todos los roles del sistema (*Admin, Gestor, Instructor, Aprendiz, Observador*).
+*   Eliminación de colores estáticos arcoíris en favor de tokens HSL semánticos.
+*   El indicador activo utiliza un destello dinámico con `var(--primary)` y las píldoras activas usan `bg-primary/10 text-primary border-primary/25`.
+*   Resolución precisa de ítems activos en URLs con parámetros de búsqueda (`item.url.split('?')[0]`).
+
+#### D. Estándar de Exportación Corporativa SENA / AcademiX
+Todos los reportes generados en el sistema siguen una guía de estilo gráfica común:
+*   **Paleta de Color:** Verde SENA Esmeralda (`#15803D`), Acentos Oscuros Slate 900 (`#0F172A`), Fondos Suaves (`#F1F5F9` / `#DCFCE7`).
+*   **Tipografía:** Segoe UI para libros Excel de alta legibilidad y Helvetica para documentos vectoriales PDF.
+*   **Metadatos Automatizados:** Rótulos oficiales con nombre de la ficha, código de caracterización, fecha en español colombiano y autoría institucional.
 
 ---
 
@@ -535,7 +657,7 @@ El archivo [`prisma/schema.prisma`](file:///c:/Users/Jhon/Documents/Datos/Inform
 
 ---
 
-## 6. Catálogo de Server Actions y APIs
+## 6. Catálogo de Server Actions, Utilidades y APIs
 
 Todas las acciones del servidor se ejecutan bajo el modelo `"use server"` con validación estricta de sesión y roles (`requireAdmin`, `requireAdminOrObserver`, `requireCoordinator`):
 
@@ -569,6 +691,20 @@ Todas las acciones del servidor se ejecutan bajo el modelo `"use server"` con va
 *   `markRemarkAsViewedAction(remarkId)`: Estampa la fecha de acuse de recibo del aprendiz.
 *   `saveGradesAction(courseId, grades)`: Registra calificaciones cuantitativas y retroalimentación.
 *   `createImprovementPlanAction(data)` / `signImprovementPlanAction(planId, url)` / `evaluateImprovementPlanAction(planId, score, grade)`: Flujo completo de planes de mejoramiento.
+
+### D. Utilidades y Motores de Exportación en Cliente (`src/features/tools/utils/`)
+*   **Procesamiento de Reportes SOFIA Plus (`sofiaParserActions.ts`):**
+    *   `extractLearningOutcomes(fileBuffer)`: Extrae y desduplica la totalidad de Resultados de Aprendizaje (RAPs) contenidos en el archivo Excel oficial de SOFIA Plus.
+    *   `processSofiaReport(fileBuffer, selectedOutcomes)`: Realiza el procesamiento matricial de juicios evaluativos cruzados por aprendiz y calcula el estado formativo global (`COMPLETO`, `POR EVALUAR`, `POR MEJORAR`).
+*   **Exportación Corporativa de Juicios SOFIA Plus:**
+    *   `exportSofiaReportToCorporateExcel(data, groupInfo)` (`sofiaCorporateExcelExport.ts`): Genera libro Excel institucional con formato condicional, hojas de métricas y sábanas de juicios con paleta SENA.
+    *   `generateAndDownloadSofiaPdf(data, groupInfo)` (`sofiaCorporatePdfExport.tsx`): Genera y descarga documento PDF A4 vectorial con diseño editorial oficial SENA y tablas de seguimiento de aprendices.
+*   **Exportación Corporativa de Ruleta Pedagógica (`rouletteCorporateExport.tsx`):**
+    *   `exportRouletteToCorporateExcel(options)`: Genera libro de cálculo con dos hojas (`Resultados y Calificaciones` con notas/observaciones y `Registro Histórico de Giros` con timestamp y ronda).
+    *   `exportRouletteToCorporatePdf(options)`: Produce acta oficial de sesión participativa en PDF con promedios grupales, detalle de calificaciones y pie de firmas.
+*   **Exportación Corporativa de Equipos de Trabajo (`groupCorporateExport.tsx`):**
+    *   `exportGroupsToCorporateExcel(options)`: Produce libro Excel multihoja con hoja `Matriz de Equipos` (visualización columnar tipo Kanban de grupos) y hoja `Listado Consolidado` (orden alfabético por aprendiz y equipo asignado).
+    *   `exportGroupsToCorporatePdf(options)`: Genera acta formal de conformación de equipos en PDF vectorial A4 con tarjetas estructuradas por grupo, contador de miembros y recuadro de firmas de entrega de proyecto.
 
 ---
 
