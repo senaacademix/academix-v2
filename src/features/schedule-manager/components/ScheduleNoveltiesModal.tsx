@@ -46,8 +46,7 @@ import {
   Laptop,
 } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatCalendarDate, getTodayColombianDate } from "@/lib/dateUtils";
 import { ScheduleNoveltyType } from "@/generated/prisma/client";
 import {
   createScheduleNoveltyAction,
@@ -137,8 +136,8 @@ export function ScheduleNoveltiesModal({
   const [formType, setFormType] = useState<ScheduleNoveltyType>("SCHEDULE_SUSPENSION");
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formStartDate, setFormStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [formEndDate, setFormEndDate] = useState(new Date().toISOString().split("T")[0]);
+  const [formStartDate, setFormStartDate] = useState(getTodayColombianDate());
+  const [formEndDate, setFormEndDate] = useState(getTodayColombianDate());
   const [formNewEnvId, setFormNewEnvId] = useState<string>("none");
 
   const loadNovelties = async () => {
@@ -169,8 +168,8 @@ export function ScheduleNoveltiesModal({
     setFormType("SCHEDULE_SUSPENSION");
     setFormTitle("");
     setFormDescription("");
-    setFormStartDate(new Date().toISOString().split("T")[0]);
-    setFormEndDate(new Date().toISOString().split("T")[0]);
+    setFormStartDate(getTodayColombianDate());
+    setFormEndDate(getTodayColombianDate());
     setFormNewEnvId("none");
   };
 
@@ -306,8 +305,8 @@ export function ScheduleNoveltiesModal({
                 ) : (
                   filteredNovelties.map((n) => {
                     const typeConfig = NOVELTY_TYPES.find((t) => t.type === n.type) || NOVELTY_TYPES[5];
-                    const startFmt = format(new Date(n.startDate), "dd MMM yyyy", { locale: es });
-                    const endFmt = format(new Date(n.endDate), "dd MMM yyyy", { locale: es });
+                    const startFmt = formatCalendarDate(n.startDate, "dd MMM yyyy");
+                    const endFmt = formatCalendarDate(n.endDate, "dd MMM yyyy");
 
                     return (
                       <Card

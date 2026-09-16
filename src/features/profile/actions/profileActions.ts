@@ -102,23 +102,45 @@ export async function changeUserPasswordAction(data: { currentPassword?: string;
 
     const userId = session.user.id;
 
-    if (!data.skipVerification) {
-        if (!data.currentPassword) {
-            throw new Error("La contraseña actual es obligatoria");
+    const account = await prisma.account.findFirst({
+        where: {
+            userId,
+            providerId: "credential"
         }
+    });
 
-        const account = await prisma.account.findFirst({
-            where: {
-                userId,
-                providerId: "credential"
-            }
+    if (!account || !account.password) {
+        throw new Error("No se encontró una cuenta con credenciales");
+    }
+
+    const { verifyPassword } = await import("better-auth/crypto");
+
+    // Validación segura en servidor: Si no se suministra la contraseña actual, solo se permite
+    // si la contraseña registrada en el sistema coincide exactamente con su número de documento
+    // (flujo inicial de bienvenida/onboarding). El flag del cliente 'skipVerification' no se toma en cuenta.
+    if (!data.currentPassword) {
+        const userProfile = await prisma.profile.findUnique({
+            where: { userId }
         });
 
-        if (!account || !account.password) {
-            throw new Error("No se encontró una cuenta con credenciales");
+        const docNumber = userProfile?.identificacion?.trim();
+        let isDocMatch = false;
+
+        if (docNumber) {
+            try {
+                isDocMatch = await verifyPassword({
+                    hash: account.password,
+                    password: docNumber
+                });
+            } catch {
+                isDocMatch = false;
+            }
         }
 
-        const { verifyPassword } = await import("better-auth/crypto");
+        if (!isDocMatch) {
+            throw new Error("La contraseña actual es obligatoria");
+        }
+    } else {
         const isMatch = await verifyPassword({
             hash: account.password,
             password: data.currentPassword

@@ -3,6 +3,20 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { ScheduleNoveltyType } from "@/generated/prisma/client";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+
+async function getSession() {
+  return await auth.api.getSession({ headers: await headers() });
+}
+
+async function requireStaff() {
+  const session = await getSession();
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "teacher")) {
+    throw new Error("No autorizado: Se requiere rol de administrador, gestor o docente.");
+  }
+  return session;
+}
 
 export interface CreateNoveltyInput {
   groupId?: string | null;
@@ -18,6 +32,8 @@ export interface CreateNoveltyInput {
 
 export async function createScheduleNoveltyAction(input: CreateNoveltyInput) {
   try {
+    const session = await requireStaff();
+
     if (!input.isGeneral && !input.groupId) {
       throw new Error("Debes seleccionar una ficha específica o indicar que aplica a todas las fichas del horario");
     }
@@ -79,6 +95,7 @@ export async function createScheduleNoveltyAction(input: CreateNoveltyInput) {
         endDate: end,
         courseId: input.courseId || null,
         newEnvironmentId: input.newEnvironmentId || null,
+        reportedById: session.user.id,
       },
       include: {
         group: { select: { id: true, name: true } },
@@ -209,7 +226,22 @@ export async function getScheduleNoveltiesDataAction(scheduleId: string, program
 
 export async function deleteScheduleNoveltyAction(noveltyId: string) {
   try {
+    const session = await requireStaff();
     if (!noveltyId) throw new Error("ID de novedad no especificado");
+
+    const existing = await prisma.scheduleNovelty.findUnique({
+      where: { id: noveltyId },
+      select: { id: true, reportedById: true }
+    });
+
+    if (!existing) {
+      throw new Error("Novedad no encontrada");
+    }
+
+    // Los docentes solo pueden eliminar novedades reportadas por ellos mismos
+    if (session.user.role === "teacher" && existing.reportedById !== session.user.id) {
+      throw new Error("No autorizado: Solo puedes eliminar novedades reportadas por ti.");
+    }
 
     await prisma.scheduleNovelty.delete({
       where: { id: noveltyId },

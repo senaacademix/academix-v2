@@ -6,31 +6,14 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
+import { isDateInColombianWeek, parseDateStringToUTCMidday } from "@/lib/dateUtils";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
 }
 
-function isDateInCurrentWeek(date: Date): boolean {
-    const today = new Date();
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    
-    const now = new Date(today);
-    now.setHours(0, 0, 0, 0);
-    
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + diffToMonday);
-    monday.setHours(0, 0, 0, 0);
-    
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    
-    return d.getTime() >= monday.getTime() && d.getTime() <= sunday.getTime();
+function isDateInCurrentWeek(date: Date | string): boolean {
+    return isDateInColombianWeek(date);
 }
 
 async function checkIsCourseWeekLocked(courseId: string, dateObj: Date): Promise<boolean> {
@@ -81,14 +64,44 @@ async function verifyCourseTeacher(courseId: string, teacherId: string) {
 
 export async function resetStudentPassword(studentId: string) {
     try {
-        await requireTeacher();
+        const caller = await requireTeacher();
 
         const student = await prisma.user.findUnique({
             where: { id: studentId },
             include: { profile: true }
         });
 
-        if (!student) throw new Error("Student not found");
+        if (!student) throw new Error("Estudiante no encontrado");
+
+        // Validación estricta: Solo se permite restablecer contraseñas a usuarios con rol estudiante
+        if (student.role !== "student") {
+            throw new Error("No autorizado: Solo se puede restablecer la contraseña de usuarios con rol de estudiante");
+        }
+
+        // Si el solicitante es un docente, validar que el estudiante pertenezca a sus cursos o grupos
+        if (caller.role === "teacher") {
+            const teachesStudentCourse = await prisma.course.findFirst({
+                where: {
+                    teacherId: caller.id,
+                    enrollments: {
+                        some: { userId: studentId }
+                    }
+                }
+            });
+
+            const teachesStudentGroup = student.groupId
+                ? await prisma.group.findFirst({
+                    where: {
+                        id: student.groupId,
+                        teachers: { some: { id: caller.id } }
+                    }
+                })
+                : null;
+
+            if (!teachesStudentCourse && !teachesStudentGroup) {
+                throw new Error("No autorizado: Solo puedes restablecer la contraseña de estudiantes asignados a tus materias o grupos");
+            }
+        }
 
         const defaultPassword = student.profile?.identificacion?.trim();
 
@@ -137,8 +150,7 @@ export async function saveAttendanceBatch(
         const teacher = await requireTeacher();
         await verifyCourseTeacher(courseId, teacher.id);
 
-        const dateObj = new Date(date);
-        dateObj.setUTCHours(12, 0, 0, 0);
+        const dateObj = parseDateStringToUTCMidday(date);
 
         // Check week locking config per program
         const isLocked = await checkIsCourseWeekLocked(courseId, dateObj);
@@ -519,9 +531,7 @@ export async function saveSingleAttendanceAction(
         const teacher = await requireTeacher();
         await verifyCourseTeacher(courseId, teacher.id);
 
-        const dateObj = new Date(dateStr);
-        // Avoid timezone shifting issues by setting hours in UTC
-        dateObj.setUTCHours(12, 0, 0, 0);
+        const dateObj = parseDateStringToUTCMidday(dateStr);
 
         // Check week locking config per program
         const isLocked = await checkIsCourseWeekLocked(courseId, dateObj);
@@ -697,8 +707,7 @@ export async function requestAttendanceEditPermissionAction(courseId: string, da
         const teacher = await requireTeacher();
         await verifyCourseTeacher(courseId, teacher.id);
 
-        const dateObj = new Date(dateStr);
-        dateObj.setUTCHours(12, 0, 0, 0);
+        const dateObj = parseDateStringToUTCMidday(dateStr);
 
         // Check if there is already a PENDING or APPROVED request
         const existing = await prisma.attendancePermissionRequest.findFirst({
@@ -736,8 +745,7 @@ export async function getAttendanceEditPermissionStatusAction(courseId: string, 
     try {
         await requireTeacher();
         
-        const dateObj = new Date(dateStr);
-        dateObj.setUTCHours(12, 0, 0, 0);
+        const dateObj = parseDateStringToUTCMidday(dateStr);
 
         const isLocked = await checkIsCourseWeekLocked(courseId, dateObj);
 

@@ -78,7 +78,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { ScheduleNoveltyType } from "@/generated/prisma/client";
-import { formatCalendarDate, fromUTC } from "@/lib/dateUtils";
+import { formatCalendarDate, fromUTC, getTodayColombianDate } from "@/lib/dateUtils";
 import {
   createScheduleNoveltyAction,
   deleteScheduleNoveltyAction,
@@ -273,8 +273,8 @@ export function ScheduleNoveltiesManagerView({
   const [formType, setFormType] = useState<ScheduleNoveltyType>("SCHEDULE_SUSPENSION");
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formStartDate, setFormStartDate] = useState(scheduleStartStr || new Date().toISOString().split("T")[0]);
-  const [formEndDate, setFormEndDate] = useState(scheduleStartStr || new Date().toISOString().split("T")[0]);
+  const [formStartDate, setFormStartDate] = useState(scheduleStartStr || getTodayColombianDate());
+  const [formEndDate, setFormEndDate] = useState(scheduleStartStr || getTodayColombianDate());
   const [formNewEnvId, setFormNewEnvId] = useState<string>("none");
 
   // Export state
@@ -287,7 +287,7 @@ export function ScheduleNoveltiesManagerView({
     setFormType("SCHEDULE_SUSPENSION");
     setFormTitle("");
     setFormDescription("");
-    let defaultDate = presetDate || scheduleStartStr || new Date().toISOString().split("T")[0];
+    let defaultDate = presetDate || scheduleStartStr || getTodayColombianDate();
     if (scheduleStartStr && defaultDate < scheduleStartStr) defaultDate = scheduleStartStr;
     if (scheduleEndStr && defaultDate > scheduleEndStr) defaultDate = scheduleEndStr;
 

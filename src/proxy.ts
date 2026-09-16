@@ -1,43 +1,40 @@
-// middleware.ts
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { getSessionCookie } from "better-auth/cookies";
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Define protected route prefixes and their allowed roles
-    const prefixes = ["/dashboard/admin", "/dashboard/gestor", "/dashboard/student", "/dashboard/teacher"];
-    const protectedPrefix = prefixes.find((p) => pathname.startsWith(p));
+    const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+    const hasSessionCookie = !!getSessionCookie(request);
 
-    // Get session using the secure auth.api method
-    const session = await auth.api.getSession({
-        headers: await headers()
-    });
-
-    // If no session exists, redirect to sign-in for protected routes
-    if (!session) {
-        if (protectedPrefix) {
-            return NextResponse.redirect(new URL("/signin", request.url));
-        }
-        return NextResponse.next();
+    // Fast-path: Si no hay cookie de sesión y se intenta acceder a dashboard, redirigir inmediatamente
+    if (isDashboard && !hasSessionCookie) {
+        return NextResponse.redirect(new URL("/signin", request.url));
     }
 
-    // Extract user and role from session
-    const user = session.user;
-    const role = user?.role || "student";
+    // Obtener sesión usando los headers de la petición entrante (NextRequest)
+    let session = null;
+    if (hasSessionCookie) {
+        try {
+            session = await auth.api.getSession({
+                headers: request.headers
+            });
+        } catch (error) {
+            console.error("[Proxy] Error verificando sesión:", error);
+        }
+    }
 
-    // Define role-based access control
-    const allowed: Record<string, string[]> = {
-        "/dashboard/admin": ["admin"],
-        "/dashboard/gestor": ["gestor", "admin"],
-        "/dashboard/teacher": ["teacher", "admin"],
-        "/dashboard/student": ["student", "admin"],
-    };
+    // Si la cookie es inválida o expiró y está en ruta protegida
+    if (isDashboard && !session) {
+        return NextResponse.redirect(new URL("/signin", request.url));
+    }
 
-    // Redirect authenticated users from root or signin to their role dashboard
-    if (pathname === "/" || pathname === "/signin" || pathname === "/signup") {
-        if (role === "admin") {
+    const role = session?.user?.role || "student";
+
+    // Redireccionar usuarios autenticados fuera de las páginas públicas
+    if (session && (pathname === "/" || pathname === "/signin" || pathname === "/signup")) {
+        if (role === "admin" || role === "observer") {
             return NextResponse.redirect(new URL("/dashboard/admin", request.url));
         }
         if (role === "gestor") {
@@ -49,9 +46,18 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL("/dashboard/student", request.url));
     }
 
-    // Check if user has permission for the protected route
+    // Control de acceso basado en roles para subrutas específicas
+    const prefixes = ["/dashboard/admin", "/dashboard/gestor", "/dashboard/student", "/dashboard/teacher"];
+    const protectedPrefix = prefixes.find((p) => pathname.startsWith(p));
+
+    const allowed: Record<string, string[]> = {
+        "/dashboard/admin": ["admin", "gestor", "observer"],
+        "/dashboard/gestor": ["gestor", "admin"],
+        "/dashboard/teacher": ["teacher", "admin"],
+        "/dashboard/student": ["student", "admin", "gestor", "teacher", "observer"],
+    };
+
     if (protectedPrefix && !allowed[protectedPrefix].includes(role)) {
-        // Redirect to home if user doesn't have permission
         return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
@@ -59,5 +65,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ["/", "/signin", "/signup", "/dashboard/admin/:path*", "/dashboard/gestor/:path*", "/dashboard/student/:path*", "/dashboard/teacher/:path*", "/dashboard"]
-};
+    matcher: [
+        "/",
+        "/signin",
+        "/signup",
+        "/dashboard",
+        "/dashboard/:path*",
+    ]
+};

@@ -358,6 +358,16 @@ export const courseService = {
                     },
                     include: {
                         schedules: true,
+                        academicSchedule: {
+                            select: {
+                                id: true,
+                                name: true,
+                                startDate: true,
+                                endDate: true,
+                                isActive: true,
+                                isPublished: true
+                            }
+                        },
                         teacher: {
                             select: {
                                 name: true,
@@ -371,6 +381,20 @@ export const courseService = {
                                 title: true,
                                 links: true,
                                 createdAt: true,
+                            }
+                        }
+                    }
+                },
+                scheduleSlots: {
+                    include: {
+                        academicSchedule: {
+                            select: {
+                                id: true,
+                                name: true,
+                                startDate: true,
+                                endDate: true,
+                                isActive: true,
+                                isPublished: true
                             }
                         }
                     }

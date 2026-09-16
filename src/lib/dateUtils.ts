@@ -152,4 +152,65 @@ export function getScheduleCalendarYear(s: { name?: string; startDate?: string |
     return new Date().getFullYear().toString();
 }
 
+/**
+ * Convierte de manera determinista cualquier fecha (Date o string) a formato YYYY-MM-DD
+ * usando componentes UTC para evitar cualquier desfase por huso horario local.
+ */
+export function toCalendarYMD(date: Date | string | null | undefined): string {
+    if (!date) return "";
+    if (typeof date === "string") {
+        if (/^\d{4}-\d{2}-\d{2}/.test(date)) {
+            return date.slice(0, 10);
+        }
+    }
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return "";
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
+/**
+ * Normaliza cualquier fecha a las 12:00:00.000 UTC (medio día UTC).
+ * Esta hora es ideal para almacenamiento de fechas de calendario como asistencias y eventos,
+ * ya que nunca cruza el cambio de día en ningún huso horario del mundo (desde UTC-11 hasta UTC+12).
+ */
+export function parseDateStringToUTCMidday(date: Date | string | null | undefined): Date {
+    if (!date) return new Date();
+    if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+        const [y, m, d] = date.slice(0, 10).split("-").map(Number);
+        return new Date(Date.UTC(y, m - 1, d, 12, 0, 0, 0));
+    }
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) return new Date();
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0, 0));
+}
+
+/**
+ * Verifica si una fecha pertenece a la semana actual (lunes a domingo) según el calendario
+ * oficial de Colombia (America/Bogota), garantizando que funcione de forma idéntica
+ * tanto en servidores en la nube (Vercel/Docker UTC) como en clientes locales.
+ */
+export function isDateInColombianWeek(date: Date | string): boolean {
+    if (!date) return false;
+    const targetYMD = toCalendarYMD(date);
+    if (!targetYMD) return false;
+
+    const todayYMD = getTodayColombianDate();
+    const [ty, tm, td] = todayYMD.split("-").map(Number);
+    const refDate = new Date(Date.UTC(ty, tm - 1, td, 12, 0, 0, 0));
+
+    const dayOfWeek = refDate.getUTCDay(); // 0 = Domingo, 1 = Lunes, ...
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+    const monday = new Date(Date.UTC(ty, tm - 1, td + diffToMonday, 12, 0, 0, 0));
+    const sunday = new Date(Date.UTC(ty, tm - 1, td + diffToMonday + 6, 12, 0, 0, 0));
+
+    const mondayYMD = toCalendarYMD(monday);
+    const sundayYMD = toCalendarYMD(sunday);
+
+    return targetYMD >= mondayYMD && targetYMD <= sundayYMD;
+}
+
 

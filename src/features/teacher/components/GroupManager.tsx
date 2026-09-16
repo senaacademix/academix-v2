@@ -3,6 +3,9 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 
 const toISODateString = (dateVal: any) => {
     if (!dateVal) return undefined;
+    if (typeof dateVal === "string" && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
+        return dateVal.slice(0, 10);
+    }
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return undefined;
     const y = d.getUTCFullYear();
@@ -90,7 +93,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatName, cn } from "@/lib/utils";
-import { formatCalendarDate, fromUTC } from "@/lib/dateUtils";
+import { formatCalendarDate, fromUTC, getTodayColombianDate, toCalendarYMD, isScheduleCurrent } from "@/lib/dateUtils";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { resetStudentPassword, saveAttendanceBatch, saveRemarkBatch, getGroupAttendanceHistory, getGroupRemarksHistory, getTeacherComprehensiveGroupAnalyticsAction, saveSingleAttendanceAction, deleteRemarkAction, resetStudentDailyAttempts, notifyEmailSentBatchAction } from "../actions/groupActions";
@@ -143,19 +146,64 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     const { data: session } = authClient.useSession();
     const teacherId = session?.user?.id;
 
+    const getEffectiveDatesForCourse = (group: any, courseId: string) => {
+        if (!group) return { start: scheduleStartDate || null, end: scheduleEndDate || null };
+
+        const course = group.courses?.find((c: any) => c.id === courseId);
+
+        // 1. Horario académico específico asignado al curso
+        if (course?.academicSchedule?.startDate && course?.academicSchedule?.endDate) {
+            return {
+                start: course.academicSchedule.startDate,
+                end: course.academicSchedule.endDate
+            };
+        }
+
+        // 2. Horario académico asignado al grupo en sus franjas (priorizando vigente/activo)
+        const slotSchedule = group.scheduleSlots?.find((slot: any) =>
+            slot.academicSchedule && (
+                isScheduleCurrent(slot.academicSchedule.startDate, slot.academicSchedule.endDate) ||
+                slot.academicSchedule.isActive
+            )
+        )?.academicSchedule || group.scheduleSlots?.[0]?.academicSchedule;
+
+        if (slotSchedule?.startDate && slotSchedule?.endDate) {
+            return {
+                start: slotSchedule.startDate,
+                end: slotSchedule.endDate
+            };
+        }
+
+        // 3. Horario vigente global pasado como prop desde el servidor
+        if (scheduleStartDate && scheduleEndDate) {
+            return {
+                start: scheduleStartDate,
+                end: scheduleEndDate
+            };
+        }
+
+        // 4. Fechas del grupo o programa como fallback
+        const groupStart = scheduleStartDate || group.startDate || group.program?.startDate || null;
+        const groupEnd = scheduleEndDate || group.endDate || group.program?.endDate || null;
+
+        return {
+            start: groupStart,
+            end: groupEnd
+        };
+    };
+
     const isDateValidForAttendance = (dateStr: string, courseId: string) => {
         if (!selectedGroup) return false;
         
         // 1. Check if within period (startDate and endDate)
         const dateVal = new Date(dateStr + "T12:00:00Z");
         
-        const groupStart = scheduleStartDate || selectedGroup.program?.startDate || selectedGroup.startDate;
+        const { start: groupStart, end: groupEnd } = getEffectiveDatesForCourse(selectedGroup, courseId);
         if (groupStart) {
             const startLimit = new Date(toISODateString(groupStart) + "T12:00:00Z");
             if (dateVal < startLimit) return false;
         }
         
-        const groupEnd = scheduleEndDate || selectedGroup.program?.endDate || selectedGroup.endDate;
         if (groupEnd) {
             const endLimit = new Date(toISODateString(groupEnd) + "T12:00:00Z");
             if (dateVal > endLimit) return false;
@@ -182,8 +230,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         
         const daysOfWeek = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
         
-        const groupStart = scheduleStartDate || selectedGroup.program?.startDate || selectedGroup.startDate;
-        const groupEnd = scheduleEndDate || selectedGroup.program?.endDate || selectedGroup.endDate;
+        const { start: groupStart, end: groupEnd } = getEffectiveDatesForCourse(selectedGroup, courseId);
 
         // Start date of group/program
         const startLimit = groupStart ? new Date(toISODateString(groupStart) + "T12:00:00Z") : null;
@@ -200,9 +247,8 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             return refDateStr;
         }
         
-        // Search up to 30 days backward and forward to find the closest scheduled day within limits
+        // Prioridad 1: Buscar hacia atrás (última sesión de clase completada dentro del horario vigente)
         for (let offset = 1; offset <= 30; offset++) {
-            // Check backward
             const prevDate = new Date(refDate);
             prevDate.setUTCDate(refDate.getUTCDate() - offset);
             const prevDayOfWeek = daysOfWeek[prevDate.getUTCDay()];
@@ -211,8 +257,10 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             if (scheduledDays.includes(prevDayOfWeek) && prevWithinStart && prevWithinEnd) {
                 return toISODateString(prevDate)!;
             }
-            
-            // Check forward
+        }
+
+        // Prioridad 2: Si no hay días pasados dentro del período (ej: el horario inicia en el futuro), buscar hacia adelante
+        for (let offset = 1; offset <= 30; offset++) {
             const nextDate = new Date(refDate);
             nextDate.setUTCDate(refDate.getUTCDate() + offset);
             const nextDayOfWeek = daysOfWeek[nextDate.getUTCDay()];
@@ -229,7 +277,8 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     const getValidClassDaysList = () => {
         if (!selectedGroup || !attCourseId) return [];
         
-        // Derive start date: scheduleStartDate > group.startDate > earliest attendance record > 3 months ago
+        const { start: effectiveStart, end: effectiveEnd } = getEffectiveDatesForCourse(selectedGroup, attCourseId);
+
         const attForCourse = attendanceHistory.filter((a: any) => a.courseId === attCourseId);
         const earliestAtt = attForCourse.length > 0
             ? new Date(Math.min(...attForCourse.map((a: any) => new Date(a.date).getTime())))
@@ -238,14 +287,12 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
         
-        const groupStart = scheduleStartDate || selectedGroup.program?.startDate || selectedGroup.startDate;
-        const startDate = groupStart
-            ? new Date(groupStart)
+        const startDate = effectiveStart
+            ? new Date(effectiveStart)
             : (earliestAtt ?? threeMonthsAgo);
             
-        const groupEnd = scheduleEndDate || selectedGroup.program?.endDate || selectedGroup.endDate;
-        const endDate = groupEnd
-            ? new Date(groupEnd)
+        const endDate = effectiveEnd
+            ? new Date(effectiveEnd)
             : new Date();
             
         const dayIndexMap: Record<string, number> = {
@@ -269,15 +316,25 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             cur.setUTCDate(cur.getUTCDate() + 1);
         }
         
-        // Union with actual attendance dates just in case they have historical ones
+        // Union with actual attendance dates, but strictly bounded within the schedule period
         const allDateStrings = new Set<string>();
         classDays.forEach(d => {
             const ds = toISODateString(d);
             if (ds) allDateStrings.add(ds);
         });
+
+        const startLimit = effectiveStart ? new Date(toISODateString(effectiveStart) + "T12:00:00Z") : null;
+        const endLimit = effectiveEnd ? new Date(toISODateString(effectiveEnd) + "T12:00:00Z") : null;
+
         attForCourse.forEach((a: any) => {
             const ds = toISODateString(new Date(a.date));
-            if (ds) allDateStrings.add(ds);
+            if (ds) {
+                const dt = new Date(ds + "T12:00:00Z");
+                const withinBounds = (!startLimit || dt >= startLimit) && (!endLimit || dt <= endLimit);
+                if (withinBounds) {
+                    allDateStrings.add(ds);
+                }
+            }
         });
         
         return Array.from(allDateStrings).sort(); // returns YYYY-MM-DD strings sorted chronologically
@@ -561,7 +618,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         setMounted(true);
     }, []);
     const [seqIndex, setSeqIndex] = useState(0);
-    const [attDate, setAttDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+    const [attDate, setAttDate] = useState<string>(getTodayColombianDate());
     const [hideOtherDates, setHideOtherDates] = useState<boolean>(true);
     const [attCourseId, setAttCourseId] = useState<string>("");
     // We only store ABSENT or LATE in attRecords. If a student is not here, they are PRESENT.
@@ -877,7 +934,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             // Attendance
             setAttMode("list");
             setAttCourseId(firstCourseId);
-            setAttDate(findClosestValidDate(format(new Date(), "yyyy-MM-dd"), firstCourseId));
+            setAttDate(findClosestValidDate(getTodayColombianDate(), firstCourseId));
             setAttRecords({});
             setSeqIndex(0);
             setSelectedDayFilter(null);
@@ -1387,7 +1444,11 @@ const handleOpenAnalytics = async () => {
         const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
         const courseTitle = course?.title || "Materia";
         const history = attendanceHistory.filter((r: any) => r.courseId === attCourseId);
-        const allDates = [...new Set(history.map((r: any) => typeof r.date === 'string' ? r.date.split('T')[0] : new Date(r.date).toISOString().split('T')[0]))].sort();
+        const validScheduleDates = getValidClassDaysList();
+        const historyDates = history.map((r: any) => toCalendarYMD(r.date)).filter(Boolean);
+        const allDates = validScheduleDates.length > 0 
+            ? validScheduleDates 
+            : [...new Set(historyDates)].sort();
         const students = [...(selectedGroup.students ?? [])].sort((a: any, b: any) => a.name.localeCompare(b.name));
 
         const studentData = students.map((s: any) => {
@@ -1398,7 +1459,7 @@ const handleOpenAnalytics = async () => {
             let excuses = 0;
             allDates.forEach(date => {
                 const rec = history.find((r: any) => {
-                    const rDate = typeof r.date === 'string' ? r.date.split('T')[0] : new Date(r.date).toISOString().split('T')[0];
+                    const rDate = toCalendarYMD(r.date);
                     return r.userId === s.id && rDate === date;
                 });
                 if (rec) {
@@ -1446,7 +1507,11 @@ const handleOpenAnalytics = async () => {
         const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
         const courseTitle = course?.title || "Materia";
         const history = attendanceHistory.filter((r: any) => r.courseId === attCourseId);
-        const allDates = [...new Set(history.map((r: any) => typeof r.date === 'string' ? r.date.split('T')[0] : new Date(r.date).toISOString().split('T')[0]))].sort();
+        const validScheduleDates = getValidClassDaysList();
+        const historyDates = history.map((r: any) => toCalendarYMD(r.date)).filter(Boolean);
+        const allDates = validScheduleDates.length > 0 
+            ? validScheduleDates 
+            : [...new Set(historyDates)].sort();
         const students = [...(selectedGroup.students ?? [])].sort((a: any, b: any) => a.name.localeCompare(b.name));
 
         const studentData = students.map((s: any) => {
@@ -1457,7 +1522,7 @@ const handleOpenAnalytics = async () => {
             let excuses = 0;
             allDates.forEach(date => {
                 const rec = history.find((r: any) => {
-                    const rDate = typeof r.date === 'string' ? r.date.split('T')[0] : new Date(r.date).toISOString().split('T')[0];
+                    const rDate = toCalendarYMD(r.date);
                     return r.userId === s.id && rDate === date;
                 });
                 if (rec) {
@@ -1514,7 +1579,7 @@ const handleOpenAnalytics = async () => {
             const recs = history.filter((r: any) => r.userId === s.id);
             if (recs.length === 0) continue;
             for (const rec of recs) {
-                const dateFormatted = typeof rec.date === 'string' ? rec.date.split('T')[0] : format(new Date(rec.date), "yyyy-MM-dd");
+                const dateFormatted = toCalendarYMD(rec.date);
                 let typeLabel = "Falta";
                 if (rec.justification) typeLabel = "Excusa / Justificado";
                 else if (rec.status === "LATE") typeLabel = "Llegada Tarde";
@@ -1563,7 +1628,7 @@ const handleOpenAnalytics = async () => {
             const recs = history.filter((r: any) => r.userId === s.id);
             if (recs.length === 0) continue;
             for (const rec of recs) {
-                const dateFormatted = typeof rec.date === 'string' ? rec.date.split('T')[0] : format(new Date(rec.date), "yyyy-MM-dd");
+                const dateFormatted = toCalendarYMD(rec.date);
                 let typeLabel = "Falta";
                 if (rec.justification) typeLabel = "Excusa";
                 else if (rec.status === "LATE") typeLabel = "Llegada Tarde";
@@ -2440,7 +2505,7 @@ const handleOpenAnalytics = async () => {
                                         <div className="flex flex-wrap gap-1.5 p-1 bg-background rounded-xl border border-muted-foreground/15 shadow-sm max-h-[120px] overflow-y-auto">
                                             {(() => {
                                                 const validDaysList = getValidClassDaysList();
-                                                const todayStr = format(new Date(), "yyyy-MM-dd");
+                                                const todayStr = getTodayColombianDate();
                                                 const filteredDaysList = hideOtherDates 
                                                     ? (validDaysList.includes(attDate) ? [attDate] : (validDaysList.length > 0 ? [attDate] : []))
                                                     : validDaysList;
@@ -3873,7 +3938,9 @@ const handleOpenAnalytics = async () => {
                                         ? scheduleDays
                                         : (selectedGroup.courses || []).flatMap((c: any) => (c.schedules || []).map((s: any) => s.dayOfWeek));
 
-                                    // Derive start date: group.startDate > earliest attendance record > 3 months ago
+                                    // Derive start and end date using effective schedule bounds
+                                    const { start: effectiveStart, end: effectiveEnd } = getEffectiveDatesForCourse(selectedGroup, attCourseId);
+
                                     const attForCourse = attendanceHistory.filter((a: any) => a.courseId === attCourseId);
                                     const earliestAtt = attForCourse.length > 0
                                         ? new Date(Math.min(...attForCourse.map((a: any) => new Date(a.date).getTime())))
@@ -3882,14 +3949,12 @@ const handleOpenAnalytics = async () => {
                                     const threeMonthsAgo = new Date();
                                     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-                                    const groupStart = selectedGroup.program?.startDate || selectedGroup.startDate;
-                                    const startDate = groupStart
-                                        ? new Date(groupStart)
+                                    const startDate = effectiveStart
+                                        ? new Date(effectiveStart)
                                         : (earliestAtt ?? threeMonthsAgo);
 
-                                    const groupEnd = selectedGroup.program?.endDate || selectedGroup.endDate;
-                                    const endDate = groupEnd
-                                        ? new Date(Math.min(new Date(groupEnd).getTime(), Date.now()))
+                                    const endDate = effectiveEnd
+                                        ? new Date(effectiveEnd)
                                         : new Date();
 
                                     const classDays: Date[] = [];
@@ -3905,10 +3970,19 @@ const handleOpenAnalytics = async () => {
                                         cur.setUTCDate(cur.getUTCDate() + 1);
                                     }
 
-                                    // If still no scheduled days derived, build from actual attendance dates
+                                    // If still no scheduled days derived, build from actual attendance dates within schedule bounds
+                                    const startLimit = effectiveStart ? new Date(toISODateString(effectiveStart) + "T12:00:00Z") : null;
+                                    const endLimit = effectiveEnd ? new Date(toISODateString(effectiveEnd) + "T12:00:00Z") : null;
+                                    const boundedAttDates = attForCourse
+                                        .map((a: any) => toUTCDateStr(new Date(a.date)))
+                                        .filter((ds: string) => {
+                                            const dt = new Date(ds + "T12:00:00Z");
+                                            return (!startLimit || dt >= startLimit) && (!endLimit || dt <= endLimit);
+                                        });
+
                                     const finalDays: Date[] = classDays.length > 0
                                         ? classDays
-                                        : Array.from(new Set(attForCourse.map((a: any) => toUTCDateStr(new Date(a.date)))))
+                                        : Array.from(new Set(boundedAttDates))
                                             .sort()
                                             .map(ds => new Date(ds + "T12:00:00Z"));
 

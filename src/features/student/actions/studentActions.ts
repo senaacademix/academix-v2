@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { populateCoursesFallbackDescriptions } from "@/features/teacher/services/courseService";
+import { isScheduleCurrent } from "@/lib/dateUtils";
 
 
 async function getSession() {
@@ -86,17 +87,55 @@ export async function getStudentRecords(targetStudentId?: string) {
                             startDate: true,
                             endDate: true,
                         }
+                    },
+                    scheduleSlots: {
+                        include: {
+                            academicSchedule: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    startDate: true,
+                                    endDate: true,
+                                    isActive: true
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     });
 
+    const groupSlotSchedule = user?.group?.scheduleSlots?.find((slot: any) =>
+        slot.academicSchedule && (
+            isScheduleCurrent(slot.academicSchedule.startDate, slot.academicSchedule.endDate) ||
+            slot.academicSchedule.isActive
+        )
+    )?.academicSchedule || user?.group?.scheduleSlots?.[0]?.academicSchedule;
+
+    let effectiveSchedule = groupSlotSchedule;
+    if (!effectiveSchedule) {
+        const allSchedules = await prisma.academicSchedule.findMany({
+            orderBy: { startDate: "desc" },
+            select: { id: true, name: true, startDate: true, endDate: true, isActive: true }
+        });
+        effectiveSchedule = allSchedules.find(s => isScheduleCurrent(s.startDate, s.endDate))
+            || allSchedules.find(s => s.isActive)
+            || allSchedules[0]
+            || null;
+    }
+
+    const resolvedScheduleDates = effectiveSchedule
+        ? { startDate: effectiveSchedule.startDate, endDate: effectiveSchedule.endDate }
+        : (user?.group?.startDate && user?.group?.endDate)
+        ? { startDate: user.group.startDate, endDate: user.group.endDate }
+        : (user?.group?.program?.startDate ? { startDate: user.group.program.startDate, endDate: user.group.program.endDate } : null);
+
     return {
         attendances,
         remarks,
         groupDates: user?.group ? { startDate: user.group.startDate, endDate: user.group.endDate } : null,
-        scheduleDates: user?.group?.program ? { startDate: user.group.program.startDate, endDate: user.group.program.endDate } : null,
+        scheduleDates: resolvedScheduleDates,
         targetUser: user ? {
             id: user.id,
             name: user.name,
