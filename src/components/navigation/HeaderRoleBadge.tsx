@@ -75,7 +75,7 @@ export function HeaderRoleBadge() {
         <Icon className="w-3.5 h-3.5 shrink-0 text-primary" />
         <span className="hidden sm:inline truncate">{badgeInfo.fullLabel}</span>
         <span className="inline sm:hidden truncate">{badgeInfo.shortLabel}</span>
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0 ml-0.5" />
+        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0 ml-0.5" />
       </div>
     </div>
   );

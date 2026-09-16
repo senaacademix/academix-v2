@@ -78,10 +78,11 @@ const getJustificationLink = (rec?: { justification?: string | null; justificati
 };
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle } from "lucide-react";
+import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,8 +113,6 @@ import {
 } from "../utils/teacherAttendanceExportUtils";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { CourseDocLinks } from "./CourseDocLinks";
-import { Roulette } from "./Roulette";
-import { GroupGenerator } from "./GroupGenerator";
 import { GroupAnalyticsPanel } from "@/components/analytics/GroupAnalyticsPanel";
 import { StudentRecords } from "@/features/student/components/StudentRecords";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
@@ -626,8 +625,6 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     const [isSavingAtt, setIsSavingAtt] = useState(false);
     const [selectedDayFilter, setSelectedDayFilter] = useState<number | null>(null);
     const [historyStudentFilter, setHistoryStudentFilter] = useState<string>("all");
-    const [isRouletteOpen, setIsRouletteOpen] = useState(false);
-    const [isGroupGeneratorOpen, setIsGroupGeneratorOpen] = useState(false);
     const [attendanceToDelete, setAttendanceToDelete] = useState<{ studentId: string; studentName: string; date: string } | null>(null);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
@@ -1899,7 +1896,7 @@ const handleOpenAnalytics = async () => {
                             {/* FILA SUPERIOR: Selección de Fichas (ENCIMA DE LAS PESTAÑAS) */}
                             <div className="flex items-center gap-2.5 p-2 px-3 bg-background/80 dark:bg-card/70 rounded-2xl border border-border/70 backdrop-blur-md w-full flex-wrap shadow-2xs">
                                 <span className="text-xs font-black text-muted-foreground uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1.5">
-                                    <Users className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                    <Users className="w-3.5 h-3.5 text-primary" />
                                     FICHAS:
                                 </span>
                                 <div className="flex flex-wrap items-center gap-2">
@@ -1914,8 +1911,8 @@ const handleOpenAnalytics = async () => {
                                                 onClick={() => handleGroupChangeAttempt(g.id)}
                                                 className={`h-8 text-xs font-black rounded-xl transition-all ${
                                                     isActive
-                                                        ? "bg-purple-600 hover:bg-purple-700 text-white shadow-md ring-2 ring-purple-500/20"
-                                                        : "hover:bg-purple-50 dark:hover:bg-purple-950/30 text-foreground border-border/80"
+                                                        ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm ring-2 ring-primary/25"
+                                                        : "hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
                                                 }`}
                                             >
                                                 {g.name}
@@ -1927,59 +1924,59 @@ const handleOpenAnalytics = async () => {
 
                             {/* FILA INFERIOR: Pestañas de Navegación Desplazables en Móvil */}
                             <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center justify-between gap-2">
-                                <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 rounded-2xl gap-1.5 backdrop-blur-md w-max border border-border/50">
+                                <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 dark:bg-muted/30 rounded-2xl gap-1.5 backdrop-blur-md w-max border border-border/60 shadow-2xs">
                                     {/* ── ESTUDIANTES ── */}
-                                    <TabsTrigger value="students" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:border-border/60 shrink-0 transition-all">
+                                    <TabsTrigger value="students" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
                                         <span className="flex items-center gap-2 justify-center">
-                                            <Users className="w-4 h-4 text-primary shrink-0" />
+                                            <Users className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
                                             <span>Aprendices</span>
                                         </span>
                                     </TabsTrigger>
 
                                     {/* ── ASISTENCIA ── */}
-                                    <TabsTrigger value="attendance" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                    <TabsTrigger value="attendance" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
                                         <span className="flex items-center gap-2 justify-center">
-                                            <ClipboardList className="w-4 h-4 text-primary shrink-0" />
+                                            <ClipboardList className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
                                             <span>Asistencia</span>
                                         </span>
                                     </TabsTrigger>
 
                                     {/* ── OBSERVACIONES ── */}
-                                    <TabsTrigger value="remarks" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                    <TabsTrigger value="remarks" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
                                         <span className="flex items-center gap-2 justify-center">
-                                            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                                            <AlertTriangle className="w-4 h-4 text-amber-500 group-data-[state=active]:text-primary transition-colors shrink-0" />
                                             <span>Observaciones</span>
                                         </span>
                                     </TabsTrigger>
 
                                     {/* ── PLANES DE MEJORAMIENTO ── */}
-                                    <TabsTrigger value="improvement" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                    <TabsTrigger value="improvement" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
                                         <span className="flex items-center gap-2 justify-center">
-                                            <FileText className="w-4 h-4 text-primary shrink-0" />
+                                            <FileText className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
                                             <span>Planes de Mejoramiento</span>
                                         </span>
                                     </TabsTrigger>
 
                                     {/* ── CALIFICACIONES ── */}
-                                    <TabsTrigger value="grades" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                    <TabsTrigger value="grades" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
                                         <span className="flex items-center gap-2 justify-center">
-                                            <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+                                            <GraduationCap className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
                                             <span>Calificaciones</span>
                                         </span>
                                     </TabsTrigger>
 
                                     {/* ── DOCUMENTACIÓN ── */}
-                                    <TabsTrigger value="documentation" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                    <TabsTrigger value="documentation" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
                                         <span className="flex items-center gap-2 justify-center">
-                                            <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                                            <BookOpen className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
                                             <span>Documentación</span>
                                         </span>
                                     </TabsTrigger>
 
                                     {/* ── ANALÍTICA ── */}
-                                    <TabsTrigger value="analytics" className="rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm shrink-0 transition-all">
+                                    <TabsTrigger value="analytics" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
                                         <span className="flex items-center gap-2 justify-center">
-                                            <BarChart3 className="w-4 h-4 text-primary shrink-0" />
+                                            <BarChart3 className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
                                             <span>Analítica</span>
                                         </span>
                                     </TabsTrigger>
@@ -2010,8 +2007,26 @@ const handleOpenAnalytics = async () => {
 
                         <div className="flex-1 p-3 sm:p-6 overflow-y-auto overflow-x-auto w-full min-w-0 max-w-full touch-pan-x">
                             {/* TAB 1: STUDENTS */}
-                            <TabsContent value="students" className="m-0 space-y-4 outline-none">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-muted/30 p-3.5 rounded-2xl border border-border/70">
+                            <TabsContent value="students" className="m-0 space-y-4 outline-none animate-in fade-in-50 duration-200">
+                                {/* Header Hero Banner */}
+                                <div className="bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 relative overflow-hidden shadow-2xs">
+                                    <Users className="absolute right-0 top-0 w-64 h-64 text-primary/5 -translate-y-1/4 translate-x-1/4 pointer-events-none" />
+                                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Directorio de Aprendices</h3>
+                                            <p className="text-xs text-muted-foreground max-w-2xl">
+                                                Listado oficial de aprendices matriculados en la ficha <span className="font-extrabold text-foreground">{selectedGroup.name}</span>. Gestiona información de contacto, credenciales, novedades formativas y dinámicas de grupo.
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                                            <Badge variant="outline" className="text-xs font-bold text-muted-foreground bg-background/80 px-3 py-1.5 rounded-xl border-border shadow-2xs">
+                                                Total: <strong className="text-primary font-black ml-1">{filteredStudents.length}</strong> {filteredStudents.length === 1 ? "aprendiz" : "aprendices"}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-muted/30 p-3.5 rounded-2xl border border-border/70 shadow-2xs">
                                     <div className="relative flex-1 max-w-lg">
                                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input 
@@ -2023,10 +2038,6 @@ const handleOpenAnalytics = async () => {
                                     </div>
                                     
                                     <div className="flex items-center justify-between gap-2.5 flex-wrap sm:flex-nowrap">
-                                        <Badge variant="outline" className="text-xs font-bold text-muted-foreground bg-background px-3 py-1.5 rounded-xl shrink-0 border-border shadow-2xs">
-                                            Total: <strong className="text-primary font-black ml-1">{filteredStudents.length}</strong> {filteredStudents.length === 1 ? "aprendiz" : "aprendices"}
-                                        </Badge>
-
                                         <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
                                             {selectedStudents.length > 0 && (
                                                 <Button 
@@ -2045,26 +2056,6 @@ const handleOpenAnalytics = async () => {
                                                     Enviar Correo ({selectedStudents.length})
                                                 </Button>
                                             )}
-
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm"
-                                                className="h-9 px-3.5 rounded-xl font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 flex items-center gap-1.5 text-xs shadow-2xs transition-all"
-                                                onClick={() => setIsRouletteOpen(true)}
-                                            >
-                                                <Dices className="h-4 w-4 text-primary" />
-                                                Ruleta
-                                            </Button>
-
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm"
-                                                className="h-9 px-3.5 rounded-xl font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 flex items-center gap-1.5 text-xs shadow-2xs transition-all"
-                                                onClick={() => setIsGroupGeneratorOpen(true)}
-                                            >
-                                                <Shuffle className="h-4 w-4 text-primary" />
-                                                Grupos
-                                            </Button>
                                         </div>
                                     </div>
                                 </div>
@@ -2396,7 +2387,7 @@ const handleOpenAnalytics = async () => {
                             </TabsContent>
 
                             {/* TAB: ANALYTICS */}
-                            <TabsContent value="analytics" className="m-0 h-full outline-none p-0 flex flex-col">
+                            <TabsContent value="analytics" className="m-0 h-full outline-none p-0 flex flex-col animate-in fade-in-50 duration-200">
                                 <GroupAnalyticsPanel 
                                     inline={true}
                                     isTeacher={true}
@@ -2406,7 +2397,7 @@ const handleOpenAnalytics = async () => {
                             </TabsContent>
 
                             {/* TAB: GRADES */}
-                            <TabsContent value="grades" className="m-0 outline-none w-full min-w-0 max-w-full">
+                            <TabsContent value="grades" className="m-0 outline-none w-full min-w-0 max-w-full animate-in fade-in-50 duration-200">
                                 <GradeManagerPanel 
                                     courses={selectedGroup.courses || []}
                                     students={filteredStudents}
@@ -2414,9 +2405,20 @@ const handleOpenAnalytics = async () => {
                             </TabsContent>
 
                             {/* TAB: DOCUMENTATION */}
-                            <TabsContent value="documentation" className="m-0 outline-none w-full min-w-0 space-y-6">
+                            <TabsContent value="documentation" className="m-0 outline-none w-full min-w-0 space-y-6 animate-in fade-in-50 duration-200">
+                                {/* Header Hero Banner */}
+                                <div className="bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 relative overflow-hidden shadow-2xs">
+                                    <BookOpen className="absolute right-0 top-0 w-64 h-64 text-primary/5 -translate-y-1/4 translate-x-1/4 pointer-events-none" />
+                                    <div className="relative z-10 space-y-1">
+                                        <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Documentación y Recursos</h3>
+                                        <p className="text-xs text-muted-foreground max-w-2xl">
+                                            Material de apoyo pedagógico, enlaces compartidos y guías de aprendizaje organizadas por materia para la ficha <span className="font-extrabold text-foreground">{selectedGroup.name}</span>.
+                                        </p>
+                                    </div>
+                                </div>
+
                                 {!selectedGroup.courses || selectedGroup.courses.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-3 rounded-xl border-2 border-dashed">
+                                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-3 rounded-2xl border-2 border-dashed border-border/70 bg-card">
                                         <BookOpen className="h-10 w-10 text-muted-foreground/40" />
                                         <p className="text-muted-foreground font-medium">No hay materias asignadas a este grupo</p>
                                     </div>
@@ -2453,9 +2455,41 @@ const handleOpenAnalytics = async () => {
                             </TabsContent>
 
                             {/* TAB 2: ATTENDANCE */}
-                            <TabsContent value="attendance" className="m-0 space-y-4 outline-none">
+                            <TabsContent value="attendance" className="m-0 space-y-4 outline-none animate-in fade-in-50 duration-200">
+                                {/* Header Hero Banner */}
+                                <div className="bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 relative overflow-hidden shadow-2xs">
+                                    <ClipboardList className="absolute right-0 top-0 w-64 h-64 text-primary/5 -translate-y-1/4 translate-x-1/4 pointer-events-none" />
+                                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Control de Asistencia</h3>
+                                            <p className="text-xs text-muted-foreground max-w-2xl">
+                                                Toma diaria y consolidación de asistencia por materia en la ficha <span className="font-extrabold text-foreground">{selectedGroup.name}</span>. Registra asistencias, fallas, tardanzas y justificaciones formativas.
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                                            <span className={`text-[10px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border ${
+                                                limitSettingsActive
+                                                    ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
+                                                    : "bg-primary/10 border-primary/20 text-primary"
+                                            }`}>
+                                                {limitSettingsActive ? (
+                                                    <>
+                                                        <Lock className="w-3.5 h-3.5" />
+                                                        <span>Semanas anteriores restringidas</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Unlock className="w-3.5 h-3.5" />
+                                                        <span>Modificación de historial libre</span>
+                                                    </>
+                                                )}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {isDateLocked && (
-                                    <div className="p-4 rounded-2xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 bg-slate-500/10 border-slate-500/20 text-slate-800 dark:text-slate-400">
+                                    <div className="p-4 rounded-2xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300">
                                         <Lock className="w-4 h-4 shrink-0" />
                                         <div className="space-y-0.5">
                                             <p className="font-bold text-sm">Fecha Bloqueada (Semana Anterior)</p>
@@ -2467,42 +2501,25 @@ const handleOpenAnalytics = async () => {
                                 )}
                                 {/* Dedicated Date Selection Bar */}
                                 {attMode !== "matrix" && attMode !== "history" && attMode !== "metrics" && (
-                                    <div className="flex flex-col gap-2 bg-muted/10 p-4 rounded-2xl border mb-3 w-full animate-in fade-in duration-300">
+                                    <div className="flex flex-col gap-2 bg-muted/10 p-4 rounded-2xl border border-border/70 mb-3 w-full shadow-2xs">
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full mb-1">
                                             <div className="flex items-center gap-4">
                                                 <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Fecha de Asistencia</Label>
-                                                <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-xl border border-muted-foreground/15 shadow-sm">
+                                                <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-xl border border-border/70 shadow-2xs">
                                                     <Switch
                                                         id="hide-other-dates"
                                                         disabled={isSavingAtt}
                                                         checked={hideOtherDates}
                                                         onCheckedChange={setHideOtherDates}
-                                                        className="scale-75"
+                                                        className="scale-75 cursor-pointer"
                                                     />
                                                     <Label htmlFor="hide-other-dates" className="text-[10px] font-bold text-muted-foreground cursor-pointer select-none">
                                                         Solo fecha actual
                                                     </Label>
                                                 </div>
                                             </div>
-                                            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 shadow-sm border ${
-                                                limitSettingsActive
-                                                    ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
-                                                    : "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
-                                            }`}>
-                                                {limitSettingsActive ? (
-                                                    <>
-                                                        <Lock className="w-3 h-3" />
-                                                        <span>Edición de semanas anteriores restringida</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Unlock className="w-3.5 h-3.5" />
-                                                        <span>Modificación libre del historial habilitada</span>
-                                                    </>
-                                                )}
-                                            </span>
                                         </div>
-                                        <div className="flex flex-wrap gap-1.5 p-1 bg-background rounded-xl border border-muted-foreground/15 shadow-sm max-h-[120px] overflow-y-auto">
+                                        <div className="flex flex-wrap gap-1.5 p-1.5 bg-background rounded-xl border border-border/70 shadow-2xs max-h-[120px] overflow-y-auto">
                                             {(() => {
                                                 const validDaysList = getValidClassDaysList();
                                                 const todayStr = getTodayColombianDate();
@@ -2528,10 +2545,10 @@ const handleOpenAnalytics = async () => {
                                                             onClick={() => handleDateChangeAttempt(ds)}
                                                             className={`h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-bold transition-all rounded-lg shrink-0 cursor-pointer ${
                                                                 isSelected 
-                                                                    ? "shadow-sm font-extrabold" 
+                                                                    ? "shadow-sm font-extrabold bg-primary text-primary-foreground" 
                                                                     : isToday
-                                                                                        ? "border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/10 font-extrabold"
-                                                                        : "text-muted-foreground hover:text-foreground"
+                                                                        ? "border-primary/40 text-primary hover:bg-primary/10 font-extrabold"
+                                                                        : "text-muted-foreground hover:text-foreground border-border/70"
                                                             }`}
                                                             title={isFuture ? "Fecha futura (deshabilitada)" : `Seleccionar ${ds}`}
                                                         >
@@ -2544,13 +2561,13 @@ const handleOpenAnalytics = async () => {
                                     </div>
                                 )}
                                 {/* Header Controls for Attendance — single compact row */}
-                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-muted/20 p-3 sm:p-4 rounded-2xl border">
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-muted/20 p-3 sm:p-4 rounded-2xl border border-border/70 shadow-2xs">
 
                                     {/* Course */}
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 w-full lg:w-auto min-w-0">
                                         <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">Materia</Label>
                                         <Select disabled={isSavingAtt} value={attCourseId} onValueChange={handleCourseChangeAttempt}>
-                                            <SelectTrigger className="h-9 rounded-xl border-muted-foreground/20 font-bold bg-background text-xs sm:text-sm w-full lg:min-w-[200px] lg:max-w-[300px]">
+                                            <SelectTrigger className="h-9 rounded-xl border-border/70 font-bold bg-background text-xs sm:text-sm w-full lg:min-w-[200px] lg:max-w-[300px] shadow-2xs">
                                                 <SelectValue placeholder="Seleccionar Materia" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-2xl shadow-xl">
@@ -2565,7 +2582,7 @@ const handleOpenAnalytics = async () => {
                                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto min-w-0">
                                         {/* View mode pills */}
                                         <div className="w-full overflow-x-auto touch-pan-x overscroll-x-contain scrollbar-none pb-1 sm:pb-0">
-                                            <div className="inline-flex w-max items-center gap-1 bg-muted/60 p-1 rounded-xl">
+                                            <div className="inline-flex w-max items-center gap-1 bg-muted/60 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-2xs">
                                                 <div className="flex items-center gap-0.5">
                                                     {([
                                                         { mode: "list",    icon: <ListTodo className="w-3.5 h-3.5" />, label: "Listado" },
@@ -2575,9 +2592,9 @@ const handleOpenAnalytics = async () => {
                                                             key={mode}
                                                             disabled={isSavingAtt}
                                                             onClick={() => setAttMode(mode)}
-                                                            className={`flex items-center gap-1.5 px-3 h-7.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                            className={`flex items-center gap-1.5 px-3 h-7.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                                                                 attMode === mode
-                                                                    ? "bg-background shadow-xs text-foreground"
+                                                                    ? "bg-card shadow-xs text-primary font-extrabold border border-border/50"
                                                                     : "text-muted-foreground hover:text-foreground"
                                                             }`}
                                                         >
@@ -3367,11 +3384,11 @@ const handleOpenAnalytics = async () => {
 
                                             {/* Stacked Full-Width Charts Section Organized by Tabs */}
                                             <Tabs defaultValue="faltas" className="w-full mt-6">
-                                                <TabsList className="grid w-full sm:w-[600px] grid-cols-4 mb-6 mx-auto">
-                                                    <TabsTrigger value="faltas">Faltas</TabsTrigger>
-                                                    <TabsTrigger value="tardanzas">Tardanzas</TabsTrigger>
-                                                    <TabsTrigger value="retiros">Retiros</TabsTrigger>
-                                                    <TabsTrigger value="horas">Carga Horaria</TabsTrigger>
+                                                <TabsList className="grid w-full sm:w-[600px] grid-cols-4 mb-6 mx-auto bg-muted/60 dark:bg-muted/30 p-1.5 rounded-2xl border border-border/60 shadow-2xs">
+                                                    <TabsTrigger value="faltas" className="rounded-xl text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Faltas</TabsTrigger>
+                                                    <TabsTrigger value="tardanzas" className="rounded-xl text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Tardanzas</TabsTrigger>
+                                                    <TabsTrigger value="retiros" className="rounded-xl text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Retiros</TabsTrigger>
+                                                    <TabsTrigger value="horas" className="rounded-xl text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Carga Horaria</TabsTrigger>
                                                 </TabsList>
 
                                                 <TabsContent value="faltas" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0">
@@ -4214,7 +4231,7 @@ const handleOpenAnalytics = async () => {
                             </TabsContent>
 
                             {/* TAB 3: REMARKS & HISTORY */}
-                            <TabsContent value="remarks" className="m-0 space-y-8 outline-none">
+                            <TabsContent value="remarks" className="m-0 space-y-8 outline-none animate-in fade-in-50 duration-200">
                                 {/* Omitted for brevity, kept exactly as before but optimized classes */}
                                 {/* Create Remark Section */}
                                 <div className="bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4 relative overflow-hidden">
@@ -4566,39 +4583,42 @@ const handleOpenAnalytics = async () => {
                             </TabsContent>
 
                             {/* TAB: PLANES DE MEJORAMIENTO */}
-                            <TabsContent value="improvement" className="m-0 space-y-6 outline-none">
-                                {/* Header */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <h2 className="text-lg font-bold">Planes de Mejoramiento</h2>
-                                        <p className="text-sm text-muted-foreground">Gestión y seguimiento de compromisos académicos de superación.</p>
-                                        <div className="mt-3 flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/10 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400">
-                                            <svg className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <p className="leading-relaxed">
-                                                <strong>Información Importante:</strong> Los planes de mejoramiento no afectan de forma automática la analítica de rendimiento académico del aprendiz en la plataforma. Es responsabilidad exclusiva del instructor pasar y registrar los resultados definitivos en el módulo de calificaciones de forma manual.
+                            <TabsContent value="improvement" className="m-0 space-y-6 outline-none animate-in fade-in-50 duration-200">
+                                {/* Header Hero Banner */}
+                                <div className="bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 relative overflow-hidden shadow-2xs">
+                                    <FileText className="absolute right-0 top-0 w-64 h-64 text-primary/5 -translate-y-1/4 translate-x-1/4 pointer-events-none" />
+                                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Planes de Mejoramiento</h3>
+                                            <p className="text-xs text-muted-foreground max-w-2xl">
+                                                Gestión, asignación y seguimiento de compromisos formativos de superación para aprendices de la ficha <span className="font-extrabold text-foreground">{selectedGroup.name}</span>.
                                             </p>
                                         </div>
+                                        <Button
+                                            onClick={() => setImpPlanFormDialog({
+                                                open: true,
+                                                studentId: selectedGroup?.students?.[0]?.id || "",
+                                                planNumber: "",
+                                                teacherDocUrl: "",
+                                                startDate: format(new Date(), "yyyy-MM-dd"),
+                                                endDate: format(new Date(), "yyyy-MM-dd"),
+                                                observations: "",
+                                                planScore: "",
+                                                finalGrade: "",
+                                                evidenceUrl: "",
+                                            })}
+                                            className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 w-full sm:w-auto justify-center font-bold rounded-xl h-10 px-4 shadow-sm shrink-0 cursor-pointer"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Crear Plan de Mejoramiento
+                                        </Button>
                                     </div>
-                                    <Button
-                                        onClick={() => setImpPlanFormDialog({
-                                            open: true,
-                                            studentId: selectedGroup?.students?.[0]?.id || "",
-                                            planNumber: "",
-                                            teacherDocUrl: "",
-                                            startDate: format(new Date(), "yyyy-MM-dd"),
-                                            endDate: format(new Date(), "yyyy-MM-dd"),
-                                            observations: "",
-                                            planScore: "",
-                                            finalGrade: "",
-                                            evidenceUrl: "",
-                                        })}
-                                        className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 w-full sm:w-auto justify-center font-bold"
-                                    >
-                                        <FileText className="w-4 h-4" />
-                                        Crear Plan de Mejoramiento
-                                    </Button>
+                                    <div className="mt-4 flex items-start gap-2.5 p-3 rounded-xl bg-background/60 dark:bg-card/60 border border-primary/20 text-xs text-foreground shadow-2xs">
+                                        <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
+                                        <p className="leading-relaxed">
+                                            <strong className="text-primary font-bold">Información Importante:</strong> Los planes de mejoramiento no afectan de forma automática la analítica de rendimiento académico del aprendiz en la plataforma. Es responsabilidad exclusiva del instructor pasar y registrar los resultados definitivos en el módulo de calificaciones de forma manual.
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {/* Loading state */}
@@ -6050,72 +6070,6 @@ const handleOpenAnalytics = async () => {
                 document.body
             )}
 
-            {isRouletteOpen && mounted && createPortal(
-                <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex flex-col p-6 overflow-hidden animate-in fade-in duration-200">
-                    {/* Fullscreen Header */}
-                    <div className="flex items-center justify-between border-b pb-4 mb-4 shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
-                                <Dices className="w-6 h-6 animate-pulse" />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-black text-foreground">Ruleta de Participación y Notas</h2>
-                                <p className="text-xs text-muted-foreground">Selecciona aleatoriamente aprendices del grupo {selectedGroup.name}</p>
-                            </div>
-                        </div>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-10 w-10 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
-                            onClick={() => setIsRouletteOpen(false)}
-                        >
-                            <X className="w-5 h-5" />
-                        </Button>
-                    </div>
-                    
-                    {/* Roulette Content */}
-                    <div className="flex-1 overflow-auto">
-                        <Roulette 
-                            students={selectedGroup.students?.map((s: any) => ({ user: s })) || []} 
-                            courseId={selectedGroup.id} 
-                        />
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {isGroupGeneratorOpen && mounted && createPortal(
-                <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex flex-col p-6 overflow-hidden animate-in fade-in duration-200">
-                    {/* Fullscreen Header */}
-                    <div className="flex items-center justify-between border-b pb-4 mb-4 shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
-                                <Users className="w-6 h-6 animate-pulse" />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-black text-foreground">Creador de Grupos de Trabajo</h2>
-                                <p className="text-xs text-muted-foreground">Genera grupos automáticos o arrastra aprendices manualmente para organizarlos</p>
-                            </div>
-                        </div>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-10 w-10 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
-                            onClick={() => setIsGroupGeneratorOpen(false)}
-                        >
-                            <X className="w-5 h-5" />
-                        </Button>
-                    </div>
-                    
-                    {/* Generator Content */}
-                    <div className="flex-1 overflow-auto">
-                        <GroupGenerator 
-                            students={selectedGroup.students?.map((s: any) => ({ user: s })) || []} 
-                        />
-                    </div>
-                </div>,
-                document.body
-            )}
 
             <AlertDialog open={!!attendanceToDelete} onOpenChange={(open) => { if (!open) setAttendanceToDelete(null); }}>
                 <AlertDialogContent className="rounded-xl border-primary/20 bg-background">

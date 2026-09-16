@@ -125,7 +125,7 @@ const CustomTooltip = ({ active, payload }: any) => {
             <div className="bg-popover text-popover-foreground border rounded-xl p-4 shadow-xl text-xs space-y-2 max-w-[280px]">
                 <p className="font-extrabold text-sm border-b pb-1 text-foreground">{data.name}</p>
                 <div className="space-y-1">
-                    <p className="font-bold text-sm text-indigo-600 dark:text-indigo-400">Puntaje Integral: {data.score} / 100</p>
+                    <p className="font-bold text-sm text-primary">Puntaje Integral: {data.score} / 100</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest pt-1">Desglose de Puntos:</p>
                     <p className="flex justify-between gap-4 text-muted-foreground">• Rendimiento ({wAcad}%): <span className="font-medium text-foreground">{data.academic} pts ({data.gradesAvg > 0 ? data.gradesAvg.toFixed(2) : "N/A"})</span></p>
                     <p className="flex justify-between gap-4 text-muted-foreground">• Asistencia ({wAtt}%): <span className="font-medium text-foreground">{data.attendance} pts ({data.absences} F / {data.lates} T / {data.leaveEarly || 0} R)</span></p>
@@ -1020,7 +1020,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                 <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
                                     <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-1.5 min-w-0">
-                                            <div className="p-1.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0">
+                                            <div className="p-1.5 bg-primary/10 text-primary rounded-lg shrink-0">
                                                 <Clock className="w-3.5 h-3.5" />
                                             </div>
                                             <UITooltipProvider>
@@ -1037,7 +1037,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                 </UITooltip>
                                             </UITooltipProvider>
                                         </div>
-                                        <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{filteredAttendancesCount}</span>
+                                        <span className="text-lg font-black text-primary">{filteredAttendancesCount}</span>
                                     </CardContent>
                                 </Card>
                             </div>
@@ -1065,12 +1065,12 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                             <div className="space-y-0.5">
                                                 <div className="flex items-center justify-between text-[11px]">
                                                     <span className="font-bold text-foreground flex items-center gap-1">
-                                                        <BookOpen className="w-3 h-3 text-indigo-500" /> Rendimiento
+                                                        <BookOpen className="w-3 h-3 text-primary" /> Rendimiento
                                                     </span>
-                                                    <span className="font-extrabold text-indigo-500">{groupIntegralScore.avgAcademic}%</span>
+                                                    <span className="font-extrabold text-primary">{groupIntegralScore.avgAcademic}%</span>
                                                 </div>
                                                 <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${groupIntegralScore.avgAcademic}%` }} />
+                                                    <div className="h-full bg-primary rounded-full" style={{ width: `${groupIntegralScore.avgAcademic}%` }} />
                                                 </div>
                                             </div>
 
@@ -1132,11 +1132,11 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
 
                              <Tabs defaultValue="rendimiento" className="w-full mt-6">
                                 <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center mb-6">
-                                    <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1 bg-muted/60 rounded-xl gap-1 w-max border border-border/40">
-                                        <TabsTrigger value="rendimiento" className="rounded-lg py-2 px-3 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">Rendimiento</TabsTrigger>
-                                        <TabsTrigger value="asistencia" className="rounded-lg py-2 px-3 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">Asistencia</TabsTrigger>
-                                        <TabsTrigger value="disciplina" className="rounded-lg py-2 px-3 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">Disciplina</TabsTrigger>
-                                        <TabsTrigger value="mejoramiento" className="rounded-lg py-2 px-3 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm">Planes de Mejoramiento</TabsTrigger>
+                                    <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 dark:bg-muted/30 rounded-2xl gap-1.5 w-max border border-border/60 shadow-2xs">
+                                        <TabsTrigger value="rendimiento" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Rendimiento</TabsTrigger>
+                                        <TabsTrigger value="asistencia" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Asistencia</TabsTrigger>
+                                        <TabsTrigger value="disciplina" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Disciplina</TabsTrigger>
+                                        <TabsTrigger value="mejoramiento" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Planes de Mejoramiento</TabsTrigger>
                                     </TabsList>
                                 </div>
 
@@ -1144,18 +1144,18 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         {/* Student Ranking Chart (from best to worst) */}
                                 {rankedStudentsData.length > 0 && (
-                                <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                <Card className="col-span-1 lg:col-span-2 shadow-2xs border border-border/70 rounded-2xl bg-card">
                                     <CardHeader>
                                         <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                                             <span className="flex items-center gap-2">
-                                                <GraduationCap className="w-5 h-5 text-indigo-500 shrink-0" />
+                                                <GraduationCap className="w-5 h-5 text-primary shrink-0" />
                                                 <span className="text-base sm:text-lg font-black leading-tight">Ranking de Aprendices (Rendimiento Integral)</span>
                                             </span>
                                             <Button 
                                                 variant="ghost" 
                                                 size="sm" 
                                                 onClick={() => setShowWeightsConfig(!showWeightsConfig)}
-                                                className="text-xs text-indigo-600 hover:text-indigo-700 font-bold hover:bg-indigo-50 dark:hover:bg-indigo-950/20 w-full sm:w-auto justify-center sm:justify-start"
+                                                className="text-xs text-primary hover:text-primary/80 font-bold hover:bg-primary/10 w-full sm:w-auto justify-center sm:justify-start cursor-pointer rounded-xl"
                                             >
                                                 <Settings className="w-3.5 h-3.5 mr-1" />
                                                 {showWeightsConfig ? "Ocultar Configuración" : "Configurar Ponderación"}
@@ -1166,12 +1166,12 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                         </CardDescription>
 
                                         {showWeightsConfig && (
-                                            <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800 space-y-4">
+                                            <div className="mt-4 p-4 rounded-xl bg-background/60 dark:bg-card/60 border border-border/70 space-y-4 shadow-2xs">
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div className="space-y-1.5">
                                                         <label className="text-[11px] font-extrabold text-foreground flex items-center justify-between">
                                                             <span>Calificaciones</span>
-                                                            <span className="text-indigo-600 font-black">{academicWeight}%</span>
+                                                            <span className="text-primary font-black">{academicWeight}%</span>
                                                         </label>
                                                         <input 
                                                             type="range" 
@@ -1179,13 +1179,13 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                             max="100" 
                                                             value={academicWeight} 
                                                             onChange={e => handleWeightChange("academic", parseInt(e.target.value))}
-                                                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                            className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                                                         />
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         <label className="text-[11px] font-extrabold text-foreground flex items-center justify-between">
                                                             <span>Asistencia</span>
-                                                            <span className="text-indigo-600 font-black">{attendanceWeight}%</span>
+                                                            <span className="text-primary font-black">{attendanceWeight}%</span>
                                                         </label>
                                                         <input 
                                                             type="range" 
@@ -1193,13 +1193,13 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                             max="100" 
                                                             value={attendanceWeight} 
                                                             onChange={e => handleWeightChange("attendance", parseInt(e.target.value))}
-                                                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                            className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                                                         />
                                                     </div>
                                                     <div className="space-y-1.5">
                                                         <label className="text-[11px] font-extrabold text-foreground flex items-center justify-between">
                                                             <span>Disciplina</span>
-                                                            <span className="text-indigo-600 font-black">{disciplineWeight}%</span>
+                                                            <span className="text-primary font-black">{disciplineWeight}%</span>
                                                         </label>
                                                         <input 
                                                             type="range" 
@@ -1207,12 +1207,12 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                             max="100" 
                                                             value={disciplineWeight} 
                                                             onChange={e => handleWeightChange("discipline", parseInt(e.target.value))}
-                                                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                            className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                                                         />
                                                     </div>
                                                 </div>
 
-                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-border/70">
                                                     <div className="text-[10px] font-bold flex items-center gap-1.5">
                                                         <span className="text-muted-foreground">Suma Total:</span>
                                                         <span className={academicWeight + attendanceWeight + disciplineWeight === 100 ? "text-emerald-600 font-black" : "text-red-500 font-black"}>
@@ -1227,7 +1227,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                         variant="link" 
                                                         size="sm" 
                                                         onClick={() => setShowSourcesInfo(!showSourcesInfo)}
-                                                        className="text-[10px] text-muted-foreground hover:text-indigo-600 p-0 h-auto font-bold"
+                                                        className="text-[10px] text-muted-foreground hover:text-primary p-0 h-auto font-bold"
                                                     >
                                                         <Info className="w-3.5 h-3.5 mr-1" />
                                                         ¿De dónde vienen estos datos?
@@ -1235,7 +1235,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                 </div>
 
                                                 {showSourcesInfo && (
-                                                    <div className="mt-3 p-3 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/20 text-[11px] text-muted-foreground space-y-2">
+                                                    <div className="mt-3 p-3 rounded-xl bg-primary/5 border border-primary/20 text-[11px] text-muted-foreground space-y-2">
                                                         <p className="font-extrabold text-foreground text-xs">Orígenes de Datos e Impacto:</p>
                                                         <ul className="list-disc pl-4 space-y-1.5">
                                                             <li>
@@ -1288,10 +1288,10 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
 
                                 {/* Academic Performance Chart */}
                                 {selectedCourseId === "all" ? (
-                                <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                <Card className="col-span-1 lg:col-span-2 shadow-xs border-border/70 rounded-2xl bg-card">
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
-                                            <GraduationCap className="w-5 h-5 text-indigo-500" />
+                                            <GraduationCap className="w-5 h-5 text-primary" />
                                             Rendimiento Académico Global
                                         </CardTitle>
                                         <CardDescription>Promedio de calificaciones ponderadas en las actividades de cada materia.</CardDescription>
@@ -1308,11 +1308,11 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                                     />
                                                     <Legend />
-                                                    <Bar dataKey="promedio" name="Nota Promedio" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                                                    <Bar dataKey="promedio" name="Nota Promedio" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={60} />
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         ) : (
-                                            <div className="flex items-center justify-center h-full text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed">
+                                            <div className="flex items-center justify-center h-full text-muted-foreground bg-muted/30 rounded-xl border border-dashed border-border/60">
                                                 No hay suficientes calificaciones registradas
                                             </div>
                                         )}
@@ -1320,10 +1320,10 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                 </Card>
                                 ) : (
                                 /* Per-Student Course Performance */
-                                <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
+                                <Card className="col-span-1 lg:col-span-2 shadow-xs border-border/70 rounded-2xl bg-card">
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
-                                            <BarChart className="w-5 h-5 text-indigo-500" />
+                                            <BarChart className="w-5 h-5 text-primary" />
                                             Rendimiento Individual por Materia
                                         </CardTitle>
                                         <CardDescription>Visualiza las calificaciones de cada aprendiz en la materia seleccionada.</CardDescription>

@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ToolsDashboard } from "@/features/tools/components/ToolsDashboard";
+import { courseService } from "@/features/teacher/services/courseService";
 
 export const metadata = {
     title: "Centro de Herramientas Académicas | AcademiX",
@@ -17,9 +18,13 @@ export default async function TeacherToolsPage() {
         redirect("/dashboard");
     }
 
+    const groups = role === "teacher"
+        ? await courseService.getTeacherGroups(session.user.id)
+        : [];
+
     return (
-        <div className="p-4 md:p-6 lg:p-8 max-w-[1900px] mx-auto w-full">
-            <ToolsDashboard />
+        <div className="w-full max-w-[1900px] mx-auto h-full flex-1 flex flex-col min-h-0">
+            <ToolsDashboard initialGroups={groups} userRole="teacher" />
         </div>
     );
 }

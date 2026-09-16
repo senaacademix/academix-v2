@@ -48,61 +48,65 @@ export function CreditsModal() {
                     <p>Créditos</p>
                 </TooltipContent>
             </Tooltip>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Créditos de la Aplicación</DialogTitle>
-                    <DialogDescription>
-                        Información sobre el autor y desarrollo.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="flex flex-col items-center justify-center py-6 text-center space-y-4">
-                    <div className="p-4 bg-primary/10 rounded-full">
-                        <Info className="h-12 w-12 text-primary" />
-                    </div>
-                    <div className="space-y-4 w-full max-w-sm">
-                        {/* Desarrolladores del Proyecto (ALTAMENTE RESALTADO) */}
-                        <div className="relative overflow-hidden p-6 rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-background to-teal-500/10 shadow-sm transition-all hover:shadow-md hover:border-primary/40 text-center space-y-3">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
-                            <div className="flex items-center justify-center gap-2">
-                                <Code2 className="h-4.5 w-4.5 text-primary animate-pulse shrink-0" />
-                                <span className="text-[10px] text-primary font-black tracking-widest uppercase">
-                                    Desarrolladores del Proyecto
-                                </span>
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="text-base font-extrabold text-foreground tracking-tight hover:scale-[1.01] transition-transform cursor-default">
-                                    Jhon Fredy Valencia Gómez
-                                </h3>
-                                <h3 className="text-base font-extrabold text-foreground tracking-tight hover:scale-[1.01] transition-transform cursor-default">
-                                    Deimer Andrés Miranda Montoya
-                                </h3>
-                                <h3 className="text-base font-extrabold text-foreground tracking-tight hover:scale-[1.01] transition-transform cursor-default">
-                                    Jaime Alberto Zapata Valencia
-                                </h3>
-                            </div>
+            <DialogContent className="sm:max-w-md w-[95vw] rounded-3xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card/95 backdrop-blur-xl">
+                {/* Hero Header */}
+                <div className="relative overflow-hidden p-5 sm:p-6 bg-primary/5 border-b border-primary/15">
+                    <Info className="absolute -right-3 -bottom-5 w-32 h-32 text-primary/5 pointer-events-none select-none" />
+                    
+                    <div className="relative z-10 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-2xs shrink-0">
+                            <Info className="w-5 h-5 text-primary" />
                         </div>
-
-                        {/* Líder del Proyecto */}
-                        <div className="p-3.5 rounded-2xl bg-muted/40 border border-muted/50 transition-all hover:bg-muted/60 text-center space-y-0.5">
-                            <div className="flex items-center justify-center gap-1.5 text-muted-foreground/80">
-                                <span className="text-[9px] font-bold tracking-widest uppercase">
-                                    Líder del Proyecto
-                                </span>
-                            </div>
-                            <h4 className="text-sm font-semibold text-muted-foreground">
-                                Boris David Gómez Guerrero
-                            </h4>
-                        </div>
-
-                        {/* Fábrica de Software SENA */}
-                        <div className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                            <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 tracking-wide">
-                                Fábrica de Software SENA
-                            </span>
+                        <div>
+                            <DialogTitle className="text-xl font-black tracking-tight text-foreground">
+                                Créditos del Sistema
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-muted-foreground">
+                                Información sobre el desarrollo institucional de AcademiX
+                            </DialogDescription>
                         </div>
                     </div>
-                    <p className="text-sm text-muted-foreground pt-4">
+                </div>
+
+                <div className="p-5 sm:p-6 space-y-4">
+                    {/* Desarrolladores del Proyecto */}
+                    <div className="relative overflow-hidden p-5 rounded-2xl border border-primary/25 bg-primary/5 shadow-2xs text-center space-y-3">
+                        <div className="flex items-center justify-center gap-1.5 text-primary font-black text-[10.5px] uppercase tracking-wider">
+                            <Code2 className="h-4 w-4 text-primary animate-pulse shrink-0" />
+                            <span>Desarrolladores del Proyecto</span>
+                        </div>
+                        <div className="space-y-1.5">
+                            <h3 className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">
+                                Jhon Fredy Valencia Gómez
+                            </h3>
+                            <h3 className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">
+                                Deimer Andrés Miranda Montoya
+                            </h3>
+                            <h3 className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">
+                                Jaime Alberto Zapata Valencia
+                            </h3>
+                        </div>
+                    </div>
+
+                    {/* Líder del Proyecto */}
+                    <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 text-center space-y-0.5">
+                        <span className="text-[10px] font-bold tracking-wider uppercase text-muted-foreground">
+                            Líder del Proyecto
+                        </span>
+                        <h4 className="text-xs sm:text-sm font-bold text-foreground">
+                            Boris David Gómez Guerrero
+                        </h4>
+                    </div>
+
+                    {/* Fábrica de Software SENA */}
+                    <div className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-primary/10 border border-primary/20 text-primary">
+                        <Building2 className="h-4 w-4 shrink-0" />
+                        <span className="text-xs font-bold tracking-wide">
+                            Fábrica de Software SENA
+                        </span>
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground text-center pt-1">
                         © {new Date().getFullYear()} AcademiX. Todos los derechos reservados.
                     </p>
                 </div>

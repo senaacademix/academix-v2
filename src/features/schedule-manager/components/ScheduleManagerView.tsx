@@ -311,22 +311,22 @@ export function ScheduleManagerView({
   return (
     <div className="flex flex-col gap-6 w-full min-w-0">
       {/* Header Banner */}
-      <div className="relative rounded-3xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 p-6 sm:p-8 backdrop-blur-2xl shadow-md dark:shadow-xl overflow-hidden transition-colors">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/15 blur-[100px] rounded-full pointer-events-none" />
+      <div className="relative rounded-2xl sm:rounded-3xl bg-primary/5 border border-primary/20 p-5 sm:p-7 overflow-hidden shadow-2xs">
+        <CalendarDays className="absolute -right-3 -bottom-6 w-36 h-36 text-primary/5 pointer-events-none select-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
               <span>Gestión de Horarios y Eventos</span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-black text-foreground tracking-tight">
               Programación de{" "}
-              <span className="bg-gradient-to-r from-slate-900 via-slate-700 to-primary dark:from-white dark:via-slate-200 dark:to-primary bg-clip-text text-transparent">
+              <span className="text-primary">
                 Horarios y Eventos
               </span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-3xl leading-relaxed">
               Administra períodos académicos, franjas horarias por grupo, disponibilidad y cualificación de instructores, cronograma de eventos institucionales, control de novedades y publicación de horarios oficiales con exportación a PDF y Excel.
             </p>
           </div>
@@ -338,7 +338,7 @@ export function ScheduleManagerView({
                   variant="outline"
                   size="icon"
                   onClick={() => setIsHelpModalOpen(true)}
-                  className="w-10 h-10 rounded-2xl border-slate-300/80 dark:border-slate-700 bg-background/80 hover:bg-muted/80 text-foreground shadow-2xs hover:scale-105 transition-all"
+                  className="w-10 h-10 rounded-2xl border-border/80 bg-background/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
                 >
                   <HelpCircle className="w-5 h-5 text-primary" />
                 </Button>
@@ -350,7 +350,7 @@ export function ScheduleManagerView({
 
             <Button
               onClick={handleOpenCreateBasic}
-              className="rounded-2xl gap-2 font-semibold shadow-md bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-[1.02]"
+              className="rounded-2xl gap-2 font-bold shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-[1.02]"
             >
               <Plus className="w-4 h-4" />
               Nuevo Horario
@@ -359,11 +359,11 @@ export function ScheduleManagerView({
         </div>
       </div>
 
-      {/* Stats Summary Widgets (3 Columns - No text overlap) */}
+      {/* Stats Summary Widgets (3 Columns - Theme Harmonized) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-2xs flex items-center justify-between gap-3 min-w-0">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
               <Calendar className="w-4 h-4" />
             </div>
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider truncate">Horarios</span>
@@ -371,21 +371,21 @@ export function ScheduleManagerView({
           <span className="text-xl font-black text-foreground tracking-tight shrink-0">{totalSchedules}</span>
         </div>
 
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-2xs flex items-center justify-between gap-3 min-w-0">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">Horario Vigente:</span>
           </div>
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 truncate text-right min-w-0" title={activeSchedule?.name || "Sin horario activo"}>
+          <span className="text-xs font-bold text-primary truncate text-right min-w-0" title={activeSchedule?.name || "Sin horario activo"}>
             {activeSchedule ? activeSchedule.name : "Ninguno"}
           </span>
         </div>
 
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/80 shadow-2xs flex items-center justify-between gap-3 min-w-0">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
               <Users className="w-4 h-4" />
             </div>
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider truncate">Grupos Vigentes</span>

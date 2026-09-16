@@ -272,7 +272,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {displayPrograms.length > 0 && (role === "gestor" || role === "observer") && (
           <div className="px-3.5 py-2.5 mx-2 mb-2 rounded-2xl bg-muted/30 border border-border/60 flex flex-col gap-1.5 group-data-[collapsible=icon]:hidden animate-in fade-in duration-300">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <div className="w-5 h-5 rounded-md bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
                 {role === "observer" ? <Eye className="w-3 h-3" /> : <School className="w-3 h-3" />}
               </div>
               <span>{role === "observer" ? "Programa Observado" : "Programa de Formación"}</span>

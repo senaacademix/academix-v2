@@ -4,10 +4,17 @@ import React, { Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ToolsHub } from "./ToolsHub";
 import { SofiaReportsTool } from "./SofiaReportsTool";
+import { TeacherRouletteTool } from "./TeacherRouletteTool";
+import { TeacherGroupGeneratorTool } from "./TeacherGroupGeneratorTool";
 import { ArrowLeft, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-function ToolsDashboardContent() {
+interface ToolsDashboardProps {
+    initialGroups?: any[];
+    userRole?: string;
+}
+
+function ToolsDashboardContent({ initialGroups = [], userRole = "teacher" }: ToolsDashboardProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -23,22 +30,43 @@ function ToolsDashboardContent() {
     const handleBackToHub = () => {
         const params = new URLSearchParams(searchParams.toString());
         params.delete("tool");
+        params.delete("groupId");
         const query = params.toString();
         router.push(query ? `${pathname}?${query}` : pathname);
     };
 
     if (selectedToolId === "sofia-reports") {
         return (
-            <div className="space-y-4 animate-in fade-in duration-300">
+            <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
                 <SofiaReportsTool onBack={handleBackToHub} />
             </div>
         );
     }
 
-    return <ToolsHub onSelectTool={handleSelectTool} />;
+    if (selectedToolId === "roulette") {
+        return (
+            <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
+                <TeacherRouletteTool groups={initialGroups} onBack={handleBackToHub} />
+            </div>
+        );
+    }
+
+    if (selectedToolId === "group-generator") {
+        return (
+            <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
+                <TeacherGroupGeneratorTool groups={initialGroups} onBack={handleBackToHub} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full h-full flex-1 flex flex-col min-h-0">
+            <ToolsHub onSelectTool={handleSelectTool} userRole={userRole} />
+        </div>
+    );
 }
 
-export function ToolsDashboard() {
+export function ToolsDashboard({ initialGroups = [], userRole = "teacher" }: ToolsDashboardProps) {
     return (
         <Suspense
             fallback={
@@ -48,7 +76,7 @@ export function ToolsDashboard() {
                 </div>
             }
         >
-            <ToolsDashboardContent />
+            <ToolsDashboardContent initialGroups={initialGroups} userRole={userRole} />
         </Suspense>
     );
 }

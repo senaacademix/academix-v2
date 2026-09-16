@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Save, Trash2, Edit, Users, Search, UsersRound, Link2 } from "lucide-react";
+import { Plus, Save, Trash2, Edit, Users, Search, UsersRound, Link2, GraduationCap } from "lucide-react";
 import MDEditor from "@uiw/react-md-editor";
 import { getCourseWorkGroups } from "../actions/workGroupActions";
 import { WorkGroupManagerDialog } from "./WorkGroupManagerDialog";
@@ -336,59 +336,73 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
 
   return (
     <div className="space-y-6 w-full min-w-0 max-w-full">
-      <Card>
-        <CardContent className="flex flex-col lg:flex-row gap-4 items-center justify-between p-4 bg-muted/20 border-b">
-          <div className="flex-1 w-full max-w-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="w-full sm:max-w-[200px]">
-              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                <SelectTrigger className="bg-background shadow-sm h-9 border-border/60 transition-colors hover:border-border">
-                  <SelectValue placeholder="Materia" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="relative w-full sm:max-w-[300px]">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar aprendiz..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 bg-background shadow-sm border-border/60 w-full"
-              />
-            </div>
+      {/* Header Hero Banner */}
+      <div className="bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 relative overflow-hidden shadow-2xs">
+        <GraduationCap className="absolute right-0 top-0 w-64 h-64 text-primary/5 -translate-y-1/4 translate-x-1/4 pointer-events-none" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Calificaciones y Actividades</h3>
+            <p className="text-xs text-muted-foreground max-w-2xl">
+              Administración de actividades evaluativas, ponderación de notas y registro de calificaciones para los aprendices del grupo.
+            </p>
           </div>
-          <div className="flex gap-2 items-center flex-wrap justify-center lg:justify-end w-full lg:w-auto">
-            <div className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-md border border-border/60 shadow-sm w-full sm:w-auto justify-center sm:justify-start">
-               <Switch checked={usePercentageWeights} onCheckedChange={handleToggleWeightMode} id="weight-mode" className="scale-90 data-[state=checked]:bg-primary" />
-               <Label htmlFor="weight-mode" className="text-xs font-semibold cursor-pointer whitespace-nowrap">Porcentajes</Label>
-               {usePercentageWeights && (
-                   <Badge variant="outline" className={`ml-2 ${totalWeight > 100 ? 'border-red-500 text-red-600 bg-red-50' : 'bg-muted/50 text-muted-foreground'}`}>
-                     {totalWeight}%
-                   </Badge>
-               )}
-            </div>
-            <Button size="sm" variant="outline" className="h-9 gap-2 shadow-sm w-full sm:w-auto justify-center" onClick={() => setIsWorkGroupDialogOpen(true)}>
-              <UsersRound className="w-3.5 h-3.5" />
-              Equipos
-            </Button>
-            <Button size="sm" variant="outline" className="h-9 gap-2 shadow-sm w-full sm:w-auto justify-center" onClick={() => {
-              setActivityForm({ id: "", title: "", description: "", weight: 20, allowSubmissionLink: false });
-              setIsActivityDialogOpen(true);
-            }}>
-              <Plus className="w-3.5 h-3.5" />
-              Nueva Actividad
-            </Button>
-            <Button size="sm" onClick={handleSaveAllActivities} disabled={isPending} className="h-9 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm px-4 w-full sm:w-auto justify-center">
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <Button size="sm" onClick={handleSaveAllActivities} disabled={isPending} className="h-10 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm px-4 rounded-xl font-bold cursor-pointer">
               <Save className="w-4 h-4" />
               Guardar Todo
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Controls Bar */}
+      <div className="flex flex-col lg:flex-row gap-3 items-center justify-between p-3.5 bg-muted/30 border border-border/70 rounded-2xl shadow-2xs">
+        <div className="flex-1 w-full max-w-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="w-full sm:max-w-[220px]">
+            <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+              <SelectTrigger className="bg-background shadow-2xs h-10 rounded-xl border-border/70 font-semibold text-xs sm:text-sm">
+                <SelectValue placeholder="Seleccionar Materia" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl shadow-xl">
+                {courses.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id} className="font-semibold cursor-pointer">{c.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="relative w-full sm:max-w-[300px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar aprendiz..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 rounded-xl bg-background shadow-2xs border-border/70 text-xs sm:text-sm font-medium focus-visible:ring-2 focus-visible:ring-primary/20"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 items-center flex-wrap justify-center lg:justify-end w-full lg:w-auto">
+          <div className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-xl border border-border/70 shadow-2xs w-full sm:w-auto justify-center sm:justify-start">
+             <Switch checked={usePercentageWeights} onCheckedChange={handleToggleWeightMode} id="weight-mode" className="scale-75 data-[state=checked]:bg-primary cursor-pointer" />
+             <Label htmlFor="weight-mode" className="text-xs font-bold cursor-pointer whitespace-nowrap">Porcentajes</Label>
+             {usePercentageWeights && (
+                 <Badge variant="outline" className={`ml-2 text-[11px] font-extrabold ${totalWeight > 100 ? 'border-red-500 text-red-600 bg-red-50' : 'bg-primary/10 text-primary border-primary/20'}`}>
+                   {totalWeight}%
+                 </Badge>
+             )}
+          </div>
+          <Button size="sm" variant="outline" className="h-10 px-3.5 rounded-xl font-bold border-border/70 hover:bg-primary/10 hover:text-primary gap-1.5 shadow-2xs w-full sm:w-auto justify-center cursor-pointer" onClick={() => setIsWorkGroupDialogOpen(true)}>
+            <UsersRound className="w-4 h-4 text-primary" />
+            Equipos
+          </Button>
+          <Button size="sm" variant="outline" className="h-10 px-3.5 rounded-xl font-bold border-border/70 hover:bg-primary/10 hover:text-primary gap-1.5 shadow-2xs w-full sm:w-auto justify-center cursor-pointer" onClick={() => {
+            setActivityForm({ id: "", title: "", description: "", weight: 20, allowSubmissionLink: false });
+            setIsActivityDialogOpen(true);
+          }}>
+            <Plus className="w-4 h-4 text-primary" />
+            Nueva Actividad
+          </Button>
+        </div>
+      </div>
 
       {loading ? (
         <div className="py-12 text-center text-muted-foreground animate-pulse">Cargando actividades...</div>
@@ -397,7 +411,7 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
           No hay actividades creadas en esta materia.
         </div>
       ) : (
-        <Card className="w-full min-w-0 border-0 ring-1 ring-border shadow-sm rounded-xl overflow-hidden">
+        <Card className="w-full min-w-0 border border-border/70 shadow-2xs rounded-2xl overflow-hidden bg-card">
           <div className="w-full overflow-x-auto">
             <Table className="min-w-[800px]">
               <TableHeader className="bg-muted/50 backdrop-blur-md sticky top-0 z-30">

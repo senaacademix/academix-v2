@@ -13,55 +13,57 @@ import { TOOLS_REGISTRY } from "../constants/toolsRegistry";
 
 interface ToolsHubProps {
     onSelectTool: (toolId: string) => void;
+    userRole?: string;
 }
 
-export function ToolsHub({ onSelectTool }: ToolsHubProps) {
-    const availableTools = TOOLS_REGISTRY.filter((t) => t.status === "available");
+export function ToolsHub({ onSelectTool, userRole = "teacher" }: ToolsHubProps) {
+    const availableTools = TOOLS_REGISTRY.filter(
+        (t) => t.status === "available" && (!t.allowedRoles || t.allowedRoles.includes(userRole as any))
+    );
 
     return (
         <div className="space-y-6 pb-16 animate-in fade-in duration-300">
-            {/* Main Institutional Header Banner */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-card via-card to-muted/40 p-6 md:p-8 border border-border/80 shadow-xs">
+            {/* Signature Institutional Hero Banner */}
+            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-primary/5 border border-primary/20 p-5 sm:p-7 lg:p-8 shadow-2xs">
+                <Wrench className="absolute -right-3 -bottom-6 w-36 h-36 text-primary/5 pointer-events-none select-none" />
+
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-2 max-w-2xl">
                         <div className="flex items-center gap-2.5">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-2xs">
+                            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-2xs shrink-0">
                                 <Wrench className="w-5 h-5" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight">
-                                        Centro de Herramientas
+                                    <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+                                        Centro de <span className="text-primary">Herramientas</span>
                                     </h1>
                                     <Badge
                                         variant="outline"
-                                        className="text-[10px] py-0.5 px-2 bg-primary/5 text-primary border-primary/20 font-semibold"
+                                        className="text-[10.5px] py-0.5 px-2.5 bg-primary/10 text-primary border-primary/20 font-bold uppercase tracking-wider"
                                     >
                                         AcademiX Hub
                                     </Badge>
                                 </div>
                             </div>
                         </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Panel modular de herramientas y utilidades independientes diseñadas para optimizar la gestión formativa, análisis de juicios evaluativos y organización curricular de forma 100% autónoma.
+                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                            Panel modular de herramientas y utilidades pedagógicas diseñadas para dinamizar la formación, organizar equipos de trabajo y auditar juicios evaluativos de forma 100% autónoma.
                         </p>
                     </div>
 
                     {/* Stats Pill */}
-                    <div className="flex items-center gap-3 bg-muted/60 dark:bg-muted/30 p-2 rounded-xl border border-border/60 text-xs text-muted-foreground shrink-0">
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-card border border-border/50 text-foreground font-medium shadow-2xs">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>{availableTools.length} {availableTools.length === 1 ? "Disponible" : "Disponibles"}</span>
+                    <div className="flex items-center gap-3 bg-muted/60 dark:bg-muted/30 p-2 rounded-2xl border border-border/60 text-xs text-muted-foreground shrink-0">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card border border-border/50 text-foreground font-bold shadow-2xs">
+                            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            <span>{availableTools.length} {availableTools.length === 1 ? "Herramienta" : "Herramientas"}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-muted-foreground">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>Local & Seguro</span>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-muted-foreground font-medium">
+                            <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                            <span>100% Local</span>
                         </div>
                     </div>
                 </div>
-
-                {/* Decorative background element */}
-                <div className="absolute -right-16 -top-16 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
             </div>
 
             {/* Section Title */}

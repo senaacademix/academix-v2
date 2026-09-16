@@ -61,10 +61,19 @@ export default async function Page({
                 />
             </TabsContent>
             <TabsContent value="roulette" className="mt-0 outline-none">
-                <Roulette students={students} courseId={courseId} />
+                <Roulette 
+                    students={students} 
+                    courseId={courseId} 
+                    groupName={course.title}
+                    groupCode={(course as any).code}
+                />
             </TabsContent>
             <TabsContent value="groups" className="mt-0 outline-none">
-                <GroupGenerator students={students} />
+                <GroupGenerator 
+                    students={students} 
+                    groupName={course.title}
+                    groupCode={(course as any).code}
+                />
             </TabsContent>
 
             <TabsContent value="grades" className="mt-0 outline-none">

@@ -68,15 +68,17 @@ export function NavUser({
   const getRoleBadgeLabel = () => {
     switch (userRole) {
       case "admin":
-        return { label: "Administrador", color: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 shadow-2xs" };
+        return { label: "Administrador", color: "bg-primary/10 text-primary border-primary/25 shadow-2xs" };
       case "gestor":
-        return { label: "Gestor Académico", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 shadow-2xs" };
+        return { label: "Gestor Académico", color: "bg-primary/10 text-primary border-primary/25 shadow-2xs" };
       case "teacher":
-        return { label: "Instructor", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 shadow-2xs" };
+        return { label: "Instructor", color: "bg-primary/10 text-primary border-primary/25 shadow-2xs" };
       case "student":
-        return { label: "Aprendiz", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 shadow-2xs" };
+        return { label: "Aprendiz", color: "bg-primary/10 text-primary border-primary/25 shadow-2xs" };
+      case "observer":
+        return { label: "Observador", color: "bg-primary/10 text-primary border-primary/25 shadow-2xs" };
       default:
-        return { label: "Usuario", color: "bg-primary/15 text-primary border-primary/30 shadow-2xs" };
+        return { label: "Usuario", color: "bg-primary/10 text-primary border-primary/25 shadow-2xs" };
     }
   };
 

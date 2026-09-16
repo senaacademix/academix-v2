@@ -132,11 +132,11 @@ export function UnifiedUserManagement({
           </div>
 
           <div className="flex items-center gap-2.5 self-start md:self-auto">
-            <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-2xl bg-muted/60 p-1.5 gap-1.5 border border-border/50 shadow-xs">
+            <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-2xl bg-muted/60 dark:bg-muted/30 p-1.5 gap-1.5 border border-border/60 shadow-2xs">
               {/* Tab 1: Aprendices */}
               <TabsTrigger
                 value="students"
-                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all shrink-0"
+                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border-border/70 border border-transparent transition-all shrink-0"
               >
                 <GraduationCap className="w-4 h-4" />
                 <span>Aprendices</span>
@@ -151,13 +151,13 @@ export function UnifiedUserManagement({
               {/* Tab 2: Instructores */}
               <TabsTrigger
                 value="teachers"
-                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm transition-all shrink-0"
+                className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border-border/70 border border-transparent transition-all shrink-0"
               >
-                <School className="w-4 h-4 text-indigo-600" />
+                <School className="w-4 h-4" />
                 <span>Instructores</span>
                 <Badge
                   variant="secondary"
-                  className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 rounded-lg"
+                  className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-primary/10 text-primary border-primary/20 rounded-lg"
                 >
                   {teacherData.initialTeachers.length}
                 </Badge>
@@ -167,13 +167,13 @@ export function UnifiedUserManagement({
               {currentUserRole === "admin" && (
                 <TabsTrigger
                   value="admins"
-                  className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-background data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm transition-all shrink-0"
+                  className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border-border/70 border border-transparent transition-all shrink-0"
                 >
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <ShieldCheck className="w-4 h-4" />
                   <span>Administradores y Gestores</span>
                   <Badge
                     variant="secondary"
-                    className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 rounded-lg"
+                    className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-primary/10 text-primary border-primary/20 rounded-lg"
                   >
                     {adminData.initialUsers.length}
                   </Badge>
@@ -198,7 +198,7 @@ export function UnifiedUserManagement({
         </div>
 
         {/* Tab 1: Estudiantes (con sub-pestañas para Directorio vs Planes de Mejoramiento) */}
-        <TabsContent value="students" className="m-0 focus-visible:outline-hidden space-y-6">
+        <TabsContent value="students" className="m-0 focus-visible:outline-hidden space-y-6 animate-in fade-in-50 duration-200">
           <Tabs
             value={activeStudentSubTab}
             onValueChange={handleStudentSubTabChange}
@@ -206,10 +206,10 @@ export function UnifiedUserManagement({
           >
             <div className="flex items-center justify-between w-full overflow-x-auto scrollbar-none">
               <div className="flex items-center gap-2">
-                <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-xl bg-muted/50 p-1 gap-1 border border-border/40">
+                <TabsList className="inline-flex max-w-full overflow-x-auto scrollbar-none w-auto h-auto rounded-xl bg-muted/60 dark:bg-muted/30 p-1 gap-1 border border-border/60">
                   <TabsTrigger
                     value="directory"
-                    className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-xs shrink-0"
+                    className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border-border/70 border border-transparent shrink-0"
                   >
                     <Users className="w-3.5 h-3.5" />
                     <span>Directorio y Matrícula ({studentData.totalCount})</span>
@@ -217,9 +217,9 @@ export function UnifiedUserManagement({
 
                   <TabsTrigger
                     value="plans"
-                    className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:text-rose-600 data-[state=active]:shadow-xs shrink-0"
+                    className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold gap-1.5 text-muted-foreground hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border-border/70 border border-transparent shrink-0"
                   >
-                    <ClipboardList className="w-3.5 h-3.5 text-rose-600" />
+                    <ClipboardList className="w-3.5 h-3.5" />
                     <span>Planes de Mejoramiento ({studentData.plans.length})</span>
                   </TabsTrigger>
                 </TabsList>
@@ -243,7 +243,7 @@ export function UnifiedUserManagement({
             </div>
 
             {/* Sub-Pestaña A: Directorio de Estudiantes */}
-            <TabsContent value="directory" className="m-0 focus-visible:outline-hidden">
+            <TabsContent value="directory" className="m-0 focus-visible:outline-hidden animate-in fade-in-50 duration-200">
               <UserManagement
                 initialUsers={studentData.initialUsers}
                 totalCount={studentData.totalCount}
@@ -257,14 +257,14 @@ export function UnifiedUserManagement({
             </TabsContent>
 
             {/* Sub-Pestaña B: Planes de Mejoramiento */}
-            <TabsContent value="plans" className="m-0 focus-visible:outline-hidden">
+            <TabsContent value="plans" className="m-0 focus-visible:outline-hidden animate-in fade-in-50 duration-200">
               <AdminImprovementPlans plans={studentData.plans} hideMainHeader={true} />
             </TabsContent>
           </Tabs>
         </TabsContent>
 
         {/* Tab 2: Docentes */}
-        <TabsContent value="teachers" className="m-0 focus-visible:outline-hidden">
+        <TabsContent value="teachers" className="m-0 focus-visible:outline-hidden animate-in fade-in-50 duration-200">
           <TeacherUsersManagement
             initialTeachers={teacherData.initialTeachers}
             programId={teacherData.programId}
@@ -275,7 +275,7 @@ export function UnifiedUserManagement({
 
         {/* Tab 3: Coordinadores y Gestores */}
         {currentUserRole === "admin" && (
-          <TabsContent value="admins" className="m-0 focus-visible:outline-hidden">
+          <TabsContent value="admins" className="m-0 focus-visible:outline-hidden animate-in fade-in-50 duration-200">
             <AdminUsersManagement
               initialUsers={adminData.initialUsers}
               programs={adminData.programs}
