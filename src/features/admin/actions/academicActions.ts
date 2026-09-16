@@ -749,6 +749,9 @@ export async function registerStudentManualAction(data: {
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
+    revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
     return result;
 }
 
@@ -1249,9 +1252,12 @@ export async function registerTeacherManualAction(data: {
 
         revalidatePath("/dashboard/admin/courses");
         revalidatePath("/dashboard/gestor/courses");
+        revalidatePath("/dashboard/admin/users");
+        revalidatePath("/dashboard/gestor/users");
         if (data.programId) {
             revalidatePath(`/dashboard/admin/courses?programId=${data.programId}`);
             revalidatePath(`/dashboard/gestor/courses?programId=${data.programId}`);
+            revalidatePath(`/dashboard/gestor/users?programId=${data.programId}`);
         }
         return { success: true as const, ...result };
     } catch (error: any) {

@@ -499,6 +499,7 @@ export async function createUserAction(data: {
     role: "teacher" | "admin" | "student";
     password: string;
     groupId?: string;
+    programId?: string;
     identificacion?: string;
     nombres?: string;
     apellido?: string;
@@ -538,6 +539,11 @@ export async function createUserAction(data: {
             role: data.role,
             groupId: data.groupId || null,
             emailVerified: true,
+            ...(data.role === "teacher" && data.programId ? {
+                programs: {
+                    connect: { id: data.programId }
+                }
+            } : {}),
             profile: (data.identificacion || data.nombres || data.apellido) ? {
                 create: {
                     identificacion: data.identificacion || "",
@@ -578,12 +584,20 @@ export async function createUserAction(data: {
         userId: session?.user.id,
         userName: session?.user.name || "Admin",
         userRole: "admin",
-        description: `Usuario ${data.role} creado: ${data.name} (${data.email})`,
-        metadata: { email: data.email, role: data.role },
+        description: `Usuario ${data.role} creado: ${data.name} (${data.email})${data.programId ? ` asociado al programa ID ${data.programId}` : ""}`,
+        metadata: { email: data.email, role: data.role, programId: data.programId, groupId: data.groupId },
         success: true,
     });
 
     revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
+    revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
+    if (data.programId) {
+        revalidatePath(`/dashboard/admin/courses?programId=${data.programId}`);
+        revalidatePath(`/dashboard/gestor/courses?programId=${data.programId}`);
+        revalidatePath(`/dashboard/gestor/users?programId=${data.programId}`);
+    }
     return user;
 }
 

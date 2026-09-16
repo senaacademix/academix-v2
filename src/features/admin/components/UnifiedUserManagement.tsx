@@ -26,6 +26,7 @@ interface UnifiedUserManagementProps {
   teacherData: {
     initialTeachers: TeacherUser[];
     programId?: string;
+    programs?: Array<{ id: string; name: string }>;
   };
   adminData: {
     initialUsers: any[];
@@ -62,6 +63,18 @@ export function UnifiedUserManagement({
     rawSubTab ? currentSubTabFromUrl : defaultSubTab
   );
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+
+  // Reactive counters for tabs
+  const [studentsCount, setStudentsCount] = useState<number>(studentData.totalCount);
+  const [teachersCount, setTeachersCount] = useState<number>(teacherData.initialTeachers.length);
+
+  React.useEffect(() => {
+    setStudentsCount(studentData.totalCount);
+  }, [studentData.totalCount]);
+
+  React.useEffect(() => {
+    setTeachersCount(teacherData.initialTeachers.length);
+  }, [teacherData.initialTeachers.length]);
 
   const basePath = currentUserRole === "gestor" ? "/dashboard/gestor/users" : "/dashboard/admin/users";
 
@@ -144,7 +157,7 @@ export function UnifiedUserManagement({
                   variant="secondary"
                   className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-primary/10 text-primary border-primary/20 rounded-lg"
                 >
-                  {studentData.totalCount}
+                  {studentsCount}
                 </Badge>
               </TabsTrigger>
 
@@ -159,7 +172,7 @@ export function UnifiedUserManagement({
                   variant="secondary"
                   className="ml-1 text-[11px] px-2 py-0.5 font-bold bg-primary/10 text-primary border-primary/20 rounded-lg"
                 >
-                  {teacherData.initialTeachers.length}
+                  {teachersCount}
                 </Badge>
               </TabsTrigger>
 
@@ -253,6 +266,7 @@ export function UnifiedUserManagement({
                 isObserver={studentData.isObserver}
                 hideMainHeader={true}
                 onHelpClick={() => setIsHelpOpen(true)}
+                onUserCreated={() => setStudentsCount((prev) => prev + 1)}
               />
             </TabsContent>
 
@@ -268,8 +282,10 @@ export function UnifiedUserManagement({
           <TeacherUsersManagement
             initialTeachers={teacherData.initialTeachers}
             programId={teacherData.programId}
+            programs={teacherData.programs || studentData.initialPrograms}
             hideMainHeader={true}
             onHelpClick={() => setIsHelpOpen(true)}
+            onTeacherCreated={() => setTeachersCount((prev) => prev + 1)}
           />
         </TabsContent>
 

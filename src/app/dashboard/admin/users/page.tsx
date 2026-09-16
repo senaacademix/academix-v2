@@ -82,6 +82,7 @@ export default async function AdminUsersPage({
                 }}
                 teacherData={{
                     initialTeachers: teachersResult.users as any,
+                    programs: mappedPrograms,
                 }}
                 adminData={{
                     initialUsers: admins as any,

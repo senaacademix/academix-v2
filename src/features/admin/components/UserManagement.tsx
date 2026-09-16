@@ -109,6 +109,7 @@ interface UserManagementProps {
     isObserver?: boolean;
     hideMainHeader?: boolean;
     onHelpClick?: () => void;
+    onUserCreated?: (newUser: User) => void;
 }
 
 export function UserManagement({ 
@@ -119,7 +120,8 @@ export function UserManagement({
     initialPrograms = [],
     isObserver = false,
     hideMainHeader = false,
-    onHelpClick
+    onHelpClick,
+    onUserCreated
 }: UserManagementProps) {
     const router = useRouter();
     const [users, setUsers] = useState<User[]>(initialUsers);
@@ -572,16 +574,17 @@ export function UserManagement({
         }
 
         const passwordToUse = newUserPassword || newIdentificacion;
+        const targetGroupId = newGroupId !== "none" ? newGroupId : (groupFilter !== "all" && groupFilter !== "none" ? groupFilter : undefined);
 
         startTransition(async () => {
             try {
                 const fullName = `${newNombres.trim()} ${newApellido.trim()}`;
                 const user = await createUserAction({
-                    email: newUserEmail.trim(),
+                    email: newUserEmail.trim().toLowerCase(),
                     name: fullName,
                     role: "student",
                     password: passwordToUse,
-                    groupId: newGroupId !== "none" ? newGroupId : undefined,
+                    groupId: targetGroupId,
                     identificacion: newIdentificacion.trim(),
                     nombres: newNombres.trim(),
                     apellido: newApellido.trim(),
@@ -596,6 +599,7 @@ export function UserManagement({
                     image: user.image,
                     createdAt: new Date(user.createdAt),
                     banned: user.banned,
+                    groupId: user.groupId,
                     profile: user.profile ? {
                         identificacion: user.profile.identificacion,
                         nombres: user.profile.nombres,
@@ -612,16 +616,21 @@ export function UserManagement({
                     }
                 };
 
-                setUsers(prev => [newUserItem, ...prev]);
+                if (groupFilter === "all" || groupFilter === targetGroupId) {
+                    setUsers(prev => [newUserItem, ...prev]);
+                }
                 setCurrentTotal(prev => prev + 1);
+                onUserCreated?.(newUserItem);
 
                 toast.success("Aprendiz creado", {
-                    description: `Se ha registrado el aprendiz ${fullName}`
+                    description: `Se ha registrado el aprendiz ${fullName} en la ficha seleccionada.`
                 });
 
-                if (newGroupId !== "none" && groupFilter !== newGroupId && groupFilter !== "all") {
-                    setGroupFilter(newGroupId);
-                    refreshUsers(1, { group: newGroupId });
+                if (targetGroupId && groupFilter !== targetGroupId && groupFilter !== "all") {
+                    setGroupFilter(targetGroupId);
+                    refreshUsers(1, { group: targetGroupId });
+                } else {
+                    refreshUsers(currentPage, { group: groupFilter });
                 }
 
                 setNewIdentificacion("");
@@ -707,7 +716,15 @@ export function UserManagement({
                         </Tooltip>
                     )}
                     {!isObserver && (
-                        <Button onClick={() => setCreateDialogOpen(true)}>
+                        <Button onClick={() => {
+                            if (groupFilter && groupFilter !== "all" && groupFilter !== "none") {
+                                setNewGroupId(groupFilter);
+                            } else {
+                                const defaultGroup = groupsList.find(g => programFilter !== "all" ? g.programId === programFilter : true);
+                                setNewGroupId(defaultGroup?.id || "none");
+                            }
+                            setCreateDialogOpen(true);
+                        }}>
                             <UserPlus className="mr-2 h-4 w-4" />
                             Crear Aprendiz
                         </Button>
@@ -1322,13 +1339,13 @@ export function UserManagement({
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="group">Grupo de Formación</Label>
+                            <Label htmlFor="group">Ficha / Grupo de Formación *</Label>
                             <Select value={newGroupId} onValueChange={setNewGroupId} disabled={isPending}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar grupo" />
+                                    <SelectValue placeholder="Seleccionar ficha" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">Sin grupo</SelectItem>
+                                    <SelectItem value="none">Sin ficha asignada</SelectItem>
                                     {groupsList.map((group) => (
                                         <SelectItem key={group.id} value={group.id}>
                                             {group.name}

@@ -99,6 +99,7 @@ export default async function GestorUsersPage({
                 teacherData={{
                     initialTeachers: teachersResult.users as any,
                     programId: effectiveProgramId,
+                    programs: mappedPrograms,
                 }}
                 adminData={{
                     initialUsers: admins as any,

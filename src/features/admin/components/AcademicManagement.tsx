@@ -1058,6 +1058,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 const updatedGroup = currentProg?.groups.find(g => g.id === currentGroup.id);
                 return updatedGroup || currentGroup;
             });
+
+            setSelectedGroupForStudents(currentGroup => {
+                if (!currentGroup) return null;
+                const currentProg = parsed.find(p => p.groups.some(g => g.id === currentGroup.id));
+                const updatedGroup = currentProg?.groups.find(g => g.id === currentGroup.id);
+                return updatedGroup || currentGroup;
+            });
         } catch (error) {
             toast.error("Error al cargar la información académica");
         }
@@ -1554,7 +1561,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
         startTransition(async () => {
             try {
-                await registerStudentManualAction({
+                const res = await registerStudentManualAction({
                     groupId: selectedGroupForStudents.id,
                     identificacion: manualIdentificacion,
                     nombres: manualNombres,
@@ -1562,6 +1569,66 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     email: manualEmail,
                     telefono: manualTelefono || undefined
                 });
+
+                const newStudentItem = {
+                    id: res.user.id,
+                    name: res.user.name || `${manualNombres.trim()} ${manualApellido.trim()}`,
+                    email: res.user.email,
+                    role: "student",
+                    groupId: selectedGroupForStudents.id,
+                    createdAt: new Date(),
+                    profile: {
+                        identificacion: res.profile.identificacion,
+                        nombres: res.profile.nombres,
+                        apellido: res.profile.apellido,
+                        telefono: res.profile.telefono || null,
+                    }
+                };
+
+                // Inmediatamente actualizar managingGroup para que el panel muestre al aprendiz
+                setManagingGroup(prev => {
+                    if (!prev || prev.id !== selectedGroupForStudents.id) return prev;
+                    const existing = prev.students || [];
+                    const exists = existing.some((s: any) => s.id === newStudentItem.id);
+                    return exists ? prev : { ...prev, students: [...existing, newStudentItem] };
+                });
+
+                // Inmediatamente actualizar el grupo en el modal de asociación
+                setSelectedGroupForStudents(prev => {
+                    if (!prev) return prev;
+                    const existing = prev.students || [];
+                    const exists = existing.some((s: any) => s.id === newStudentItem.id);
+                    return exists ? prev : { ...prev, students: [...existing, newStudentItem] };
+                });
+
+                // Inmediatamente actualizar los grupos del programa seleccionado
+                setSelectedProgram(prev => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        groups: prev.groups.map(g => {
+                            if (g.id === selectedGroupForStudents.id) {
+                                const existing = g.students || [];
+                                const exists = existing.some((s: any) => s.id === newStudentItem.id);
+                                return exists ? g : { ...g, students: [...existing, newStudentItem] };
+                            }
+                            return g;
+                        })
+                    };
+                });
+
+                // Inmediatamente actualizar la lista global de programas
+                setPrograms(prev => prev.map(p => ({
+                    ...p,
+                    groups: p.groups.map(g => {
+                        if (g.id === selectedGroupForStudents.id) {
+                            const existing = g.students || [];
+                            const exists = existing.some((s: any) => s.id === newStudentItem.id);
+                            return exists ? g : { ...g, students: [...existing, newStudentItem] };
+                        }
+                        return g;
+                    })
+                })));
 
                 toast.success("Aprendiz registrado exitosamente");
                 
@@ -1574,6 +1641,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 
                 await refreshAll();
                 await fetchSystemStudents();
+                router.refresh();
             } catch (error: any) {
                 toast.error(error.message || "Error al registrar aprendiz");
             }

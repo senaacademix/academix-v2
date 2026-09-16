@@ -25,6 +25,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -75,19 +82,35 @@ interface TeacherUsersManagementProps {
   initialTeachers: TeacherUser[];
   hideMainHeader?: boolean;
   programId?: string;
+  programs?: Array<{ id: string; name: string }>;
   onHelpClick?: () => void;
+  onTeacherCreated?: (teacher: TeacherUser) => void;
 }
 
 export function TeacherUsersManagement({
   initialTeachers,
   hideMainHeader = false,
   programId,
+  programs,
   onHelpClick,
+  onTeacherCreated,
 }: TeacherUsersManagementProps) {
   const router = useRouter();
   const [teachers, setTeachers] = useState<TeacherUser[]>(initialTeachers);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  const [selectedProgramId, setSelectedProgramId] = useState<string>(
+    programId || (programs && programs.length > 0 ? programs[0].id : "")
+  );
+
+  useEffect(() => {
+    if (programId) {
+      setSelectedProgramId(programId);
+    } else if (programs && programs.length > 0 && !selectedProgramId) {
+      setSelectedProgramId(programs[0].id);
+    }
+  }, [programId, programs]);
 
   useEffect(() => {
     setTeachers(initialTeachers);
@@ -197,6 +220,8 @@ export function TeacherUsersManagement({
       return;
     }
 
+    const effectiveProgramId = programId || selectedProgramId || undefined;
+
     startTransition(async () => {
       try {
         const fullName = `${newNombres.trim()} ${newApellido.trim()}`;
@@ -209,6 +234,7 @@ export function TeacherUsersManagement({
           nombres: newNombres.trim(),
           apellido: newApellido.trim(),
           telefono: newTelefono.trim() || undefined,
+          programId: effectiveProgramId,
         });
 
         const newTeacher: TeacherUser = {
@@ -226,6 +252,7 @@ export function TeacherUsersManagement({
         };
 
         setTeachers((prev) => [newTeacher, ...prev]);
+        onTeacherCreated?.(newTeacher);
         toast.success("Instructor registrado exitosamente");
         setCreateDialogOpen(false);
         resetForm();
@@ -580,6 +607,37 @@ export function TeacherUsersManagement({
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
+            {/* Associated Program Information / Selector */}
+            {programs && programs.length > 1 && !programId ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Programa de Formación *</Label>
+                <Select value={selectedProgramId} onValueChange={setSelectedProgramId} disabled={isPending}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Seleccionar programa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {programs.map((p) => (
+                      <SelectItem key={p.id} value={p.id} className="text-xs">
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              (programId || (programs && programs.length > 0)) && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-muted-foreground">Programa de Formación Asociado</Label>
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                    <BookOpen className="w-4 h-4 shrink-0" />
+                    <span className="text-xs font-semibold truncate">
+                      {programs?.find(p => p.id === (programId || selectedProgramId))?.name || "Programa seleccionado"}
+                    </span>
+                  </div>
+                </div>
+              )
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold">Nombres *</Label>
