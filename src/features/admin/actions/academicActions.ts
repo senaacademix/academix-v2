@@ -1145,6 +1145,11 @@ export async function assignTeacherToProgramAction(programId: string, teacherId:
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
+    if (programId) {
+        revalidatePath(`/dashboard/admin/courses?programId=${programId}`);
+        revalidatePath(`/dashboard/gestor/courses?programId=${programId}`);
+    }
     return { success: true };
 }
 
@@ -1159,10 +1164,10 @@ export async function registerTeacherManualAction(data: {
     try {
         const session = await requireAdmin();
 
-        if (!data.identificacion) return { success: false, error: "El número de documento es obligatorio" };
-        if (!data.nombres) return { success: false, error: "El nombre es obligatorio" };
-        if (!data.apellido) return { success: false, error: "El apellido es obligatorio" };
-        if (!data.email) return { success: false, error: "El correo electrónico es obligatorio" };
+        if (!data.identificacion) return { success: false as const, error: "El número de documento es obligatorio" };
+        if (!data.nombres) return { success: false as const, error: "El nombre es obligatorio" };
+        if (!data.apellido) return { success: false as const, error: "El apellido es obligatorio" };
+        if (!data.email) return { success: false as const, error: "El correo electrónico es obligatorio" };
 
         // Normalizar
         const emailNorm = data.email.trim().toLowerCase();
@@ -1173,14 +1178,14 @@ export async function registerTeacherManualAction(data: {
             where: { email: emailNorm }
         });
         if (existingUser) {
-            return { success: false, error: "Usuario existente" };
+            return { success: false as const, error: "Usuario existente" };
         }
 
         const existingProfile = await prisma.profile.findFirst({
             where: { identificacion: idenNorm }
         });
         if (existingProfile) {
-            return { success: false, error: `Ya existe un perfil registrado con el número de documento: ${idenNorm}` };
+            return { success: false as const, error: `Ya existe un perfil registrado con el número de documento: ${idenNorm}` };
         }
 
         // Hash de la contraseña (contraseña inicial es el número de documento)
@@ -1234,7 +1239,7 @@ export async function registerTeacherManualAction(data: {
             entityId: teacherId,
             userId: session.user.id,
             userName: session.user.name || "Admin",
-            userRole: "admin",
+            userRole: (session.user.role as any) || "admin",
             description: data.programId
                 ? `Profesor registrado manualmente en programa: ${data.nombres} ${data.apellido} (${emailNorm})`
                 : `Profesor registrado manualmente en el banco global: ${data.nombres} ${data.apellido} (${emailNorm})`,
@@ -1243,10 +1248,15 @@ export async function registerTeacherManualAction(data: {
         });
 
         revalidatePath("/dashboard/admin/courses");
-        return { success: true, ...result };
+        revalidatePath("/dashboard/gestor/courses");
+        if (data.programId) {
+            revalidatePath(`/dashboard/admin/courses?programId=${data.programId}`);
+            revalidatePath(`/dashboard/gestor/courses?programId=${data.programId}`);
+        }
+        return { success: true as const, ...result };
     } catch (error: any) {
         console.error("Error in registerTeacherManualAction:", error);
-        return { success: false, error: error.message || "Error al registrar profesor" };
+        return { success: false as const, error: error.message || "Error al registrar profesor" };
     }
 }
 
@@ -1612,6 +1622,11 @@ export async function registerTeachersBulkAction(programId: string | null | unde
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
+    if (programId) {
+        revalidatePath(`/dashboard/admin/courses?programId=${programId}`);
+        revalidatePath(`/dashboard/gestor/courses?programId=${programId}`);
+    }
 
     return {
         successCount,
@@ -1704,6 +1719,7 @@ export async function updateTeacherAction(data: {
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
     return { success: true };
 }
 

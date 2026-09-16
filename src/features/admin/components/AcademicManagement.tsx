@@ -839,6 +839,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [assignStudentsDialogOpen, setAssignStudentsDialogOpen] = useState(false);
     const [selectedGroupForStudents, setSelectedGroupForStudents] = useState<Group | null>(null);
     const [assignTeachersDialogOpen, setAssignTeachersDialogOpen] = useState(false);
+    const [isRegisteringTeacher, setIsRegisteringTeacher] = useState(false);
 
 
     // Group Course Scheduling states
@@ -1045,14 +1046,18 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             
             setPrograms(parsed);
             
-            if (selectedProgram) {
-                const updated = parsed.find(p => p.id === selectedProgram.id);
-                setSelectedProgram(updated || null);
-                if (managingGroup) {
-                    const updatedGroup = updated?.groups.find(g => g.id === managingGroup.id);
-                    setManagingGroup(updatedGroup || null);
-                }
-            }
+            setSelectedProgram(currentSelected => {
+                if (!currentSelected) return null;
+                const updated = parsed.find(p => p.id === currentSelected.id);
+                return updated || currentSelected;
+            });
+
+            setManagingGroup(currentGroup => {
+                if (!currentGroup) return null;
+                const currentProg = parsed.find(p => p.groups.some(g => g.id === currentGroup.id));
+                const updatedGroup = currentProg?.groups.find(g => g.id === currentGroup.id);
+                return updatedGroup || currentGroup;
+            });
         } catch (error) {
             toast.error("Error al cargar la información académica");
         }
@@ -2330,54 +2335,103 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     const handleRegisterTeacherManual = async () => {
         if (!selectedProgram) return;
-        if (!manualTeacherIdentificacion) {
+        if (!manualTeacherIdentificacion.trim()) {
             toast.error("El número de documento es obligatorio");
             return;
         }
-        if (!manualTeacherNombres) {
+        if (!manualTeacherNombres.trim()) {
             toast.error("El nombre es obligatorio");
             return;
         }
-        if (!manualTeacherApellido) {
+        if (!manualTeacherApellido.trim()) {
             toast.error("El apellido es obligatorio");
             return;
         }
-        if (!manualTeacherEmail) {
+        if (!manualTeacherEmail.trim()) {
             toast.error("El correo electrónico es obligatorio");
             return;
         }
 
-        startTransition(async () => {
-            try {
-                const res = await registerTeacherManualAction({
-                    programId: selectedProgram.id,
-                    identificacion: manualTeacherIdentificacion,
-                    nombres: manualTeacherNombres,
-                    apellido: manualTeacherApellido,
-                    email: manualTeacherEmail,
-                    telefono: manualTeacherTelefono || undefined
-                });
+        setIsRegisteringTeacher(true);
+        try {
+            const res = await registerTeacherManualAction({
+                programId: selectedProgram.id,
+                identificacion: manualTeacherIdentificacion.trim(),
+                nombres: manualTeacherNombres.trim(),
+                apellido: manualTeacherApellido.trim(),
+                email: manualTeacherEmail.trim().toLowerCase(),
+                telefono: manualTeacherTelefono.trim() || undefined
+            });
 
-                if (res && !res.success) {
-                    toast.error(res.error || "Error al registrar instructor");
-                    return;
-                }
-
-                toast.success("Instructor registrado exitosamente");
-                
-                // Clear manual inputs
-                setManualTeacherIdentificacion("");
-                setManualTeacherNombres("");
-                setManualTeacherApellido("");
-                setManualTeacherEmail("");
-                setManualTeacherTelefono("");
-                
-                await refreshAll();
-                await fetchSystemTeachers();
-            } catch (error: any) {
-                toast.error(error.message || "Error al registrar instructor");
+            if (!res || !res.success) {
+                toast.error(res?.error || "Error al registrar instructor");
+                return;
             }
-        });
+
+            const fullName = `${manualTeacherNombres.trim()} ${manualTeacherApellido.trim()}`;
+            const createdTeacher: Teacher = {
+                id: res.user.id,
+                name: res.user.name || fullName,
+                email: res.user.email,
+                availabilityLocked: false,
+                qualifiedCoursesLocked: false,
+                profile: {
+                    identificacion: res.profile.identificacion,
+                    nombres: res.profile.nombres,
+                    apellido: res.profile.apellido,
+                    telefono: res.profile.telefono || null,
+                },
+            };
+
+            // 1. Inmediatamente actualizar la lista de instructores del programa seleccionado
+            setSelectedProgram(prev => {
+                if (!prev) return null;
+                const existing = prev.teachers || [];
+                const exists = existing.some(t => t.id === createdTeacher.id);
+                return {
+                    ...prev,
+                    teachers: exists ? existing : [createdTeacher, ...existing]
+                };
+            });
+
+            // 2. Inmediatamente actualizar el array global de programas en el estado
+            setPrograms(prev => prev.map(p => {
+                if (p.id === selectedProgram.id) {
+                    const existing = p.teachers || [];
+                    const exists = existing.some(t => t.id === createdTeacher.id);
+                    return {
+                        ...p,
+                        teachers: exists ? existing : [createdTeacher, ...existing]
+                    };
+                }
+                return p;
+            }));
+
+            // 3. Inmediatamente actualizar teachersList
+            setTeachersList(prev => {
+                const exists = prev.some(t => t.id === createdTeacher.id);
+                return exists ? prev : [createdTeacher, ...prev];
+            });
+
+            // 4. Cerrar el modal y limpiar el formulario
+            setAssignTeachersDialogOpen(false);
+            setManualTeacherIdentificacion("");
+            setManualTeacherNombres("");
+            setManualTeacherApellido("");
+            setManualTeacherEmail("");
+            setManualTeacherTelefono("");
+
+            toast.success("Instructor registrado exitosamente");
+
+            // 5. Sincronizar en segundo plano con el servidor
+            await refreshAll();
+            await fetchSystemTeachers();
+            router.refresh();
+        } catch (error: any) {
+            toast.error(error.message || "Error al registrar instructor");
+        } finally {
+            setIsRegisteringTeacher(false);
+        }
     };
 
     const handleTeacherExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2556,8 +2610,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             toast.success(`¡Todos los instructores (${successCount}) fueron registrados y asignados con éxito!`);
         }
 
+        if (successCount > 0) {
+            setAssignTeachersDialogOpen(false);
+        }
+
         await refreshAll();
         await fetchSystemTeachers();
+        router.refresh();
     };
 
     const handleOpenTeacherAvailability = (teacher: Teacher) => {
@@ -4428,9 +4487,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 <Button 
                                     onClick={handleRegisterTeacherManual} 
                                     className="w-full mt-2 h-9 text-xs"
-                                    disabled={isPending}
+                                    disabled={isPending || isRegisteringTeacher}
                                 >
-                                    {isPending ? "Registrando..." : "Registrar Instructor"}
+                                    {isRegisteringTeacher ? "Registrando..." : "Registrar Instructor"}
                                 </Button>
                             </div>
                         </TabsContent>
