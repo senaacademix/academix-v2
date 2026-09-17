@@ -568,29 +568,26 @@ export function ScheduleGroupSlotsModal({
                                 className="px-2 py-1 rounded-lg border border-input bg-background text-[11px] font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary truncate max-w-[220px]"
                               >
                                 {(() => {
-                                  const normal = (grp.availablePeriods || []).filter((p) => !p.esEspecial);
-                                  const special = (grp.availablePeriods || []).filter((p) => p.esEspecial);
+                                  const periods = grp.availablePeriods || [];
+                                  const grouped = periods.reduce((acc, p) => {
+                                    const tName = p.timelineName || (p.esEspecial ? "Periodos Especiales" : "Jornada Regular");
+                                    if (!acc[tName]) acc[tName] = [];
+                                    acc[tName].push(p);
+                                    return acc;
+                                  }, {} as Record<string, typeof periods>);
+
                                   return (
                                     <>
                                       <option value="none">Sin periodo asignado</option>
-                                      {normal.length > 0 && (
-                                        <optgroup label="Periodos Normales">
-                                          {normal.map((p) => (
+                                      {Object.entries(grouped).map(([tName, pList]) => (
+                                        <optgroup key={tName} label={`Línea: ${tName}`}>
+                                          {pList.map((p) => (
                                             <option key={p.id} value={p.id}>
                                               {p.name}
                                             </option>
                                           ))}
                                         </optgroup>
-                                      )}
-                                      {special.length > 0 && (
-                                        <optgroup label="Periodos Especiales">
-                                          {special.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                              {p.name} (Especial)
-                                            </option>
-                                          ))}
-                                        </optgroup>
-                                      )}
+                                      ))}
                                     </>
                                   );
                                 })()}

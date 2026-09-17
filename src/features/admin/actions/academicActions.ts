@@ -93,9 +93,13 @@ export async function getProgramsAction(programId?: string) {
                     }
                 }
             },
+            timelines: {
+                orderBy: { createdAt: "asc" }
+            },
             periods: {
                 orderBy: { order: "asc" },
                 include: {
+                    timeline: true,
                     courses: {
                         where: { groupId: null },
                         orderBy: { order: "asc" },
@@ -192,6 +196,13 @@ export async function createProgramAction(data: { name: string; description?: st
             endDate: data.endDate || null,
             scheduleTitle: data.scheduleTitle || null,
             maxTeacherHours: data.maxTeacherHours ?? 40,
+            timelines: {
+                create: {
+                    name: `${data.name.trim()} - Jornada Regular`,
+                    description: `Línea de tiempo principal para ${data.name.trim()}`,
+                    isDefault: true,
+                }
+            },
             gestores: data.gestorIds && data.gestorIds.length > 0 ? {
                 connect: data.gestorIds.map(id => ({ id }))
             } : undefined
@@ -299,7 +310,7 @@ export async function deleteProgramAction(id: string) {
 
 // ============ PERIOD CRUD ============
 
-export async function createPeriodAction(data: { name: string; description?: string; programId: string; esEspecial?: boolean }) {
+export async function createPeriodAction(data: { name: string; description?: string; programId: string; esEspecial?: boolean; timelineId?: string | null }) {
     const session = await requireAdmin();
     if (!data.name || data.name.trim().length < 2) {
         throw new Error("El nombre del periodo debe tener al menos 2 caracteres");
@@ -308,12 +319,23 @@ export async function createPeriodAction(data: { name: string; description?: str
         throw new Error("El programa es obligatorio");
     }
 
+    let timelineId = data.timelineId;
+    if (!timelineId) {
+        const defaultTimeline = await prisma.curriculumTimeline.findFirst({
+            where: { programId: data.programId, isDefault: true },
+        }) || await prisma.curriculumTimeline.findFirst({
+            where: { programId: data.programId },
+        });
+        timelineId = defaultTimeline?.id || null;
+    }
+
     const period = await prisma.period.create({
         data: {
             name: data.name,
             description: data.description || null,
             programId: data.programId,
             esEspecial: data.esEspecial ?? false,
+            timelineId: timelineId,
         }
     });
 
@@ -326,7 +348,7 @@ export async function createPeriodAction(data: { name: string; description?: str
         userName: session.user.name || "Admin",
         userRole: "admin",
         description: `Periodo creado: ${period.name}`,
-        metadata: { name: period.name, programId: period.programId },
+        metadata: { name: period.name, programId: period.programId, timelineId: period.timelineId },
         success: true,
     });
 
@@ -334,19 +356,24 @@ export async function createPeriodAction(data: { name: string; description?: str
     return period;
 }
 
-export async function updatePeriodAction(id: string, data: { name: string; description?: string; esEspecial?: boolean }) {
+export async function updatePeriodAction(id: string, data: { name: string; description?: string; esEspecial?: boolean; timelineId?: string | null }) {
     const session = await requireAdmin();
     if (!data.name || data.name.trim().length < 2) {
         throw new Error("El nombre del periodo debe tener al menos 2 caracteres");
     }
 
+    const updateData: any = {
+        name: data.name,
+        description: data.description || null,
+        esEspecial: data.esEspecial ?? false,
+    };
+    if (data.timelineId !== undefined) {
+        updateData.timelineId = data.timelineId;
+    }
+
     const period = await prisma.period.update({
         where: { id },
-        data: {
-            name: data.name,
-            description: data.description || null,
-            esEspecial: data.esEspecial ?? false,
-        }
+        data: updateData,
     });
 
     const { auditLogger } = await import("../services/auditLogger");
@@ -358,7 +385,7 @@ export async function updatePeriodAction(id: string, data: { name: string; descr
         userName: session.user.name || "Admin",
         userRole: "admin",
         description: `Periodo actualizado: ${period.name}`,
-        metadata: { name: period.name },
+        metadata: { name: period.name, timelineId: period.timelineId },
         success: true,
     });
 

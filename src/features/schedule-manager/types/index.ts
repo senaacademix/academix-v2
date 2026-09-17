@@ -72,6 +72,10 @@ export interface AcademicScheduleItem {
     period?: {
       id: string;
       name: string;
+      timeline?: {
+        id: string;
+        name: string;
+      } | null;
     } | null;
     dayOfWeek: DayOfWeek;
     startTime: string;
@@ -127,5 +131,7 @@ export interface AvailableGroupOption {
     id: string;
     name: string;
     esEspecial?: boolean;
+    timelineId?: string | null;
+    timelineName?: string | null;
   }[];
 }

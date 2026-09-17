@@ -100,7 +100,13 @@ export async function getSchedulesAction(programId?: string): Promise<AcademicSc
             period: {
               select: {
                 id: true,
-                name: true
+                name: true,
+                timeline: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
               }
             },
             group: {
@@ -177,6 +183,18 @@ export async function getScheduleByIdAction(id: string): Promise<AcademicSchedul
       include: {
         groupSlots: {
           include: {
+            period: {
+              select: {
+                id: true,
+                name: true,
+                timeline: {
+                  select: {
+                    id: true,
+                    name: true,
+                  }
+                }
+              }
+            },
             group: {
               select: {
                 id: true,
@@ -213,6 +231,8 @@ export async function getScheduleByIdAction(id: string): Promise<AcademicSchedul
         id: slot.id,
         academicScheduleId: slot.academicScheduleId,
         groupId: slot.groupId,
+        periodId: slot.periodId,
+        period: slot.period,
         dayOfWeek: slot.dayOfWeek,
         startTime: slot.startTime,
         endTime: slot.endTime,
@@ -277,7 +297,14 @@ export async function getAvailableGroupsAction(programId?: string): Promise<Avai
               select: {
                 id: true,
                 name: true,
-                esEspecial: true
+                esEspecial: true,
+                timelineId: true,
+                timeline: {
+                  select: {
+                    id: true,
+                    name: true,
+                  }
+                }
               },
               orderBy: { order: "asc" }
             }
@@ -300,7 +327,13 @@ export async function getAvailableGroupsAction(programId?: string): Promise<Avai
       programName: g.program.name,
       periodName: null,
       environmentName: g.environment?.name || null,
-      availablePeriods: (g.program as any).periods || []
+      availablePeriods: ((g.program as any).periods || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        esEspecial: p.esEspecial,
+        timelineId: p.timelineId,
+        timelineName: p.timeline?.name || null,
+      }))
     }));
   } catch (error) {
     console.error("Error al obtener grupos disponibles:", error);

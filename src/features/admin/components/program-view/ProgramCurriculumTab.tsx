@@ -66,8 +66,9 @@ const getCourseIcon = (title: string) => {
 
 export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
     const periods = useMemo(() => program.periods || [], [program.periods]);
+    const timelines = useMemo(() => program.timelines || [], [program.timelines]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [filterType, setFilterType] = useState<"ALL" | "NORMAL" | "SPECIAL">("ALL");
+    const [selectedTimelineFilter, setSelectedTimelineFilter] = useState<string>("ALL");
 
     const [isExportingPdf, setIsExportingPdf] = useState(false);
     const [isExportingExcel, setIsExportingExcel] = useState(false);
@@ -100,13 +101,14 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
         }
     };
 
-    // Filter periods & courses based on search and type
+    // Filter periods & courses based on search and timeline
     const filteredPeriods = useMemo(() => {
         return periods
             .filter((p: any) => {
-                if (filterType === "NORMAL") return !p.esEspecial;
-                if (filterType === "SPECIAL") return p.esEspecial;
-                return true;
+                if (selectedTimelineFilter === "ALL") return true;
+                if (selectedTimelineFilter === "SPECIAL") return p.esEspecial;
+                if (selectedTimelineFilter === "NORMAL") return !p.esEspecial;
+                return p.timelineId ? p.timelineId === selectedTimelineFilter : false;
             })
             .map((p: any) => {
                 const query = searchQuery.toLowerCase().trim();
@@ -130,7 +132,7 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
                 const matchesPeriodName = p.name.toLowerCase().includes(searchQuery.toLowerCase());
                 return matchesPeriodName || p.filteredCourses.length > 0;
             });
-    }, [periods, searchQuery, filterType]);
+    }, [periods, searchQuery, selectedTimelineFilter]);
 
     // Total stats
     const totalPeriods = periods.length;
@@ -139,26 +141,40 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
         return acc + (p.courses || []).reduce((cAcc: number, c: any) => cAcc + (c.weeklyHours || 0), 0);
     }, 0);
 
+    const filterOptions = useMemo(() => {
+        if (timelines.length > 0) {
+            return [
+                { key: "ALL", label: "Todas las Líneas", count: totalPeriods },
+                ...timelines.map((tl: any) => ({
+                    key: tl.id,
+                    label: tl.name,
+                    count: periods.filter((p: any) => p.timelineId ? p.timelineId === tl.id : tl.isDefault).length,
+                }))
+            ];
+        }
+        return [
+            { key: "ALL", label: "Todos los Periodos", count: totalPeriods },
+            { key: "NORMAL", label: "Periodos Regulares", count: periods.filter((p: any) => !p.esEspecial).length },
+            { key: "SPECIAL", label: "Especiales", count: periods.filter((p: any) => p.esEspecial).length },
+        ];
+    }, [timelines, periods, totalPeriods]);
+
     return (
         <div className="space-y-6">
             {/* Top filter bar */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-4 rounded-2xl border border-border/80 shadow-xs">
-                <div className="flex items-center gap-2">
-                    {[
-                        { key: "ALL", label: "Todos los Periodos", count: totalPeriods },
-                        { key: "NORMAL", label: "Periodos Regulares", count: periods.filter((p: any) => !p.esEspecial).length },
-                        { key: "SPECIAL", label: "Especiales", count: periods.filter((p: any) => p.esEspecial).length },
-                    ].map(tab => (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full sm:max-w-[55%] scrollbar-thin">
+                    {filterOptions.map(tab => (
                         <button
                             key={tab.key}
-                            onClick={() => setFilterType(tab.key as any)}
+                            onClick={() => setSelectedTimelineFilter(tab.key)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
-                                filterType === tab.key
+                                selectedTimelineFilter === tab.key
                                     ? "bg-primary text-primary-foreground shadow-xs"
                                     : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
                             }`}
                         >
-                            <span>{tab.label}</span>
+                            <span className="truncate max-w-[180px]">{tab.label}</span>
                             <Badge variant="secondary" className="px-1.5 py-0 text-[10px] h-4 leading-none">
                                 {tab.count}
                             </Badge>
@@ -255,8 +271,13 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
                                             {pIndex + 1}
                                         </div>
                                         <div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center flex-wrap gap-2">
                                                 <h3 className="text-base font-extrabold text-foreground">{period.name}</h3>
+                                                {period.timeline?.name && (
+                                                    <Badge variant="outline" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/30">
+                                                        {period.timeline.name}
+                                                    </Badge>
+                                                )}
                                                 {period.esEspecial && (
                                                     <Badge variant="outline" className="text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20">
                                                         Periodo Especial

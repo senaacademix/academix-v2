@@ -26,6 +26,11 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
       events: true,
       groupSlots: {
         include: {
+          period: {
+            include: {
+              timeline: true,
+            },
+          },
           group: {
             include: {
               program: { select: { id: true, name: true } },
@@ -39,7 +44,11 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
                     },
                   },
                   group: { select: { id: true, name: true } },
-                  period: { select: { id: true, name: true } },
+                  period: {
+                    include: {
+                      timeline: true,
+                    },
+                  },
                 },
               },
             },
@@ -114,9 +123,12 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
               teacher: c.teacher,
               group: c.group,
               environment: slot.group.environment,
-              period: c.period,
-              periodId: c.periodId,
+              period: slot.period || c.period,
+              periodId: slot.periodId || c.periodId,
+              periodName: slot.period?.name || c.period?.name || null,
+              timelineName: slot.period?.timeline?.name || c.period?.timeline?.name || slot.group.program?.name || null,
               programId: slot.group.program?.id,
+              programName: slot.group.program?.name,
               schedules: (c.schedules || []).map((s: any) => ({
                 id: s.id,
                 dayOfWeek: s.dayOfWeek,
@@ -227,9 +239,12 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
               teacher: c.teacher,
               group: c.group,
               environment: slot.group.environment,
-              period: c.period,
-              periodId: c.periodId,
+              period: slot.period || c.period,
+              periodId: slot.periodId || c.periodId,
+              periodName: slot.period?.name || c.period?.name || null,
+              timelineName: slot.period?.timeline?.name || c.period?.timeline?.name || slot.group.program?.name || null,
               programId: slot.group.program?.id,
+              programName: slot.group.program?.name,
               schedules: matchingSchedules.map((s: any) => ({
                 id: s.id,
                 dayOfWeek: s.dayOfWeek,

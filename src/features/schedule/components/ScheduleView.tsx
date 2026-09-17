@@ -732,6 +732,19 @@ export function ScheduleView() {
                             </div>
                         )}
 
+                        {/* Timeline Denomination Badge */}
+                        {(() => {
+                            const firstCourseWithTimeline = courses.find((c: any) => c.timelineName);
+                            const activeTimelineName = (firstCourseWithTimeline as any)?.timelineName;
+                            if (!activeTimelineName) return null;
+                            return (
+                                <div className="text-xs text-primary bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/25 font-bold flex items-center gap-1.5 shadow-2xs">
+                                    <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    <span>Línea: {activeTimelineName}</span>
+                                </div>
+                            );
+                        })()}
+
                         {/* Teacher Hours Stats Badge */}
                         {session?.user?.role === "teacher" && (
                             <div className="text-xs text-foreground bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/20 font-bold flex items-center gap-2 shadow-2xs">
@@ -1042,6 +1055,12 @@ export function ScheduleView() {
                                                                     <span className="flex items-center gap-1 truncate text-foreground/80">
                                                                         <Users className="w-2.5 h-2.5 text-primary shrink-0" />
                                                                         <strong className="font-semibold">Ficha:</strong> {event.course.group.name}
+                                                                    </span>
+                                                                )}
+                                                                {(event.course as any)?.timelineName && (
+                                                                    <span className="flex items-center gap-1 truncate text-primary font-bold text-[9px] bg-primary/10 px-1 py-0.2 rounded" title={`Línea: ${(event.course as any).timelineName}`}>
+                                                                        <BookOpen className="w-2.5 h-2.5 text-primary shrink-0" />
+                                                                        <span className="truncate">{(event.course as any).timelineName}</span>
                                                                     </span>
                                                                 )}
                                                                 {event.course.teacher && (
@@ -1450,6 +1469,28 @@ export function ScheduleView() {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Línea Curricular & Periodo */}
+                                {((selectedCourse as any)?.timelineName || (selectedCourse as any)?.period?.name) && (
+                                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 space-y-1.5">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
+                                            <BookOpen className="w-3.5 h-3.5" />
+                                            <span>Línea Curricular & Periodo</span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {(selectedCourse as any)?.timelineName && (
+                                                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 font-bold text-xs py-1 px-2.5">
+                                                    {(selectedCourse as any).timelineName}
+                                                </Badge>
+                                            )}
+                                            {(selectedCourse as any)?.period?.name && (
+                                                <Badge variant="secondary" className="font-semibold text-xs py-1 px-2.5">
+                                                    {(selectedCourse as any).period.name}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Dates */}
                                 {(selectedCourse?.group?.startDate || selectedCourse?.group?.endDate) && (

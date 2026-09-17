@@ -52,7 +52,7 @@ import {
     AlertCircle, Building, Code, Database, Binary, MessageSquare, Terminal,
     ShieldCheck, Cloud, Rocket, NotebookTabs, Lock as LockIcon, Download,
     Activity, Upload, AlertTriangle, School, Eye, HelpCircle, FileText, Loader2,
-    ImageIcon, Link as LinkIcon
+    ImageIcon, Link as LinkIcon, Copy, Check, MoreVertical
 } from "lucide-react";
 import { generateAndDownloadCurriculumPdf, CurriculumExportOptions } from "../utils/curriculumPdfExport";
 import { Switch } from "@/components/ui/switch";
@@ -82,6 +82,13 @@ import { cn } from "@/lib/utils";
 
 // Server Actions
 import { deleteCourseAction, getAllUsersAction, deleteUserAction } from "@/app/admin-actions";
+import {
+    getProgramTimelinesAction,
+    createTimelineAction,
+    updateTimelineAction,
+    deleteTimelineAction,
+    duplicateTimelineAction,
+} from "../actions/timelineActions";
 import {
     getProgramsAction,
     createProgramAction,
@@ -216,6 +223,17 @@ const getCourseIcon = (title: string) => {
     return NotebookTabs;
 };
 
+interface CurriculumTimeline {
+    id: string;
+    name: string;
+    description: string | null;
+    code?: string | null;
+    isDefault: boolean;
+    programId: string;
+    periods?: Period[];
+    createdAt?: Date;
+}
+
 interface Program {
     id: string;
     name: string;
@@ -226,6 +244,7 @@ interface Program {
     maxTeacherHours?: number | null;
     createdAt: Date;
     periods: Period[];
+    timelines?: CurriculumTimeline[];
     groups: Group[];
     teachers: Teacher[];
     environments?: TrainingEnvironment[];
@@ -239,6 +258,8 @@ interface Period {
     createdAt: Date;
     courses: Course[];
     esEspecial?: boolean;
+    timelineId?: string | null;
+    timeline?: CurriculumTimeline | null;
 }
 
 interface Group {
@@ -695,6 +716,31 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     useEffect(() => {
         getGestoresAction().then(setAllGestores).catch(console.error);
     }, []);
+
+    // Timeline states
+    const [selectedTimelineId, setSelectedTimelineId] = useState<string>("");
+    const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
+    const [timelineToEdit, setTimelineToEdit] = useState<CurriculumTimeline | null>(null);
+    const [timelineName, setTimelineName] = useState("");
+    const [timelineDescription, setTimelineDescription] = useState("");
+    const [timelineIsDefault, setTimelineIsDefault] = useState(false);
+
+    // Duplication states
+    const [duplicateTimelineDialogOpen, setDuplicateTimelineDialogOpen] = useState(false);
+    const [timelineToDuplicate, setTimelineToDuplicate] = useState<CurriculumTimeline | null>(null);
+    const [duplicateTimelineName, setDuplicateTimelineName] = useState("");
+
+    // Period timeline association
+    const [periodTimelineId, setPeriodTimelineId] = useState<string>("");
+
+    useEffect(() => {
+        if (selectedProgram) {
+            const defaultTl = selectedProgram.timelines?.find((t: any) => t.isDefault) || selectedProgram.timelines?.[0];
+            setSelectedTimelineId(defaultTl?.id || "");
+        } else {
+            setSelectedTimelineId("");
+        }
+    }, [selectedProgram]);
 
     const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
     const [periodToEdit, setPeriodToEdit] = useState<Period | null>(null);
@@ -1276,6 +1322,109 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         });
     };
 
+    // ============ TIMELINE HANDLERS ============
+
+    const openCreateTimeline = () => {
+        if (!selectedProgram) return;
+        setTimelineToEdit(null);
+        setTimelineName(`${selectedProgram.name} - `);
+        setTimelineDescription("");
+        setTimelineIsDefault(false);
+        setTimelineDialogOpen(true);
+    };
+
+    const openEditTimeline = (tl: CurriculumTimeline) => {
+        setTimelineToEdit(tl);
+        setTimelineName(tl.name);
+        setTimelineDescription(tl.description || "");
+        setTimelineIsDefault(tl.isDefault);
+        setTimelineDialogOpen(true);
+    };
+
+    const openDuplicateTimeline = (tl: CurriculumTimeline) => {
+        setTimelineToDuplicate(tl);
+        setDuplicateTimelineName(`${tl.name} (Copia)`);
+        setDuplicateTimelineDialogOpen(true);
+    };
+
+    const handleSaveTimeline = async () => {
+        if (!selectedProgram) return;
+        if (!timelineName.trim() || timelineName.trim().length < 2) {
+            toast.error("El nombre de la línea de tiempo debe tener al menos 2 caracteres");
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                if (timelineToEdit) {
+                    await updateTimelineAction(timelineToEdit.id, {
+                        name: timelineName,
+                        description: timelineDescription,
+                        isDefault: timelineIsDefault,
+                    });
+                    toast.success("Línea de tiempo actualizada exitosamente");
+                } else {
+                    const created = await createTimelineAction({
+                        programId: selectedProgram.id,
+                        name: timelineName,
+                        description: timelineDescription,
+                        isDefault: timelineIsDefault,
+                    });
+                    toast.success("Línea de tiempo creada exitosamente");
+                    setSelectedTimelineId(created.id);
+                }
+                setTimelineDialogOpen(false);
+                await refreshAll();
+            } catch (error: any) {
+                toast.error(error.message || "Error al guardar la línea de tiempo");
+            }
+        });
+    };
+
+    const handleConfirmDuplicateTimeline = async () => {
+        if (!timelineToDuplicate) return;
+        if (!duplicateTimelineName.trim() || duplicateTimelineName.trim().length < 2) {
+            toast.error("El nombre de la nueva línea debe tener al menos 2 caracteres");
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                const duplicated = await duplicateTimelineAction(timelineToDuplicate.id, duplicateTimelineName);
+                toast.success("Línea de tiempo duplicada con todos sus periodos y materias");
+                setDuplicateTimelineDialogOpen(false);
+                setSelectedTimelineId(duplicated.id);
+                await refreshAll();
+            } catch (error: any) {
+                toast.error(error.message || "Error al duplicar la línea de tiempo");
+            }
+        });
+    };
+
+    const handleDeleteTimeline = async (tl: CurriculumTimeline) => {
+        if (!selectedProgram) return;
+        const count = (selectedProgram.timelines || []).length;
+        if (count <= 1) {
+            toast.error("No es posible eliminar la única línea de tiempo del programa");
+            return;
+        }
+        if (!confirm(`¿Estás seguro de eliminar la línea "${tl.name}"? Se eliminarán todos los periodos y materias plantilla asociados a esta línea.`)) {
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                await deleteTimelineAction(tl.id);
+                toast.success("Línea de tiempo eliminada");
+                const remaining = (selectedProgram.timelines || []).filter(t => t.id !== tl.id);
+                setSelectedTimelineId(remaining[0]?.id || "");
+                await refreshAll();
+            } catch (error: any) {
+                toast.error(error.message || "Error al eliminar la línea de tiempo");
+            }
+        });
+    };
+
     // ============ PERIOD HANDLERS ============
 
     const openCreatePeriod = () => {
@@ -1284,6 +1433,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setPeriodName("");
         setPeriodDescription("");
         setPeriodEsEspecial(false);
+        const defaultTl = selectedProgram.timelines?.find((t: any) => t.isDefault) || selectedProgram.timelines?.[0];
+        setPeriodTimelineId(selectedTimelineId || defaultTl?.id || "");
         setPeriodDialogOpen(true);
     };
 
@@ -1292,6 +1443,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setPeriodName(period.name);
         setPeriodDescription(period.description || "");
         setPeriodEsEspecial(period.esEspecial || false);
+        setPeriodTimelineId(period.timelineId || selectedTimelineId || "");
         setPeriodDialogOpen(true);
     };
 
@@ -1308,7 +1460,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     await updatePeriodAction(periodToEdit.id, {
                         name: periodName,
                         description: periodDescription,
-                        esEspecial: periodEsEspecial
+                        esEspecial: periodEsEspecial,
+                        timelineId: periodTimelineId || null,
                     });
                     toast.success("Periodo académico actualizado");
                 } else {
@@ -1316,7 +1469,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         name: periodName,
                         description: periodDescription,
                         programId: selectedProgram.id,
-                        esEspecial: periodEsEspecial
+                        esEspecial: periodEsEspecial,
+                        timelineId: periodTimelineId || null,
                     });
                     toast.success("Periodo académico agregado");
                 }
@@ -3588,52 +3742,130 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 </div>
                             </div>
 
-                            {/* Sub-pestañas para clasificar los periodos */}
-                            <div className="flex border-b border-muted/30 pb-px gap-6 mb-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setPeriodTab("normal")}
-                                    className={cn(
-                                        "pb-2.5 text-sm font-semibold transition-all relative outline-none",
-                                        periodTab === "normal"
-                                            ? "text-primary border-b-2 border-primary"
-                                            : "text-muted-foreground hover:text-foreground"
+                            {/* Sección de Líneas de Tiempo Curriculares */}
+                            <div className="bg-card/70 border border-border/80 rounded-2xl p-4 shadow-xs space-y-3 mb-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="space-y-0.5">
+                                        <div className="flex items-center gap-2">
+                                            <Layers className="w-4 h-4 text-primary" />
+                                            <h4 className="text-sm font-bold text-foreground">Líneas de Tiempo Curriculares</h4>
+                                            <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground">
+                                                {(selectedProgram.timelines || []).length} disponibles
+                                            </Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Gestiona múltiples mallas y enfoques para este programa. Cada línea cuenta con su propia estructura de periodos y materias.
+                                        </p>
+                                    </div>
+
+                                    {!isObserver && (
+                                        <Button
+                                            type="button"
+                                            onClick={openCreateTimeline}
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 text-xs font-bold border-primary/30 text-primary hover:bg-primary/10 shrink-0"
+                                        >
+                                            <Plus className="w-3.5 h-3.5 mr-1" />
+                                            Nueva Línea de Tiempo
+                                        </Button>
                                     )}
-                                >
-                                    Periodos Normales
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setPeriodTab("special")}
-                                    className={cn(
-                                        "pb-2.5 text-sm font-semibold transition-all relative outline-none",
-                                        periodTab === "special"
-                                            ? "text-primary border-b-2 border-primary"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    )}
-                                >
-                                    Periodos Especiales
-                                </button>
+                                </div>
+
+                                {/* Selector de Líneas de Tiempo */}
+                                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-thin">
+                                    {(selectedProgram.timelines || []).map((tl: any) => {
+                                        const isSelected = tl.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id);
+                                        const tlPeriods = selectedProgram.periods.filter(p => p.timelineId ? p.timelineId === tl.id : tl.isDefault);
+                                        return (
+                                            <div
+                                                key={tl.id}
+                                                onClick={() => setSelectedTimelineId(tl.id)}
+                                                className={cn(
+                                                    "group relative flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all shrink-0 select-none shadow-2xs",
+                                                    isSelected
+                                                        ? "bg-primary text-primary-foreground border-primary shadow-sm ring-1 ring-primary/40"
+                                                        : "bg-muted/40 hover:bg-muted/80 text-foreground border-border/80"
+                                                )}
+                                            >
+                                                <BookOpen className={cn("w-3.5 h-3.5 shrink-0", isSelected ? "text-primary-foreground" : "text-primary")} />
+                                                <span className="truncate max-w-[260px]">{tl.name}</span>
+                                                <Badge
+                                                    variant={isSelected ? "secondary" : "outline"}
+                                                    className={cn("text-[9px] px-1.5 py-0 h-4 font-extrabold rounded-md", isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "text-muted-foreground")}
+                                                >
+                                                    {tlPeriods.length} {tlPeriods.length === 1 ? "periodo" : "periodos"}
+                                                </Badge>
+                                                {tl.isDefault && (
+                                                    <span className={cn("text-[9px] font-black uppercase px-1 py-0.2 rounded", isSelected ? "bg-white/20 text-white" : "bg-primary/15 text-primary")}>
+                                                        Principal
+                                                    </span>
+                                                )}
+
+                                                {!isObserver && (
+                                                    <div className="flex items-center gap-0.5 ml-1 pl-1.5 border-l border-current/20" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            title="Editar denominación"
+                                                            onClick={() => openEditTimeline(tl)}
+                                                            className={cn("p-1 rounded hover:bg-black/10 transition-colors", isSelected ? "hover:bg-white/20" : "")}
+                                                        >
+                                                            <Edit className="w-3 h-3" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            title="Duplicar línea y materias"
+                                                            onClick={() => openDuplicateTimeline(tl)}
+                                                            className={cn("p-1 rounded hover:bg-black/10 transition-colors", isSelected ? "hover:bg-white/20" : "")}
+                                                        >
+                                                            <Copy className="w-3 h-3" />
+                                                        </button>
+                                                        {(selectedProgram.timelines || []).length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                title="Eliminar línea de tiempo"
+                                                                onClick={() => handleDeleteTimeline(tl)}
+                                                                className={cn("p-1 rounded hover:bg-red-500/20 text-red-400 transition-colors", isSelected ? "hover:bg-red-500/40 text-white" : "")}
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {(() => {
+                                    const activeTl = (selectedProgram.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id));
+                                    if (!activeTl?.description) return null;
+                                    return (
+                                        <p className="text-[11px] text-muted-foreground italic px-1 pt-0.5">
+                                            {activeTl.description}
+                                        </p>
+                                    );
+                                })()}
                             </div>
 
                             {(() => {
-                                const normalPeriods = selectedProgram.periods.filter(p => !p.esEspecial);
-                                const specialPeriods = selectedProgram.periods.filter(p => p.esEspecial);
-                                const filteredPeriods = periodTab === "normal" ? normalPeriods : specialPeriods;
+                                const activeTl = (selectedProgram.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id));
+                                const filteredPeriods = selectedProgram.periods.filter(p => {
+                                    if (p.timelineId) return p.timelineId === activeTl?.id;
+                                    return activeTl?.isDefault ?? true;
+                                });
 
                                 if (filteredPeriods.length === 0) {
                                     return (
                                         <div className="text-center py-16 bg-muted/5 rounded-2xl border border-dashed border-muted/30 animate-in fade-in duration-200">
                                             <Calendar className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
-                                            <h4 className="font-semibold text-sm">Sin Periodos {periodTab === "normal" ? "Normales" : "Especiales"}</h4>
-                                            <p className="text-muted-foreground text-xs mt-1 max-w-xs mx-auto">
-                                                {periodTab === "normal"
-                                                    ? "Aún no hay periodos académicos normales creados para este programa."
-                                                    : "Aún no hay periodos académicos especiales creados para este programa."}
+                                            <h4 className="font-semibold text-sm">Sin Periodos en esta Línea de Tiempo</h4>
+                                            <p className="text-muted-foreground text-xs mt-1 max-w-sm mx-auto">
+                                                Aún no hay periodos académicos registrados para la línea &quot;{activeTl?.name || "Seleccionada"}&quot;.
                                             </p>
                                             {!isObserver && (
-                                                <Button onClick={openCreatePeriod} className="mt-4 h-9 text-xs" size="sm">
-                                                    <Plus className="mr-1.5 h-4 w-4" /> Crear Periodo
+                                                <Button onClick={openCreatePeriod} className="mt-4 h-9 text-xs font-bold" size="sm">
+                                                    <Plus className="mr-1.5 h-4 w-4" /> Agregar Periodo a esta Línea
                                                 </Button>
                                             )}
                                         </div>
@@ -4193,14 +4425,123 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 </DialogContent>
             </Dialog>
 
+            {/* ============ DIALOG: TIMELINE CRUD ============ */}
+            <Dialog open={timelineDialogOpen} onOpenChange={setTimelineDialogOpen}>
+                <DialogContent className="max-w-[480px] rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Layers className="w-5 h-5 text-primary" />
+                            <span>{timelineToEdit ? "Editar Línea de Tiempo" : "Crear Nueva Línea de Tiempo"}</span>
+                        </DialogTitle>
+                        <DialogDescription>
+                            Define una variante o denominación descriptiva para este programa (Ej: &quot;{selectedProgram?.name} - Jornada Nocturna&quot;).
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-3">
+                        <div className="space-y-2">
+                            <Label htmlFor="tlName">Denominación Descriptiva de la Línea</Label>
+                            <Input
+                                id="tlName"
+                                placeholder="Ej: Técnico en Software - Jornada Nocturna"
+                                value={timelineName}
+                                onChange={(e) => setTimelineName(e.target.value)}
+                                className="text-xs font-semibold"
+                            />
+                            <p className="text-[11px] text-muted-foreground">
+                                Esta denominación se mostrará claramente en los paneles del docente y del estudiante.
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="tlDesc">Descripción / Enfoque (Opcional)</Label>
+                            <Textarea
+                                id="tlDesc"
+                                placeholder="Notas sobre la modalidad, jornada o variaciones curriculares..."
+                                value={timelineDescription}
+                                onChange={(e) => setTimelineDescription(e.target.value)}
+                                className="h-20 min-h-[50px] max-h-[120px] overflow-y-auto resize-y text-xs leading-relaxed"
+                                rows={2}
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2 pt-2">
+                            <Checkbox
+                                id="tlDefault"
+                                checked={timelineIsDefault}
+                                onCheckedChange={(checked) => setTimelineIsDefault(checked === true)}
+                            />
+                            <Label htmlFor="tlDefault" className="text-xs font-semibold cursor-pointer select-none">
+                                Establecer como línea principal por defecto del programa
+                            </Label>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setTimelineDialogOpen(false)} disabled={isPending}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleSaveTimeline} disabled={isPending} className="font-bold">
+                            {timelineToEdit ? "Actualizar Línea" : "Crear Línea"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ============ DIALOG: DUPLICATE TIMELINE ============ */}
+            <Dialog open={duplicateTimelineDialogOpen} onOpenChange={setDuplicateTimelineDialogOpen}>
+                <DialogContent className="max-w-[480px] rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Copy className="w-5 h-5 text-primary" />
+                            <span>Duplicar Línea de Tiempo Curricular</span>
+                        </DialogTitle>
+                        <DialogDescription>
+                            Se clonarán automáticamente todos los periodos y materias plantilla de &quot;{timelineToDuplicate?.name}&quot; hacia la nueva línea.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-3">
+                        <div className="space-y-2">
+                            <Label htmlFor="dupTlName">Denominación para la nueva Línea</Label>
+                            <Input
+                                id="dupTlName"
+                                placeholder="Ej: Técnico en Software - Fin de Semana"
+                                value={duplicateTimelineName}
+                                onChange={(e) => setDuplicateTimelineName(e.target.value)}
+                                className="text-xs font-semibold"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setDuplicateTimelineDialogOpen(false)} disabled={isPending}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleConfirmDuplicateTimeline} disabled={isPending} className="font-bold">
+                            Duplicar Línea Completa
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* ============ DIALOG: PERIOD CRUD ============ */}
             <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
                 <DialogContent className="max-w-[450px]">
                     <DialogHeader>
                         <DialogTitle>{periodToEdit ? "Editar Periodo Académico" : "Agregar Periodo Académico"}</DialogTitle>
-                        <DialogDescription>Define un periodo académico (Ej: Semestre I, Ciclo 2026-1) bajo {selectedProgram?.name}.</DialogDescription>
+                        <DialogDescription>Define un periodo académico bajo la línea seleccionada de {selectedProgram?.name}.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
+                        <div className="space-y-2">
+                            <Label htmlFor="perTimeline">Línea de Tiempo Curricular</Label>
+                            <select
+                                id="perTimeline"
+                                value={periodTimelineId}
+                                onChange={(e) => setPeriodTimelineId(e.target.value)}
+                                className="w-full h-9 rounded-xl border border-input bg-background px-3 py-1 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            >
+                                {(selectedProgram?.timelines || []).map((tl: any) => (
+                                    <option key={tl.id} value={tl.id}>
+                                        {tl.name} {tl.isDefault ? "(Principal)" : ""}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="space-y-2">
                             <Label htmlFor="perName">Nombre del Periodo</Label>
                             <Input

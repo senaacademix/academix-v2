@@ -406,6 +406,7 @@ model Program {
   maxTeacherHours Int        @default(40)
   allowPastAttendanceEdit Boolean @default(false)
   periods         Period[]
+  timelines       CurriculumTimeline[]
   groups          Group[]
   teachers        User[]     @relation("ProgramTeachers")
   gestores        User[]     @relation("GestorPrograms")
@@ -417,12 +418,29 @@ model Program {
   @@map("program")
 }
 
+model CurriculumTimeline {
+  id          String     @id @default(cuid())
+  name        String     // ej: "Técnico en Programación de Software - Jornada Nocturna"
+  description String?
+  code        String?
+  isDefault   Boolean    @default(false)
+  programId   String
+  program     Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  periods     Period[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("curriculum_timeline")
+}
+
 model Period {
   id          String     @id @default(cuid())
   name        String
   description String?
   order       Int        @default(0)
   esEspecial  Boolean    @default(false)
+  timelineId  String?
+  timeline    CurriculumTimeline? @relation(fields: [timelineId], references: [id], onDelete: Cascade)
   programId   String
   program     Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
   courses     Course[]
