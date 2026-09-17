@@ -397,7 +397,7 @@ export function InteractiveWeeklyCalendarGrid({
                   size="icon"
                   onClick={goBack}
                   disabled={!canGoBack}
-                  className="w-6 h-6 rounded-md cursor-pointer disabled:cursor-not-allowed"
+                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md cursor-pointer disabled:cursor-not-allowed touch-manipulation"
                   aria-label="Semana Anterior"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
@@ -420,7 +420,7 @@ export function InteractiveWeeklyCalendarGrid({
                   variant="ghost"
                   size="sm"
                   onClick={goToday}
-                  className="h-6 text-[11px] font-semibold px-2 rounded-md cursor-pointer"
+                  className="h-7 sm:h-6 text-[11px] font-semibold px-2.5 sm:px-2 rounded-md cursor-pointer touch-manipulation"
                   aria-label="Ir a Hoy"
                 >
                   Hoy
@@ -444,7 +444,7 @@ export function InteractiveWeeklyCalendarGrid({
                   size="icon"
                   onClick={goForward}
                   disabled={!canGoForward}
-                  className="w-6 h-6 rounded-md cursor-pointer disabled:cursor-not-allowed"
+                  className="w-7 h-7 sm:w-6 sm:h-6 rounded-md cursor-pointer disabled:cursor-not-allowed touch-manipulation"
                   aria-label="Semana Siguiente"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -511,7 +511,7 @@ export function InteractiveWeeklyCalendarGrid({
 
       {/* WEEK VIEW (Dynamic height - 0 Scroll) */}
       {view === "week" && (
-        <div className="flex-1 min-h-0 border border-border/80 rounded-xl overflow-y-hidden overflow-x-auto scrollbar-thin bg-background relative shadow-2xs flex flex-col">
+        <div className="flex-1 min-h-0 border border-border/80 rounded-xl overflow-y-hidden overflow-x-auto scrollbar-thin bg-background relative shadow-2xs flex flex-col touch-scroll">
           <div className="min-w-[700px] flex flex-col h-full min-h-0 flex-1">
             {/* Header: Sticky Day columns */}
             <div className="grid grid-cols-8 divide-x divide-border/70 border-b border-border/70 bg-muted/95 backdrop-blur-xs shrink-0 z-20 shadow-2xs">
@@ -639,7 +639,7 @@ export function InteractiveWeeklyCalendarGrid({
                                 onOpenScheduleModal(dayEnum, hourStr, nextHourStr);
                               }
                             }}
-                            className={`flex-1 min-h-0 relative group/cell cursor-pointer transition-colors border-b border-border/30 last:border-b-0 ${
+                            className={`flex-1 min-h-0 relative group/cell cursor-pointer transition-colors border-b border-border/30 last:border-b-0 touch-manipulation ${
                               isDayDisabled
                                 ? "cursor-not-allowed hover:bg-amber-500/5"
                                 : !isOutside
@@ -732,8 +732,9 @@ export function InteractiveWeeklyCalendarGrid({
                                           e.stopPropagation();
                                           onDeleteClassSlot(evt.courseScheduleId);
                                         }}
-                                        className="text-muted-foreground/60 hover:text-destructive opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
+                                        className="text-muted-foreground/60 hover:text-destructive opacity-70 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity shrink-0 p-0.5 touch-manipulation cursor-pointer"
                                         title="Eliminar franja"
+                                        aria-label="Eliminar franja"
                                       >
                                         <Trash2 className="w-2.5 h-2.5" />
                                       </button>

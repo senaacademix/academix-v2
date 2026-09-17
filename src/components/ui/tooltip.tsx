@@ -6,22 +6,47 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { cn } from "@/lib/utils"
 
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = 150,
+  skipDelayDuration = 100,
+  disableHoverableContent = true,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
+      disableHoverableContent={disableHoverableContent}
       {...props}
     />
   )
 }
 
+function useIsTouchOnly() {
+  const [isTouchOnly, setIsTouchOnly] = React.useState(false)
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    const mql = window.matchMedia("(hover: none)")
+    setIsTouchOnly(mql.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsTouchOnly(e.matches)
+    mql.addEventListener("change", onChange)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  return isTouchOnly
+}
+
 function Tooltip({
+  open,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  const isTouchOnly = useIsTouchOnly()
+
+  // On touch-only devices, suppress tooltips so taps execute actions immediately without double-tap delay or sticky bubbles
+  const effectiveOpen = isTouchOnly && open === undefined ? false : open
+
+  return <TooltipPrimitive.Root data-slot="tooltip" open={effectiveOpen} {...props} />
 }
 
 function TooltipTrigger({

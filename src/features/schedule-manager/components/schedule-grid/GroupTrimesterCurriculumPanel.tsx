@@ -52,7 +52,7 @@ export function GroupTrimesterCurriculumPanel({
   }
 
   return (
-    <div className="w-60 sm:w-64 lg:w-72 shrink-0 h-full flex flex-col rounded-2xl border border-border/80 bg-card p-3 space-y-3 shadow-xs overflow-hidden min-h-0">
+    <div className="w-full md:w-60 lg:w-72 shrink-0 h-full flex flex-col rounded-2xl border border-border/80 bg-card p-3 space-y-3 shadow-xs overflow-hidden min-h-0">
       {/* Header & Title */}
       <div className="space-y-2 pb-2.5 border-b border-border/70 shrink-0">
         <div className="flex items-center justify-between gap-2">
@@ -137,7 +137,7 @@ export function GroupTrimesterCurriculumPanel({
                 key={course.id}
                 type="button"
                 onClick={() => onSelectCourseToSchedule(course.title)}
-                className={`w-full text-left p-2.5 rounded-xl border text-xs space-y-1.5 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-2xs group ${cardStyle}`}
+                className={`w-full text-left p-2.5 rounded-xl border text-xs space-y-1.5 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-2xs group cursor-pointer touch-manipulation ${cardStyle}`}
               >
                 <div className="flex items-start justify-between gap-1.5">
                   <span className="font-bold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">

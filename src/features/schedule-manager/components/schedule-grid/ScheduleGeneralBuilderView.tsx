@@ -33,6 +33,7 @@ import {
   Maximize2,
   Minimize2,
   HelpCircle,
+  BookOpen,
 } from "lucide-react";
 import { SchedulePanelHelpModal } from "../SchedulePanelHelpModal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -78,6 +79,7 @@ export function ScheduleGeneralBuilderView({
 
   // Modals & View Mode State
   const [builderViewMode, setBuilderViewMode] = useState<"detail" | "panoramic">("detail");
+  const [mobileTab, setMobileTab] = useState<"groups" | "calendar" | "curriculum">("calendar");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportDefaultFormat, setExportDefaultFormat] = useState<"pdf" | "excel">("pdf");
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
@@ -260,7 +262,7 @@ export function ScheduleGeneralBuilderView({
       }`}
     >
       {/* Sleek Compact Header Bar */}
-      <div className="shrink-0 rounded-2xl px-4 py-2 bg-card border border-border/80 shadow-2xs flex flex-row items-center justify-between gap-3">
+      <div className="shrink-0 rounded-2xl px-3 sm:px-4 py-2 bg-card border border-border/80 shadow-2xs flex flex-row items-center justify-between gap-2 sm:gap-3 overflow-x-auto scrollbar-none touch-scroll">
         <div className="flex items-center gap-3 min-w-0">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -327,7 +329,7 @@ export function ScheduleGeneralBuilderView({
                     }
                   }}
                   className={cn(
-                    "h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer",
+                    "h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer touch-manipulation",
                     builderViewMode === "detail"
                       ? "bg-background text-primary shadow-xs font-bold"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
@@ -361,7 +363,7 @@ export function ScheduleGeneralBuilderView({
                     }
                   }}
                   className={cn(
-                    "h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer",
+                    "h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer touch-manipulation",
                     builderViewMode === "panoramic"
                       ? "bg-background text-primary shadow-xs font-bold"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
@@ -392,7 +394,7 @@ export function ScheduleGeneralBuilderView({
                   variant="outline"
                   size="sm"
                   onClick={() => setIsAuditModalOpen(true)}
-                  className="relative rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20 shrink-0 cursor-pointer shadow-2xs"
+                  className="relative rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20 shrink-0 cursor-pointer shadow-2xs touch-manipulation"
                   aria-label="Auditoría de cruces, disponibilidad, ambientes y horas"
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -432,7 +434,7 @@ export function ScheduleGeneralBuilderView({
                   variant="outline"
                   size="sm"
                   onClick={() => setIsEnvModalOpen(true)}
-                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20 shrink-0 cursor-pointer shadow-2xs"
+                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20 shrink-0 cursor-pointer shadow-2xs touch-manipulation"
                   aria-label="Matriz de ocupación por aulas y ambientes de formación"
                 >
                   <Building className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -456,7 +458,7 @@ export function ScheduleGeneralBuilderView({
                   variant="outline"
                   size="sm"
                   onClick={() => setIsTeacherModalOpen(true)}
-                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20 shrink-0 cursor-pointer shadow-2xs"
+                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20 shrink-0 cursor-pointer shadow-2xs touch-manipulation"
                   aria-label="Matriz de horario y horas asignadas por instructor"
                 >
                   <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -486,7 +488,7 @@ export function ScheduleGeneralBuilderView({
                     setExportDefaultFormat("pdf");
                     setIsExportModalOpen(true);
                   }}
-                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30 hover:bg-red-500/20 shrink-0 cursor-pointer shadow-2xs"
+                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30 hover:bg-red-500/20 shrink-0 cursor-pointer shadow-2xs touch-manipulation"
                   aria-label="Exportar horario en PDF"
                 >
                   <FileText className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
@@ -513,7 +515,7 @@ export function ScheduleGeneralBuilderView({
                     setExportDefaultFormat("excel");
                     setIsExportModalOpen(true);
                   }}
-                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 shrink-0 cursor-pointer shadow-2xs"
+                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 shrink-0 cursor-pointer shadow-2xs touch-manipulation"
                   aria-label="Exportar horario en Excel"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -543,7 +545,7 @@ export function ScheduleGeneralBuilderView({
                     onClick={handleTogglePublish}
                     disabled={isTogglingPublish || isRefreshing}
                     className={cn(
-                      "rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all shadow-2xs shrink-0 cursor-pointer",
+                      "rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all shadow-2xs shrink-0 cursor-pointer touch-manipulation",
                       data.schedule.isPublished
                         ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30 hover:bg-blue-500/20"
                         : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
@@ -606,7 +608,7 @@ export function ScheduleGeneralBuilderView({
                   variant="ghost"
                   size="sm"
                   onClick={toggleFullscreen}
-                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all hover:bg-muted/80 shrink-0 cursor-pointer"
+                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all hover:bg-muted/80 shrink-0 cursor-pointer touch-manipulation"
                   aria-label={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
                 >
                   {isFullscreen ? (
@@ -645,7 +647,7 @@ export function ScheduleGeneralBuilderView({
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsHelpOpen(true)}
-                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all hover:bg-muted/80 shrink-0 cursor-pointer"
+                  className="rounded-lg h-7 w-7 p-0 flex items-center justify-center font-bold transition-all hover:bg-muted/80 shrink-0 cursor-pointer touch-manipulation"
                   aria-label="Guía y Ayuda del Constructor de Horarios"
                 >
                   <HelpCircle className="w-3.5 h-3.5 text-primary" />
@@ -694,20 +696,72 @@ export function ScheduleGeneralBuilderView({
           }}
         />
       ) : (
-        <div className="flex-1 min-h-0 flex flex-row gap-2.5 overflow-hidden items-stretch">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2.5 overflow-hidden items-stretch">
+          {/* Mobile View Switcher Tabs (Only visible on < md) */}
+          <div className="flex md:hidden items-center justify-between p-1 rounded-xl bg-card border border-border/80 shrink-0 shadow-2xs">
+            <div className="grid grid-cols-3 gap-1 w-full text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setMobileTab("groups")}
+                className={cn(
+                  "py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-all touch-manipulation cursor-pointer",
+                  mobileTab === "groups"
+                    ? "bg-primary text-primary-foreground font-bold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                )}
+              >
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Fichas ({data.groups.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMobileTab("calendar")}
+                className={cn(
+                  "py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-all touch-manipulation cursor-pointer",
+                  mobileTab === "calendar"
+                    ? "bg-primary text-primary-foreground font-bold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                )}
+              >
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Horario {selectedGroup ? `(${selectedGroup.name})` : ""}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMobileTab("curriculum")}
+                className={cn(
+                  "py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-all touch-manipulation cursor-pointer",
+                  mobileTab === "curriculum"
+                    ? "bg-primary text-primary-foreground font-bold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                )}
+              >
+                <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Materias</span>
+              </button>
+            </div>
+          </div>
+
           {/* Left Sidebar: Groups Selector */}
-          <GroupSelectorSidebar
-            groups={data.groups}
-            teachers={data.teachers}
-            selectedGroupId={selectedGroupId}
-            onSelectGroup={setSelectedGroupId}
-          />
+          <div className={cn("h-full min-h-0", mobileTab === "groups" ? "flex-1 flex flex-col md:flex-initial" : "hidden md:flex md:flex-col")}>
+            <GroupSelectorSidebar
+              groups={data.groups}
+              teachers={data.teachers}
+              selectedGroupId={selectedGroupId}
+              onSelectGroup={(id) => {
+                setSelectedGroupId(id);
+                setMobileTab("calendar");
+              }}
+            />
+          </div>
 
           {/* Center & Right Workspace */}
           {selectedGroup && (
-            <div className="flex-1 min-w-0 h-full flex flex-row gap-2.5 overflow-hidden">
+            <div className={cn("flex-1 min-w-0 h-full flex flex-col md:flex-row gap-2.5 overflow-hidden", mobileTab === "groups" ? "hidden md:flex" : "flex")}>
               {/* Visual Weekly Interactive Calendar Grid */}
-              <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+              <div className={cn("flex-1 min-w-0 h-full flex flex-col overflow-hidden", mobileTab === "curriculum" ? "hidden md:flex" : "flex")}>
                 <InteractiveWeeklyCalendarGrid
                   schedule={data.schedule}
                   group={selectedGroup}
@@ -719,11 +773,13 @@ export function ScheduleGeneralBuilderView({
               </div>
 
               {/* Right Sidebar: Trimester Curriculum Panel (Materias del Periodo) */}
-              <GroupTrimesterCurriculumPanel
-                group={selectedGroup}
-                teachers={data.teachers}
-                onSelectCourseToSchedule={(courseTitle) => handleOpenScheduleModal(courseTitle)}
-              />
+              <div className={cn("h-full min-h-0", mobileTab === "curriculum" ? "flex-1 flex flex-col md:flex-initial" : "hidden md:flex md:flex-col")}>
+                <GroupTrimesterCurriculumPanel
+                  group={selectedGroup}
+                  teachers={data.teachers}
+                  onSelectCourseToSchedule={(courseTitle) => handleOpenScheduleModal(courseTitle)}
+                />
+              </div>
             </div>
           )}
         </div>

@@ -103,7 +103,7 @@ export function SchedulePanoramicView({
       </div>
 
       {/* Main Matrix Table Container */}
-      <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin border border-border/70 rounded-xl bg-background">
+      <div className="flex-1 overflow-x-auto overflow-y-auto scrollbar-thin border border-border/70 rounded-xl bg-background touch-scroll">
         <div className="min-w-[1100px]">
           {/* Table Header */}
           <div className="grid grid-cols-12 divide-x divide-border/70 border-b border-border/70 bg-muted/90 sticky top-0 z-20 text-[11px] font-bold text-muted-foreground shadow-2xs">
@@ -262,7 +262,7 @@ export function SchedulePanoramicView({
                                 <TooltipTrigger asChild>
                                   <div
                                     onClick={() => onSelectGroupAndEdit(g.id)}
-                                    className="p-1.5 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-all text-[10px] space-y-0.5 shadow-2xs group/card"
+                                    className="p-1.5 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-all text-[10px] space-y-0.5 shadow-2xs group/card touch-manipulation active:scale-[0.99]"
                                   >
                                     <div className="font-bold text-foreground line-clamp-1 leading-tight group-hover/card:text-primary transition-colors">
                                       {cls.courseTitle}

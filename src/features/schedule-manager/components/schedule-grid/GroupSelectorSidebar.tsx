@@ -260,11 +260,12 @@ export function GroupSelectorSidebar({
               <button
                 type="button"
                 onClick={() => setStatusFilter("all")}
-                className={`w-6 h-6 rounded-lg transition-all flex items-center justify-center ${
+                className={`w-7 h-7 sm:w-6 sm:h-6 rounded-lg transition-all flex items-center justify-center cursor-pointer touch-manipulation ${
                   statusFilter === "all"
                     ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
+                aria-label="Todas las fichas"
               >
                 <Users className="w-3.5 h-3.5" />
               </button>
@@ -285,7 +286,7 @@ export function GroupSelectorSidebar({
               <button
                 type="button"
                 onClick={() => setStatusFilter("pending")}
-                className={`w-6 h-6 rounded-lg transition-all flex items-center justify-center cursor-pointer ${
+                className={`w-7 h-7 sm:w-6 sm:h-6 rounded-lg transition-all flex items-center justify-center cursor-pointer touch-manipulation ${
                   statusFilter === "pending"
                     ? "bg-amber-600 text-white shadow-2xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -311,7 +312,7 @@ export function GroupSelectorSidebar({
               <button
                 type="button"
                 onClick={() => setStatusFilter("complete")}
-                className={`w-6 h-6 rounded-lg transition-all flex items-center justify-center cursor-pointer ${
+                className={`w-7 h-7 sm:w-6 sm:h-6 rounded-lg transition-all flex items-center justify-center cursor-pointer touch-manipulation ${
                   statusFilter === "complete"
                     ? "bg-emerald-600 text-white shadow-2xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -448,7 +449,7 @@ export function GroupSelectorSidebar({
               <div
                 key={g.id}
                 onClick={() => onSelectGroup(g.id)}
-                className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col gap-1.5 ${
+                className={`p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col gap-1.5 touch-manipulation active:scale-[0.99] ${
                   isSelected
                     ? "bg-primary/10 border-primary shadow-2xs ring-1 ring-primary/30"
                     : "bg-muted/10 border-border/60 hover:bg-muted/25 hover:border-border"
@@ -474,7 +475,7 @@ export function GroupSelectorSidebar({
                   {g.period?.timeline?.name && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 shrink-0 truncate max-w-[120px] cursor-default">
+                        <span className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 shrink-0 truncate max-w-[120px] cursor-default pointer-events-none sm:pointer-events-auto">
                           {g.period.timeline.name}
                         </span>
                       </TooltipTrigger>
@@ -492,7 +493,7 @@ export function GroupSelectorSidebar({
                 </div>
 
                 {/* 7-Day Mini Weekly Preview Bar with Direct Visible Compliance Indicators */}
-                <div className="pt-1.5 border-t border-border/40 space-y-1.5">
+                <div className="pt-1.5 border-t border-border/40 space-y-1.5 pointer-events-none sm:pointer-events-auto">
                   <div className="grid grid-cols-7 gap-1">
                     {DAYS_ORDER.map((day) => {
                       const dayClasses = dayClassesMap[day.key];

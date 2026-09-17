@@ -266,7 +266,7 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
-      className={cn("size-7", className)}
+      className={cn("size-8 sm:size-7 touch-manipulation cursor-pointer", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -529,7 +529,7 @@ function SidebarMenuButton({
     />
   )
 
-  if (!tooltip) {
+  if (!tooltip || isMobile || state !== "collapsed") {
     return button
   }
 
