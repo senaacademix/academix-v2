@@ -29,7 +29,7 @@ import {
   ShieldAlert,
   Building,
   GraduationCap,
-  Sparkles,
+  LayoutGrid,
   Maximize2,
   Minimize2,
   HelpCircle,
@@ -37,6 +37,7 @@ import {
 import { SchedulePanelHelpModal } from "../SchedulePanelHelpModal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { DayOfWeek } from "@/generated/prisma/client";
 import {
   ScheduleBuilderData,
@@ -299,103 +300,207 @@ export function ScheduleGeneralBuilderView({
         {/* Header Actions: View Switcher + Audit + Environments + Exports + Toggle Publish + Refresh */}
         <div className="flex items-center gap-1.5 shrink-0">
           {/* Single Compact View Toggle Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setBuilderViewMode((prev) => (prev === "detail" ? "panoramic" : "detail"))}
-            className="rounded-xl text-xs gap-1.5 h-7 px-2.5 font-bold transition-all border-border/80 hover:bg-accent shrink-0"
-            title={
-              builderViewMode === "detail"
-                ? "Cambiar a Vista Panorámica (matriz de ocupación de todas las fichas)"
-                : "Cambiar a Vista por Ficha (malla interactiva individual)"
-            }
-          >
-            {builderViewMode === "detail" ? (
-              <>
-                <Calendar className="w-3.5 h-3.5 text-primary" />
-                <span>Por Ficha</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Panorámica</span>
-              </>
-            )}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const nextMode = builderViewMode === "detail" ? "panoramic" : "detail";
+                  setBuilderViewMode(nextMode);
+                  toast.info(
+                    nextMode === "panoramic" ? "Vista Panorámica activada" : "Vista por Ficha activada",
+                    {
+                      description: nextMode === "panoramic"
+                        ? "Matriz general de ocupación de todas las fichas del horario."
+                        : "Malla interactiva individual por ficha seleccionada."
+                    }
+                  );
+                }}
+                className={cn(
+                  "rounded-xl h-7 w-7 p-0 flex items-center justify-center font-bold transition-all border-border/80 shrink-0 cursor-pointer shadow-2xs",
+                  builderViewMode === "panoramic"
+                    ? "bg-primary/15 text-primary border-primary/30 hover:bg-primary/25"
+                    : "hover:bg-accent text-foreground"
+                )}
+                aria-label={builderViewMode === "detail" ? "Cambiar a Vista Panorámica" : "Cambiar a Vista por Ficha"}
+              >
+                {builderViewMode === "detail" ? (
+                  <LayoutGrid className="w-3.5 h-3.5 text-primary" />
+                ) : (
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                {builderViewMode === "detail" ? (
+                  <>
+                    <LayoutGrid className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>Cambiar a Vista Panorámica</span>
+                  </>
+                ) : (
+                  <>
+                    <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>Cambiar a Vista por Ficha</span>
+                  </>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                {builderViewMode === "detail"
+                  ? "Abrir la matriz general de ocupación de todas las fichas del horario."
+                  : "Regresar a la malla horaria individual por ficha."}
+              </p>
+            </TooltipContent>
+          </Tooltip>
 
           <div className="h-4 w-px bg-border hidden sm:block shrink-0" />
+
           {/* Audit Conflicts Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsAuditModalOpen(true)}
-            className="rounded-xl text-xs gap-1.5 h-7 px-2.5 font-bold transition-all bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
-            title="Auditoría de cruces, disponibilidad, ambientes y horas"
-          >
-            <ShieldAlert className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-            <span>Auditoría</span>
-            {quickConflictCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-amber-600 text-white text-[9px] flex items-center justify-center font-mono">
-                {quickConflictCount}
-              </span>
-            )}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAuditModalOpen(true)}
+                className="relative rounded-xl h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20 shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Auditoría de cruces, disponibilidad, ambientes y horas"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                {quickConflictCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-amber-600 text-white text-[9px] font-mono font-bold flex items-center justify-center leading-none shadow-xs border-2 border-background">
+                    {quickConflictCount}
+                  </span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span>Auditoría de Horarios</span>
+                </div>
+                {quickConflictCount > 0 ? (
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    {quickConflictCount} {quickConflictCount === 1 ? "alerta" : "alertas"}
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                    Sin cruces
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Auditoría en tiempo real de cruces, disponibilidad de instructores, ambientes y horas.
+              </p>
+            </TooltipContent>
+          </Tooltip>
 
           {/* Environment Occupancy Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEnvModalOpen(true)}
-            className="rounded-xl text-xs gap-1.5 h-7 px-2.5 font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20"
-            title="Matriz de ocupación por aulas y ambientes de formación"
-          >
-            <Building className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-            <span>Ambientes</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEnvModalOpen(true)}
+                className="rounded-xl h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20 shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Matriz de ocupación por aulas y ambientes de formación"
+              >
+                <Building className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <Building className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span>Ocupación de Ambientes</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Matriz de ocupación horaria por aulas, laboratorios y ambientes de formación.
+              </p>
+            </TooltipContent>
+          </Tooltip>
 
           {/* Teacher Schedule & Hours Matrix Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsTeacherModalOpen(true)}
-            className="rounded-xl text-xs gap-1.5 h-7 px-2.5 font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20"
-            title="Matriz de horario y horas asignadas por instructor"
-          >
-            <GraduationCap className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-            <span>Instructores</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsTeacherModalOpen(true)}
+                className="rounded-xl h-7 w-7 p-0 flex items-center justify-center font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20 shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Matriz de horario y horas asignadas por instructor"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <GraduationCap className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span>Horario de Instructores</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Matriz de programación semanal y consolidado de horas asignadas por instructor.
+              </p>
+            </TooltipContent>
+          </Tooltip>
 
           <div className="h-4 w-px bg-border hidden sm:block shrink-0" />
 
           {/* PDF Export Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setExportDefaultFormat("pdf");
-              setIsExportModalOpen(true);
-            }}
-            className="rounded-xl text-xs gap-1.5 h-7 px-2.5 bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30 hover:bg-red-500/20 font-bold"
-            title="Exportar horario en PDF (@react-pdf/renderer)"
-          >
-            <FileText className="w-3 h-3 text-red-600 dark:text-red-400" />
-            <span>PDF</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setExportDefaultFormat("pdf");
+                  setIsExportModalOpen(true);
+                }}
+                className="rounded-xl text-xs gap-1.5 h-7 px-2.5 bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30 hover:bg-red-500/20 font-bold shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Exportar horario en PDF"
+              >
+                <FileText className="w-3 h-3 text-red-600 dark:text-red-400" />
+                <span>PDF</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <FileText className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <span>Exportar Horario a PDF</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Genera documento PDF formal para impresión o descarga.
+              </p>
+            </TooltipContent>
+          </Tooltip>
 
           {/* Excel Export Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setExportDefaultFormat("excel");
-              setIsExportModalOpen(true);
-            }}
-            className="rounded-xl text-xs gap-1.5 h-7 px-2.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 font-bold"
-            title="Exportar horario en Excel estilizado (ExcelJS)"
-          >
-            <FileSpreadsheet className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-            <span>Excel</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setExportDefaultFormat("excel");
+                  setIsExportModalOpen(true);
+                }}
+                className="rounded-xl text-xs gap-1.5 h-7 px-2.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20 font-bold shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Exportar horario en Excel"
+              >
+                <FileSpreadsheet className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <span>Excel</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>Exportar Horario a Excel</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Genera libro Excel con formato institucional y matriz detallada.
+              </p>
+            </TooltipContent>
+          </Tooltip>
 
           <div className="h-4 w-px bg-border hidden sm:block shrink-0" />
 

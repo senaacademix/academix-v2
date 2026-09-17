@@ -11,7 +11,7 @@ import {
   Clock,
   Building,
   GraduationCap,
-  Sparkles,
+  LayoutGrid,
   ChevronRight,
   Check,
   AlertCircle,
@@ -78,7 +78,7 @@ export function SchedulePanoramicView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 pb-2 border-b border-border/70">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
-            <Sparkles className="w-4 h-4" />
+            <LayoutGrid className="w-4 h-4" />
           </div>
           <div>
             <h2 className="font-extrabold text-sm text-foreground">
