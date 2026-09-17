@@ -358,56 +358,108 @@ export function InteractiveWeeklyCalendarGrid({
           <span className="font-black text-xs sm:text-sm text-foreground truncate">
             Ficha {group.name}
           </span>
-          <Badge variant="outline" className="text-[10px] font-semibold hidden md:inline shrink-0">
-            {group.program.name}
-          </Badge>
           {group.period && (
             <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold shrink-0">
               {group.period.name}
             </Badge>
           )}
           {group.period?.timeline?.name && (
-            <Badge
-              variant="outline"
-              className="text-[10px] font-semibold text-primary bg-primary/10 border-primary/20 shrink-0 hidden sm:inline-flex items-center gap-1 shadow-2xs"
-            >
-              <GitBranch className="w-2.5 h-2.5 text-primary" />
-              {group.period.timeline.name}
-            </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-semibold text-primary bg-primary/10 border-primary/20 shrink-0 hidden sm:inline-flex items-center gap-1 shadow-2xs cursor-default"
+                >
+                  <GitBranch className="w-2.5 h-2.5 text-primary" />
+                  {group.period.timeline.name}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Línea de Tiempo</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                  {group.period.timeline.name}
+                </p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
 
         {/* Navigation buttons & View switcher */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-0.5 bg-muted/40 p-0.5 rounded-lg border border-border/60">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={goBack}
-              disabled={!canGoBack}
-              className="w-6 h-6 rounded-md"
-              title="Anterior"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToday}
-              className="h-6 text-[11px] font-semibold px-2 rounded-md"
-            >
-              Hoy
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={goForward}
-              disabled={!canGoForward}
-              className="w-6 h-6 rounded-md"
-              title="Siguiente"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={goBack}
+                  disabled={!canGoBack}
+                  className="w-6 h-6 rounded-md cursor-pointer disabled:cursor-not-allowed"
+                  aria-label="Semana Anterior"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <ChevronLeft className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Semana Anterior</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                  Navegar a la semana anterior del calendario.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goToday}
+                  className="h-6 text-[11px] font-semibold px-2 rounded-md cursor-pointer"
+                  aria-label="Ir a Hoy"
+                >
+                  Hoy
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <CalendarIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Ir a Hoy</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                  Centrar la vista en la fecha y semana del día de hoy.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={goForward}
+                  disabled={!canGoForward}
+                  className="w-6 h-6 rounded-md cursor-pointer disabled:cursor-not-allowed"
+                  aria-label="Semana Siguiente"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <ChevronRight className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Semana Siguiente</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                  Navegar a la semana siguiente del calendario.
+                </p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <span className="text-[11px] font-bold text-foreground capitalize hidden lg:inline">
@@ -433,14 +485,27 @@ export function InteractiveWeeklyCalendarGrid({
             </div>
           )}
 
-          <Button
-            size="sm"
-            onClick={() => onOpenScheduleModal()}
-            className="rounded-xl text-xs gap-1 font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-7 px-2.5"
-          >
-            <Plus className="w-3 h-3" />
-            <span className="hidden sm:inline">Programar Clase</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                onClick={() => onOpenScheduleModal()}
+                className="rounded-xl h-7 w-7 p-0 flex items-center justify-center font-bold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 shrink-0 cursor-pointer"
+                aria-label="Programar Clase"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Programar Clase</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Asignar una nueva sesión formativa con materia, instructor y ambiente.
+              </p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

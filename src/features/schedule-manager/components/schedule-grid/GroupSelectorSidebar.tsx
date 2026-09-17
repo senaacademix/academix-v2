@@ -269,8 +269,14 @@ export function GroupSelectorSidebar({
                 <Users className="w-3.5 h-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent className="text-xs">
-              Todas las fichas ({groups.length})
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>Todas las Fichas</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Mostrar todas las fichas del horario ({groups.length}).
+              </p>
             </TooltipContent>
           </Tooltip>
 
@@ -279,17 +285,24 @@ export function GroupSelectorSidebar({
               <button
                 type="button"
                 onClick={() => setStatusFilter("pending")}
-                className={`w-6 h-6 rounded-lg transition-all flex items-center justify-center ${
+                className={`w-6 h-6 rounded-lg transition-all flex items-center justify-center cursor-pointer ${
                   statusFilter === "pending"
                     ? "bg-amber-600 text-white shadow-2xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
+                aria-label="Fichas con pendientes"
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent className="text-xs">
-              Fichas con pendientes ({pendingGroupsCount})
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Fichas con Pendientes</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Fichas con horas formativas pendientes por programar ({pendingGroupsCount}).
+              </p>
             </TooltipContent>
           </Tooltip>
 
@@ -298,17 +311,24 @@ export function GroupSelectorSidebar({
               <button
                 type="button"
                 onClick={() => setStatusFilter("complete")}
-                className={`w-6 h-6 rounded-lg transition-all flex items-center justify-center ${
+                className={`w-6 h-6 rounded-lg transition-all flex items-center justify-center cursor-pointer ${
                   statusFilter === "complete"
                     ? "bg-emerald-600 text-white shadow-2xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
+                aria-label="Fichas completadas"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent className="text-xs">
-              Fichas completas sin pendientes ({completeGroupsCount})
+            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>Fichas Completadas</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                Fichas con el 100% de horas requeridas programadas ({completeGroupsCount}).
+              </p>
             </TooltipContent>
           </Tooltip>
         </div>
@@ -452,12 +472,22 @@ export function GroupSelectorSidebar({
                 <div className="flex items-center justify-between gap-1 text-[11px] text-muted-foreground leading-tight min-w-0">
                   <span className="truncate">{g.program.name}</span>
                   {g.period?.timeline?.name && (
-                    <span
-                      title={g.period.timeline.name}
-                      className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 shrink-0 truncate max-w-[120px]"
-                    >
-                      {g.period.timeline.name}
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 shrink-0 truncate max-w-[120px] cursor-default">
+                          {g.period.timeline.name}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                          <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span>Línea de Tiempo</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                          {g.period.timeline.name}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
 
@@ -610,24 +640,12 @@ export function GroupSelectorSidebar({
                                 ) : null}
                               </div>
 
-                              {/* 4 Visible Compliance Micro-Dots directly in UI without tooltip */}
+                              {/* 4 Visible Compliance Micro-Dots directly in UI */}
                               <div className="grid grid-cols-2 gap-0.5 w-full pt-0.5 px-0.5">
-                                <div
-                                  className={`w-1.5 h-1.5 rounded-full ${horColor} mx-auto`}
-                                  title="Horario completo"
-                                />
-                                <div
-                                  className={`w-1.5 h-1.5 rounded-full ${dispColor} mx-auto`}
-                                  title="Instructor disponible"
-                                />
-                                <div
-                                  className={`w-1.5 h-1.5 rounded-full ${califColor} mx-auto`}
-                                  title="Instructor calificado"
-                                />
-                                <div
-                                  className={`w-1.5 h-1.5 rounded-full ${envColor} mx-auto`}
-                                  title="Ambiente asignado"
-                                />
+                                <div className={`w-1.5 h-1.5 rounded-full ${horColor} mx-auto`} />
+                                <div className={`w-1.5 h-1.5 rounded-full ${dispColor} mx-auto`} />
+                                <div className={`w-1.5 h-1.5 rounded-full ${califColor} mx-auto`} />
+                                <div className={`w-1.5 h-1.5 rounded-full ${envColor} mx-auto`} />
                               </div>
                             </div>
                           </TooltipTrigger>
@@ -752,18 +770,69 @@ export function GroupSelectorSidebar({
 
                   {/* Micro-Legend for the 4 indicators */}
                   <div className="flex items-center justify-between pt-1 border-t border-border/30 text-[8px] text-muted-foreground font-mono">
-                    <span className="flex items-center gap-1" title="Horario Completo">
-                      🕒 Hor
-                    </span>
-                    <span className="flex items-center gap-1" title="Instructor Disponible">
-                      👨‍🏫 Disp
-                    </span>
-                    <span className="flex items-center gap-1" title="Instructor Calificado">
-                      🎓 Calif
-                    </span>
-                    <span className="flex items-center gap-1" title="Ambiente Asignado">
-                      🏛️ Amb
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center gap-1 cursor-default hover:text-foreground transition-colors">
+                          🕒 Hor
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                          <span>🕒 Horario Completo</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                          Verifica el cumplimiento de todas las horas lectivas configuradas para la jornada.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center gap-1 cursor-default hover:text-foreground transition-colors">
+                          👨‍🏫 Disp
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                          <span>👨‍🏫 Instructor Disponible</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                          Confirma que el instructor no presenta cruces de horario con otra ficha.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center gap-1 cursor-default hover:text-foreground transition-colors">
+                          🎓 Calif
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                          <span>🎓 Instructor Calificado</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                          Valida que el instructor tenga la especialidad técnica requerida para la competencia.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center gap-1 cursor-default hover:text-foreground transition-colors">
+                          🏛️ Amb
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                          <span>🏛️ Ambiente Asignado</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                          Asegura que la franja cuenta con aula o taller de formación asignado sin conflicto.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
