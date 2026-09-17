@@ -348,7 +348,7 @@ export function InteractiveWeeklyCalendarGrid({
   const today = isMounted ? new Date() : scheduleStartDate;
 
   return (
-    <div className="flex-1 h-full flex flex-col rounded-2xl border border-border/80 bg-card p-3 space-y-2 shadow-xs min-h-0 overflow-hidden">
+    <div className="flex-1 flex flex-col rounded-2xl border border-border/80 bg-card p-2 sm:p-3 space-y-2 shadow-xs min-h-[640px] md:min-h-0 md:h-full md:overflow-hidden">
       {/* Calendar Top Controls & Title Bar */}
       <div className="flex items-center justify-between gap-2 shrink-0 pb-1.5 border-b border-border/70">
         <div className="flex items-center gap-2 min-w-0">
@@ -509,10 +509,10 @@ export function InteractiveWeeklyCalendarGrid({
         </div>
       </div>
 
-      {/* WEEK VIEW (Dynamic height - 0 Scroll) */}
+      {/* WEEK VIEW */}
       {view === "week" && (
-        <div className="flex-1 min-h-0 border border-border/80 rounded-xl overflow-y-hidden overflow-x-auto scrollbar-thin bg-background relative shadow-2xs flex flex-col touch-scroll">
-          <div className="min-w-[700px] flex flex-col h-full min-h-0 flex-1">
+        <div className="flex-1 min-h-[560px] md:min-h-0 border border-border/80 rounded-xl md:overflow-y-hidden overflow-x-auto scrollbar-thin bg-background relative shadow-2xs flex flex-col touch-scroll">
+          <div className="min-w-[700px] flex flex-col h-[560px] md:h-full min-h-0 flex-1">
             {/* Header: Sticky Day columns */}
             <div className="grid grid-cols-8 divide-x divide-border/70 border-b border-border/70 bg-muted/95 backdrop-blur-xs shrink-0 z-20 shadow-2xs">
               <div className="py-1.5 px-1 text-[11px] font-bold text-muted-foreground text-center flex items-center justify-center">
@@ -562,8 +562,8 @@ export function InteractiveWeeklyCalendarGrid({
               })}
             </div>
 
-            {/* Calendar Body: Time rows & day columns adapted to 100% height without vertical scroll */}
-            <div className="grid grid-cols-8 divide-x divide-border/70 relative flex-1 min-h-0 h-full">
+            {/* Calendar Body: Time rows & day columns */}
+            <div className="grid grid-cols-8 divide-x divide-border/70 relative flex-1 min-h-0 h-[500px] md:h-full">
               {/* Hour labels on left column */}
               <div className="flex flex-col text-[9px] text-muted-foreground font-mono bg-muted/10 select-none h-full min-h-0 divide-y divide-border/30">
                 {Array.from({ length: gridHoursLength }, (_, i) => i + minHour).map((h) => (
@@ -797,8 +797,8 @@ export function InteractiveWeeklyCalendarGrid({
 
       {/* MONTH VIEW */}
       {view === "month" && (
-        <div className="flex-1 min-h-0 border border-border/80 rounded-xl overflow-y-auto overflow-x-auto scrollbar-thin bg-background relative shadow-2xs">
-          <div className="min-w-[650px] flex flex-col h-full">
+        <div className="flex-1 min-h-[520px] md:min-h-0 border border-border/80 rounded-xl overflow-y-auto overflow-x-auto scrollbar-thin bg-background relative shadow-2xs touch-scroll">
+          <div className="min-w-[650px] flex flex-col h-[520px] md:h-full">
             <div className="grid grid-cols-7 divide-x divide-border/70 border-b border-border/70 bg-muted/95 backdrop-blur-xs sticky top-0 z-20">
               {DAY_NAMES_ES.map((d) => (
                 <div key={d} className="py-1 text-center text-[10px] font-bold text-muted-foreground uppercase">

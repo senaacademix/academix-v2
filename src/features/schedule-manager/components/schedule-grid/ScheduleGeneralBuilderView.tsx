@@ -255,11 +255,12 @@ export function ScheduleGeneralBuilderView({
 
   return (
     <div
-      className={`flex flex-col gap-2 animate-in fade-in-50 duration-300 overflow-hidden min-h-0 ${
+      className={cn(
+        "flex flex-col gap-2 animate-in fade-in-50 duration-300 min-h-0",
         isFullscreen
-          ? "fixed inset-0 z-40 bg-background p-3.5 h-screen w-screen space-y-2"
-          : "h-[calc(100vh-5.5rem)] sm:h-[calc(100vh-6rem)] md:h-[calc(100vh-6.5rem)]"
-      }`}
+          ? "fixed inset-0 z-40 bg-background p-3.5 h-screen w-screen space-y-2 overflow-hidden"
+          : "min-h-[calc(100vh-5.5rem)] md:h-[calc(100vh-6.5rem)] md:overflow-hidden"
+      )}
     >
       {/* Sleek Compact Header Bar */}
       <div className="shrink-0 rounded-2xl px-3 sm:px-4 py-2 bg-card border border-border/80 shadow-2xs flex flex-row items-center justify-between gap-2 sm:gap-3 overflow-x-auto scrollbar-none touch-scroll">
@@ -696,7 +697,7 @@ export function ScheduleGeneralBuilderView({
           }}
         />
       ) : (
-        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2.5 overflow-hidden items-stretch">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2.5 md:overflow-hidden items-stretch">
           {/* Mobile View Switcher Tabs (Only visible on < md) */}
           <div className="flex md:hidden items-center justify-between p-1 rounded-xl bg-card border border-border/80 shrink-0 shadow-2xs">
             <div className="grid grid-cols-3 gap-1 w-full text-xs font-semibold">
@@ -745,7 +746,7 @@ export function ScheduleGeneralBuilderView({
           </div>
 
           {/* Left Sidebar: Groups Selector */}
-          <div className={cn("h-full min-h-0", mobileTab === "groups" ? "flex-1 flex flex-col md:flex-initial" : "hidden md:flex md:flex-col")}>
+          <div className={cn("min-h-[480px] md:min-h-0 md:h-full", mobileTab === "groups" ? "flex-1 flex flex-col md:flex-initial" : "hidden md:flex md:flex-col")}>
             <GroupSelectorSidebar
               groups={data.groups}
               teachers={data.teachers}
@@ -759,9 +760,9 @@ export function ScheduleGeneralBuilderView({
 
           {/* Center & Right Workspace */}
           {selectedGroup && (
-            <div className={cn("flex-1 min-w-0 h-full flex flex-col md:flex-row gap-2.5 overflow-hidden", mobileTab === "groups" ? "hidden md:flex" : "flex")}>
+            <div className={cn("flex-1 min-w-0 md:h-full flex flex-col md:flex-row gap-2.5 md:overflow-hidden", mobileTab === "groups" ? "hidden md:flex" : "flex")}>
               {/* Visual Weekly Interactive Calendar Grid */}
-              <div className={cn("flex-1 min-w-0 h-full flex flex-col overflow-hidden", mobileTab === "curriculum" ? "hidden md:flex" : "flex")}>
+              <div className={cn("flex-1 min-w-0 md:h-full flex flex-col md:overflow-hidden", mobileTab === "curriculum" ? "hidden md:flex" : "flex")}>
                 <InteractiveWeeklyCalendarGrid
                   schedule={data.schedule}
                   group={selectedGroup}
@@ -773,7 +774,7 @@ export function ScheduleGeneralBuilderView({
               </div>
 
               {/* Right Sidebar: Trimester Curriculum Panel (Materias del Periodo) */}
-              <div className={cn("h-full min-h-0", mobileTab === "curriculum" ? "flex-1 flex flex-col md:flex-initial" : "hidden md:flex md:flex-col")}>
+              <div className={cn("min-h-[480px] md:min-h-0 md:h-full", mobileTab === "curriculum" ? "flex-1 flex flex-col md:flex-initial" : "hidden md:flex md:flex-col")}>
                 <GroupTrimesterCurriculumPanel
                   group={selectedGroup}
                   teachers={data.teachers}

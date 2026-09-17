@@ -73,7 +73,7 @@ export function SchedulePanoramicView({
   });
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col rounded-2xl bg-card border border-border/80 p-3 space-y-3 shadow-xs overflow-hidden">
+    <div className="flex-1 min-h-[500px] md:min-h-0 flex flex-col rounded-2xl bg-card border border-border/80 p-3 space-y-3 shadow-xs md:overflow-hidden">
       {/* Top Controls Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 pb-2 border-b border-border/70">
         <div className="flex items-center gap-2">
