@@ -437,7 +437,7 @@ export function ScheduleAuditModal({
           </div>
 
           {/* Body Content / Issues List */}
-          <div className="p-5 max-h-[58vh] overflow-y-auto space-y-2.5 scrollbar-thin">
+          <div className="p-3 sm:p-5 max-h-[58vh] overflow-y-auto space-y-2.5 scrollbar-thin touch-scroll">
             {filteredIssues.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
@@ -458,7 +458,7 @@ export function ScheduleAuditModal({
                   <div
                     key={issue.id}
                     onClick={() => handleIssueClick(issue.groupId)}
-                    className={`p-3 rounded-2xl border transition-all flex items-start gap-3 select-none ${
+                    className={`p-3 rounded-2xl border transition-all flex items-start gap-3 select-none touch-manipulation active:scale-[0.99] ${
                       isError
                         ? "bg-red-500/5 border-red-500/30 hover:bg-red-500/10"
                         : "bg-amber-500/5 border-amber-500/30 hover:bg-amber-500/10"

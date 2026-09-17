@@ -307,7 +307,7 @@ export function AcademicTabsHelpModal({
             onValueChange={(val) => setSelectedTab(val as AcademicTabKey)}
             className="w-full mt-3"
           >
-            <TabsList className="w-full flex overflow-x-auto bg-muted/50 p-1 rounded-2xl scrollbar-none justify-start sm:justify-center gap-1 h-auto">
+            <TabsList className="w-full flex overflow-x-auto bg-muted/50 p-1 rounded-2xl scrollbar-none justify-start sm:justify-center gap-1 h-auto touch-scroll touch-pan-x">
               {(Object.keys(TABS_HELP_CONFIG) as AcademicTabKey[]).map((tabKey) => {
                 const cfg = TABS_HELP_CONFIG[tabKey];
                 return (
@@ -325,7 +325,7 @@ export function AcademicTabsHelpModal({
         </DialogHeader>
 
         {/* Modal Body - Wide & not so tall with balanced scrolling */}
-        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[50vh] sm:max-h-[52vh] scrollbar-thin">
+        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[50vh] sm:max-h-[52vh] scrollbar-thin touch-scroll">
           {/* Active Tab Banner */}
           <div className="p-3 sm:p-3.5 rounded-2xl bg-muted/30 border border-border/70 flex items-center gap-3.5">
             <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 shadow-xs ${currentConfig.bgIcon}`}>

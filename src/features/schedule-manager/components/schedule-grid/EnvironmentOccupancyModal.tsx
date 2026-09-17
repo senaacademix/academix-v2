@@ -511,7 +511,7 @@ export function EnvironmentOccupancyModal({
                   <button
                     type="button"
                     onClick={() => setEnvViewMode("single")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer touch-manipulation select-none active:scale-95 ${
                       envViewMode === "single"
                         ? "bg-background text-primary shadow-2xs"
                         : "text-muted-foreground hover:text-foreground"
@@ -523,7 +523,7 @@ export function EnvironmentOccupancyModal({
                   <button
                     type="button"
                     onClick={() => setEnvViewMode("all")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer touch-manipulation select-none active:scale-95 ${
                       envViewMode === "all"
                         ? "bg-background text-primary shadow-2xs"
                         : "text-muted-foreground hover:text-foreground"
@@ -535,7 +535,7 @@ export function EnvironmentOccupancyModal({
                   <button
                     type="button"
                     onClick={() => setEnvViewMode("chart")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer touch-manipulation select-none active:scale-95 ${
                       envViewMode === "chart"
                         ? "bg-background text-primary shadow-2xs"
                         : "text-muted-foreground hover:text-foreground"
@@ -808,7 +808,7 @@ export function EnvironmentOccupancyModal({
               </div>
 
               {/* All Environments Table Matrix */}
-              <div className="overflow-auto max-h-[58vh] border border-border/80 rounded-2xl bg-background shadow-2xs relative scrollbar-thin">
+              <div className="overflow-auto max-h-[58vh] border border-border/80 rounded-2xl bg-background shadow-2xs relative scrollbar-thin touch-scroll">
                 <div className="min-w-[1100px]">
                   {/* Table Header with Solid Opaque Background */}
                   <div className="grid grid-cols-12 divide-x divide-border/80 border-b border-border/80 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 sticky top-0 z-30 text-[11px] font-black shadow-xs">
@@ -1033,8 +1033,8 @@ export function EnvironmentOccupancyModal({
               )}
 
               {/* Days Header & Timeline Matrix */}
-              <div className="p-4 overflow-y-auto max-h-[54vh] scrollbar-thin">
-                <div className="border border-border/80 rounded-2xl overflow-hidden bg-card shadow-xs">
+              <div className="p-2 sm:p-4 overflow-x-auto overflow-y-auto max-h-[54vh] scrollbar-thin touch-scroll">
+                <div className="min-w-[650px] border border-border/80 rounded-2xl overflow-hidden bg-card shadow-xs">
                   {/* Days Header */}
                   <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border/70 bg-muted/90 backdrop-blur-xs sticky top-0 z-20">
                     <div className="py-2 px-1 text-center text-[10px] font-extrabold text-muted-foreground uppercase border-r border-border/60">

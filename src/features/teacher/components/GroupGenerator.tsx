@@ -8,7 +8,8 @@ import {
     DragOverlay,
     closestCorners,
     KeyboardSensor,
-    PointerSensor,
+    MouseSensor,
+    TouchSensor,
     useSensor,
     useSensors,
     DragStartEvent,
@@ -167,9 +168,10 @@ export function GroupGenerator({ students: initialStudents, groupName, groupCode
     const [activeStudent, setActiveStudent] = useState<Student | null>(null);
     const [isExporting, setIsExporting] = useState<"excel" | "pdf" | null>(null);
 
-    // Sensors
+    // Sensors (supports smooth touch scrolling and hold-to-drag on mobile)
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })

@@ -61,7 +61,8 @@ import {
     DndContext,
     closestCenter,
     KeyboardSensor,
-    PointerSensor,
+    MouseSensor,
+    TouchSensor,
     useSensor,
     useSensors,
     DragEndEvent
@@ -781,11 +782,17 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [teacherConfirmOpen, setTeacherConfirmOpen] = useState(false);
     const [teacherToConfirm, setTeacherToConfirm] = useState<{ id: string; name: string; assign: boolean } | null>(null);
 
-    // Sensors for drag-and-drop
+    // Sensors for drag-and-drop (optimized for mobile touch scroll and desktop mouse drag)
     const sensors = useSensors(
-        useSensor(PointerSensor, {
+        useSensor(MouseSensor, {
             activationConstraint: {
-                distance: 5,
+                distance: 8,
+            }
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 200,
+                tolerance: 6,
             }
         }),
         useSensor(KeyboardSensor, {

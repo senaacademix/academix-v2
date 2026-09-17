@@ -1191,7 +1191,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     {!onlyImprovement && (
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <TabsList className={cn(
-                                "flex w-full overflow-x-auto justify-start md:grid h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/60 backdrop-blur-md gap-1.5 shadow-2xs scrollbar-none flex-1",
+                                "flex w-full overflow-x-auto justify-start md:grid h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/60 backdrop-blur-md gap-1.5 shadow-2xs scrollbar-none flex-1 touch-scroll touch-pan-x",
                                 hideDocumentation ? "md:grid-cols-5" : "md:grid-cols-6"
                             )}>
                                 <TabsTrigger value="attendance" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">

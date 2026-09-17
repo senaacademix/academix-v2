@@ -73,7 +73,7 @@ export function HeroSection() {
 
           <a
             href="#caracteristicas"
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800/80 text-slate-300 hover:text-white font-semibold transition-all duration-300 text-center text-base backdrop-blur-md"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800/80 text-slate-300 hover:text-white font-semibold transition-all duration-300 text-center text-base backdrop-blur-md cursor-pointer touch-manipulation select-none active:scale-95"
           >
             Explorar Funciones
           </a>
