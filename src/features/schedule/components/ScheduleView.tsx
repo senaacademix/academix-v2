@@ -19,6 +19,7 @@ import {
     Cloud,
     Moon,
     Building,
+    GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCalendarDate, getScheduleCalendarYear } from "@/lib/dateUtils";
@@ -732,15 +733,26 @@ export function ScheduleView() {
                             </div>
                         )}
 
-                        {/* Timeline Denomination Badge */}
+                        {/* Timeline Denomination & Period Badge */}
                         {(() => {
                             const firstCourseWithTimeline = courses.find((c: any) => c.timelineName);
                             const activeTimelineName = (firstCourseWithTimeline as any)?.timelineName;
-                            if (!activeTimelineName) return null;
+                            const firstCourseWithPeriod = courses.find((c: any) => c.periodName);
+                            const activePeriodName = (firstCourseWithPeriod as any)?.periodName;
+                            if (!activeTimelineName && !activePeriodName) return null;
                             return (
-                                <div className="text-xs text-primary bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/25 font-bold flex items-center gap-1.5 shadow-2xs">
-                                    <BookOpen className="w-3.5 h-3.5 text-primary shrink-0" />
-                                    <span>Línea: {activeTimelineName}</span>
+                                <div className="flex items-center gap-1.5">
+                                    {activePeriodName && (
+                                        <div className="text-xs text-primary bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/25 font-bold flex items-center gap-1.5 shadow-2xs">
+                                            <span>{activePeriodName}</span>
+                                        </div>
+                                    )}
+                                    {activeTimelineName && (
+                                        <div className="text-xs text-primary bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/25 font-bold flex items-center gap-1.5 shadow-2xs">
+                                            <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
+                                            <span>{activeTimelineName}</span>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })()}
@@ -1058,8 +1070,8 @@ export function ScheduleView() {
                                                                     </span>
                                                                 )}
                                                                 {(event.course as any)?.timelineName && (
-                                                                    <span className="flex items-center gap-1 truncate text-primary font-bold text-[9px] bg-primary/10 px-1 py-0.2 rounded" title={`Línea: ${(event.course as any).timelineName}`}>
-                                                                        <BookOpen className="w-2.5 h-2.5 text-primary shrink-0" />
+                                                                    <span className="flex items-center gap-1 truncate text-primary font-bold text-[9px] bg-primary/10 px-1 py-0.2 rounded" title={(event.course as any).timelineName}>
+                                                                        <GitBranch className="w-2.5 h-2.5 text-primary shrink-0" />
                                                                         <span className="truncate">{(event.course as any).timelineName}</span>
                                                                     </span>
                                                                 )}
@@ -1082,7 +1094,7 @@ export function ScheduleView() {
                                                     <p className="text-[11px] text-muted-foreground">
                                                         {DAY_NAMES_ES_FULL[DAY_INDEX[event.dayOfWeek]]} de {toFormat12h(event.startTime)} a {toFormat12h(event.endTime)}
                                                     </p>
-                                                    {event.course.teacher && <p className="text-[11px] text-primary font-medium">Docente: {event.course.teacher.name}</p>}
+                                                    {event.course.teacher && <p className="text-[11px] text-primary font-medium">Instructor: {event.course.teacher.name}</p>}
                                                     {event.course.group && <p className="text-[11px] text-muted-foreground">Ficha: {event.course.group.name}</p>}
                                                 </TooltipContent>
                                             </Tooltip>
@@ -1463,7 +1475,7 @@ export function ScheduleView() {
                                     {selectedCourse?.teacher && (
                                         <div className="space-y-1">
                                             <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <Users className="w-3 h-3" /> Docente
+                                                <Users className="w-3 h-3" /> Instructor
                                             </p>
                                             <p className="text-sm font-medium">{selectedCourse.teacher.name}</p>
                                         </div>

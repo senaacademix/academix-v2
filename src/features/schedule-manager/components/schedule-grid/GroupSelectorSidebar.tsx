@@ -22,6 +22,7 @@ import {
   Cloud,
   Moon,
   FolderKanban,
+  GitBranch,
 } from "lucide-react";
 import {
   Select,
@@ -93,6 +94,7 @@ export function GroupSelectorSidebar({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "complete">("all");
   const [selectedProgramId, setSelectedProgramId] = useState<string>("all");
+  const [selectedTimelineId, setSelectedTimelineId] = useState<string>("all");
 
   const programs = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -105,6 +107,37 @@ export function GroupSelectorSidebar({
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [groups]);
+
+  const timelines = React.useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach((g) => {
+      if (selectedProgramId !== "all" && g.program?.id !== selectedProgramId) return;
+      if (g.period?.timeline?.id && g.period?.timeline?.name) {
+        map.set(g.period.timeline.id, g.period.timeline.name);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [groups, selectedProgramId]);
+
+  const hasUnassignedTimeline = React.useMemo(() => {
+    return groups.some((g) => {
+      if (selectedProgramId !== "all" && g.program?.id !== selectedProgramId) return false;
+      return !g.period?.timeline?.id;
+    });
+  }, [groups, selectedProgramId]);
+
+  // Reset timeline selection if it is no longer valid
+  React.useEffect(() => {
+    if (
+      selectedTimelineId !== "all" &&
+      selectedTimelineId !== "unassigned" &&
+      !timelines.some((t) => t.id === selectedTimelineId)
+    ) {
+      setSelectedTimelineId("all");
+    }
+  }, [timelines, selectedTimelineId]);
 
   const checkGroupHasPending = (g: typeof groups[0]) => {
     // 1. Horas requeridas vs programadas
@@ -176,18 +209,38 @@ export function GroupSelectorSidebar({
     const matchesProgram =
       selectedProgramId === "all" || g.program?.id === selectedProgramId;
 
+    const matchesTimeline =
+      selectedTimelineId === "all"
+        ? true
+        : selectedTimelineId === "unassigned"
+        ? !g.period?.timeline?.id
+        : g.period?.timeline?.id === selectedTimelineId ||
+          (g.period as any)?.timelineId === selectedTimelineId;
+
     const matchesSearch =
       g.name.toLowerCase().includes(search.toLowerCase()) ||
       g.program.name.toLowerCase().includes(search.toLowerCase()) ||
-      (g.period?.name && g.period.name.toLowerCase().includes(search.toLowerCase()));
+      (g.period?.name && g.period.name.toLowerCase().includes(search.toLowerCase())) ||
+      (g.period?.timeline?.name &&
+        g.period.timeline.name.toLowerCase().includes(search.toLowerCase()));
 
-    if (!matchesProgram || !matchesSearch) return false;
+    if (!matchesProgram || !matchesTimeline || !matchesSearch) return false;
 
     const hasPending = checkGroupHasPending(g);
     if (statusFilter === "pending") return hasPending;
     if (statusFilter === "complete") return !hasPending;
     return true;
   });
+
+  // Automatically select first group in filtered list if active group was filtered out
+  React.useEffect(() => {
+    if (filteredGroups.length > 0) {
+      const isCurrentSelectedInFiltered = filteredGroups.some((g) => g.id === selectedGroupId);
+      if (!isCurrentSelectedInFiltered) {
+        onSelectGroup(filteredGroups[0].id);
+      }
+    }
+  }, [filteredGroups, selectedGroupId, onSelectGroup]);
 
   return (
     <div className="w-full md:w-64 shrink-0 h-full flex flex-col rounded-2xl bg-card border border-border/80 p-3 space-y-2 shadow-xs overflow-hidden min-h-0">
@@ -283,6 +336,33 @@ export function GroupSelectorSidebar({
         </div>
       )}
 
+      {/* Timeline Selector Filter */}
+      {timelines.length > 0 && (
+        <div className="shrink-0">
+          <Select value={selectedTimelineId} onValueChange={setSelectedTimelineId}>
+            <SelectTrigger className="w-full h-7 text-[11px] rounded-xl bg-primary/10 border-primary/20 font-semibold px-2 gap-1.5 shadow-2xs text-primary hover:bg-primary/15 transition-colors">
+              <GitBranch className="w-3 h-3 text-primary shrink-0" />
+              <SelectValue placeholder="Línea de Tiempo" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl text-xs max-h-56">
+              <SelectItem value="all" className="font-bold cursor-pointer">
+                Todas las Líneas ({timelines.length})
+              </SelectItem>
+              {timelines.map((t) => (
+                <SelectItem key={t.id} value={t.id} className="cursor-pointer font-medium">
+                  {t.name}
+                </SelectItem>
+              ))}
+              {hasUnassignedTimeline && (
+                <SelectItem value="unassigned" className="cursor-pointer text-muted-foreground font-medium">
+                  Sin Línea Asignada
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative shrink-0">
         <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -369,9 +449,17 @@ export function GroupSelectorSidebar({
                   )}
                 </div>
 
-                <p className="text-[11px] text-muted-foreground truncate leading-tight">
-                  {g.program.name}
-                </p>
+                <div className="flex items-center justify-between gap-1 text-[11px] text-muted-foreground leading-tight min-w-0">
+                  <span className="truncate">{g.program.name}</span>
+                  {g.period?.timeline?.name && (
+                    <span
+                      title={g.period.timeline.name}
+                      className="text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 shrink-0 truncate max-w-[120px]"
+                    >
+                      {g.period.timeline.name}
+                    </span>
+                  )}
+                </div>
 
                 {/* 7-Day Mini Weekly Preview Bar with Direct Visible Compliance Indicators */}
                 <div className="pt-1.5 border-t border-border/40 space-y-1.5">

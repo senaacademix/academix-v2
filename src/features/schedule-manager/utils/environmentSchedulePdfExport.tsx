@@ -426,7 +426,7 @@ export function extractEnvironmentsExportData(
             distinctGroups.add(g.name);
 
             const dayObj = DAYS_ES.find((d) => d.key === s.dayOfWeek);
-            const tName = getCleanTeacherName(c.teacher?.name) || "Sin docente";
+            const tName = getCleanTeacherName(c.teacher?.name) || "Sin instructor";
 
             classesByDay[s.dayOfWeek]?.push({
               groupName: g.name,
@@ -790,7 +790,7 @@ export function EnvironmentSchedulePdfDocument({
             <View style={styles.tableRowHeader}>
               <Text style={[styles.colGroup, styles.th]}>Ficha</Text>
               <Text style={[styles.colCourse, styles.th]}>Asignatura / Competencia</Text>
-              <Text style={[styles.colTeacher, styles.th]}>Docente Responsable</Text>
+              <Text style={[styles.colTeacher, styles.th]}>Instructor Responsable</Text>
               <Text style={[styles.colDayTime, styles.th]}>Día y Horario</Text>
             </View>
             {data.allAssignments.length === 0 ? (

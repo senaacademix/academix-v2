@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Gestión de Horario por Grupos | AcademiX",
-  description: "Configuración y programación de clases por grupo, trimestre curricular y asignación docente.",
+  description: "Configuración y programación de clases por grupo, trimestre curricular y asignación de instructores.",
 };
 
 interface GestorScheduleBuilderPageProps {

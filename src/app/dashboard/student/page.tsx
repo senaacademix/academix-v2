@@ -7,17 +7,61 @@ import { getAvailableThemes } from "@/app/actions/themes";
 
 import { getFormattedTodayDate } from "@/lib/dateUtils";
 
+import prisma from "@/lib/prisma";
+
 export default async function Page() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session || session.user.role !== "student") {
     redirect("/signin");
   }
 
-  const availableCourses = await courseService.getAllCourses();
-  const myEnrollments = await courseService.getStudentEnrollments(session.user.id);
-  const pendingEnrollments = await courseService.getStudentPendingEnrollments(session.user.id);
-
-  const themes = await getAvailableThemes();
+  const [availableCourses, myEnrollments, pendingEnrollments, themes, studentUserData] = await Promise.all([
+    courseService.getAllCourses(),
+    courseService.getStudentEnrollments(session.user.id),
+    courseService.getStudentPendingEnrollments(session.user.id),
+    getAvailableThemes(),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        group: {
+          select: {
+            id: true,
+            name: true,
+            program: {
+              select: {
+                id: true,
+                name: true,
+                timelines: {
+                  select: { id: true, name: true, isDefault: true }
+                }
+              }
+            },
+            scheduleSlots: {
+              include: {
+                period: {
+                  include: {
+                    timeline: {
+                      select: { id: true, name: true }
+                    }
+                  }
+                },
+                academicSchedule: {
+                  select: {
+                    id: true,
+                    name: true,
+                    startDate: true,
+                    endDate: true,
+                    isActive: true,
+                    isPublished: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+  ]);
 
   const reqHeaders = await headers();
   const timezone = reqHeaders.get("x-vercel-ip-timezone") || "America/Bogota";
@@ -30,5 +74,6 @@ export default async function Page() {
     pendingEnrollments={pendingEnrollments}
     themes={themes}
     formattedDate={formattedDate}
+    studentGroup={studentUserData?.group || null}
   />;
 }

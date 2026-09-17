@@ -183,7 +183,7 @@ export async function requestStudentBanAction(data: {
             data: {
                 type: "ATTENTION",
                 title: "SOLICITUD DE BANEO AL ADMINISTRADOR",
-                description: `Docente ${session.user.name} solicita baneo. Motivo: ${data.reason.trim()}`,
+                description: `Instructor ${session.user.name} solicita baneo. Motivo: ${data.reason.trim()}`,
                 userId: data.studentId,
                 teacherId: session.user.id,
                 courseId: courseId
@@ -198,9 +198,9 @@ export async function requestStudentBanAction(data: {
         entity: "OTHER",
         entityId: data.studentId,
         userId: session.user.id,
-        userName: session.user.name || "Profesor",
+        userName: session.user.name || "Instructor",
         userRole: session.user.role,
-        description: `SOLICITUD DE BANEO: Docente ${session.user.name} solicitó banear a ${student.name} (${student.email}). Motivo: ${data.reason.trim()}`,
+        description: `SOLICITUD DE BANEO: Instructor ${session.user.name} solicitó banear a ${student.name} (${student.email}). Motivo: ${data.reason.trim()}`,
         metadata: { studentId: data.studentId, reason: data.reason.trim(), requestedBy: session.user.name },
         success: true,
     });

@@ -36,6 +36,7 @@ import {
   Moon,
   AlertTriangle,
   Lock,
+  GitBranch,
 } from "lucide-react";
 import {
   Tooltip,
@@ -363,6 +364,15 @@ export function InteractiveWeeklyCalendarGrid({
           {group.period && (
             <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold shrink-0">
               {group.period.name}
+            </Badge>
+          )}
+          {group.period?.timeline?.name && (
+            <Badge
+              variant="outline"
+              className="text-[10px] font-semibold text-primary bg-primary/10 border-primary/20 shrink-0 hidden sm:inline-flex items-center gap-1 shadow-2xs"
+            >
+              <GitBranch className="w-2.5 h-2.5 text-primary" />
+              {group.period.timeline.name}
             </Badge>
           )}
         </div>
@@ -698,7 +708,7 @@ export function InteractiveWeeklyCalendarGrid({
                                 {DAY_NAMES_ES_FULL[DAY_INDEX[evt.dayOfWeek]]} de {toFormat12h(evt.startTime)} a {toFormat12h(evt.endTime)}
                               </p>
                               {evt.teacherName && (
-                                <p className="text-[11px] text-primary font-medium">Docente: {getCleanTeacherName(evt.teacherName)}</p>
+                                <p className="text-[11px] text-primary font-medium">Instructor: {getCleanTeacherName(evt.teacherName)}</p>
                               )}
                               {group.environment && (
                                 <p className="text-[11px] text-muted-foreground">Ambiente: {group.environment.name}</p>

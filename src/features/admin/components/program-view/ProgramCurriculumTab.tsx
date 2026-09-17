@@ -106,8 +106,6 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
         return periods
             .filter((p: any) => {
                 if (selectedTimelineFilter === "ALL") return true;
-                if (selectedTimelineFilter === "SPECIAL") return p.esEspecial;
-                if (selectedTimelineFilter === "NORMAL") return !p.esEspecial;
                 return p.timelineId ? p.timelineId === selectedTimelineFilter : false;
             })
             .map((p: any) => {
@@ -154,8 +152,6 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
         }
         return [
             { key: "ALL", label: "Todos los Periodos", count: totalPeriods },
-            { key: "NORMAL", label: "Periodos Regulares", count: periods.filter((p: any) => !p.esEspecial).length },
-            { key: "SPECIAL", label: "Especiales", count: periods.filter((p: any) => p.esEspecial).length },
         ];
     }, [timelines, periods, totalPeriods]);
 
@@ -276,11 +272,6 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
                                                 {period.timeline?.name && (
                                                     <Badge variant="outline" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/30">
                                                         {period.timeline.name}
-                                                    </Badge>
-                                                )}
-                                                {period.esEspecial && (
-                                                    <Badge variant="outline" className="text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20">
-                                                        Periodo Especial
                                                     </Badge>
                                                 )}
                                             </div>

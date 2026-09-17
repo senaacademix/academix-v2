@@ -27,6 +27,7 @@ import {
   Layers,
   ArrowRight,
   HelpCircle,
+  GitBranch,
 } from "lucide-react";
 import { SchedulePanelHelpModal } from "./SchedulePanelHelpModal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -537,9 +538,25 @@ export function ScheduleGroupSlotsModal({
                                 {isSelected && <Check className="w-3.5 h-3.5" />}
                               </div>
                               <div className="min-w-0">
-                                <span className="font-semibold text-xs text-foreground block truncate">
-                                  {grp.name}
-                                </span>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-semibold text-xs text-foreground truncate">
+                                    Ficha {grp.name}
+                                  </span>
+                                  {(() => {
+                                    const pId = groupPeriodsMap[grp.id];
+                                    const selP = grp.availablePeriods?.find((p) => p.id === pId);
+                                    const tName = selP?.timelineName || (selP ? "Jornada Regular" : null);
+                                    if (!tName) return null;
+                                    return (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[9px] font-semibold text-primary bg-primary/10 border-primary/20 shrink-0 truncate max-w-[140px]"
+                                      >
+                                        {tName}
+                                      </Badge>
+                                    );
+                                  })()}
+                                </div>
                                 <span className="text-[11px] text-muted-foreground block truncate">
                                   {grp.programName}
                                 </span>
@@ -570,7 +587,7 @@ export function ScheduleGroupSlotsModal({
                                 {(() => {
                                   const periods = grp.availablePeriods || [];
                                   const grouped = periods.reduce((acc, p) => {
-                                    const tName = p.timelineName || (p.esEspecial ? "Periodos Especiales" : "Jornada Regular");
+                                    const tName = p.timelineName || "Jornada Regular";
                                     if (!acc[tName]) acc[tName] = [];
                                     acc[tName].push(p);
                                     return acc;
@@ -580,7 +597,7 @@ export function ScheduleGroupSlotsModal({
                                     <>
                                       <option value="none">Sin periodo asignado</option>
                                       {Object.entries(grouped).map(([tName, pList]) => (
-                                        <optgroup key={tName} label={`Línea: ${tName}`}>
+                                        <optgroup key={tName} label={tName}>
                                           {pList.map((p) => (
                                             <option key={p.id} value={p.id}>
                                               {p.name}
@@ -629,22 +646,23 @@ export function ScheduleGroupSlotsModal({
               ) : (
                 <div className="space-y-4">
                   {/* Selected Group Pills Selector */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                     {selectedGroupIds.map((gid) => {
-                      const grp = groupsList.find((g) => g.id === gid);
                       const isTabActive = activeGroupSlotTab === gid;
+                      const grp = groupsList.find((g) => g.id === gid);
+
                       return (
                         <button
                           key={gid}
                           type="button"
                           onClick={() => setActiveGroupSlotTab(gid)}
-                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold whitespace-nowrap transition-all ${
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                             isTabActive
                               ? "bg-primary text-primary-foreground border-primary shadow-xs"
                               : "bg-muted/40 hover:bg-muted text-muted-foreground border-border/80"
                           }`}
                         >
-                          {grp?.name || "Grupo"}
+                          <span>{grp?.name || "Grupo"}</span>
                         </button>
                       );
                     })}
@@ -655,63 +673,86 @@ export function ScheduleGroupSlotsModal({
                     <div className="space-y-4 border border-border/80 rounded-2xl p-5 bg-muted/10">
                       {/* Group Header & Presets */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <div>
-                            <h4 className="font-bold text-sm text-foreground">
-                              {groupsList.find((g) => g.id === activeGroupSlotTab)?.name}
-                            </h4>
-                            <p className="text-xs text-muted-foreground">
-                              {groupsList.find((g) => g.id === activeGroupSlotTab)?.programName}
-                            </p>
-                          </div>
+                        {(() => {
+                          const activeGrp = groupsList.find((g) => g.id === activeGroupSlotTab);
+                          const activePId = groupPeriodsMap[activeGroupSlotTab];
+                          const activePeriod = activeGrp?.availablePeriods?.find((p) => p.id === activePId);
+                          const activeTimelineName = activePeriod?.timelineName || (activePeriod ? "Jornada Regular" : null);
 
-                          {/* Period Selector for Active Group */}
-                          {((groupsList.find((g) => g.id === activeGroupSlotTab)?.availablePeriods) || []).length > 0 && (
-                            <div className="flex items-center gap-1.5 bg-background px-2.5 py-1 rounded-xl border border-border/80 shadow-2xs">
-                              <span className="text-[11px] font-bold text-muted-foreground shrink-0">Periodo:</span>
-                              <select
-                                value={groupPeriodsMap[activeGroupSlotTab] || "none"}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setGroupPeriodsMap((prev) => ({
-                                    ...prev,
-                                    [activeGroupSlotTab]: val === "none" ? "" : val,
-                                  }));
-                                }}
-                                className="px-2 py-0.5 rounded-lg border border-input bg-background text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                              >
-                                {(() => {
-                                  const activePeriods = (groupsList.find((g) => g.id === activeGroupSlotTab)?.availablePeriods) || [];
-                                  const normal = activePeriods.filter((p) => !p.esEspecial);
-                                  const special = activePeriods.filter((p) => p.esEspecial);
-                                  return (
-                                    <>
-                                      <option value="none">Sin periodo asignado</option>
-                                      {normal.length > 0 && (
-                                        <optgroup label="Periodos Normales">
-                                          {normal.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                              {p.name}
-                                            </option>
+                          return (
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-black text-sm text-foreground">
+                                    Ficha {activeGrp?.name}
+                                  </h4>
+                                  {activeTimelineName ? (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[10px] font-semibold text-primary bg-primary/10 border-primary/20 flex items-center gap-1 py-0.5 shadow-2xs"
+                                    >
+                                      <GitBranch className="w-2.5 h-2.5 shrink-0 text-primary" />
+                                      {activeTimelineName}
+                                    </Badge>
+                                  ) : (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[10px] font-semibold text-muted-foreground bg-muted/40 border-border/70 py-0.5"
+                                    >
+                                      Sin línea asignada
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground font-medium">
+                                  {activeGrp?.programName}
+                                </p>
+                              </div>
+
+                              {/* Period Selector for Active Group */}
+                              {((activeGrp?.availablePeriods) || []).length > 0 && (
+                                <div className="flex items-center gap-1.5 bg-background px-2.5 py-1 rounded-xl border border-border/80 shadow-2xs">
+                                  <span className="text-[11px] font-bold text-muted-foreground shrink-0">Periodo:</span>
+                                  <select
+                                    value={groupPeriodsMap[activeGroupSlotTab] || "none"}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setGroupPeriodsMap((prev) => ({
+                                        ...prev,
+                                        [activeGroupSlotTab]: val === "none" ? "" : val,
+                                      }));
+                                    }}
+                                    className="px-2 py-1 rounded-lg border border-input bg-background text-[11px] font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary truncate max-w-[220px]"
+                                  >
+                                    {(() => {
+                                      const activePeriods = activeGrp?.availablePeriods || [];
+                                      const grouped = activePeriods.reduce((acc, p) => {
+                                        const tName = p.timelineName || "Jornada Regular";
+                                        if (!acc[tName]) acc[tName] = [];
+                                        acc[tName].push(p);
+                                        return acc;
+                                      }, {} as Record<string, typeof activePeriods>);
+
+                                      return (
+                                        <>
+                                          <option value="none">Sin periodo asignado</option>
+                                          {Object.entries(grouped).map(([tName, pList]) => (
+                                            <optgroup key={tName} label={tName}>
+                                              {pList.map((p) => (
+                                                <option key={p.id} value={p.id}>
+                                                  {p.name}
+                                                </option>
+                                              ))}
+                                            </optgroup>
                                           ))}
-                                        </optgroup>
-                                      )}
-                                      {special.length > 0 && (
-                                        <optgroup label="Periodos Especiales">
-                                          {special.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                              {p.name} (Especial)
-                                            </option>
-                                          ))}
-                                        </optgroup>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </select>
+                                        </>
+                                      );
+                                    })()}
+                                  </select>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          );
+                        })()}
 
                         {/* Fast Presets Toolbar */}
                         <div className="flex flex-wrap items-center gap-1.5 text-xs">

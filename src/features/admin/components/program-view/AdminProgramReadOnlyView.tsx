@@ -204,7 +204,7 @@ export function AdminProgramReadOnlyView({
                             className="rounded-xl flex-1 py-2 text-xs font-bold gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <UserCheck className="h-4 w-4" />
-                            <span>Equipo Docente ({teachers.length})</span>
+                            <span>Equipo de Instructores ({teachers.length})</span>
                         </TabsTrigger>
 
                         <TabsTrigger

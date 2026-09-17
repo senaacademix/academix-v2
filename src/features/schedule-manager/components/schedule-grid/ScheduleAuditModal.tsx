@@ -122,7 +122,7 @@ export function ScheduleAuditModal({
                 type: "schedule_overlap",
                 severity: "error",
                 title: `Superposición de Clases: Ficha ${g.name}`,
-                description: `En la ficha ${g.name}, la clase "${sA.courseTitle}" (${toFormat12h(sA.startTime)} - ${toFormat12h(sA.endTime)}, Docente: ${sA.teacherName}) se cruza/superpone con "${sB.courseTitle}" (${toFormat12h(sB.startTime)} - ${toFormat12h(sB.endTime)}, Docente: ${sB.teacherName}) el ${DAY_LABELS_ES[sA.dayOfWeek]}.`,
+                description: `En la ficha ${g.name}, la clase "${sA.courseTitle}" (${toFormat12h(sA.startTime)} - ${toFormat12h(sA.endTime)}, Instructor: ${sA.teacherName}) se cruza/superpone con "${sB.courseTitle}" (${toFormat12h(sB.startTime)} - ${toFormat12h(sB.endTime)}, Instructor: ${sB.teacherName}) el ${DAY_LABELS_ES[sA.dayOfWeek]}.`,
                 groupId: g.id,
                 groupName: g.name,
                 dayOfWeek: sA.dayOfWeek,
@@ -244,7 +244,7 @@ export function ScheduleAuditModal({
               id: `no-teacher-${g.id}-${c.id}-${s.id}`,
               type: "teacher_collision",
               severity: "error",
-              title: `Materia sin Docente: ${c.title}`,
+              title: `Materia sin Instructor: ${c.title}`,
               description: `La sesión de "${c.title}" el ${DAY_LABELS_ES[s.dayOfWeek]} (${toFormat12h(s.startTime)} - ${toFormat12h(s.endTime)}) en la ficha ${g.name} no tiene instructor asignado.`,
               groupId: g.id,
               groupName: g.name,
@@ -273,7 +273,7 @@ export function ScheduleAuditModal({
               id: `qual-${g.id}-${c.id}-${s.id}`,
               type: "qualification",
               severity: "warning",
-              title: `Docente no calificado: ${tName}`,
+              title: `Instructor no calificado: ${tName}`,
               description: `El instructor ${tName} no tiene registrada la habilitación o competencia para dictar "${c.title}" en la ficha ${g.name}.`,
               groupId: g.id,
               groupName: g.name,
@@ -447,7 +447,7 @@ export function ScheduleAuditModal({
                   ¡Excelente! No hay conflictos en esta categoría
                 </h3>
                 <p className="text-xs text-muted-foreground max-w-sm">
-                  La programación analizada cumple con las reglas de docentes, ambientes y horas.
+                  La programación analizada cumple con las reglas de instructores, ambientes y horas.
                 </p>
               </div>
             ) : (
@@ -519,7 +519,7 @@ export function ScheduleAuditModal({
           {/* Footer */}
           <DialogFooter className="p-4 border-t border-border/80 bg-muted/20 flex flex-row items-center justify-between">
             <span className="text-[11px] text-muted-foreground">
-              Total de verificaciones realizadas: {groups.length} fichas y {teachers.length} docentes.
+              Total de verificaciones realizadas: {groups.length} fichas y {teachers.length} instructores.
             </span>
             <Button
               type="button"

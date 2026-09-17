@@ -301,7 +301,7 @@ export async function adminLockTeacherQualificationsAction(teacherId: string) {
         userId: session.user.id,
         userName: session.user.name || "Admin",
         userRole: "admin",
-        description: `Materias habilitadas de docente publicadas/aprobadas por administrador`,
+        description: `Materias habilitadas de instructor publicadas/aprobadas por administrador`,
         success: true,
     });
 

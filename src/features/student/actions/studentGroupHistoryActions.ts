@@ -23,6 +23,8 @@ export interface StudentGroupHistoryItem {
   attendanceRate?: number;
   remarksCount?: number;
   improvementPlansCount?: number;
+  timelineName?: string | null;
+  periodName?: string | null;
 }
 
 export async function getStudentGroupHistoryAction(studentId?: string) {
@@ -143,7 +145,21 @@ export async function getStudentGroupHistoryAction(studentId?: string) {
           select: {
             id: true,
             name: true,
-            program: { select: { name: true } },
+            program: {
+              select: {
+                name: true,
+                timelines: { select: { id: true, name: true, isDefault: true } },
+              },
+            },
+            scheduleSlots: {
+              include: {
+                period: {
+                  include: {
+                    timeline: { select: { id: true, name: true } },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -202,6 +218,20 @@ export async function getStudentGroupHistoryAction(studentId?: string) {
           },
         });
 
+        const slot = en.group?.scheduleSlots?.find((s: any) => s.period?.timeline?.name);
+        const timelineName =
+          slot?.period?.timeline?.name ||
+          en.group?.scheduleSlots?.find((s: any) => s.period)?.period?.timeline?.name ||
+          en.group?.program?.timelines?.find((t: any) => t.isDefault)?.name ||
+          en.group?.program?.timelines?.[0]?.name ||
+          null;
+
+        const periodName =
+          slot?.period?.name ||
+          en.group?.scheduleSlots?.find((s: any) => s.period)?.period?.name ||
+          en.group?.period?.name ||
+          null;
+
         return {
           id: en.id,
           groupId: en.groupId,
@@ -216,6 +246,8 @@ export async function getStudentGroupHistoryAction(studentId?: string) {
           attendanceRate: attRate,
           remarksCount,
           improvementPlansCount,
+          timelineName,
+          periodName,
         };
       })
     );
@@ -233,7 +265,7 @@ export async function getStudentGroupHistoryAction(studentId?: string) {
           name: student.name,
           email: student.email,
           identificacion: student.profile?.identificacion || "S/I",
-          currentGroup: student.group ? `${student.group.name} (${student.group.program.name})` : "Sin Ficha Activa",
+          currentGroup: student.group ? `${student.group.name}` : "Sin Ficha Activa",
         },
         history: historyItems,
         allGroups: allSystemGroups,

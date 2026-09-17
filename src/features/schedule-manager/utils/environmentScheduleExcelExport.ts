@@ -264,7 +264,7 @@ export async function exportEnvironmentsToExcel(
     sec2.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
     sheet.getRow(tableHeaderRowIndex).height = 20;
 
-    const detailHeaders = ["Ficha / Grupo", "Asignatura / Competencia", "Docente Responsable", "Día", "Horario (Duración)"];
+    const detailHeaders = ["Ficha / Grupo", "Asignatura / Competencia", "Instructor Responsable", "Día", "Horario (Duración)"];
     const detailHeaderRow = sheet.addRow(detailHeaders);
     detailHeaderRow.height = 22;
     detailHeaderRow.eachCell((cell) => {

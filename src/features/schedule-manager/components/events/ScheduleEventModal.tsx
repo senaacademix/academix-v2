@@ -246,7 +246,7 @@ export function ScheduleEventModal({
               id="event-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej: Inducción General de Aprendices, Jornada Pedagógica Docente, Cierre de Trimestre..."
+              placeholder="Ej: Inducción General de Aprendices, Jornada Pedagógica de Instructores, Cierre de Trimestre..."
               className="rounded-xl h-11 text-sm font-medium"
               required
             />
@@ -285,9 +285,9 @@ export function ScheduleEventModal({
               >
                 <div className="flex items-center gap-1 text-xs">
                   <School className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>👨‍🏫 Solo Profesores</span>
+                  <span>👨‍🏫 Solo Instructores</span>
                 </div>
-                <span className="text-[10px] font-normal opacity-80">Docentes y claustro</span>
+                <span className="text-[10px] font-normal opacity-80">Instructores y claustro</span>
               </button>
 
               <button

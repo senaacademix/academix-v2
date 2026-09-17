@@ -132,13 +132,13 @@ const getAuthorRoleLabel = (
 ): string => {
     if (!user) return "";
     if (user.id && targetTeacherId && user.id === targetTeacherId) {
-        return "Profesor";
+        return "Instructor";
     }
     const r = (user.role || "").toLowerCase().trim();
     if (r === "gestor") return "Gestor";
     if (r === "admin" || r === "administrator") return "Administrador";
     if (r === "coordinador") return "Coordinador";
-    if (r === "teacher" || r === "profesor" || r === "docente") return "Profesor";
+    if (r === "teacher" || r === "profesor" || r === "docente") return "Instructor";
     return "Gestor";
 };
 
@@ -499,7 +499,7 @@ export function TeacherAvailabilityView({
                                     </Badge>
                                 )}
                             </div>
-                            <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar la disponibilidad específica del docente.</p>
+                            <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar la disponibilidad específica del instructor.</p>
                         </div>
                     </div>
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
@@ -553,9 +553,9 @@ export function TeacherAvailabilityView({
                             <p className="font-semibold text-sm">Disponibilidad Publicada y Bloqueada</p>
                             <p className="text-xs opacity-90 mt-0.5">
                                 {isAdminMode 
-                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Profesor"
+                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Instructor"
                                         ? `La disponibilidad fue guardada y bloqueada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()}. Desbloquea para permitir o realizar cambios.`
-                                        : "El profesor completó su registro y no puede editarlo. Desbloquea para permitir o realizar cambios.")
+                                        : "El instructor completó su registro y no puede editarlo. Desbloquea para permitir o realizar cambios.")
                                     : "Tu disponibilidad horaria semanal está registrada y bloqueada para edición. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
                             </p>
                             {lastModifiedBy && (
@@ -585,9 +585,9 @@ export function TeacherAvailabilityView({
                             <p className="font-semibold text-sm">Disponibilidad en Modo Borrador</p>
                             <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
                                 {isAdminMode 
-                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Profesor"
+                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Instructor"
                                         ? `La disponibilidad fue editada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()} y permanece en modo borrador.`
-                                        : "El profesor aún puede editar su disponibilidad.")
+                                        : "El instructor aún puede editar su disponibilidad.")
                                     : "Puedes configurar y modificar tus horas de disponibilidad de lunes a domingo. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
                             </p>
                             {lastModifiedBy && (
@@ -754,9 +754,9 @@ export function TeacherAvailabilityView({
                                                 const styles = getSchedulePeriodStyles(slot.startTime);
                                                 const IconComp = styles.icon;
                                                 const effectiveTargetTeacherId = currentTeacherId || teacherId;
-                                                const slotAuthor = slot.createdBy || (effectiveTargetTeacherId ? { id: effectiveTargetTeacherId, name: currentTeacherName || "Profesor", role: "teacher" } : null);
+                                                const slotAuthor = slot.createdBy || (effectiveTargetTeacherId ? { id: effectiveTargetTeacherId, name: currentTeacherName || "Instructor", role: "teacher" } : null);
                                                 const authorRoleLabel = getAuthorRoleLabel(slotAuthor, effectiveTargetTeacherId);
-                                                const isProf = authorRoleLabel === "Profesor";
+                                                const isProf = authorRoleLabel === "Instructor";
                                                 const authorName = slotAuthor?.name || "Usuario registrado";
 
                                                 return (

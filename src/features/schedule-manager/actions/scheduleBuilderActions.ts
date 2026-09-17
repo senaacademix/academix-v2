@@ -38,6 +38,11 @@ export interface ScheduleBuilderData {
       id: string;
       name: string;
       description: string | null;
+      timelineId?: string | null;
+      timeline?: {
+        id: string;
+        name: string;
+      } | null;
     } | null;
     environment: {
       id: string;
@@ -142,6 +147,12 @@ export async function getScheduleBuilderDataAction(scheduleId: string, programId
           include: {
             period: {
               include: {
+                timeline: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
                 courses: {
                   include: {
                     qualifiedTeachers: { select: { id: true } }
@@ -319,7 +330,12 @@ export async function getScheduleBuilderDataAction(scheduleId: string, programId
         period: period ? {
           id: period.id,
           name: period.name,
-          description: period.description
+          description: period.description,
+          timelineId: period.timelineId || null,
+          timeline: period.timeline ? {
+            id: period.timeline.id,
+            name: period.timeline.name,
+          } : null,
         } : null,
         environment: g.environment ? {
           id: g.environment.id,
@@ -530,7 +546,7 @@ export async function assignGroupClassScheduleAction(data: {
     if (teacherCollision) {
       const collisionTeacherName = teacherCollision.teacher?.name || teacherCollision.course.teacher?.name || "seleccionado";
       throw new Error(
-        `Colisión de docente: El profesor ${collisionTeacherName} ya tiene clase asignada con la ficha ${teacherCollision.course.group?.name || ""} el ${data.dayOfWeek} de ${teacherCollision.startTime} a ${teacherCollision.endTime}`
+        `Colisión de instructor: El instructor ${collisionTeacherName} ya tiene clase asignada con la ficha ${teacherCollision.course.group?.name || ""} el ${data.dayOfWeek} de ${teacherCollision.startTime} a ${teacherCollision.endTime}`
       );
     }
   }

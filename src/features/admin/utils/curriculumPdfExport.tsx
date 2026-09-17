@@ -11,11 +11,20 @@ export interface CurriculumPdfCourse {
   badgeColor?: string | null;
 }
 
+export interface CurriculumPdfTimeline {
+  id: string;
+  name: string;
+  description?: string | null;
+  isDefault?: boolean;
+}
+
 export interface CurriculumPdfPeriod {
   id: string;
   name: string;
   description?: string | null;
   esEspecial?: boolean;
+  timelineId?: string | null;
+  timeline?: { id: string; name: string } | null;
   courses: CurriculumPdfCourse[];
 }
 
@@ -23,6 +32,7 @@ export interface CurriculumPdfProgram {
   id: string;
   name: string;
   description?: string | null;
+  timelines?: CurriculumPdfTimeline[];
   periods: CurriculumPdfPeriod[];
   groups?: Array<{ id: string; name: string }>;
   environments?: Array<{ id: string; name: string }>;
@@ -35,10 +45,10 @@ export interface CurriculumExportOptions {
   programDescription?: string;
   badgeText?: string;
   issueDate?: string;
-  includeSpecialPeriods?: boolean;
   includeDetailedCatalogue?: boolean;
   logoUrl?: string;
   centerLogo?: boolean;
+  selectedTimelineIds?: string[];
 }
 
 const styles = StyleSheet.create({
@@ -465,21 +475,44 @@ export const CurriculumPdfDocument: React.FC<{
   program: CurriculumPdfProgram;
   options?: CurriculumExportOptions;
 }> = ({ program, options }) => {
-  const includeSpecial = options?.includeSpecialPeriods ?? false;
+  const selectedTimelineIds = options?.selectedTimelineIds;
+
+  const defaultTimeline = program.timelines?.find((t) => t.isDefault) || program.timelines?.[0];
 
   const rawPeriods = program.periods || [];
-  const periods = includeSpecial
-    ? rawPeriods
-    : rawPeriods.filter((p) => !p.esEspecial);
 
-  const normalPeriods = periods.filter((p) => !p.esEspecial);
-  const specialPeriods = periods.filter((p) => p.esEspecial);
+  // Filter periods by selected timeline(s)
+  const timelineFilteredPeriods = (selectedTimelineIds && selectedTimelineIds.length > 0)
+    ? rawPeriods.filter((p) => {
+        const pTimelineId = p.timelineId || p.timeline?.id || defaultTimeline?.id;
+        return pTimelineId ? selectedTimelineIds.includes(pTimelineId) : true;
+      })
+    : rawPeriods;
+
+  // Sort periods by timeline order, then by native order
+  const timelineOrderMap = new Map<string, number>();
+  (program.timelines || []).forEach((tl, idx) => {
+    timelineOrderMap.set(tl.id, idx);
+  });
+
+  const periods = [...timelineFilteredPeriods].sort((a, b) => {
+    const tlA = a.timelineId || a.timeline?.id || defaultTimeline?.id || "";
+    const tlB = b.timelineId || b.timeline?.id || defaultTimeline?.id || "";
+    const orderA = timelineOrderMap.get(tlA) ?? 999;
+    const orderB = timelineOrderMap.get(tlB) ?? 999;
+    if (orderA !== orderB) return orderA - orderB;
+    return 0;
+  });
+
+  const selectedTimelinesList = (program.timelines || []).filter((t) =>
+    selectedTimelineIds && selectedTimelineIds.length > 0 ? selectedTimelineIds.includes(t.id) : true
+  );
 
   const allCourses = periods.flatMap((p) =>
     (p.courses || []).map((c) => ({
       ...c,
       periodName: p.name,
-      esEspecial: p.esEspecial,
+      timelineName: p.timeline?.name || program.timelines?.find((t) => t.id === p.timelineId)?.name || null,
     }))
   );
 
@@ -561,12 +594,14 @@ export const CurriculumPdfDocument: React.FC<{
           {chunkIdx === 0 && (
             <View style={styles.statsBar}>
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Periodos Académicos</Text>
+                <Text style={styles.statLabel}>Periodos y Líneas</Text>
                 <Text style={styles.statValue}>
                   {periods.length} {periods.length === 1 ? "Periodo" : "Periodos"}
                 </Text>
                 <Text style={styles.statSub}>
-                  {normalPeriods.length} Regulares{includeSpecial ? ` • ${specialPeriods.length} Especiales` : ""}
+                  {selectedTimelinesList.length > 0
+                    ? `${selectedTimelinesList.length} ${selectedTimelinesList.length === 1 ? "Línea Seleccionada" : "Líneas Seleccionadas"}`
+                    : "Todas las líneas"}
                 </Text>
               </View>
               <View style={styles.statItem}>
@@ -619,12 +654,18 @@ export const CurriculumPdfDocument: React.FC<{
                 <View key={p.id} style={styles.periodColumn}>
                   {/* Period Header */}
                   <View style={styles.periodColumnHeader}>
-                    <Text style={styles.periodColumnTitle}>{p.name}</Text>
-                    {p.esEspecial ? (
-                      <Text style={styles.periodSpecialTag}>ESPECIAL</Text>
-                    ) : (
-                      <Text style={{ fontSize: 6.5, color: "#64748b" }}>REGULAR</Text>
-                    )}
+                    <View style={{ flexDirection: "column", gap: 1, maxWidth: "90%" }}>
+                      <Text style={styles.periodColumnTitle}>{p.name}</Text>
+                      {(() => {
+                        const tName = p.timeline?.name || program.timelines?.find((t) => t.id === p.timelineId)?.name;
+                        if (!tName) return null;
+                        return (
+                          <Text style={{ fontSize: 6, color: "#1d4ed8", fontFamily: "Helvetica-Bold" }}>
+                            {tName}
+                          </Text>
+                        );
+                      })()}
+                    </View>
                   </View>
 
                   {/* Courses inside this Period */}
@@ -734,8 +775,10 @@ export const CurriculumPdfDocument: React.FC<{
                   >
                     <View style={styles.colPeriod}>
                       <Text style={styles.cellBold}>{c.periodName}</Text>
-                      {c.esEspecial && (
-                        <Text style={{ fontSize: 5.5, color: "#b45309" }}>Periodo Especial</Text>
+                      {c.timelineName && (
+                        <Text style={{ fontSize: 5.5, color: "#1d4ed8", fontFamily: "Helvetica-Bold" }}>
+                          {c.timelineName}
+                        </Text>
                       )}
                     </View>
                     <View style={styles.colTitle}>

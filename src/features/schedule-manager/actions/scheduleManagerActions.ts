@@ -332,7 +332,7 @@ export async function getAvailableGroupsAction(programId?: string): Promise<Avai
         name: p.name,
         esEspecial: p.esEspecial,
         timelineId: p.timelineId,
-        timelineName: p.timeline?.name || null,
+        timelineName: p.timeline?.name || "Jornada Regular",
       }))
     }));
   } catch (error) {

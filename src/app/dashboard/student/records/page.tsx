@@ -25,7 +25,7 @@ export default function StudentRecordsPage() {
                         </span>
                     </h1>
                     <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed font-medium">
-                        Consulta tu historial de asistencia, observaciones disciplinarias de docentes, calificaciones por corte y planes de mejoramiento.
+                        Consulta tu historial de asistencia, observaciones disciplinarias de instructores, calificaciones por corte y planes de mejoramiento.
                     </p>
                 </div>
             </div>

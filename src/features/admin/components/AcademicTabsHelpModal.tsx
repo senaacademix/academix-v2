@@ -72,7 +72,7 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
       },
       {
         title: "Estructura de Periodos",
-        description: "Visualiza el conteo global de periodos ordinarios (trimestres/semestres) y periodos especiales o complementarios.",
+        description: "Visualiza el conteo global de periodos formativos (trimestres/semestres) y líneas de tiempo curriculares.",
         icon: <Calendar className="w-4 h-4 text-blue-500" />,
       },
       {

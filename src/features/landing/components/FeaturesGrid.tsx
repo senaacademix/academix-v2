@@ -74,7 +74,7 @@ export function FeaturesGrid() {
             Todo lo que necesitas para tu <span className="text-primary">gestión académica</span>
           </h2>
           <p className="text-slate-400 text-base sm:text-lg">
-            Diseñado para simplificar procesos complejos, ahorrar tiempo administrativo y brindar claridad a docentes y alumnos.
+            Diseñado para simplificar procesos complejos, ahorrar tiempo administrativo y brindar claridad a instructores y aprendices.
           </p>
         </div>
 

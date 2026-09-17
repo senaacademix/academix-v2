@@ -132,19 +132,19 @@ export function GestorDashboardView({
             link: `/dashboard/gestor/courses?programId=${currentProgram.id}`
         },
         {
-            title: "Docentes Vinculados",
+            title: "Instructores Vinculados",
             value: currentProgram.teachersCount ?? currentProgram._count?.teachers ?? 0,
             description: "Instructores en el programa",
             icon: UserCheck,
-            color: "text-purple-500",
-            bg: "bg-purple-500/10",
+            color: "text-indigo-500",
+            bg: "bg-indigo-500/10",
             link: `/dashboard/gestor/users?programId=${currentProgram.id}`
         }
     ] : [];
 
     const userDistribution = currentProgram ? [
         { label: "Aprendices", value: currentProgram.studentsCount ?? 0, icon: GraduationCap, color: "bg-blue-500" },
-        { label: "Docentes", value: currentProgram.teachersCount ?? 0, icon: UserCheck, color: "bg-indigo-500" },
+        { label: "Instructores", value: currentProgram.teachersCount ?? 0, icon: UserCheck, color: "bg-indigo-500" },
     ] : [];
 
     // Operational modules for the selected program
@@ -304,7 +304,7 @@ export function GestorDashboardView({
                                 <span>Permitir edición de fechas anteriores</span>
                             </h3>
                             <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                                Si está activo, los docentes del programa <strong className="text-foreground font-bold">{currentProgram.name}</strong> pueden registrar o modificar asistencias de semanas anteriores libremente.
+                                Si está activo, los instructores del programa <strong className="text-foreground font-bold">{currentProgram.name}</strong> pueden registrar o modificar asistencias de semanas anteriores libremente.
                             </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">

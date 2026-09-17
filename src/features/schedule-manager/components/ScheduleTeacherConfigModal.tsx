@@ -87,7 +87,7 @@ export function ScheduleTeacherConfigModal({
                 <Users className="w-4 h-4" />
               </div>
               <DialogTitle className="text-base font-extrabold text-foreground tracking-tight">
-                Gestión Académica de Profesores
+                Gestión Académica de Instructores
               </DialogTitle>
               <Badge variant="outline" className="hidden sm:inline-flex text-[10px] font-mono px-2 py-0.5 border-primary/30 text-primary">
                 Disponibilidad y Materias por Horario
@@ -105,7 +105,7 @@ export function ScheduleTeacherConfigModal({
                   <HelpCircle className="w-4 h-4 text-primary" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Profesores</TooltipContent>
+              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Instructores</TooltipContent>
             </Tooltip>
           </div>
 
@@ -122,7 +122,7 @@ export function ScheduleTeacherConfigModal({
                   ) : (
                     <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
                       <SelectTrigger className="h-8 text-xs font-bold bg-background border-border/80 rounded-lg">
-                        <SelectValue placeholder="Seleccionar Profesor..." />
+                        <SelectValue placeholder="Seleccionar Instructor..." />
                       </SelectTrigger>
                       <SelectContent className="max-h-[220px]">
                         {teachers.map((t) => (
@@ -160,7 +160,7 @@ export function ScheduleTeacherConfigModal({
             {!selectedTeacherId ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
                 <Users className="w-10 h-10 mb-2 opacity-30" />
-                <p className="text-xs font-bold">Selecciona un profesor para gestionar su disponibilidad y materias.</p>
+                <p className="text-xs font-bold">Selecciona un instructor para gestionar su disponibilidad y materias.</p>
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto min-h-0 pt-1 pb-1">

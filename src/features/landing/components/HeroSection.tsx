@@ -91,7 +91,7 @@ export function HeroSection() {
               <Users className="w-5 h-5" />
             </div>
             <span className="text-2xl font-bold text-white">Multi-Rol</span>
-            <span className="text-xs text-slate-400">Admin, Docente, Estudiante</span>
+            <span className="text-xs text-slate-400">Admin, Instructor, Aprendiz</span>
           </div>
 
           <div className="flex flex-col items-center p-4 rounded-2xl bg-slate-900/40 border border-slate-800/40 backdrop-blur-md">

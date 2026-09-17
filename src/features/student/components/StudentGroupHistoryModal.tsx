@@ -28,6 +28,7 @@ import {
   Award,
   AlertTriangle,
   Sparkles,
+  GitBranch,
 } from "lucide-react";
 import {
   getStudentGroupHistoryAction,
@@ -355,10 +356,21 @@ export function StudentGroupHistoryModal({
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-extrabold text-sm text-foreground">
                                   Ficha {item.groupName}
                                 </span>
+                                {item.periodName && (
+                                  <Badge variant="outline" className="text-[9px] font-bold bg-primary/10 text-primary border-primary/20">
+                                    {item.periodName}
+                                  </Badge>
+                                )}
+                                {item.timelineName && (
+                                  <Badge variant="outline" className="text-[9px] font-semibold bg-primary/10 text-primary border-primary/20 flex items-center gap-1">
+                                    <GitBranch className="w-2.5 h-2.5 text-primary" />
+                                    {item.timelineName}
+                                  </Badge>
+                                )}
                                 <Badge
                                   className={`text-[9px] font-bold ${
                                     isCurrent
@@ -371,9 +383,6 @@ export function StudentGroupHistoryModal({
                                   {isCurrent ? "🟢 FICHA ACTIVA ACTUAL" : `TRASLADADO / HISTÓRICO`}
                                 </Badge>
                               </div>
-                              <p className="text-[11px] text-muted-foreground font-medium">
-                                Programa: {item.programName}
-                              </p>
                             </div>
 
                             <div className="text-right text-[10px] font-mono text-muted-foreground space-y-0.5">

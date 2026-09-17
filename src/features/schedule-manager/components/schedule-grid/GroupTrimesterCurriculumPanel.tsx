@@ -66,6 +66,7 @@ export function GroupTrimesterCurriculumPanel({
               </h3>
               <p className="text-[10px] text-muted-foreground truncate font-medium">
                 {group.period?.name || "Periodo sin definir"}
+                {group.period?.timeline?.name && ` • ${group.period.timeline.name}`}
               </p>
             </div>
           </div>

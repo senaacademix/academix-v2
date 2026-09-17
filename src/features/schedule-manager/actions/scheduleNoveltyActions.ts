@@ -13,7 +13,7 @@ async function getSession() {
 async function requireStaff() {
   const session = await getSession();
   if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "teacher")) {
-    throw new Error("No autorizado: Se requiere rol de administrador, gestor o docente.");
+    throw new Error("No autorizado: Se requiere rol de administrador, gestor o instructor.");
   }
   return session;
 }

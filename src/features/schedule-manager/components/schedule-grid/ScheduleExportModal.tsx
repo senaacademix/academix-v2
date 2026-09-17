@@ -398,7 +398,7 @@ export function ScheduleExportModal({
                               {g.name}
                             </span>
                             <span className="text-[10px] text-muted-foreground block truncate">
-                              {g.program.name} • {g.period?.name || "Sin trimestre"}
+                              {g.program.name} • {g.period?.name || "Sin trimestre"}{g.period?.timeline ? ` (${g.period.timeline.name})` : ""}
                             </span>
                           </div>
                         </div>

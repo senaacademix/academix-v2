@@ -52,7 +52,7 @@ import {
     AlertCircle, Building, Code, Database, Binary, MessageSquare, Terminal,
     ShieldCheck, Cloud, Rocket, NotebookTabs, Lock as LockIcon, Download,
     Activity, Upload, AlertTriangle, School, Eye, HelpCircle, FileText, Loader2,
-    ImageIcon, Link as LinkIcon, Copy, Check, MoreVertical
+    ImageIcon, Link as LinkIcon, Copy, Check, MoreVertical, GitBranch
 } from "lucide-react";
 import { generateAndDownloadCurriculumPdf, CurriculumExportOptions } from "../utils/curriculumPdfExport";
 import { Switch } from "@/components/ui/switch";
@@ -724,6 +724,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [timelineName, setTimelineName] = useState("");
     const [timelineDescription, setTimelineDescription] = useState("");
     const [timelineIsDefault, setTimelineIsDefault] = useState(false);
+    const [timelineToDelete, setTimelineToDelete] = useState<CurriculumTimeline | null>(null);
 
     // Duplication states
     const [duplicateTimelineDialogOpen, setDuplicateTimelineDialogOpen] = useState(false);
@@ -746,8 +747,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [periodToEdit, setPeriodToEdit] = useState<Period | null>(null);
     const [periodName, setPeriodName] = useState("");
     const [periodDescription, setPeriodDescription] = useState("");
-    const [periodTab, setPeriodTab] = useState<"normal" | "special">("normal");
-    const [periodEsEspecial, setPeriodEsEspecial] = useState(false);
 
     const [groupDialogOpen, setGroupDialogOpen] = useState(false);
     const [groupToEdit, setGroupToEdit] = useState<Group | null>(null);
@@ -1401,23 +1400,26 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         });
     };
 
-    const handleDeleteTimeline = async (tl: CurriculumTimeline) => {
+    const handleDeleteTimeline = (tl: CurriculumTimeline) => {
         if (!selectedProgram) return;
         const count = (selectedProgram.timelines || []).length;
         if (count <= 1) {
             toast.error("No es posible eliminar la única línea de tiempo del programa");
             return;
         }
-        if (!confirm(`¿Estás seguro de eliminar la línea "${tl.name}"? Se eliminarán todos los periodos y materias plantilla asociados a esta línea.`)) {
-            return;
-        }
+        setTimelineToDelete(tl);
+    };
 
+    const confirmDeleteTimeline = async () => {
+        if (!timelineToDelete || !selectedProgram) return;
+        const tl = timelineToDelete;
         startTransition(async () => {
             try {
                 await deleteTimelineAction(tl.id);
                 toast.success("Línea de tiempo eliminada");
                 const remaining = (selectedProgram.timelines || []).filter(t => t.id !== tl.id);
                 setSelectedTimelineId(remaining[0]?.id || "");
+                setTimelineToDelete(null);
                 await refreshAll();
             } catch (error: any) {
                 toast.error(error.message || "Error al eliminar la línea de tiempo");
@@ -1432,7 +1434,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setPeriodToEdit(null);
         setPeriodName("");
         setPeriodDescription("");
-        setPeriodEsEspecial(false);
         const defaultTl = selectedProgram.timelines?.find((t: any) => t.isDefault) || selectedProgram.timelines?.[0];
         setPeriodTimelineId(selectedTimelineId || defaultTl?.id || "");
         setPeriodDialogOpen(true);
@@ -1442,7 +1443,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setPeriodToEdit(period);
         setPeriodName(period.name);
         setPeriodDescription(period.description || "");
-        setPeriodEsEspecial(period.esEspecial || false);
         setPeriodTimelineId(period.timelineId || selectedTimelineId || "");
         setPeriodDialogOpen(true);
     };
@@ -1460,7 +1460,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     await updatePeriodAction(periodToEdit.id, {
                         name: periodName,
                         description: periodDescription,
-                        esEspecial: periodEsEspecial,
+                        esEspecial: false,
                         timelineId: periodTimelineId || null,
                     });
                     toast.success("Periodo académico actualizado");
@@ -1469,7 +1469,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         name: periodName,
                         description: periodDescription,
                         programId: selectedProgram.id,
-                        esEspecial: periodEsEspecial,
+                        esEspecial: false,
                         timelineId: periodTimelineId || null,
                     });
                     toast.success("Periodo académico agregado");
@@ -1867,7 +1867,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         programDescription: "",
         badgeText: "Plan de Estudios Oficial",
         issueDate: "",
-        includeSpecialPeriods: false, // por defecto apagado
         includeDetailedCatalogue: true,
         logoUrl: "",
         centerLogo: false,
@@ -1879,23 +1878,35 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             toast.error("No hay un programa seleccionado");
             return;
         }
+        const allTimelines = selectedProgram.timelines || [];
+        const defaultSelectedIds = selectedTimelineId && allTimelines.some((t: any) => t.id === selectedTimelineId)
+            ? [selectedTimelineId]
+            : allTimelines.map((t: any) => t.id);
+
+        const activeTl = allTimelines.find((t: any) => t.id === selectedTimelineId);
+        const titleSuffix = (defaultSelectedIds.length === 1 && activeTl) ? ` (${activeTl.name.toUpperCase()})` : "";
+
         setPdfConfig(prev => ({
             institutionTag: prev.institutionTag || "AcademiX • Sistema Institucional de Gestión y Programación Académica",
-            mainTitle: `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`,
+            mainTitle: `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}${titleSuffix}`,
             programName: selectedProgram.name,
             programDescription: selectedProgram.description || "",
             badgeText: prev.badgeText || "Plan de Estudios Oficial",
             issueDate: formatCalendarDate(new Date(), "dd 'de' MMMM, yyyy"),
-            includeSpecialPeriods: false, // por defecto apagado
             includeDetailedCatalogue: true,
             logoUrl: prev.logoUrl || "",
             centerLogo: prev.centerLogo || false,
+            selectedTimelineIds: defaultSelectedIds,
         }));
         setIsPdfConfigModalOpen(true);
     };
 
     const handleExecuteDownloadCurriculumPdf = async () => {
         if (!selectedProgram) return;
+        if (pdfConfig.selectedTimelineIds && pdfConfig.selectedTimelineIds.length === 0) {
+            toast.error("Debes seleccionar al menos una línea temporal para exportar");
+            return;
+        }
         setIsExportingCurriculumPDF(true);
         const toastId = toast.loading("Generando Malla Curricular en PDF...");
         try {
@@ -3336,11 +3347,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         {/* SUB-TAB: OVERVIEW */}
                         <TabsContent value="overview" className="space-y-6 mt-0">
                             {(() => {
-                                // 1. Calculate Period types
-                                const normalPeriods = selectedProgram.periods.filter(p => !p.esEspecial);
-                                const specialPeriods = selectedProgram.periods.filter(p => p.esEspecial);
-                                
-                                // 2. Calculate Group types
+                                // 1. Calculate Group types
                                 const lectivaGroups = selectedProgram.groups.filter(g => g.categoria === "LECTIVA");
                                 const productivaGroups = selectedProgram.groups.filter(g => g.categoria === "PRODUCTIVA");
                                 const egresadosGroups = selectedProgram.groups.filter(g => g.categoria === "EGRESADOS");
@@ -3433,7 +3440,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 <div className="flex items-baseline gap-2 pl-1 mt-1">
                                                     <span className="text-2xl font-black text-foreground tracking-tight">{selectedProgram.periods.length}</span>
                                                     <span className="text-[11px] text-muted-foreground font-medium truncate">
-                                                        {normalPeriods.length} normales • {specialPeriods.length} especiales
+                                                        {(selectedProgram.timelines || []).length} {(selectedProgram.timelines || []).length === 1 ? "línea de tiempo" : "líneas de tiempo"}
                                                     </span>
                                                 </div>
                                             </Card>
@@ -3448,9 +3455,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 </div>
                                                 <div className="flex items-baseline gap-2 pl-1 mt-1">
                                                     <span className="text-2xl font-black text-foreground tracking-tight">
-                                                        {normalPeriods.reduce((acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0), 0)}
+                                                        {selectedProgram.periods.reduce((acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0), 0)}
                                                     </span>
-                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Materias curriculares normales</span>
+                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Materias curriculares</span>
                                                 </div>
                                             </Card>
 
@@ -3557,9 +3564,14 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                             <div className="space-y-1">
                                                                                 <div className="flex items-center gap-2">
                                                                                     <span className="font-semibold text-sm">{per.name}</span>
-                                                                                    <Badge className={cn("text-[9px] py-0 px-1 border font-bold shrink-0", per.esEspecial ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20")}>
-                                                                                        {per.esEspecial ? "Especial" : "Normal"}
-                                                                                    </Badge>
+                                                                                    {(() => {
+                                                                                        const tl = (selectedProgram.timelines || []).find((t: any) => t.id === per.timelineId);
+                                                                                        return tl ? (
+                                                                                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 font-bold shrink-0 bg-primary/10 text-primary border-primary/20">
+                                                                                                {tl.name}
+                                                                                            </Badge>
+                                                                                        ) : null;
+                                                                                    })()}
                                                                                 </div>
                                                                                 <p className="text-xs text-muted-foreground truncate max-w-[250px] sm:max-w-[350px]">
                                                                                     {per.description || "Sin descripción adicional."}
@@ -4448,7 +4460,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 className="text-xs font-semibold"
                             />
                             <p className="text-[11px] text-muted-foreground">
-                                Esta denominación se mostrará claramente en los paneles del docente y del estudiante.
+                                Esta denominación se mostrará claramente en los paneles del instructor y del aprendiz.
                             </p>
                         </div>
                         <div className="space-y-2">
@@ -4519,6 +4531,114 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 </DialogContent>
             </Dialog>
 
+            {/* ============ DIALOG: TIMELINE DELETE CONFIRMATION ============ */}
+            {(() => {
+                const timelinePeriods = timelineToDelete && selectedProgram
+                    ? (selectedProgram.periods || []).filter((p: any) => p.timelineId === timelineToDelete.id)
+                    : [];
+                const periodsCount = timelinePeriods.length;
+                const coursesCount = timelinePeriods.reduce(
+                    (acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0),
+                    0
+                );
+
+                return (
+                    <AlertDialog 
+                        open={Boolean(timelineToDelete)} 
+                        onOpenChange={(open) => {
+                            if (!open && !isPending) setTimelineToDelete(null);
+                        }}
+                    >
+                        <AlertDialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-background shadow-2xl">
+                            <AlertDialogHeader className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 flex items-center justify-center shrink-0 shadow-inner">
+                                        <AlertTriangle className="w-6 h-6 animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <AlertDialogTitle className="text-xl font-bold text-foreground">
+                                            Eliminar Línea de Tiempo
+                                        </AlertDialogTitle>
+                                        <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                            Esta acción no se puede deshacer.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3 pt-2">
+                                    {/* Timeline Banner */}
+                                    <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                            <Layers className="w-5 h-5 text-primary shrink-0" />
+                                            <span className="font-bold text-foreground text-sm truncate">
+                                                {timelineToDelete?.name}
+                                            </span>
+                                        </div>
+                                        <Badge variant="destructive" className="rounded-xl text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                            Eliminación
+                                        </Badge>
+                                    </div>
+
+                                    {/* Data Impact Summary if periods/courses exist */}
+                                    {(periodsCount > 0 || coursesCount > 0) && (
+                                        <div className="p-3.5 rounded-2xl bg-destructive/10 border border-destructive/30 space-y-2">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-destructive">
+                                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                                <span>Elementos que se eliminarán en cascada:</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-xs pt-0.5">
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">{periodsCount}</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Periodos</span>
+                                                </div>
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">{coursesCount}</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Materias Plantilla</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                                        ¿Estás seguro de eliminar la línea de tiempo <strong className="text-foreground font-bold">&quot;{timelineToDelete?.name}&quot;</strong>? Se eliminarán permanentemente todos los periodos y materias plantilla asociados a esta línea.
+                                    </AlertDialogDescription>
+                                </div>
+                            </AlertDialogHeader>
+
+                            <AlertDialogFooter className="mt-5 pt-3 border-t border-border/60 flex items-center justify-end gap-2">
+                                <AlertDialogCancel 
+                                    disabled={isPending}
+                                    onClick={() => setTimelineToDelete(null)}
+                                    className="rounded-xl text-xs font-bold h-10 px-4"
+                                >
+                                    Cancelar
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        confirmDeleteTimeline();
+                                    }}
+                                    disabled={isPending}
+                                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl text-xs font-bold h-10 px-5 shadow-md shadow-destructive/20 cursor-pointer disabled:opacity-50"
+                                >
+                                    {isPending ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                                            Eliminando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                            Eliminar Línea
+                                        </>
+                                    )}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                );
+            })()}
+
             {/* ============ DIALOG: PERIOD CRUD ============ */}
             <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
                 <DialogContent className="max-w-[450px]">
@@ -4561,16 +4681,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 className="h-20 min-h-[50px] max-h-[120px] overflow-y-auto resize-y text-xs leading-relaxed [field-sizing:fixed]"
                                 rows={2}
                             />
-                        </div>
-                        <div className="flex items-center space-x-2 pt-2">
-                            <Checkbox 
-                                id="perEsEspecial" 
-                                checked={periodEsEspecial} 
-                                onCheckedChange={(checked) => setPeriodEsEspecial(checked === true)} 
-                            />
-                            <Label htmlFor="perEsEspecial" className="text-xs font-semibold cursor-pointer select-none">
-                                ¿Es un periodo especial? (Semilleros, inducción, etc.)
-                            </Label>
                         </div>
                     </div>
                     <DialogFooter>
@@ -5388,36 +5498,121 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 />
                             </div>
 
+                            {/* Selección de Líneas de Tiempo Curriculares */}
+                            {Boolean(selectedProgram && (selectedProgram.timelines || []).length > 0) && selectedProgram && (
+                                <div className="bg-muted/30 p-3.5 rounded-xl border border-border/70 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold flex items-center gap-1.5">
+                                            <GitBranch className="w-3.5 h-3.5 text-primary" />
+                                            <span>Líneas Temporales a Incluir</span>
+                                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-semibold bg-background">
+                                                {(pdfConfig.selectedTimelineIds || []).length} de {(selectedProgram.timelines || []).length}
+                                            </Badge>
+                                        </Label>
+                                        <div className="flex items-center gap-1.5 text-[10px]">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const allIds = (selectedProgram.timelines || []).map((t: any) => t.id);
+                                                    setPdfConfig(prev => ({
+                                                        ...prev,
+                                                        selectedTimelineIds: allIds,
+                                                        mainTitle: `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`
+                                                    }));
+                                                }}
+                                                className="text-primary hover:underline font-bold px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+                                            >
+                                                Todas
+                                            </button>
+                                            <span className="text-muted-foreground">•</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPdfConfig(prev => ({ ...prev, selectedTimelineIds: [] }));
+                                                }}
+                                                className="text-muted-foreground hover:underline hover:text-foreground px-1.5 py-0.5 rounded transition-colors"
+                                            >
+                                                Ninguna
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Elige qué líneas temporales curriculares se exportarán en el documento.
+                                    </p>
+
+                                    <div className="grid grid-cols-1 gap-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                        {(selectedProgram.timelines || []).map((tl: any) => {
+                                            const isSelected = (pdfConfig.selectedTimelineIds || []).includes(tl.id);
+                                            const tlPeriods = selectedProgram.periods.filter(p => p.timelineId ? p.timelineId === tl.id : tl.isDefault);
+                                            const tlCourses = tlPeriods.reduce((sum, p) => sum + (p.courses?.length || 0), 0);
+
+                                            return (
+                                                <div
+                                                    key={tl.id}
+                                                    onClick={() => {
+                                                        const current = pdfConfig.selectedTimelineIds || [];
+                                                        const next = isSelected
+                                                            ? current.filter(id => id !== tl.id)
+                                                            : [...current, tl.id];
+                                                        
+                                                        let newTitle = pdfConfig.mainTitle;
+                                                        if (next.length === 1) {
+                                                            const singleTl = (selectedProgram.timelines || []).find((t: any) => t.id === next[0]);
+                                                            newTitle = `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()} (${singleTl?.name.toUpperCase() || ""})`;
+                                                        } else if (next.length > 1) {
+                                                            newTitle = `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`;
+                                                        }
+
+                                                        setPdfConfig(prev => ({
+                                                            ...prev,
+                                                            selectedTimelineIds: next,
+                                                            mainTitle: newTitle
+                                                        }));
+                                                    }}
+                                                    className={cn(
+                                                        "flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-all select-none",
+                                                        isSelected
+                                                            ? "bg-primary/10 border-primary/40 text-foreground shadow-2xs"
+                                                            : "bg-background/60 border-border/70 text-muted-foreground hover:bg-muted/40"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <Checkbox
+                                                            checked={isSelected}
+                                                            onCheckedChange={() => {}}
+                                                            className="pointer-events-none"
+                                                        />
+                                                        <span className="font-bold text-xs truncate max-w-[200px]">
+                                                            {tl.name}
+                                                        </span>
+                                                        {tl.isDefault && (
+                                                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-primary/15 text-primary font-extrabold shrink-0">
+                                                                Principal
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0 ml-2">
+                                                        {tlPeriods.length} {tlPeriods.length === 1 ? "periodo" : "periodos"} • {tlCourses} {tlCourses === 1 ? "materia" : "materias"}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {(pdfConfig.selectedTimelineIds || []).length === 0 && (
+                                        <p className="text-[11px] text-destructive font-semibold flex items-center gap-1 pt-1">
+                                            <AlertCircle className="w-3 h-3 shrink-0" />
+                                            Debes seleccionar al menos una línea temporal para exportar.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Opciones y Switches */}
                             <div className="bg-muted/30 p-3.5 rounded-xl border border-border/70 space-y-3">
                                 <h5 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Opciones de Contenido</h5>
 
-                                {/* Switch: Periodos Especiales (Por defecto apagado) */}
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="space-y-0.5 pr-2">
-                                        <Label htmlFor="switch-special-periods" className="text-xs font-bold flex items-center gap-1.5 cursor-pointer">
-                                            Incluir Periodos Especiales
-                                            {selectedProgram && (
-                                                <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal">
-                                                    {selectedProgram.periods.filter(p => p.esEspecial).length} disponibles
-                                                </Badge>
-                                            )}
-                                        </Label>
-                                        <p className="text-[11px] text-muted-foreground">
-                                            {pdfConfig.includeSpecialPeriods
-                                                ? "Se incluirán todos los periodos regulares y especiales en la malla."
-                                                : "Por defecto apagado. Solo se exportan los periodos académicos regulares."}
-                                        </p>
-                                    </div>
-                                    <Switch
-                                        id="switch-special-periods"
-                                        checked={pdfConfig.includeSpecialPeriods}
-                                        onCheckedChange={(checked) => setPdfConfig(prev => ({ ...prev, includeSpecialPeriods: checked }))}
-                                    />
-                                </div>
-
                                 {/* Switch: Catálogo detallado de RAP */}
-                                <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/50">
+                                <div className="flex items-center justify-between gap-3">
                                     <div className="space-y-0.5 pr-2">
                                         <Label htmlFor="switch-detailed-rap" className="text-xs font-bold cursor-pointer">
                                             Incluir Desglose Detallado de Competencias y RAP
@@ -5447,7 +5642,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         </Button>
                         <Button
                             onClick={handleExecuteDownloadCurriculumPdf}
-                            disabled={isExportingCurriculumPDF}
+                            disabled={isExportingCurriculumPDF || (Boolean(selectedProgram?.timelines?.length) && (pdfConfig.selectedTimelineIds || []).length === 0)}
                             size="sm"
                             className="bg-rose-600 hover:bg-rose-700 text-white font-semibold"
                         >
@@ -5493,7 +5688,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 const periodsCount = programToDelete?.periods?.length || 0;
                 const groupsCount = programToDelete?.groups?.length || 0;
                 const coursesCount = programToDelete?.periods
-                    ?.filter((p: any) => !p.esEspecial)
                     ?.reduce((acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0), 0) || 0;
                 const studentsCount = programToDelete?.groups?.reduce((acc: number, g: any) => acc + (g.students?.length || 0), 0) || 0;
                 const teachersCount = programToDelete?.teachers?.length || 0;

@@ -85,7 +85,7 @@ export function ScheduleWeekPreview({ schedule, programId }: ScheduleWeekPreview
     : schedule.groupSlots;
 
   // Get unique groups in this schedule
-  const uniqueGroupsMap = new Map<string, { id: string; name: string; programName: string; periodName?: string }>();
+  const uniqueGroupsMap = new Map<string, { id: string; name: string; programName: string; periodName?: string; timelineName?: string }>();
   baseSlots.forEach((slot) => {
     if (!uniqueGroupsMap.has(slot.groupId)) {
       uniqueGroupsMap.set(slot.groupId, {
@@ -93,6 +93,7 @@ export function ScheduleWeekPreview({ schedule, programId }: ScheduleWeekPreview
         name: slot.group.name,
         programName: slot.group.program?.name || "Sin programa",
         periodName: slot.period?.name || undefined,
+        timelineName: slot.period?.timeline?.name || (slot.period as any)?.timelineName || undefined,
       });
     }
   });
@@ -163,7 +164,7 @@ export function ScheduleWeekPreview({ schedule, programId }: ScheduleWeekPreview
                     : "bg-background hover:bg-muted text-muted-foreground border-border"
                 }`}
               >
-                {g.name} {g.periodName ? `• ${g.periodName}` : ""}
+                {g.name} {g.periodName ? `• ${g.periodName}` : ""}{g.timelineName ? ` (${g.timelineName})` : ""}
               </button>
             ))}
           </div>

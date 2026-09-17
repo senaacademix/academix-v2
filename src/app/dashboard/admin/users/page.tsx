@@ -8,7 +8,7 @@ import { getAllImprovementPlansAdmin } from "@/features/student/actions/improvem
 
 export const metadata = {
     title: "Gestión de Usuarios | AcademiX",
-    description: "Administra los estudiantes, docentes y administradores del sistema.",
+    description: "Administra los estudiantes, instructores y administradores del sistema.",
 };
 
 export default async function AdminUsersPage({

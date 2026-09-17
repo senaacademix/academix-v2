@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Sparkles, History, HelpCircle } from "lucide-react";
+import { Sparkles, History, HelpCircle, GitBranch } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { isScheduleCurrent } from "@/lib/dateUtils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getFormattedTodayDate } from "@/lib/dateUtils";
 import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
@@ -26,14 +28,16 @@ export function StudentDashboard({
     studentName,
     pendingEnrollments = [],
     themes = [],
-    formattedDate
+    formattedDate,
+    studentGroup = null
 }: {
     availableCourses: any[],
     myEnrollments: any[],
     studentName: string,
     pendingEnrollments?: string[],
     themes?: any[],
-    formattedDate?: string
+    formattedDate?: string,
+    studentGroup?: any
 }) {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -161,6 +165,48 @@ export function StudentDashboard({
                                 <span className="text-slate-400 dark:text-slate-600">•</span>
                                 <span>Resumen de tu actividad académica en AcademiX</span>
                             </p>
+
+                            {/* Active Ficha / Group Metadata with Timeline */}
+                            {studentGroup && (() => {
+                                const activeSlot = studentGroup?.scheduleSlots?.find((slot: any) =>
+                                    slot.academicSchedule && (
+                                        isScheduleCurrent(slot.academicSchedule.startDate, slot.academicSchedule.endDate) ||
+                                        slot.academicSchedule.isActive
+                                    ) && slot.period?.timeline?.name
+                                ) || studentGroup?.scheduleSlots?.find((slot: any) => slot.period?.timeline?.name);
+
+                                const timelineName =
+                                    activeSlot?.period?.timeline?.name ||
+                                    studentGroup?.scheduleSlots?.find((s: any) => s.period)?.period?.timeline?.name ||
+                                    studentGroup?.program?.timelines?.find((t: any) => t.isDefault)?.name ||
+                                    studentGroup?.program?.timelines?.[0]?.name ||
+                                    null;
+
+                                const periodName =
+                                    activeSlot?.period?.name ||
+                                    studentGroup?.scheduleSlots?.find((s: any) => s.period)?.period?.name ||
+                                    (studentGroup as any)?.period?.name ||
+                                    null;
+
+                                return (
+                                    <div className="flex flex-wrap items-center gap-2 pt-1.5">
+                                        <Badge variant="secondary" className="text-xs font-black py-1 px-3 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0">
+                                            Ficha {studentGroup.name}
+                                        </Badge>
+                                        {periodName && (
+                                            <Badge variant="secondary" className="text-xs font-bold py-1 px-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 shadow-2xs">
+                                                {periodName}
+                                            </Badge>
+                                        )}
+                                        {timelineName && (
+                                            <Badge variant="outline" className="text-xs font-semibold py-1 px-2.5 bg-primary/10 text-primary border-primary/20 rounded-xl flex items-center gap-1.5 shrink-0 shadow-2xs">
+                                                <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                {timelineName}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         <div className="shrink-0 flex items-center gap-2">

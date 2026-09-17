@@ -1093,7 +1093,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                     </SelectItem>
                                     {groupHistory.map((g) => (
                                         <SelectItem key={g.groupId} value={g.groupId} className="text-xs font-bold">
-                                            {g.isCurrent ? "🟢" : "🟣"} Ficha {g.groupName} ({g.programName}) {g.isCurrent ? "— FICHA ACTIVA" : "— TRASLADADO"}
+                                            {g.isCurrent ? "🟢" : "🟣"} Ficha {g.groupName}{g.periodName ? ` • ${g.periodName}` : ""}{g.timelineName ? ` • ${g.timelineName}` : ""} {g.isCurrent ? "— FICHA ACTIVA" : "— TRASLADADO"}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

@@ -421,7 +421,7 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
       stat1: {
         title: "Usuarios Registrados",
         value: `${usersCount}`,
-        description: "Estudiantes, docentes y directivos",
+        description: "Aprendices, instructores y directivos",
         isPositive: true,
       },
       stat2: {

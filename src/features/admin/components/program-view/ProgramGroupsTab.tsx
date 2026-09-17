@@ -510,7 +510,7 @@ export function ProgramGroupsTab({ program }: ProgramGroupsTabProps) {
                                                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                                                         <UserCheck className="h-3.5 w-3.5 text-primary shrink-0" />
                                                         <span className="truncate">
-                                                            {course.teacher ? formatName(course.teacher.name || "Docente") : "Sin docente asignado"}
+                                                            {course.teacher ? formatName(course.teacher.name || "Instructor") : "Sin instructor asignado"}
                                                         </span>
                                                     </div>
                                                 </div>

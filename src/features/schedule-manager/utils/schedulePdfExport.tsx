@@ -363,7 +363,7 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
                             </View>
 
                             <View style={styles.classTeacherRow}>
-                              <Text style={styles.classTeacherLabel}>Docente:</Text>
+                              <Text style={styles.classTeacherLabel}>Instructor:</Text>
                               <Text style={styles.classTeacherValue}>{item.teacherName}</Text>
                             </View>
                           </View>
@@ -389,7 +389,7 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
                     Horas Semanales
                   </Text>
                   <Text style={[styles.colTeacher, { fontFamily: "Helvetica-Bold" }]}>
-                    Docente(s) Asignado(s)
+                    Instructor(es) Asignado(s)
                   </Text>
                 </View>
                 {group.trimesterCourses.map((tc) => {

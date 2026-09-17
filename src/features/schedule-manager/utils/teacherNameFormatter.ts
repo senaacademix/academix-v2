@@ -4,7 +4,7 @@
  */
 
 export function getCleanTeacherName(name: string | null | undefined): string {
-  if (!name) return "Sin profesor";
+  if (!name) return "Sin instructor";
   const words = name.trim().split(/\s+/);
   const cleanWords: string[] = [];
 
@@ -30,7 +30,7 @@ export function getCleanTeacherName(name: string | null | undefined): string {
 
 export function getCompactTeacherName(name: string | null | undefined): string {
   const clean = getCleanTeacherName(name);
-  if (clean === "Sin profesor") return clean;
+  if (clean === "Sin instructor") return clean;
 
   const parts = clean.split(/\s+/);
   if (parts.length === 1) return parts[0];

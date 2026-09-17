@@ -333,7 +333,7 @@ export async function submitTeacherSignedDoc(planId: string, teacherSignedDocUrl
     try {
         const plan = await prisma.improvementPlan.findUnique({ where: { id: planId } });
         if (!plan) throw new Error("Plan no encontrado");
-        if (plan.teacherId !== session.user.id) throw new Error("Solo el profesor asignado puede firmar el plan");
+        if (plan.teacherId !== session.user.id) throw new Error("Solo el instructor asignado puede firmar el plan");
 
         const updated = await prisma.improvementPlan.update({
             where: { id: planId },
@@ -501,7 +501,7 @@ export async function resetPlanToStep(planId: string, stepNumber: number, reason
             dataUpdate.evidenceUrl = null;
             dataUpdate.planScore = null;
             dataUpdate.finalGrade = null;
-            stepName = "Paso 3: Firma del docente";
+            stepName = "Paso 3: Firma del instructor";
         } else if (stepNumber === 4) {
             dataUpdate.evidenceUrl = null;
             dataUpdate.planScore = null;

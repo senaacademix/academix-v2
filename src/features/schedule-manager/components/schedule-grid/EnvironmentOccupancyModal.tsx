@@ -963,7 +963,7 @@ export function EnvironmentOccupancyModal({
                                             {cls.teacherName && (
                                               <p className="flex items-center gap-1.5">
                                                 <GraduationCap className="w-3 h-3 text-indigo-500 shrink-0" />
-                                                <span>Docente: {cls.teacherName}</span>
+                                                <span>Instructor: {cls.teacherName}</span>
                                               </p>
                                             )}
                                           </div>
@@ -1141,7 +1141,7 @@ export function EnvironmentOccupancyModal({
 
                                 <div className="flex items-center justify-between text-[8.5px] text-muted-foreground pt-0.5 border-t border-border/40 font-mono mt-auto">
                                   <span className="truncate font-semibold text-primary">
-                                    {c.teacherName || "Sin docente"}
+                                    {c.teacherName || "Sin instructor"}
                                   </span>
                                   <span className="font-bold shrink-0 ml-1">
                                     {c.durationHours}h

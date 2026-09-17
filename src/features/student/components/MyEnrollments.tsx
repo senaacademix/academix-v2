@@ -61,9 +61,35 @@ export function MyEnrollments({
                             
                             <CardHeader className="pb-1 pt-5 px-5">
                                 <div className="flex flex-col items-center gap-2">
-                                    <Badge variant="outline" className="text-[8px] px-2 h-4 uppercase font-black tracking-widest bg-primary/5 text-primary border-primary/20 rounded-full">
-                                        Matriculado
-                                    </Badge>
+                                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                        <Badge variant="outline" className="text-[8px] px-2 h-4 uppercase font-black tracking-widest bg-primary/5 text-primary border-primary/20 rounded-full">
+                                            Matriculado
+                                        </Badge>
+                                        {enrollment.course.group?.name && (
+                                            <Badge variant="outline" className="text-[8px] px-2 h-4 font-bold bg-muted/40 border-border/80 rounded-full">
+                                                Ficha {enrollment.course.group.name}
+                                            </Badge>
+                                        )}
+                                        {(() => {
+                                            const slot = enrollment.course.group?.scheduleSlots?.find((s: any) => s.period?.timeline?.name);
+                                            const tName = slot?.period?.timeline?.name || enrollment.course.group?.program?.timelines?.[0]?.name;
+                                            const pName = slot?.period?.name || enrollment.course.group?.period?.name;
+                                            return (
+                                                <>
+                                                    {pName && (
+                                                        <Badge variant="outline" className="text-[8px] px-2 h-4 font-bold bg-primary/10 text-primary border-primary/20 rounded-full">
+                                                            {pName}
+                                                        </Badge>
+                                                    )}
+                                                    {tName && (
+                                                        <Badge variant="outline" className="text-[8px] px-2 h-4 font-semibold bg-primary/10 text-primary border-primary/20 rounded-full">
+                                                            {tName}
+                                                        </Badge>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
                                     <CardTitle className="text-sm font-bold leading-tight group-hover:text-primary transition-colors w-full uppercase tracking-tight line-clamp-3 min-h-[3rem] flex items-center justify-center">
                                         {enrollment.course.title}
                                     </CardTitle>

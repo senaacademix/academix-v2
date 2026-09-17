@@ -206,7 +206,7 @@ export function ProgramOverviewTab({ program, onNavigateTab }: ProgramOverviewTa
                 >
                     <CardContent className="p-5 flex items-center justify-between">
                         <div className="space-y-1">
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Equipo Docente</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Equipo de Instructores</p>
                             <h3 className="text-2xl font-black tracking-tight text-foreground">{teachers.length}</h3>
                             <p className="text-[11px] text-purple-600 dark:text-purple-400 font-medium">
                                 Instructores habilitados
@@ -306,7 +306,7 @@ export function ProgramOverviewTab({ program, onNavigateTab }: ProgramOverviewTa
                             </div>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <Clock className="h-4 w-4 text-primary shrink-0" />
-                                <span>Límite semanal docente: <strong className="text-foreground">{program.maxTeacherHours || 40} horas</strong></span>
+                                <span>Límite semanal instructor: <strong className="text-foreground">{program.maxTeacherHours || 40} horas</strong></span>
                             </div>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <Calendar className="h-4 w-4 text-primary shrink-0" />

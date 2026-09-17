@@ -72,7 +72,7 @@ export async function generateAndDownloadScheduleExcel(
     "Trimestre",
     "Ambiente",
     "Materia / Actividad",
-    "Docente Asignado",
+    "Instructor Asignado",
     "Día",
     "Horario de Clase",
   ];
@@ -267,7 +267,7 @@ export async function generateAndDownloadScheduleExcel(
     sheet.mergeCells(`A${summaryTitle.number}:C${summaryTitle.number}`);
     summaryTitle.getCell(1).font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FF1E3A8A" } };
 
-    const cHeader = sheet.addRow(["Materia / Actividad", "Horas Requeridas", "Docente(s)"]);
+    const cHeader = sheet.addRow(["Materia / Actividad", "Horas Requeridas", "Instructor(es)"]);
     cHeader.height = 22;
     cHeader.eachCell((cell) => {
       cell.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: "FFFFFFFF" } };

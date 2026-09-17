@@ -326,7 +326,13 @@ export const courseService = {
             },
             orderBy: { createdAt: "desc" },
             include: {
-                program: true,
+                program: {
+                    include: {
+                        timelines: {
+                            select: { id: true, name: true, isDefault: true }
+                        }
+                    }
+                },
                 students: {
                     where: {
                         banned: { not: true }
@@ -387,6 +393,16 @@ export const courseService = {
                 },
                 scheduleSlots: {
                     include: {
+                        period: {
+                            include: {
+                                timeline: {
+                                    select: {
+                                        id: true,
+                                        name: true
+                                    }
+                                }
+                            }
+                        },
                         academicSchedule: {
                             select: {
                                 id: true,
@@ -569,7 +585,28 @@ export const courseService = {
                         sharedContent: {
                             orderBy: { createdAt: "asc" }
                         },
-                        group: true,
+                        group: {
+                            include: {
+                                program: {
+                                    include: {
+                                        timelines: {
+                                            select: { id: true, name: true, isDefault: true }
+                                        }
+                                    }
+                                },
+                                scheduleSlots: {
+                                    include: {
+                                        period: {
+                                            include: {
+                                                timeline: {
+                                                    select: { id: true, name: true }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
                         gradeCategories: {
                             include: {
                                 groups: {

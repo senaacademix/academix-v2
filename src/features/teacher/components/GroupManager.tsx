@@ -82,7 +82,7 @@ import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info } from "lucide-react";
+import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -140,6 +140,44 @@ interface GroupManagerProps {
     teacherName?: string;
     displayDate?: string;
 }
+
+export const getGroupTimelineName = (group: any): string | null => {
+    if (!group) return null;
+    const activeSlot = group.scheduleSlots?.find((slot: any) =>
+        slot.academicSchedule && (
+            isScheduleCurrent(slot.academicSchedule.startDate, slot.academicSchedule.endDate) ||
+            slot.academicSchedule.isActive
+        ) && slot.period?.timeline?.name
+    ) || group.scheduleSlots?.find((slot: any) => slot.period?.timeline?.name);
+
+    if (activeSlot?.period?.timeline?.name) {
+        return activeSlot.period.timeline.name;
+    }
+
+    const slotWithPeriod = group.scheduleSlots?.find((slot: any) => slot.period);
+    if (slotWithPeriod?.period) {
+        return slotWithPeriod.period.timeline?.name || "Jornada Regular";
+    }
+
+    if (group.program?.timelines?.length > 0) {
+        const def = group.program.timelines.find((t: any) => t.isDefault) || group.program.timelines[0];
+        return def.name;
+    }
+
+    return null;
+};
+
+export const getGroupPeriodName = (group: any): string | null => {
+    if (!group) return null;
+    const activeSlot = group.scheduleSlots?.find((slot: any) =>
+        slot.academicSchedule && (
+            isScheduleCurrent(slot.academicSchedule.startDate, slot.academicSchedule.endDate) ||
+            slot.academicSchedule.isActive
+        ) && slot.period?.name
+    ) || group.scheduleSlots?.find((slot: any) => slot.period?.name);
+
+    return activeSlot?.period?.name || group.period?.name || null;
+};
 
 export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teacherName, displayDate }: GroupManagerProps) {
     const { data: session } = authClient.useSession();
@@ -513,7 +551,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     };
 
     const handleImpDeleteTeacherSignedDoc = async (planId: string) => {
-        const toastId = toast.loading("Eliminando contrafirma del docente...");
+        const toastId = toast.loading("Eliminando contrafirma del instructor...");
         const res = await deleteTeacherSignedDoc(planId);
         if (res.success) {
             toast.success("Contrafirma eliminada correctamente", { id: toastId });
@@ -591,7 +629,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         bodyText += `Detalles del Plan:\n`;
         bodyText += `- Fecha de Inicio: ${format(new Date(plan.startDate), "dd/MM/yyyy")}\n`;
         bodyText += `- Fecha de Finalización: ${format(new Date(plan.endDate), "dd/MM/yyyy")}\n`;
-        bodyText += `- Docente: ${teacherName}\n`;
+        bodyText += `- Instructor: ${teacherName}\n`;
         if (plan.teacherDocUrl) bodyText += `- Documento del Plan: ${plan.teacherDocUrl}\n`;
         if (plan.observations) bodyText += `- Observaciones/Criterios: ${plan.observations}\n`;
         bodyText += `\nPor favor ingresa a la plataforma AcademiX para revisar el plan en detalle, firmarlo y cargar el documento firmado.\n\nAtentamente,\n${teacherName}`;
@@ -1847,7 +1885,7 @@ const handleOpenAnalytics = async () => {
                         <div className="flex flex-wrap items-center gap-2.5">
                             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold shadow-2xs">
                                 <Sparkles className="w-3.5 h-3.5 text-primary animate-spin-slow" />
-                                <span>Panel de Docente</span>
+                                <span>Panel de Instructor</span>
                             </div>
                             {displayDate && (
                                 <span className="text-xs text-muted-foreground capitalize font-semibold flex items-center gap-2 bg-muted/60 px-2.5 py-1 rounded-full border border-border/60">
@@ -1859,7 +1897,7 @@ const handleOpenAnalytics = async () => {
                         <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
                             ¡Hola,{" "}
                             <span className="bg-gradient-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent">
-                                {teacherName ? formatName(teacherName) : (session?.user?.name ? formatName(session.user.name) : "Profesor")}
+                                {teacherName ? formatName(teacherName) : (session?.user?.name ? formatName(session.user.name) : "Instructor")}
                             </span>
                             !
                         </h1>
@@ -1868,10 +1906,17 @@ const handleOpenAnalytics = async () => {
                     {/* Right Section: Active Group Metadata */}
                     {selectedGroup && (
                         <div className="flex flex-wrap items-center gap-2 bg-background/80 dark:bg-card/70 p-2.5 px-3.5 rounded-2xl border border-border backdrop-blur-md shadow-xs">
-                            <Badge variant="secondary" className="text-xs font-black py-1 px-3 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0">
-                                {selectedGroup.program?.name || selectedGroup.name}
-                                {selectedGroup.period?.name ? ` (${selectedGroup.period.name})` : ""}
-                            </Badge>
+                            {getGroupPeriodName(selectedGroup) && (
+                                <Badge variant="secondary" className="text-xs font-bold py-1 px-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 shadow-2xs">
+                                    {getGroupPeriodName(selectedGroup)}
+                                </Badge>
+                            )}
+                            {getGroupTimelineName(selectedGroup) && (
+                                <Badge variant="secondary" className="text-xs font-black py-1 px-3 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 flex items-center gap-1.5 shadow-2xs">
+                                    <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    {getGroupTimelineName(selectedGroup)}
+                                </Badge>
+                            )}
                             <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border">
                                 <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
                                 {selectedGroup.students?.length || 0} Aprendices
@@ -1909,13 +1954,13 @@ const handleOpenAnalytics = async () => {
                                                 variant={isActive ? "default" : "outline"}
                                                 size="sm"
                                                 onClick={() => handleGroupChangeAttempt(g.id)}
-                                                className={`h-8 text-xs font-black rounded-xl transition-all ${
+                                                className={`h-8 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 ${
                                                     isActive
                                                         ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm ring-2 ring-primary/25"
                                                         : "hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
                                                 }`}
                                             >
-                                                {g.name}
+                                                <span>{g.name}</span>
                                             </Button>
                                         );
                                     })}
@@ -1998,7 +2043,7 @@ const handleOpenAnalytics = async () => {
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
-                                            Guía completa del panel de docente y pestañas
+                                            Guía completa del panel de instructor y pestañas
                                         </TooltipContent>
                                     </Tooltip>
                                 </div>
@@ -2018,7 +2063,18 @@ const handleOpenAnalytics = async () => {
                                                 Listado oficial de aprendices matriculados en la ficha <span className="font-extrabold text-foreground">{selectedGroup.name}</span>. Gestiona información de contacto, credenciales, novedades formativas y dinámicas de grupo.
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                                            {getGroupPeriodName(selectedGroup) && (
+                                                <Badge variant="outline" className="text-xs font-bold text-primary bg-primary/10 border-primary/20 px-3 py-1.5 rounded-xl shadow-2xs">
+                                                    {getGroupPeriodName(selectedGroup)}
+                                                </Badge>
+                                            )}
+                                            {getGroupTimelineName(selectedGroup) && (
+                                                <Badge variant="outline" className="text-xs font-semibold text-primary bg-primary/10 border-primary/20 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                                                    <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                    {getGroupTimelineName(selectedGroup)}
+                                                </Badge>
+                                            )}
                                             <Badge variant="outline" className="text-xs font-bold text-muted-foreground bg-background/80 px-3 py-1.5 rounded-xl border-border shadow-2xs">
                                                 Total: <strong className="text-primary font-black ml-1">{filteredStudents.length}</strong> {filteredStudents.length === 1 ? "aprendiz" : "aprendices"}
                                             </Badge>

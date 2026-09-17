@@ -618,7 +618,7 @@ export async function updateTeacherUserAction(data: {
     });
 
     if (!existingUser) {
-        throw new Error("Docente no encontrado");
+        throw new Error("Instructor no encontrado");
     }
 
     const cleanEmail = data.email.trim().toLowerCase();
