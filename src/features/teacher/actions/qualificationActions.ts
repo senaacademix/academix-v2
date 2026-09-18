@@ -589,3 +589,111 @@ export async function adminSaveTeacherQualificationsAction(teacherId: string, co
     await updateTeacherQualificationsAction(teacherId, courseIds, academicScheduleId);
     await adminLockTeacherQualificationsAction(teacherId, academicScheduleId);
 }
+
+// Bloqueo o desbloqueo masivo de Disponibilidad y Materias para TODOS los instructores de un horario
+export async function adminLockBothAllTeachersScheduleAction({
+    academicScheduleId,
+    lock,
+    teacherIds,
+    programId
+}: {
+    academicScheduleId: string;
+    lock: boolean;
+    teacherIds?: string[];
+    programId?: string;
+}) {
+    const session = await getSession();
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
+        throw new Error("No autorizado");
+    }
+
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+    if (!targetScheduleId) {
+        throw new Error("Se requiere un horario académico específico.");
+    }
+
+    let targetTeacherIds = teacherIds && teacherIds.length > 0 ? teacherIds : [];
+
+    if (targetTeacherIds.length === 0) {
+        const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
+        const where: any = { role: "teacher", banned: { not: true } };
+
+        if (effectiveProgramId) {
+            where.OR = [
+                { programs: { some: { id: effectiveProgramId } } },
+                { groupsTaught: { some: { programId: effectiveProgramId } } },
+                { coursesTaught: { some: { OR: [
+                    { group: { programId: effectiveProgramId } },
+                    { period: { programId: effectiveProgramId } }
+                ] } } }
+            ];
+        } else if (session.user.role === "gestor") {
+            where.OR = [
+                { programs: { some: { gestores: { some: { id: session.user.id } } } } },
+                { groupsTaught: { some: { program: { gestores: { some: { id: session.user.id } } } } } },
+                { coursesTaught: { some: { OR: [
+                    { group: { program: { gestores: { some: { id: session.user.id } } } } },
+                    { period: { program: { gestores: { some: { id: session.user.id } } } } }
+                ] } } }
+            ];
+        }
+
+        const teachers = await prisma.user.findMany({
+            where,
+            select: { id: true }
+        });
+        targetTeacherIds = teachers.map(t => t.id);
+    }
+
+    if (targetTeacherIds.length === 0) {
+        return { success: true, count: 0, message: "No se encontraron instructores para procesar." };
+    }
+
+    // Upsert para cada instructor dentro de una transacción segura
+    await prisma.$transaction(
+        targetTeacherIds.map((teacherId) =>
+            prisma.teacherScheduleLock.upsert({
+                where: {
+                    teacherId_academicScheduleId: {
+                        teacherId,
+                        academicScheduleId: targetScheduleId
+                    }
+                },
+                update: {
+                    availabilityLocked: lock,
+                    qualificationsLocked: lock,
+                    lockedById: session.user.id
+                },
+                create: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId,
+                    availabilityLocked: lock,
+                    qualificationsLocked: lock,
+                    lockedById: session.user.id
+                }
+            })
+        )
+    );
+
+    // Audit log
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+        action: "UPDATE",
+        entity: "SCHEDULE",
+        entityId: targetScheduleId,
+        userId: session.user.id,
+        userName: session.user.name || "Gestor",
+        userRole: session.user.role,
+        description: `${lock ? "Bloqueo masivo" : "Desbloqueo masivo"} conjunto de Disponibilidad y Materias para ${targetTeacherIds.length} instructores en horario ${targetScheduleId}`,
+        success: true,
+    });
+
+    revalidatePath("/dashboard/admin/teachers");
+    revalidatePath("/dashboard/gestor/schedules");
+
+    return { 
+        success: true, 
+        count: targetTeacherIds.length,
+        message: `${targetTeacherIds.length} instructores ${lock ? "bloqueados" : "desbloqueados"} exitosamente.` 
+    };
+}

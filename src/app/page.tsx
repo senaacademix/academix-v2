@@ -1,6 +1,9 @@
 import { Navbar } from "@/features/landing/components/Navbar";
 import { HeroSection } from "@/features/landing/components/HeroSection";
 import { FeaturesGrid } from "@/features/landing/components/FeaturesGrid";
+import { ModulesSection } from "@/features/landing/components/ModulesSection";
+import { BenefitsSection } from "@/features/landing/components/BenefitsSection";
+import { Footer } from "@/features/landing/components/Footer";
 
 export default function Page() {
   return (
@@ -8,6 +11,10 @@ export default function Page() {
       <Navbar />
       <HeroSection />
       <FeaturesGrid />
+      <ModulesSection />
+      <BenefitsSection />
+      <Footer />
     </main>
   );
 }
+

@@ -15,9 +15,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Clock, BookOpen, HelpCircle, X, Lock, Unlock, CalendarDays } from "lucide-react";
+import { Users, Clock, BookOpen, HelpCircle, X, Lock, Unlock, CalendarDays, ChevronDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AcademicScheduleItem } from "../types";
 import { getTeachersListAction } from "../actions/scheduleManagerActions";
 import { TeacherAvailabilityView } from "@/features/schedule/components/TeacherAvailabilityView";
@@ -27,7 +45,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { 
   getTeacherScheduleLockStatusAction, 
   adminLockBothTeacherScheduleAction,
-  toggleTeacherSchedulePastAttendanceAction 
+  toggleTeacherSchedulePastAttendanceAction,
+  adminLockBothAllTeachersScheduleAction
 } from "@/features/teacher/actions/qualificationActions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -62,15 +81,24 @@ export function ScheduleTeacherConfigModal({
   } | null>(null);
   const [lockLoading, setLockLoading] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState<boolean>(false);
+  const [bulkActionToConfirm, setBulkActionToConfirm] = useState<boolean | null>(null);
+  const [bulkLoading, setBulkLoading] = useState<boolean>(false);
   const prevOpenRef = React.useRef<boolean>(false);
 
   useEffect(() => {
     if (open) {
       const targetSchedId = defaultScheduleId || schedules.find(s => s.isActive)?.id || schedules[0]?.id || "";
       setSelectedScheduleId(targetSchedId);
-      fetchTeachers(programId);
+      fetchTeachers(programId, targetSchedId);
     }
   }, [open, defaultScheduleId, programId]);
+
+  useEffect(() => {
+    if (open && selectedScheduleId) {
+      fetchTeachers(programId, selectedScheduleId);
+    }
+  }, [selectedScheduleId, refreshKey]);
 
   const fetchLockStatus = async () => {
     if (!selectedTeacherId || !selectedScheduleId) {
@@ -120,10 +148,40 @@ export function ScheduleTeacherConfigModal({
     }
   };
 
-  const fetchTeachers = async (progId?: string) => {
+  const openBulkConfirmDialog = (lock: boolean) => {
+    setBulkActionToConfirm(lock);
+    setBulkDialogOpen(true);
+  };
+
+  const handleExecuteBulkAction = async () => {
+    if (bulkActionToConfirm === null || !selectedScheduleId) return;
+    setBulkLoading(true);
+    try {
+      const res = await adminLockBothAllTeachersScheduleAction({
+        academicScheduleId: selectedScheduleId,
+        lock: bulkActionToConfirm,
+        teacherIds: teachers.map(t => t.id),
+        programId
+      });
+      toast.success(res.message || (bulkActionToConfirm 
+        ? "Todos los instructores han sido bloqueados con éxito para este horario" 
+        : "Todos los instructores han sido desbloqueados para este horario"
+      ));
+      setRefreshKey(prev => prev + 1);
+      await fetchLockStatus();
+      setBulkDialogOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Error al aplicar acción masiva");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const fetchTeachers = async (progId?: string, schedId?: string) => {
     setLoadingTeachers(true);
     try {
-      const list = await getTeachersListAction(progId || programId);
+      const currentSched = schedId || selectedScheduleId;
+      const list = await getTeachersListAction(progId || programId, currentSched);
       setTeachers(list);
       if (list.length > 0 && (!selectedTeacherId || !list.some(t => t.id === selectedTeacherId))) {
         setSelectedTeacherId(list[0].id);
@@ -159,6 +217,55 @@ export function ScheduleTeacherConfigModal({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {/* Botón de Bloqueo / Desbloqueo Masivo */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={bulkLoading || loadingTeachers || teachers.length === 0}
+                    className="h-8 px-3 rounded-lg border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-black text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Bloquear / Desbloquear Todos ({teachers.length})</span>
+                    <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72 p-1.5 shadow-lg">
+                  <DropdownMenuLabel className="text-xs font-black px-2 py-1 flex items-center justify-between">
+                    <span>Gestión Masiva ({teachers.length} docentes)</span>
+                    <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/30">
+                      {schedules.find(s => s.id === selectedScheduleId)?.name || "Horario"}
+                    </Badge>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem
+                    onClick={() => openBulkConfirmDialog(true)}
+                    className="gap-2.5 p-2 rounded-md font-bold text-xs cursor-pointer text-amber-700 dark:text-amber-300 hover:!bg-amber-500/10 focus:!bg-amber-500/10"
+                  >
+                    <div className="p-1.5 rounded-md bg-amber-500/10 text-amber-600 shrink-0">
+                      <Lock className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span>Bloquear a todos</span>
+                      <span className="text-[10px] font-normal text-muted-foreground">Disponibilidad y materias ({teachers.length} docentes)</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => openBulkConfirmDialog(false)}
+                    className="gap-2.5 p-2 rounded-md font-bold text-xs cursor-pointer text-emerald-700 dark:text-emerald-300 hover:!bg-emerald-500/10 focus:!bg-emerald-500/10"
+                  >
+                    <div className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-600 shrink-0">
+                      <Unlock className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span>Desbloquear a todos</span>
+                      <span className="text-[10px] font-normal text-muted-foreground">Pasa todo a borrador ({teachers.length} docentes)</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -192,20 +299,81 @@ export function ScheduleTeacherConfigModal({
               {/* Selectors */}
               <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
                 {/* Teacher Selector */}
-                <div className="w-full sm:w-[280px] shrink-0">
+                <div className="w-full sm:w-[380px] lg:w-[420px] shrink-0">
                   {loadingTeachers ? (
                     <div className="h-8 bg-background animate-pulse rounded-lg border" />
                   ) : (
                     <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
                       <SelectTrigger className="h-8 text-xs font-bold bg-background border-border/80 rounded-lg">
-                        <SelectValue placeholder="Seleccionar Instructor..." />
+                        <SelectValue placeholder="Seleccionar Instructor...">
+                          {(() => {
+                            const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
+                            return selectedTeacher ? (
+                              <span className="font-bold text-xs text-foreground whitespace-nowrap truncate">
+                                👨‍🏫 {selectedTeacher.name} {selectedTeacher.profile?.identificacion ? `(CC. ${selectedTeacher.profile.identificacion})` : ""}
+                              </span>
+                            ) : (
+                              "Seleccionar Instructor..."
+                            );
+                          })()}
+                        </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="max-h-[220px]">
-                        {teachers.map((t) => (
-                          <SelectItem key={t.id} value={t.id} className="text-xs font-bold">
-                            👨‍🏫 {t.name} {t.profile?.identificacion ? `(CC. ${t.profile.identificacion})` : ""}
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="max-h-[380px] !w-[620px] !min-w-[620px] max-w-[95vw] p-1.5 shadow-2xl">
+                        {teachers.map((t) => {
+                          const isAvailLocked = !!t.scheduleLock?.availabilityLocked;
+                          const isQualLocked = !!t.scheduleLock?.qualificationsLocked;
+
+                          return (
+                            <SelectItem 
+                              key={t.id} 
+                              value={t.id} 
+                              className="text-xs font-medium py-2 pr-9 pl-3 my-0.5 cursor-pointer rounded-lg hover:bg-muted/80 focus:bg-muted transition-colors"
+                            >
+                              <div className="flex items-center justify-between gap-4 w-full">
+                                {/* Nombre y Documento completos sin recortes */}
+                                <div className="flex flex-col min-w-0 text-left">
+                                  <span className="text-foreground font-bold text-xs leading-tight whitespace-nowrap">
+                                    👨‍🏫 {t.name}
+                                  </span>
+                                  {t.profile?.identificacion && (
+                                    <span className="text-[10px] text-muted-foreground font-medium font-mono mt-0.5 whitespace-nowrap">
+                                      CC. {t.profile.identificacion}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Badges de estado completos */}
+                                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                                  <span
+                                    title={isAvailLocked ? "Disponibilidad Horaria: Bloqueada" : "Disponibilidad Horaria: En Borrador"}
+                                    className={cn(
+                                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap shrink-0",
+                                      isAvailLocked 
+                                        ? "bg-emerald-500/15 border-emerald-500/35 text-emerald-700 dark:text-emerald-300" 
+                                        : "bg-amber-500/15 border-amber-500/35 text-amber-700 dark:text-amber-300"
+                                    )}
+                                  >
+                                    {isAvailLocked ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                                    <span>Horario: {isAvailLocked ? "Bloqueado" : "Borrador"}</span>
+                                  </span>
+
+                                  <span
+                                    title={isQualLocked ? "Materias Habilitadas: Bloqueadas" : "Materias Habilitadas: En Borrador"}
+                                    className={cn(
+                                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap shrink-0",
+                                      isQualLocked 
+                                        ? "bg-emerald-500/15 border-emerald-500/35 text-emerald-700 dark:text-emerald-300" 
+                                        : "bg-amber-500/15 border-amber-500/35 text-amber-700 dark:text-amber-300"
+                                    )}
+                                  >
+                                    {isQualLocked ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                                    <span>Materias: {isQualLocked ? "Bloqueadas" : "Borrador"}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   )}
@@ -371,6 +539,68 @@ export function ScheduleTeacherConfigModal({
             onOpenChange={setIsHelpOpen}
             scheduleName={schedules.find(s => s.id === selectedScheduleId)?.name}
           />
+
+          {/* Diálogo de Confirmación para Acción Masiva */}
+          <AlertDialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+            <AlertDialogContent className="max-w-md">
+              <AlertDialogHeader>
+                <div className="flex items-center gap-2.5 mb-1">
+                  <div className={cn(
+                    "p-2 rounded-xl shrink-0",
+                    bulkActionToConfirm ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  )}>
+                    {bulkActionToConfirm ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+                  </div>
+                  <AlertDialogTitle className="text-base font-extrabold text-foreground">
+                    {bulkActionToConfirm 
+                      ? `¿Bloquear a todos los instructores?`
+                      : `¿Desbloquear a todos los instructores?`
+                    }
+                  </AlertDialogTitle>
+                </div>
+                <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
+                  {bulkActionToConfirm ? (
+                    <>
+                      Esta acción bloqueará simultáneamente la <strong className="text-foreground font-bold">Disponibilidad Horaria</strong> y las <strong className="text-foreground font-bold">Materias Asignadas</strong> para los <strong className="text-foreground font-bold">{teachers.length} instructores</strong> en el horario <strong className="text-primary font-bold">{schedules.find(s => s.id === selectedScheduleId)?.name || "seleccionado"}</strong>.
+                      <span className="block mt-2 font-medium">
+                        Ningún instructor podrá realizar modificaciones en su horario o materias hasta que sea desbloqueado individual o masivamente.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Esta acción pasará a estado borrador (desbloqueado) la <strong className="text-foreground font-bold">Disponibilidad Horaria</strong> y las <strong className="text-foreground font-bold">Materias Asignadas</strong> de los <strong className="text-foreground font-bold">{teachers.length} instructores</strong> para el horario <strong className="text-primary font-bold">{schedules.find(s => s.id === selectedScheduleId)?.name || "seleccionado"}</strong>.
+                      <span className="block mt-2 font-medium">
+                        Los instructores podrán editar libremente su disponibilidad y asignaturas para este horario.
+                      </span>
+                    </>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="mt-3">
+                <AlertDialogCancel disabled={bulkLoading} className="text-xs font-bold">
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={bulkLoading}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleExecuteBulkAction();
+                  }}
+                  className={cn(
+                    "text-xs font-bold gap-1.5 text-white shadow-xs cursor-pointer",
+                    bulkActionToConfirm 
+                      ? "bg-amber-600 hover:bg-amber-700" 
+                      : "bg-emerald-600 hover:bg-emerald-700"
+                  )}
+                >
+                  {bulkLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>
+                    {bulkActionToConfirm ? "Sí, Bloquear Todos" : "Sí, Desbloquear Todos"}
+                  </span>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </DialogContent>
     </Dialog>

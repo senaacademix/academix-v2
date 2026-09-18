@@ -10,51 +10,52 @@ import {
   BookOpenCheck,
   ShieldCheck,
   Zap,
-  TrendingUp
+  TrendingUp,
+  Lock
 } from "lucide-react";
 
 const features = [
   {
-    icon: CheckCircle2,
-    color: "from-emerald-500/20 to-emerald-500/5",
-    iconColor: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
-    title: "Control de Asistencia",
-    description: "Registro rápido por grupo y jornada con estadísticas detalladas de ausencias y puntualidad."
-  },
-  {
     icon: CalendarDays,
     color: "from-blue-500/20 to-blue-500/5",
     iconColor: "text-blue-400 border-blue-500/30 bg-blue-500/10",
-    title: "Gestión de Horarios",
-    description: "Organización eficiente de franjas horarias por materia, aula y docente asignado."
+    title: "Malla Horaria Panorámica",
+    description: "Matriz interactiva por grupos y ambientes con detección automática de colisiones y cruces en tiempo real."
+  },
+  {
+    icon: Lock,
+    color: "from-amber-500/20 to-amber-500/5",
+    iconColor: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+    title: "Bloqueos Trimestrales Flexibles",
+    description: "Gestión independiente de disponibilidad docente y asignación curricular con bloqueos individuales y masivos por horario."
+  },
+  {
+    icon: CheckCircle2,
+    color: "from-emerald-500/20 to-emerald-500/5",
+    iconColor: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+    title: "Control de Asistencia Inteligente",
+    description: "Registro dinámico por sesión, cierre semanal automático y autorización granular para ediciones extemporáneas por instructor."
   },
   {
     icon: BookOpenCheck,
-    color: "from-amber-500/20 to-amber-500/5",
-    iconColor: "text-amber-400 border-amber-500/30 bg-amber-500/10",
-    title: "Sistema de Calificaciones",
-    description: "Evaluación continua con cálculo automático de promedios por periodo académico."
+    color: "from-purple-500/20 to-purple-500/5",
+    iconColor: "text-purple-400 border-purple-500/30 bg-purple-500/10",
+    title: "Planes de Mejoramiento",
+    description: "Seguimiento pedagógico y concertación formal para aprendices, con registro de evidencias y estado de aprobación."
   },
   {
     icon: FileSpreadsheet,
-    color: "from-purple-500/20 to-purple-500/5",
-    iconColor: "text-purple-400 border-purple-500/30 bg-purple-500/10",
-    title: "Reportes en Excel y PDF",
-    description: "Exportación centralizada de boletines, sábanas de notas e historial de asistencia."
+    color: "from-cyan-500/20 to-cyan-500/5",
+    iconColor: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
+    title: "Exportación Vectorial PDF",
+    description: "Generación instantánea de mallas horarias generales, agendas de instructores y cronogramas de fichas en alta fidelidad."
   },
   {
     icon: UserCog,
     color: "from-rose-500/20 to-rose-500/5",
     iconColor: "text-rose-400 border-rose-500/30 bg-rose-500/10",
-    title: "Administración de Roles",
-    description: "Permisos dinámicos y paneles adaptados para administradores, profesores y estudiantes."
-  },
-  {
-    icon: ShieldCheck,
-    color: "from-cyan-500/20 to-cyan-500/5",
-    iconColor: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
-    title: "Seguridad y Control",
-    description: "Autenticación robusta y trazabilidad completa de acciones y cambios en el sistema."
+    title: "Arquitectura Multi-Rol Especializada",
+    description: "Espacios de trabajo dedicados y seguros para Administradores, Gestores Académicos, Instructores, Aprendices y Observadores."
   }
 ];
 

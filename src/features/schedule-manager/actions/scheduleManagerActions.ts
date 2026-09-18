@@ -27,7 +27,7 @@ async function requireAdmin() {
 /**
  * Obtener todos los profesores registrados para gestión en el panel de horarios
  */
-export async function getTeachersListAction(programId?: string) {
+export async function getTeachersListAction(programId?: string, academicScheduleId?: string) {
   const session = await requireAdmin();
   const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
   const where: any = { role: "teacher", banned: { not: true } };
@@ -52,6 +52,8 @@ export async function getTeachersListAction(programId?: string) {
     ];
   }
 
+  const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
   const teachers = await prisma.user.findMany({
     where,
     select: {
@@ -62,11 +64,37 @@ export async function getTeachersListAction(programId?: string) {
         select: {
           identificacion: true
         }
-      }
+      },
+      teacherScheduleLocks: targetScheduleId ? {
+        where: { academicScheduleId: targetScheduleId },
+        select: {
+          availabilityLocked: true,
+          qualificationsLocked: true,
+          allowPastAttendanceEdit: true
+        }
+      } : false
     },
     orderBy: { name: "asc" }
   });
-  return teachers;
+
+  return teachers.map((t) => {
+    const lock = (t as any).teacherScheduleLocks?.[0];
+    return {
+      id: t.id,
+      name: t.name,
+      email: t.email,
+      profile: t.profile,
+      scheduleLock: lock ? {
+        availabilityLocked: lock.availabilityLocked,
+        qualificationsLocked: lock.qualificationsLocked,
+        allowPastAttendanceEdit: lock.allowPastAttendanceEdit
+      } : {
+        availabilityLocked: false,
+        qualificationsLocked: false,
+        allowPastAttendanceEdit: false
+      }
+    };
+  });
 }
 
 /**
