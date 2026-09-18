@@ -163,40 +163,40 @@ export function AdminDashboard({
         }
     ] : [
         {
-            title: "Equipo de Gestión",
-            value: stats.users.admin + ((stats.users as any).gestor || 0),
-            description: `${stats.users.admin} administradores, ${(stats.users as any).gestor || 0} gestores`,
-            icon: Users,
+            title: "Aprendices Matriculados",
+            value: stats.users.student,
+            description: `${stats.users.student} aprendices en el centro`,
+            icon: GraduationCap,
             color: "text-blue-500",
             bg: "bg-blue-500/10",
             link: "/dashboard/admin/users"
         },
         {
+            title: "Instructores Activos",
+            value: stats.users.teacher,
+            description: "Planta de instructores registrada",
+            icon: UserCheck,
+            color: "text-indigo-500",
+            bg: "bg-indigo-500/10",
+            link: "/dashboard/admin/users"
+        },
+        {
+            title: "Fichas / Grupos Activos",
+            value: (stats as any).groups?.total ?? 0,
+            description: "Fichas de formación vigentes",
+            icon: Layers,
+            color: "text-emerald-500",
+            bg: "bg-emerald-500/10",
+            link: "/dashboard/admin/courses"
+        },
+        {
             title: "Áreas de Formación",
             value: (stats as any).programs?.total ?? 0,
-            description: "Áreas activas registradas",
+            description: "Áreas curriculares activas",
             icon: FolderKanban,
             color: "text-purple-500",
             bg: "bg-purple-500/10",
             link: "/dashboard/admin/courses"
-        },
-        {
-            title: "Gestores Académicos",
-            value: (stats.users as any).gestor || 0,
-            description: "Gestores asignados a áreas",
-            icon: UserCheck,
-            color: "text-emerald-500",
-            bg: "bg-emerald-500/10",
-            link: "/dashboard/admin/users"
-        },
-        {
-            title: "Administradores",
-            value: stats.users.admin,
-            description: "Usuarios con rol administrador",
-            icon: ShieldCheck,
-            color: "text-indigo-500",
-            bg: "bg-indigo-500/10",
-            link: "/dashboard/admin/users"
         }
     ];
 
@@ -204,11 +204,13 @@ export function AdminDashboard({
         { label: "Aprendices", value: currentProgram.studentsCount ?? 0, icon: GraduationCap, color: "bg-blue-500" },
         { label: "Instructores", value: currentProgram.teachersCount ?? 0, icon: UserCheck, color: "bg-indigo-500" },
     ] : [
-        { label: "Administradores", value: stats.users.admin, icon: ShieldCheck, color: "bg-blue-500" },
-        { label: "Gestores Académicos", value: (stats.users as any).gestor || 0, icon: UserCheck, color: "bg-indigo-500" },
+        { label: "Aprendices", value: stats.users.student, icon: GraduationCap, color: "bg-blue-500" },
+        { label: "Instructores", value: stats.users.teacher, icon: UserCheck, color: "bg-indigo-500" },
+        { label: "Gestores", value: (stats.users as any).gestor || 0, icon: Users, color: "bg-emerald-500" },
+        { label: "Administradores", value: stats.users.admin, icon: ShieldCheck, color: "bg-purple-500" },
     ];
 
-    // Operational modules for the selected program
+    // Operational modules for the selected program or system-wide
     const operationalModules = isGestor && currentProgram ? [
         {
             title: "Gestión de Usuarios",
@@ -238,7 +240,42 @@ export function AdminDashboard({
             icon: BarChart3,
             color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
         }
-    ] : null;
+    ] : [
+        {
+            title: "Gestión de Usuarios",
+            description: isObserver 
+                ? "Consulta de aprendices, instructores, gestores y directivos del centro."
+                : "Administración integral de aprendices, instructores, gestores, directivos y roles.",
+            link: "/dashboard/admin/users",
+            icon: Users,
+            color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
+        },
+        {
+            title: "Estructura Curricular y Sedes",
+            description: isObserver
+                ? "Auditoría de áreas de formación, fichas, competencias, sedes y ambientes."
+                : "Áreas de formación, fichas vigentes, competencias y parametrización de sedes y ambientes.",
+            link: "/dashboard/admin/courses",
+            icon: BookOpen,
+            color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+        },
+        {
+            title: "Programación y Mallas Horarias",
+            description: isObserver
+                ? "Supervisión de mallas horarias, jornadas, eventos y disponibilidad docente."
+                : "Diseño, publicación, control de cruces de mallas y bloqueo trimestral de disponibilidad.",
+            link: "/dashboard/admin/schedules",
+            icon: CalendarClock,
+            color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20"
+        },
+        {
+            title: "Reportes y Analítica Global",
+            description: "Analítica institucional, matrices de asistencia, juicios evaluativos y trazabilidad.",
+            link: "/dashboard/admin/analytics",
+            icon: BarChart3,
+            color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
+        }
+    ];
 
     // =========================================================================
     // VISTA 1: GESTOR ACADÉMICO - PANTALLA DE SELECCIÓN DE PROGRAMA DE FORMACIÓN
@@ -416,14 +453,23 @@ export function AdminDashboard({
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold shadow-2xs">
                             <Sparkles className="w-3.5 h-3.5 text-primary" />
                             <span>
-                                {isGestor && currentProgram 
-                                    ? `Gestión de Programa: ${currentProgram.name}` 
-                                    : "Panel de Administración Global"
+                                {isObserver 
+                                    ? "Modo Observador Institucional" 
+                                    : isGestor && currentProgram 
+                                        ? `Gestión de Área: ${currentProgram.name}` 
+                                        : "Panel de Administración Central"
                                 }
                             </span>
                         </div>
                         <h1 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
-                            {isGestor && currentProgram ? (
+                            {isObserver ? (
+                                <>
+                                    Panel de{" "}
+                                    <span className="bg-gradient-to-r from-foreground via-foreground/80 to-primary bg-clip-text text-transparent">
+                                        Supervisión y Auditoría
+                                    </span>
+                                </>
+                            ) : isGestor && currentProgram ? (
                                 <>
                                     Panel de{" "}
                                     <span className="bg-gradient-to-r from-foreground via-foreground/80 to-primary bg-clip-text text-transparent">
@@ -440,14 +486,16 @@ export function AdminDashboard({
                             )}
                         </h1>
                         <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed font-medium">
-                            {isGestor && currentProgram 
-                                ? `Métricas en tiempo real, gestión de usuarios, estructura curricular y programación horaria para ${currentProgram.name}.`
-                                : "Métricas globales, monitoreo en tiempo real de actividad y gestión de la plataforma AcademiX."
+                            {isObserver
+                                ? "Auditoría en tiempo real, consulta curricular, supervisión de mallas y métricas analíticas del centro."
+                                : isGestor && currentProgram 
+                                    ? `Métricas en tiempo real, gestión de usuarios, estructura curricular y programación horaria para ${currentProgram.name}.`
+                                    : "Métricas consolidadas, estructura académica, programación horaria y gestión global de la plataforma AcademiX."
                             }
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+                    <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
@@ -488,8 +536,29 @@ export function AdminDashboard({
                                     </Link>
                                 </Button>
                             </>
+                        ) : isObserver ? (
+                            <>
+                                <Button variant="outline" asChild className="rounded-2xl h-11 border-border/80 bg-background/80 text-foreground hover:bg-muted text-xs font-bold shadow-xs">
+                                    <Link href="/dashboard/admin/schedules">
+                                        <CalendarClock className="h-4 w-4 mr-2 text-primary" />
+                                        Mallas Horarias
+                                    </Link>
+                                </Button>
+                                <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
+                                    <Link href="/dashboard/admin/analytics">
+                                        <BarChart3 className="h-4 w-4 mr-2" />
+                                        Ver Analítica
+                                    </Link>
+                                </Button>
+                            </>
                         ) : (
                             <>
+                                <Button variant="outline" asChild className="rounded-2xl h-11 border-border/80 bg-background/80 text-foreground hover:bg-muted text-xs font-bold shadow-xs">
+                                    <Link href="/dashboard/admin/schedules">
+                                        <CalendarClock className="h-4 w-4 mr-2 text-primary" />
+                                        Mallas Horarias
+                                    </Link>
+                                </Button>
                                 <Button variant="outline" asChild className="rounded-2xl h-11 border-border/80 bg-background/80 text-foreground hover:bg-muted text-xs font-bold shadow-xs">
                                     <Link href="/dashboard/admin/settings">
                                         <Settings className="h-4 w-4 mr-2" />
@@ -535,16 +604,19 @@ export function AdminDashboard({
                 ))}
             </div>
 
-            {/* Módulos Operativos para el Gestor */}
-            {isGestor && operationalModules && (
+            {/* Módulos Operativos */}
+            {operationalModules && (
                 <div className="space-y-4">
                     <div>
                         <h2 className="text-lg font-black text-foreground tracking-tight flex items-center gap-2">
                             <Layers className="w-5 h-5 text-primary" />
-                            Módulos de Gestión del Área
+                            {isGestor ? "Módulos de Gestión del Área" : "Módulos Operativos Institucionales"}
                         </h2>
                         <p className="text-xs text-muted-foreground font-medium">
-                            Accesos rápidos directos para {currentProgram?.name}.
+                            {isGestor 
+                                ? `Accesos rápidos directos para ${currentProgram?.name}.` 
+                                : "Accesos directos a los centros de gestión, estructura y supervisión."
+                            }
                         </p>
                     </div>
 
@@ -583,12 +655,12 @@ export function AdminDashboard({
                     <CardHeader>
                         <CardTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
                             <TrendingUp className="h-5 w-5 text-primary" />
-                            {isGestor ? "Comunidad del Área" : "Equipo de Gestión"}
+                            {isGestor ? "Comunidad del Área" : "Comunidad Institucional"}
                         </CardTitle>
                         <CardDescription className="text-muted-foreground text-xs">
                             {isGestor 
                                 ? `Aprendices e instructores en ${currentProgram?.name}` 
-                                : "Composición de administradores y gestores académicos"
+                                : "Distribución de aprendices, docentes y gestión"
                             }
                         </CardDescription>
                     </CardHeader>
@@ -597,7 +669,7 @@ export function AdminDashboard({
                             {userDistribution.map((dist, i) => {
                                 const total = isGestor && currentProgram
                                     ? ((currentProgram.studentsCount ?? 0) + (currentProgram.teachersCount ?? 0)) || 1
-                                    : (stats.users.admin + ((stats.users as any).gestor || 0)) || 1;
+                                    : (stats.users.student + stats.users.teacher + stats.users.admin + ((stats.users as any).gestor || 0)) || 1;
                                 const percentage = ((dist.value / total) * 100).toFixed(1);
                                 return (
                                     <div key={i} className="space-y-2">

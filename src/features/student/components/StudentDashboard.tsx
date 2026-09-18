@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Sparkles, History, HelpCircle, GitBranch } from "lucide-react";
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { Sparkles, History, HelpCircle, GitBranch, BookOpen, CalendarClock, ClipboardList, GraduationCap, ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { isScheduleCurrent } from "@/lib/dateUtils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -241,6 +243,97 @@ export function StudentDashboard({
                         </div>
                     </div>
                 </motion.div>
+            )}
+
+            {/* Overview / Quick Access Cards */}
+            {!isInsideCourse && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Card 1: Ficha */}
+                    <Card className="rounded-2xl border border-border/80 shadow-2xs bg-card p-4 flex flex-col justify-between hover:border-primary/40 transition-all">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                Ficha de Formación
+                            </span>
+                            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                                <GraduationCap className="h-4 w-4" />
+                            </div>
+                        </div>
+                        <div className="mt-2 space-y-0.5">
+                            <div className="text-xl font-black text-foreground truncate">
+                                {studentGroup ? `Ficha ${studentGroup.name}` : "Sin Ficha"}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground truncate font-medium">
+                                {studentGroup?.program?.name || "Programa Académico"}
+                            </p>
+                        </div>
+                    </Card>
+
+                    {/* Card 2: Materias */}
+                    <Card className="rounded-2xl border border-border/80 shadow-2xs bg-card p-4 flex flex-col justify-between hover:border-primary/40 transition-all">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                Materias Activas
+                            </span>
+                            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+                                <BookOpen className="h-4 w-4" />
+                            </div>
+                        </div>
+                        <div className="mt-2 space-y-0.5">
+                            <div className="text-xl font-black text-foreground">
+                                {myEnrollments.length} {myEnrollments.length === 1 ? "Materia" : "Materias"}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground truncate font-medium">
+                                En formación lectiva vigente
+                            </p>
+                        </div>
+                    </Card>
+
+                    {/* Card 3: Horario Semanal */}
+                    <Link href="/dashboard/student/schedule" className="block group">
+                        <Card className="h-full rounded-2xl border border-border/80 shadow-2xs bg-card p-4 flex flex-col justify-between hover:border-teal-500/40 hover:shadow-xs transition-all cursor-pointer">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                    Horario Semanal
+                                </span>
+                                <div className="p-2 rounded-xl bg-teal-500/10 text-teal-500 group-hover:scale-105 transition-transform">
+                                    <CalendarClock className="h-4 w-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2 space-y-0.5">
+                                <div className="text-xl font-black text-foreground flex items-center justify-between">
+                                    <span>Mi Horario</span>
+                                    <ArrowUpRight className="w-4 h-4 text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <p className="text-[11px] text-teal-600 dark:text-teal-400 font-bold truncate">
+                                    Ver clases, franjas y ambientes →
+                                </p>
+                            </div>
+                        </Card>
+                    </Link>
+
+                    {/* Card 4: Registro & Asistencia */}
+                    <Link href="/dashboard/student/records" className="block group">
+                        <Card className="h-full rounded-2xl border border-border/80 shadow-2xs bg-card p-4 flex flex-col justify-between hover:border-purple-500/40 hover:shadow-xs transition-all cursor-pointer">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                    Historial Académico
+                                </span>
+                                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500 group-hover:scale-105 transition-transform">
+                                    <ClipboardList className="h-4 w-4" />
+                                </div>
+                            </div>
+                            <div className="mt-2 space-y-0.5">
+                                <div className="text-xl font-black text-foreground flex items-center justify-between">
+                                    <span>Asistencia y Notas</span>
+                                    <ArrowUpRight className="w-4 h-4 text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <p className="text-[11px] text-purple-600 dark:text-purple-400 font-bold truncate">
+                                    Consultar historial y boletines →
+                                </p>
+                            </div>
+                        </Card>
+                    </Link>
+                </div>
             )}
 
             {pendingEnrollments.length > 0 && !isInsideCourse && (

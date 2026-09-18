@@ -32,7 +32,8 @@ import {
     X,
     Briefcase,
     Compass,
-    Building2
+    Building2,
+    Wrench
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -161,6 +162,13 @@ export function GestorDashboardView({
             link: `/dashboard/gestor/schedules?programId=${currentProgram.id}`,
             icon: CalendarClock,
             color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20"
+        },
+        {
+            title: "Herramientas y Analítica",
+            description: "Analítica de juicios Sofia Plus, reportes institucionales y seguimiento pedagógico.",
+            link: `/dashboard/gestor/tools?programId=${currentProgram.id}`,
+            icon: Wrench,
+            color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
         }
     ] : [];
 
@@ -193,7 +201,7 @@ export function GestorDashboardView({
             >
                 <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
 
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                     <div className="space-y-2">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold shadow-2xs">
                             <Sparkles className="w-3.5 h-3.5 text-primary" />
@@ -210,7 +218,19 @@ export function GestorDashboardView({
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+                    <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
+                        <Button variant="outline" asChild className="rounded-2xl h-11 border-border/80 bg-background/80 hover:bg-muted text-foreground font-bold text-xs shadow-2xs">
+                            <Link href={`/dashboard/gestor/schedules?programId=${currentProgram?.id}`}>
+                                <CalendarClock className="h-4 w-4 mr-2 text-primary" />
+                                Programación Horaria
+                            </Link>
+                        </Button>
+                        <Button variant="outline" asChild className="rounded-2xl h-11 border-border/80 bg-background/80 hover:bg-muted text-foreground font-bold text-xs shadow-2xs">
+                            <Link href={`/dashboard/gestor/tools?programId=${currentProgram?.id}`}>
+                                <Wrench className="h-4 w-4 mr-2 text-primary" />
+                                Herramientas
+                            </Link>
+                        </Button>
                         <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
                             <Link href={`/dashboard/gestor/users?programId=${currentProgram?.id}`}>
                                 <UserPlus className="h-4 w-4 mr-2" />
@@ -325,8 +345,24 @@ export function GestorDashboardView({
                                 );
                             })}
                         </div>
-                        <div className="pt-4 border-t border-border/60">
-                            <div className="flex items-center justify-between text-sm font-bold text-foreground">
+                        <div className="pt-4 border-t border-border/60 space-y-2.5">
+                            <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+                                <span>Edición Asistencia</span>
+                                <Badge variant="outline" className={`rounded-lg px-2 py-0.5 text-[10px] font-bold ${
+                                    currentProgram?.allowPastAttendanceEdit 
+                                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" 
+                                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                }`}>
+                                    {currentProgram?.allowPastAttendanceEdit ? "Extemporánea Habilitada" : "Cierre Semanal Activo"}
+                                </Badge>
+                            </div>
+                            <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+                                <span>Ambientes Asignados</span>
+                                <span className="font-bold text-foreground">
+                                    {currentProgram?.environmentsCount ?? currentProgram?._count?.environments ?? 0} aulas / espacios
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm font-bold text-foreground pt-1">
                                 <span>Estado del Sistema</span>
                                 <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-xl px-3 py-1 font-bold">
                                     En Línea • Operativo

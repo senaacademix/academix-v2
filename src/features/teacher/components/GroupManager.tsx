@@ -82,7 +82,7 @@ import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch } from "lucide-react";
+import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1903,33 +1903,72 @@ const handleOpenAnalytics = async () => {
                         </h1>
                     </div>
 
-                    {/* Right Section: Active Group Metadata */}
-                    {selectedGroup && (
-                        <div className="flex flex-wrap items-center gap-2 bg-background/80 dark:bg-card/70 p-2.5 px-3.5 rounded-2xl border border-border backdrop-blur-md shadow-xs">
-                            {getGroupPeriodName(selectedGroup) && (
-                                <Badge variant="secondary" className="text-xs font-bold py-1 px-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 shadow-2xs">
-                                    {getGroupPeriodName(selectedGroup)}
-                                </Badge>
-                            )}
-                            {getGroupTimelineName(selectedGroup) && (
-                                <Badge variant="secondary" className="text-xs font-black py-1 px-3 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 flex items-center gap-1.5 shadow-2xs">
-                                    <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
-                                    {getGroupTimelineName(selectedGroup)}
-                                </Badge>
-                            )}
-                            <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border">
-                                <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                                {selectedGroup.students?.length || 0} Aprendices
-                            </Badge>
-                            {groupScheduleInfo && (
-                                <div className="w-full sm:w-auto flex items-center gap-1.5 text-xs bg-muted/60 px-3 py-1 rounded-xl border border-border/70 font-medium">
-                                    <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                                    <span className="font-extrabold text-foreground">{groupScheduleInfo.days}</span>
-                                    <span className="text-muted-foreground font-mono text-[11px] truncate">{groupScheduleInfo.time}</span>
-                                </div>
-                            )}
+                    {/* Right Section: Quick Actions & Group Metadata */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Quick Module Shortcuts */}
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                asChild
+                                className="h-9 rounded-xl border-border/80 bg-background/80 hover:bg-muted text-foreground font-bold text-xs shadow-2xs gap-1.5 cursor-pointer"
+                            >
+                                <Link href="/dashboard/teacher/schedule">
+                                    <CalendarClock className="w-4 h-4 text-primary" />
+                                    <span className="hidden sm:inline">Mi Horario</span>
+                                </Link>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                asChild
+                                className="h-9 rounded-xl border-border/80 bg-background/80 hover:bg-muted text-foreground font-bold text-xs shadow-2xs gap-1.5 cursor-pointer"
+                            >
+                                <Link href="/dashboard/teacher/tools">
+                                    <Sparkles className="w-4 h-4 text-primary" />
+                                    <span className="hidden sm:inline">Herramientas</span>
+                                </Link>
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsHelpModalOpen(true)}
+                                className="h-9 px-3 rounded-xl border-border/80 bg-background/80 text-foreground hover:bg-primary/10 hover:border-primary/40 hover:text-primary text-xs font-bold shadow-2xs gap-1.5 cursor-pointer"
+                            >
+                                <HelpCircle className="h-4 w-4 text-primary" />
+                                <span className="hidden md:inline">¿Qué puedo hacer acá?</span>
+                            </Button>
                         </div>
-                    )}
+
+                        {/* Active Group Metadata */}
+                        {selectedGroup && (
+                            <div className="flex flex-wrap items-center gap-2 bg-background/80 dark:bg-card/70 p-2 px-3 rounded-2xl border border-border backdrop-blur-md shadow-xs">
+                                {getGroupPeriodName(selectedGroup) && (
+                                    <Badge variant="secondary" className="text-xs font-bold py-1 px-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 shadow-2xs">
+                                        {getGroupPeriodName(selectedGroup)}
+                                    </Badge>
+                                )}
+                                {getGroupTimelineName(selectedGroup) && (
+                                    <Badge variant="secondary" className="text-xs font-black py-1 px-3 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 flex items-center gap-1.5 shadow-2xs">
+                                        <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        {getGroupTimelineName(selectedGroup)}
+                                    </Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border">
+                                    <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                                    {selectedGroup.students?.length || 0} Aprendices
+                                </Badge>
+                                {groupScheduleInfo && (
+                                    <div className="w-full sm:w-auto flex items-center gap-1.5 text-xs bg-muted/60 px-2.5 py-1 rounded-xl border border-border/70 font-medium">
+                                        <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        <span className="font-extrabold text-foreground">{groupScheduleInfo.days}</span>
+                                        <span className="text-muted-foreground font-mono text-[11px] truncate">{groupScheduleInfo.time}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </motion.div>
 

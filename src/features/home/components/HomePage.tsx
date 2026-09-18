@@ -118,31 +118,31 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
     } else if (activeRole === "gestor") {
       return [
         {
-          title: "Gestión y Matrícula",
-          description: "Matrícula de aprendices, carga masiva en Excel y asignación de instructores.",
-          url: "/dashboard/admin/users",
+          title: "Gestión de Usuarios",
+          description: "Matrícula de aprendices, carga masiva e instructores vinculados.",
+          url: "/dashboard/gestor/users",
           icon: Users,
           color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
         },
         {
-          title: "Estructura y Ambientes",
-          description: "Administra fichas/grupos, competencias y asignación de ambientes y aulas.",
-          url: "/dashboard/admin/courses",
+          title: "Estructura Curricular",
+          description: "Administra fichas/grupos, competencias, resultados y ambientes.",
+          url: "/dashboard/gestor/courses",
           icon: BookOpen,
           color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
         },
         {
-          title: "Malla de Horarios y Ambientes",
-          description: "Diseño, validación y publicación de la malla de horarios y eventos.",
-          url: "/dashboard/admin/schedules",
+          title: "Programación Horaria",
+          description: "Diseño y validación de mallas horarias, jornadas y bloqueos.",
+          url: "/dashboard/gestor/schedules",
           icon: CalendarClock,
           color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
         },
         {
-          title: "Reportes y Asistencia",
-          description: "Control de asistencia general y seguimiento académico.",
-          url: "/dashboard/admin/analytics",
-          icon: BarChart3,
+          title: "Herramientas Sofia Plus",
+          description: "Analítica de juicios evaluativos, auditoría y trazabilidad.",
+          url: "/dashboard/gestor/tools",
+          icon: Wrench,
           color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
         }
       ];
@@ -157,21 +157,21 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
         },
         {
           title: "Estructura Académica",
-          description: "Consulta de programas, fichas y materias.",
+          description: "Consulta de programas, fichas, competencias y materias.",
           url: "/dashboard/admin/courses",
           icon: BookOpen,
           color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
         },
         {
           title: "Horarios y Eventos",
-          description: "Consulta de programación de clases y eventos.",
+          description: "Consulta de programación de clases, mallas y eventos.",
           url: "/dashboard/admin/schedules",
           icon: CalendarClock,
           color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
         },
         {
           title: "Reportes y Analítica",
-          description: "Métricas académicas y estadísticas.",
+          description: "Métricas académicas, control de asistencia y estadísticas.",
           url: "/dashboard/admin/analytics",
           icon: BarChart3,
           color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
@@ -204,17 +204,24 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
     } else {
       return [
         {
-          title: "Registro Académico",
-          description: "Revisa tus notas acumuladas, asistencias y boletines.",
-          url: "/dashboard/student/records",
-          icon: ClipboardList,
-          color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+          title: "Mis Materias",
+          description: "Accede a tus asignaturas, actividades, evidencias y calificaciones.",
+          url: "/dashboard/student",
+          icon: BookOpen,
+          color: "bg-primary/10 text-primary border-primary/20"
         },
         {
           title: "Horario Semanal",
-          description: "Consulta el calendario de tus clases y materias activas.",
+          description: "Consulta el calendario de tus clases, franjas y ambientes asignados.",
           url: "/dashboard/student/schedule",
           icon: CalendarClock,
+          color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
+        },
+        {
+          title: "Registro Académico",
+          description: "Revisa tus notas acumuladas, inasistencias y justificaciones.",
+          url: "/dashboard/student/records",
+          icon: ClipboardList,
           color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
         }
       ];

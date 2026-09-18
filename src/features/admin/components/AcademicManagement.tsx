@@ -52,9 +52,11 @@ import {
     AlertCircle, Building, Code, Database, Binary, MessageSquare, Terminal,
     ShieldCheck, Cloud, Rocket, NotebookTabs, Lock as LockIcon, Download,
     Activity, Upload, AlertTriangle, School, Eye, HelpCircle, FileText, Loader2,
-    ImageIcon, Link as LinkIcon, Copy, Check, MoreVertical, GitBranch
+    ImageIcon, Link as LinkIcon, Copy, Check, MoreVertical, GitBranch,
+    CalendarDays, FileSpreadsheet
 } from "lucide-react";
 import { generateAndDownloadCurriculumPdf, CurriculumExportOptions } from "../utils/curriculumPdfExport";
+import { exportProgramOverviewPdf, exportProgramOverviewExcel } from "../utils/programExportUtils";
 import { Switch } from "@/components/ui/switch";
 import { formatCalendarDate } from "@/lib/dateUtils";
 import {
@@ -310,6 +312,7 @@ interface Course {
     badge?: string | null;
     badgeColor?: string | null;
     createdAt: Date;
+    groupId?: string | null;
     group?: Group | null;
     periodId: string | null;
     period?: {
@@ -614,10 +617,42 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
     const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
     const [bulkDeleteConfirmationOpen, setBulkDeleteConfirmationOpen] = useState(false);
+    const [isExportingOverviewPdf, setIsExportingOverviewPdf] = useState(false);
+    const [isExportingOverviewExcel, setIsExportingOverviewExcel] = useState(false);
 
     useEffect(() => {
         setSelectedTeacherIds([]);
     }, [selectedProgram]);
+
+    const handleExportOverviewPdf = async () => {
+        if (!selectedProgram) return;
+        setIsExportingOverviewPdf(true);
+        toast.info("Generando reporte PDF del área de formación...");
+        try {
+            await exportProgramOverviewPdf(selectedProgram);
+            toast.success("Reporte PDF descargado exitosamente");
+        } catch (e: any) {
+            console.error(e);
+            toast.error(e?.message || "Error al exportar reporte PDF");
+        } finally {
+            setIsExportingOverviewPdf(false);
+        }
+    };
+
+    const handleExportOverviewExcel = async () => {
+        if (!selectedProgram) return;
+        setIsExportingOverviewExcel(true);
+        toast.info("Generando reporte Excel del área de formación...");
+        try {
+            await exportProgramOverviewExcel(selectedProgram);
+            toast.success("Reporte Excel descargado exitosamente");
+        } catch (e: any) {
+            console.error(e);
+            toast.error(e?.message || "Error al exportar reporte Excel");
+        } finally {
+            setIsExportingOverviewExcel(false);
+        }
+    };
 
     const handleBulkAvailabilityLock = async (lock: boolean) => {
         if (selectedTeacherIds.length === 0) return;
@@ -3354,23 +3389,51 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         {/* SUB-TAB: OVERVIEW */}
                         <TabsContent value="overview" className="space-y-6 mt-0">
                             {(() => {
-                                // 1. Calculate Group types
-                                const lectivaGroups = selectedProgram.groups.filter(g => g.categoria === "LECTIVA");
-                                const productivaGroups = selectedProgram.groups.filter(g => g.categoria === "PRODUCTIVA");
-                                const egresadosGroups = selectedProgram.groups.filter(g => g.categoria === "EGRESADOS");
-                                
-                                // 3. Find Largest Group
-                                let largestGroup: typeof selectedProgram.groups[0] | null = null;
-                                for (const g of selectedProgram.groups) {
-                                    if (!largestGroup || g.students.length > largestGroup.students.length) {
+                                const groups = selectedProgram.groups || [];
+                                const periods = selectedProgram.periods || [];
+                                const teachers = selectedProgram.teachers || [];
+                                const environments = selectedProgram.environments || [];
+                                const timelines = selectedProgram.timelines || [];
+                                const gestores = (selectedProgram as any).gestores || [];
+
+                                // 1. Student census by stage
+                                const totalStudents = groups.reduce((acc, g) => acc + (g.students?.length || 0), 0);
+                                const lectivaGroups = groups.filter(g => (g.categoria || "LECTIVA") === "LECTIVA");
+                                const productivaGroups = groups.filter(g => g.categoria === "PRODUCTIVA");
+                                const egresadosGroups = groups.filter(g => g.categoria === "EGRESADOS");
+
+                                const lectivaStudents = lectivaGroups.reduce((acc, g) => acc + (g.students?.length || 0), 0);
+                                const productivaStudents = productivaGroups.reduce((acc, g) => acc + (g.students?.length || 0), 0);
+                                const egresadosStudents = egresadosGroups.reduce((acc, g) => acc + (g.students?.length || 0), 0);
+
+                                const percentLectiva = totalStudents > 0 ? Math.round((lectivaStudents / totalStudents) * 100) : 0;
+                                const percentProductiva = totalStudents > 0 ? Math.round((productivaStudents / totalStudents) * 100) : 0;
+                                const percentEgresados = totalStudents > 0 ? Math.round((egresadosStudents / totalStudents) * 100) : 0;
+
+                                // 2. Courses and hours
+                                let totalCoursesCount = 0;
+                                let totalWeeklyHours = 0;
+                                periods.forEach(p => {
+                                    (p.courses || []).forEach(c => {
+                                        if (!c.groupId) {
+                                            totalCoursesCount++;
+                                            totalWeeklyHours += c.weeklyHours || 0;
+                                        }
+                                    });
+                                });
+
+                                // 3. Find largest group
+                                let largestGroup: typeof groups[0] | null = null;
+                                for (const g of groups) {
+                                    if (!largestGroup || (g.students?.length || 0) > (largestGroup.students?.length || 0)) {
                                         largestGroup = g;
                                     }
                                 }
-                                
-                                // 4. Find Course with most hours
+
+                                // 4. Find course with highest hours
                                 let maxHoursCourse: { title: string; hours: number; periodName: string } | null = null;
-                                for (const p of selectedProgram.periods) {
-                                    for (const c of p.courses) {
+                                for (const p of periods) {
+                                    for (const c of (p.courses || [])) {
                                         const h = c.weeklyHours || 0;
                                         if (h > 0 && (!maxHoursCourse || h > maxHoursCourse.hours)) {
                                             maxHoursCourse = {
@@ -3382,211 +3445,355 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     }
                                 }
 
-                                // 5. Program time progress
-                                const progStart = selectedProgram.startDate || settings?.scheduleStartDate;
-                                const progEnd = selectedProgram.endDate || settings?.scheduleEndDate;
-                                const startDate = progStart ? new Date(progStart) : null;
-                                const endDate = progEnd ? new Date(progEnd) : null;
-                                const now = new Date();
-                                let progressPercent = 0;
-                                let statusText = "No definido";
-                                let statusColor = "text-muted-foreground bg-muted/10 border-muted-foreground/20";
-                                
-                                if (startDate && endDate) {
-                                    const totalTime = endDate.getTime() - startDate.getTime();
-                                    const elapsed = now.getTime() - startDate.getTime();
-                                    if (now < startDate) {
-                                        statusText = "Próximamente / No iniciado";
-                                        statusColor = "text-amber-500 bg-amber-500/10 border-amber-500/20";
-                                        progressPercent = 0;
-                                    } else if (now > endDate) {
-                                        statusText = "Finalizado / Completado";
-                                        statusColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
-                                        progressPercent = 100;
-                                    } else {
-                                        statusText = "En curso / Activo";
-                                        statusColor = "text-primary bg-primary/10 border-primary/20";
-                                        progressPercent = totalTime > 0 ? Math.min(100, Math.max(0, Math.round((elapsed / totalTime) * 100))) : 0;
-                                    }
-                                }
+                                const schedulesPath = currentUserRole === "gestor" ? "/dashboard/gestor/schedules" : "/dashboard/admin/schedules";
 
                                 return (
                                     <div className="space-y-6 animate-in fade-in-50 duration-200">
-                                        {/* Header de Vista General con Ayuda */}
-                                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-1">
-                                            <div>
-                                                <h4 className="text-base font-bold tracking-tight text-foreground">Diagnóstico del Programa: {selectedProgram.name}</h4>
-                                                <p className="text-xs text-muted-foreground">Resumen general de periodos, materias, alumnos y ambientes vinculados.</p>
+                                        {/* Header de Vista General con Acciones de Exportación y Ayuda */}
+                                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-card p-4 rounded-2xl border border-border/80 shadow-xs">
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="text-base font-bold tracking-tight text-foreground">
+                                                        Diagnóstico y Resumen: {selectedProgram.name}
+                                                    </h4>
+                                                    <Badge variant="outline" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
+                                                        Área de Formación
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Indicadores consolidados, censo de aprendices por etapa, mallas curriculares, docentes y ambientes vinculados.
+                                                </p>
                                             </div>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => setIsTabsHelpOpen(true)}
-                                                        className="h-8 rounded-xl text-xs font-bold gap-1.5 border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all self-start sm:self-auto"
-                                                    >
-                                                        <HelpCircle className="w-3.5 h-3.5 text-primary" />
-                                                        <span>¿Qué puedo hacer acá?</span>
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Vista General</TooltipContent>
-                                            </Tooltip>
+
+                                            <div className="flex items-center gap-2 shrink-0 flex-wrap self-start sm:self-auto">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleExportOverviewPdf}
+                                                    disabled={isExportingOverviewPdf}
+                                                    className="h-8 gap-1.5 rounded-xl text-xs font-bold border-red-500/30 text-red-700 dark:text-red-300 bg-red-500/10 hover:bg-red-500/20 shadow-2xs cursor-pointer"
+                                                    title="Exportar reporte del área en PDF"
+                                                >
+                                                    {isExportingOverviewPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
+                                                    <span>Reporte PDF</span>
+                                                </Button>
+
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleExportOverviewExcel}
+                                                    disabled={isExportingOverviewExcel}
+                                                    className="h-8 gap-1.5 rounded-xl text-xs font-bold border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-2xs cursor-pointer"
+                                                    title="Exportar reporte del área en Excel"
+                                                >
+                                                    {isExportingOverviewExcel ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
+                                                    <span>Reporte Excel</span>
+                                                </Button>
+
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setIsTabsHelpOpen(true)}
+                                                            className="h-8 rounded-xl text-xs font-bold gap-1.5 border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                                                        >
+                                                            <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                                                            <span>¿Qué puedo hacer acá?</span>
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="bottom">Guía y Ayuda de la Vista General</TooltipContent>
+                                                </Tooltip>
+                                            </div>
                                         </div>
 
-                                        {/* Fila de Tarjetas de Métricas (Compactas) */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
+                                        {/* Fila de Tarjetas de Métricas Principales (Navegables) */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+                                            {/* Card 1: Fichas */}
+                                            <Card 
+                                                className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-md hover:border-blue-500/40 transition-all cursor-pointer flex flex-col justify-between gap-1 group"
+                                                onClick={() => setSubTab("groups")}
+                                                title="Ir a Grupos y Aprendices"
+                                            >
                                                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
                                                 <div className="flex items-center justify-between pl-1">
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Periodos Académicos</span>
-                                                    <div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
-                                                        <Calendar className="h-4 w-4" />
+                                                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Fichas / Grupos</span>
+                                                    <div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-xl shrink-0 group-hover:scale-110 transition-transform">
+                                                        <Layers className="h-4 w-4" />
                                                     </div>
                                                 </div>
                                                 <div className="flex items-baseline gap-2 pl-1 mt-1">
-                                                    <span className="text-2xl font-black text-foreground tracking-tight">{selectedProgram.periods.length}</span>
-                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">
-                                                        {(selectedProgram.timelines || []).length} {(selectedProgram.timelines || []).length === 1 ? "programa de formación" : "programas de formación"}
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">{groups.length}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-medium truncate">
+                                                        {lectivaGroups.length} Lectiva • {productivaGroups.length} Prod.
                                                     </span>
                                                 </div>
                                             </Card>
 
-                                            <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
-                                                <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-                                                <div className="flex items-center justify-between pl-1">
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Materias Totales</span>
-                                                    <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0">
-                                                        <BookOpen className="h-4 w-4" />
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-baseline gap-2 pl-1 mt-1">
-                                                    <span className="text-2xl font-black text-foreground tracking-tight">
-                                                        {selectedProgram.periods.reduce((acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0), 0)}
-                                                    </span>
-                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Materias curriculares</span>
-                                                </div>
-                                            </Card>
-
-                                            <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
+                                            {/* Card 2: Censo Aprendices */}
+                                            <Card 
+                                                className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-md hover:border-violet-500/40 transition-all cursor-pointer flex flex-col justify-between gap-1 group"
+                                                onClick={() => setSubTab("groups")}
+                                                title="Ir a Grupos y Aprendices"
+                                            >
                                                 <div className="absolute top-0 left-0 w-1 h-full bg-violet-500" />
                                                 <div className="flex items-center justify-between pl-1">
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Aprendices</span>
-                                                    <div className="p-1.5 bg-violet-500/10 text-violet-500 rounded-xl shrink-0">
+                                                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Total Aprendices</span>
+                                                    <div className="p-1.5 bg-violet-500/10 text-violet-500 rounded-xl shrink-0 group-hover:scale-110 transition-transform">
                                                         <Users className="h-4 w-4" />
                                                     </div>
                                                 </div>
                                                 <div className="flex items-baseline gap-2 pl-1 mt-1">
-                                                    <span className="text-2xl font-black text-foreground tracking-tight">
-                                                        {selectedProgram.groups.reduce((acc, g) => acc + g.students.length, 0)}
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">{totalStudents}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-medium truncate">
+                                                        {lectivaStudents} en etapa lectiva ({percentLectiva}%)
                                                     </span>
-                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Aprendices matriculados en grupos</span>
                                                 </div>
                                             </Card>
 
-                                            <Card className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between gap-1">
-                                                <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
+                                            {/* Card 3: Programas de Formación */}
+                                            <Card 
+                                                className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-md hover:border-emerald-500/40 transition-all cursor-pointer flex flex-col justify-between gap-1 group"
+                                                onClick={() => setSubTab("timelines")}
+                                                title="Ir a Programas de Formación"
+                                            >
+                                                <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
                                                 <div className="flex items-center justify-between pl-1">
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Instructores Vinculados</span>
-                                                    <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
+                                                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Programas</span>
+                                                    <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0 group-hover:scale-110 transition-transform">
                                                         <GraduationCap className="h-4 w-4" />
                                                     </div>
                                                 </div>
                                                 <div className="flex items-baseline gap-2 pl-1 mt-1">
-                                                    <span className="text-2xl font-black text-foreground tracking-tight">{selectedProgram.teachers?.length || 0}</span>
-                                                    <span className="text-[11px] text-muted-foreground font-medium truncate">Instructores autorizados</span>
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">{timelines.length}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-medium truncate">
+                                                        {periods.length} {periods.length === 1 ? "trimestre" : "trimestres"}
+                                                    </span>
+                                                </div>
+                                            </Card>
+
+                                            {/* Card 4: Materias */}
+                                            <Card 
+                                                className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-md hover:border-amber-500/40 transition-all cursor-pointer flex flex-col justify-between gap-1 group"
+                                                onClick={() => setSubTab("timelines")}
+                                                title="Ir a Materias y Competencias"
+                                            >
+                                                <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
+                                                <div className="flex items-center justify-between pl-1">
+                                                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Materias</span>
+                                                    <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-xl shrink-0 group-hover:scale-110 transition-transform">
+                                                        <BookOpen className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-baseline gap-2 pl-1 mt-1">
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">{totalCoursesCount}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-medium truncate">
+                                                        {totalWeeklyHours}h semanales
+                                                    </span>
+                                                </div>
+                                            </Card>
+
+                                            {/* Card 5: Instructores & Ambientes */}
+                                            <Card 
+                                                className="bg-card border border-border/80 rounded-2xl p-3.5 relative overflow-hidden shadow-2xs hover:shadow-md hover:border-cyan-500/40 transition-all cursor-pointer flex flex-col justify-between gap-1 group"
+                                                onClick={() => setSubTab("teachers")}
+                                                title="Ir a Instructores"
+                                            >
+                                                <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500" />
+                                                <div className="flex items-center justify-between pl-1">
+                                                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Instructores</span>
+                                                    <div className="p-1.5 bg-cyan-500/10 text-cyan-500 rounded-xl shrink-0 group-hover:scale-110 transition-transform">
+                                                        <Building className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-baseline gap-2 pl-1 mt-1">
+                                                    <span className="text-2xl font-black text-foreground tracking-tight">{teachers.length}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-medium truncate">
+                                                        {environments.length} ambientes
+                                                    </span>
                                                 </div>
                                             </Card>
                                         </div>
 
                                         {/* Distribución en 2 Columnas */}
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                            {/* Columna Izquierda: Información de Programa y Línea de Tiempo */}
+                                            {/* Columna Izquierda: Distribución por Etapas y Desglose de Programas Formativos */}
                                             <div className="lg:col-span-2 space-y-6">
-                                                {/* Card: Cronograma & Información general */}
-                                                <Card className="bg-background">
-                                                    <CardHeader className="pb-3 border-b border-muted/20">
-                                                        <CardTitle className="text-base font-bold flex items-center gap-2">
-                                                            <Activity className="h-5 w-5 text-primary" />
-                                                            Cronograma e Información de {selectedProgram.name}
+                                                {/* Card: Censo de Aprendices por Etapa de Formación */}
+                                                <Card className="border border-border/80 bg-card shadow-xs rounded-2xl overflow-hidden">
+                                                    <CardHeader className="pb-3 border-b border-border/70">
+                                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                                            <Activity className="h-4 w-4 text-primary" />
+                                                            Distribución de Aprendices por Etapa de Formación
                                                         </CardTitle>
+                                                        <CardDescription className="text-xs">
+                                                            Censo consolidado de fichas y aprendices según su estado formativo actual.
+                                                        </CardDescription>
                                                     </CardHeader>
-                                                    <CardContent className="p-6 space-y-5">
-                                                        {startDate && endDate ? (
-                                                            <div className="space-y-3">
-                                                                <div className="flex justify-between items-center text-sm">
-                                                                    <span className="font-semibold text-muted-foreground">Progreso del Programa</span>
-                                                                    <Badge className={cn("text-[10px] font-bold border", statusColor)}>
-                                                                        {statusText}
+                                                    <CardContent className="p-5 space-y-5">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                                                            {/* Etapa Lectiva */}
+                                                            <div className="p-3.5 rounded-2xl bg-blue-500/5 border border-blue-500/20 space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs font-bold text-foreground">Etapa Lectiva</span>
+                                                                    <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] font-bold">
+                                                                        {lectivaGroups.length} {lectivaGroups.length === 1 ? "Ficha" : "Fichas"}
                                                                     </Badge>
                                                                 </div>
-                                                                <div className="w-full bg-muted/60 rounded-full h-3 overflow-hidden border border-muted/30">
+                                                                <div className="text-2xl font-black text-foreground">
+                                                                    {lectivaStudents}
+                                                                </div>
+                                                                <div className="w-full bg-muted/60 h-2 rounded-full overflow-hidden">
                                                                     <div 
-                                                                        className="bg-primary h-full rounded-full transition-all duration-500" 
-                                                                        style={{ width: `${progressPercent}%` }}
+                                                                        className="bg-blue-500 h-full rounded-full transition-all duration-500" 
+                                                                        style={{ width: `${percentLectiva}%` }}
                                                                     />
                                                                 </div>
-                                                                <div className="flex justify-between text-xs text-muted-foreground font-medium pt-1">
-                                                                    <span>Inicio: {format(startDate, "dd/MM/yyyy")}</span>
-                                                                    <span className="text-primary font-semibold">{progressPercent}% transcurrido</span>
-                                                                    <span>Fin: {format(endDate, "dd/MM/yyyy")}</span>
-                                                                </div>
+                                                                <p className="text-[11px] text-muted-foreground font-medium">
+                                                                    {percentLectiva}% del total de aprendices
+                                                                </p>
                                                             </div>
-                                                        ) : (
-                                                            <div className="p-4 bg-muted/10 rounded-xl border border-dashed border-muted/30 text-center text-xs text-muted-foreground">
-                                                                Fechas de inicio y fin no configuradas en el programa. Edita el programa para habilitar el seguimiento del progreso.
-                                                            </div>
-                                                        )}
 
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-muted/20 text-sm">
-                                                            <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/5 border border-muted/20">
-                                                                <span className="text-xs text-muted-foreground font-medium">Título del Horario</span>
-                                                                <span className="font-bold text-foreground/90">{selectedProgram.scheduleTitle || "No asignado"}</span>
+                                                            {/* Etapa Productiva */}
+                                                            <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs font-bold text-foreground">Etapa Productiva</span>
+                                                                    <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold">
+                                                                        {productivaGroups.length} {productivaGroups.length === 1 ? "Ficha" : "Fichas"}
+                                                                    </Badge>
+                                                                </div>
+                                                                <div className="text-2xl font-black text-foreground">
+                                                                    {productivaStudents}
+                                                                </div>
+                                                                <div className="w-full bg-muted/60 h-2 rounded-full overflow-hidden">
+                                                                    <div 
+                                                                        className="bg-amber-500 h-full rounded-full transition-all duration-500" 
+                                                                        style={{ width: `${percentProductiva}%` }}
+                                                                    />
+                                                                </div>
+                                                                <p className="text-[11px] text-muted-foreground font-medium">
+                                                                    {percentProductiva}% en práctica / pasantía
+                                                                </p>
                                                             </div>
-                                                            <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/5 border border-muted/20">
-                                                                <span className="text-xs text-muted-foreground font-medium">Horas Máximas por Instructor</span>
-                                                                <span className="font-bold text-foreground/90">{selectedProgram.maxTeacherHours || 40} horas semanales</span>
+
+                                                            {/* Egresados */}
+                                                            <div className="p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs font-bold text-foreground">Egresados</span>
+                                                                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
+                                                                        {egresadosGroups.length} {egresadosGroups.length === 1 ? "Ficha" : "Fichas"}
+                                                                    </Badge>
+                                                                </div>
+                                                                <div className="text-2xl font-black text-foreground">
+                                                                    {egresadosStudents}
+                                                                </div>
+                                                                <div className="w-full bg-muted/60 h-2 rounded-full overflow-hidden">
+                                                                    <div 
+                                                                        className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                                                                        style={{ width: `${percentEgresados}%` }}
+                                                                    />
+                                                                </div>
+                                                                <p className="text-[11px] text-muted-foreground font-medium">
+                                                                    {percentEgresados}% culminaron formación
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Parámetros Operativos Rápidos */}
+                                                        <div className="p-3.5 rounded-xl bg-muted/30 border border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                                <Building className="h-4 w-4 text-primary shrink-0" />
+                                                                <span>Ambientes vinculados: <strong className="text-foreground">{environments.length} espacios</strong></span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                                <Clock className="h-4 w-4 text-primary shrink-0" />
+                                                                <span>Carga máx. instructor: <strong className="text-foreground">{selectedProgram.maxTeacherHours || 40}h semanales</strong></span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                                <Calendar className="h-4 w-4 text-primary shrink-0" />
+                                                                <span>Trimestres activos: <strong className="text-foreground">{periods.length} periodos</strong></span>
                                                             </div>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
 
-                                                {/* Card: Desglose de Periodos */}
-                                                <Card className="bg-background">
-                                                    <CardHeader className="pb-3 border-b border-muted/20">
-                                                        <CardTitle className="text-base font-bold flex items-center gap-2">
-                                                            <Calendar className="h-5 w-5 text-primary" />
-                                                            Desglose de Periodos Académicos
-                                                        </CardTitle>
+                                                {/* Card: Programas de Formación y Malla Curricular */}
+                                                <Card className="border border-border/80 bg-card shadow-xs rounded-2xl overflow-hidden">
+                                                    <CardHeader className="pb-3 border-b border-border/70 flex flex-row items-center justify-between">
+                                                        <div>
+                                                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                                                <GraduationCap className="h-4 w-4 text-primary" />
+                                                                Programas de Formación y Mallas Curriculares
+                                                            </CardTitle>
+                                                            <CardDescription className="text-xs">
+                                                                Líneas curriculares estructuradas dentro de esta área de formación.
+                                                            </CardDescription>
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setSubTab("timelines")}
+                                                            className="text-xs text-primary font-bold hover:bg-primary/10 rounded-xl"
+                                                        >
+                                                            Gestionar Mallas →
+                                                        </Button>
                                                     </CardHeader>
-                                                    <CardContent className="p-6">
-                                                        {selectedProgram.periods.length === 0 ? (
-                                                            <p className="text-sm text-muted-foreground text-center py-4">No hay periodos creados aún.</p>
+                                                    <CardContent className="p-5">
+                                                        {timelines.length === 0 ? (
+                                                            <div className="text-center py-6 space-y-2">
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    No hay programas de formación (líneas curriculares) creados en esta área.
+                                                                </p>
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={() => setSubTab("timelines")}
+                                                                    className="rounded-xl text-xs font-semibold"
+                                                                >
+                                                                    Crear Programa de Formación
+                                                                </Button>
+                                                            </div>
                                                         ) : (
-                                                            <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                                                                {selectedProgram.periods.map(per => {
-                                                                    const totalHours = per.courses.reduce((sum, c) => sum + (c.weeklyHours || 0), 0);
+                                                            <div className="space-y-3">
+                                                                {timelines.map((tl: any) => {
+                                                                    const tlPeriods = periods.filter(p => p.timelineId === tl.id);
+                                                                    const tlCourses = tlPeriods.flatMap(p => (p.courses || []).filter(c => !c.groupId));
+                                                                    const tlWeeklyHours = tlCourses.reduce((sum, c) => sum + (c.weeklyHours || 0), 0);
                                                                     return (
-                                                                        <div key={per.id} className="flex justify-between items-center p-3 rounded-xl bg-muted/5 border border-muted/20 hover:border-muted/40 hover:bg-muted/10 transition-colors duration-200">
+                                                                        <div
+                                                                            key={tl.id}
+                                                                            className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 p-3.5 rounded-xl bg-muted/20 border border-border/60 hover:border-border hover:bg-muted/30 transition-all"
+                                                                        >
                                                                             <div className="space-y-1">
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <span className="font-semibold text-sm">{per.name}</span>
-                                                                                    {(() => {
-                                                                                        const tl = (selectedProgram.timelines || []).find((t: any) => t.id === per.timelineId);
-                                                                                        return tl ? (
-                                                                                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 font-bold shrink-0 bg-primary/10 text-primary border-primary/20">
-                                                                                                {tl.name}
-                                                                                            </Badge>
-                                                                                        ) : null;
-                                                                                    })()}
+                                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                                    <span className="font-bold text-sm text-foreground">{tl.name}</span>
+                                                                                    {tl.code && (
+                                                                                        <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 bg-primary/10 text-primary border-primary/20">
+                                                                                            {tl.code}
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                    {tl.isDefault && (
+                                                                                        <Badge className="text-[9px] font-bold px-1.5 py-0 bg-blue-500/10 text-blue-500 border-blue-500/20">
+                                                                                            Principal
+                                                                                        </Badge>
+                                                                                    )}
                                                                                 </div>
-                                                                                <p className="text-xs text-muted-foreground truncate max-w-[250px] sm:max-w-[350px]">
-                                                                                    {per.description || "Sin descripción adicional."}
+                                                                                <p className="text-xs text-muted-foreground line-clamp-1">
+                                                                                    {tl.description || "Sin descripción curricular específica."}
                                                                                 </p>
                                                                             </div>
-                                                                            <div className="text-right shrink-0">
-                                                                                <div className="text-xs font-bold text-foreground/90">{per.courses.length} materias</div>
-                                                                                <div className="text-[10px] text-muted-foreground font-semibold mt-0.5">{totalHours}h semanales</div>
+                                                                            <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                                                                                <div className="text-right text-xs">
+                                                                                    <span className="font-bold text-foreground">{tlPeriods.length} trimestres</span>
+                                                                                    <p className="text-[10px] text-muted-foreground">{tlCourses.length} materias • {tlWeeklyHours}h/sem</p>
+                                                                                </div>
+                                                                                <Button
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    onClick={() => setSubTab("timelines")}
+                                                                                    className="h-7 text-xs font-semibold rounded-lg"
+                                                                                >
+                                                                                    Ver Malla
+                                                                                </Button>
                                                                             </div>
                                                                         </div>
                                                                     );
@@ -3597,80 +3804,65 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 </Card>
                                             </div>
 
-                                            {/* Columna Derecha: Distribución de Grupos y Récords */}
+                                            {/* Columna Derecha: Programación Horaria del Área y Ficha Técnica */}
                                             <div className="space-y-6">
-                                                {/* Card: Distribución de Grupos */}
-                                                <Card className="bg-background">
-                                                    <CardHeader className="pb-3 border-b border-muted/20">
-                                                        <CardTitle className="text-base font-bold flex items-center gap-2">
-                                                            <Layers className="h-5 w-5 text-primary" />
-                                                            Grupos por Etapa
+                                                {/* Card: Conexión con Programación Horaria */}
+                                                <Card className="border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card shadow-xs rounded-2xl overflow-hidden">
+                                                    <CardHeader className="pb-3 border-b border-border/70">
+                                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                                            <CalendarDays className="h-4 w-4 text-primary" />
+                                                            Programación Horaria del Área
                                                         </CardTitle>
+                                                        <CardDescription className="text-xs">
+                                                            Horarios por trimestre, mallas panorámicas y asignaciones sin cruces.
+                                                        </CardDescription>
                                                     </CardHeader>
-                                                    <CardContent className="p-6 space-y-4">
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-xs font-bold">
-                                                                <span>Etapa Lectiva</span>
-                                                                <span>{lectivaGroups.length}</span>
-                                                            </div>
-                                                            <div className="w-full bg-muted/40 rounded-full h-2">
-                                                                <div 
-                                                                    className="bg-blue-500 h-full rounded-full" 
-                                                                    style={{ width: `${selectedProgram.groups.length > 0 ? (lectivaGroups.length / selectedProgram.groups.length) * 100 : 0}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-xs font-bold">
-                                                                <span>Etapa Productiva</span>
-                                                                <span>{productivaGroups.length}</span>
-                                                            </div>
-                                                            <div className="w-full bg-muted/40 rounded-full h-2">
-                                                                <div 
-                                                                    className="bg-emerald-500 h-full rounded-full" 
-                                                                    style={{ width: `${selectedProgram.groups.length > 0 ? (productivaGroups.length / selectedProgram.groups.length) * 100 : 0}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-xs font-bold">
-                                                                <span>Egresados</span>
-                                                                <span>{egresadosGroups.length}</span>
-                                                            </div>
-                                                            <div className="w-full bg-muted/40 rounded-full h-2">
-                                                                <div 
-                                                                    className="bg-purple-500 h-full rounded-full" 
-                                                                    style={{ width: `${selectedProgram.groups.length > 0 ? (egresadosGroups.length / selectedProgram.groups.length) * 100 : 0}%` }}
-                                                                />
-                                                            </div>
+                                                    <CardContent className="p-5 space-y-4">
+                                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                                            La planificación de mallas horarias, asignación de aulas sin cruces, bloqueos de disponibilidad docente y permisos de asistencia de esta área se administran en el módulo de <strong className="text-foreground">Programación Horaria</strong>.
+                                                        </p>
+                                                        <Button
+                                                            onClick={() => router.push(schedulesPath)}
+                                                            className="w-full bg-primary hover:bg-primary/90 text-white font-bold rounded-xl h-9 text-xs shadow-md shadow-primary/20 gap-2 cursor-pointer"
+                                                        >
+                                                            <CalendarDays className="w-3.5 h-3.5" />
+                                                            <span>Abrir Programación Horaria</span>
+                                                            <ChevronRight className="w-3.5 h-3.5 ml-auto" />
+                                                        </Button>
+                                                        <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
+                                                            <span>Control Trimestral</span>
+                                                            <span className="text-emerald-500 font-bold flex items-center gap-1">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                                Módulo Operativo
+                                                            </span>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
 
-                                                {/* Card: Datos Destacados / Récords */}
-                                                <Card className="bg-background">
-                                                    <CardHeader className="pb-3 border-b border-muted/20">
-                                                        <CardTitle className="text-base font-bold flex items-center gap-2">
-                                                            <Info className="h-5 w-5 text-primary" />
-                                                            Datos Clave del Programa
+                                                {/* Card: Datos Clave y Récords */}
+                                                <Card className="border border-border/80 bg-card shadow-xs rounded-2xl overflow-hidden">
+                                                    <CardHeader className="pb-3 border-b border-border/70">
+                                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                                            <Info className="h-4 w-4 text-primary" />
+                                                            Datos Clave del Área
                                                         </CardTitle>
                                                     </CardHeader>
-                                                    <CardContent className="p-6 space-y-4 text-xs">
-                                                        <div className="p-3 bg-muted/5 border border-muted/20 rounded-xl space-y-1">
-                                                            <div className="text-muted-foreground font-semibold">Grupo Más Grande</div>
+                                                    <CardContent className="p-5 space-y-3.5 text-xs">
+                                                        <div className="p-3 bg-muted/20 border border-border/60 rounded-xl space-y-1">
+                                                            <div className="text-muted-foreground font-semibold">Ficha Más Numerosa</div>
                                                             {largestGroup ? (
                                                                 <div>
                                                                     <span className="font-bold text-foreground text-sm">{largestGroup.name}</span>
-                                                                    <span className="text-muted-foreground font-medium ml-1.5">({largestGroup.students.length} aprendices)</span>
+                                                                    <span className="text-muted-foreground font-medium ml-1.5">
+                                                                        ({largestGroup.students?.length || 0} aprendices)
+                                                                    </span>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-muted-foreground font-medium">Ninguno registrado</span>
+                                                                <span className="text-muted-foreground font-medium">Sin grupos registrados</span>
                                                             )}
                                                         </div>
 
-                                                        <div className="p-3 bg-muted/5 border border-muted/20 rounded-xl space-y-1">
+                                                        <div className="p-3 bg-muted/20 border border-border/60 rounded-xl space-y-1">
                                                             <div className="text-muted-foreground font-semibold">Materia con Mayor Carga Horaria</div>
                                                             {maxHoursCourse ? (
                                                                 <div>
@@ -3684,14 +3876,22 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                             )}
                                                         </div>
 
-                                                        <div className="p-3 bg-muted/5 border border-muted/20 rounded-xl space-y-1">
-                                                            <div className="text-muted-foreground font-semibold">Ambientes Asignados</div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Building className="h-4 w-4 text-primary shrink-0" />
-                                                                <span className="font-bold text-foreground text-sm">
-                                                                    {selectedProgram.environments?.length || 0} ambientes
-                                                                </span>
-                                                            </div>
+                                                        <div className="p-3 bg-muted/20 border border-border/60 rounded-xl space-y-2">
+                                                            <div className="text-muted-foreground font-semibold">Gestores Académicos del Área</div>
+                                                            {gestores.length > 0 ? (
+                                                                <div className="space-y-1.5">
+                                                                    {gestores.map((g: any) => (
+                                                                        <div key={g.id} className="flex items-center gap-2">
+                                                                            <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                                                                                {(g.name || "G").charAt(0).toUpperCase()}
+                                                                            </div>
+                                                                            <span className="font-semibold text-foreground truncate">{g.name}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-muted-foreground italic">Gestión institucional central</span>
+                                                            )}
                                                         </div>
                                                     </CardContent>
                                                 </Card>
