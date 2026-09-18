@@ -4,7 +4,6 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { 
     Users, 
@@ -33,8 +32,7 @@ import {
     X,
     Briefcase,
     Compass,
-    Building2,
-    CalendarDays
+    Building2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -89,13 +87,7 @@ export function GestorDashboardView({
         ? managedPrograms.find((p) => p.id === activeProgramId) || (managedPrograms.length > 0 ? managedPrograms[0] : null)
         : null;
 
-    const [allowPastAttendanceEdit, setAllowPastAttendanceEdit] = useState<boolean>(
-        (currentProgram as any)?.allowPastAttendanceEdit ?? false
-    );
 
-    useEffect(() => {
-        setAllowPastAttendanceEdit((currentProgram as any)?.allowPastAttendanceEdit ?? false);
-    }, [currentProgram?.id, (currentProgram as any)?.allowPastAttendanceEdit]);
 
     // Filter activity by selected program
     const filteredRecentActivity = currentProgram
@@ -158,7 +150,7 @@ export function GestorDashboardView({
         },
         {
             title: "Estructura Curricular",
-            description: "Administra el programa de formación, trimestres, competencias y asignación de ambientes.",
+            description: "Administra el área de formación, trimestres, competencias y asignación de ambientes.",
             link: `/dashboard/gestor/courses?programId=${currentProgram.id}`,
             icon: BookOpen,
             color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
@@ -180,10 +172,10 @@ export function GestorDashboardView({
                 </div>
                 <div className="space-y-1.5 max-w-md">
                     <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200">
-                        Sin programas de formación asignados
+                        Sin áreas de formación asignadas
                     </h3>
                     <p className="text-xs sm:text-sm text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
-                        Aún no tienes programas vinculados a tu perfil. Solicita a la Administración que te asigne tus programas de formación para poder ingresar a gestionar.
+                        Aún no tienes áreas vinculadas a tu perfil. Solicita a la Administración que te asigne tus áreas de formación para poder ingresar a gestionar.
                     </p>
                 </div>
             </div>
@@ -205,7 +197,7 @@ export function GestorDashboardView({
                     <div className="space-y-2">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold shadow-2xs">
                             <Sparkles className="w-3.5 h-3.5 text-primary" />
-                            <span>Gestión de Programa: {currentProgram?.name}</span>
+                            <span>Gestión de Área: {currentProgram?.name}</span>
                         </div>
                         <h1 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
                             Panel de{" "}
@@ -259,7 +251,7 @@ export function GestorDashboardView({
                     <div>
                         <h2 className="text-lg font-black text-foreground tracking-tight flex items-center gap-2">
                             <Layers className="w-5 h-5 text-primary" />
-                            Módulos de Gestión del Programa
+                            Módulos de Gestión del Área
                         </h2>
                         <p className="text-xs text-muted-foreground font-medium">
                             Accesos rápidos directos para {currentProgram?.name}.
@@ -294,40 +286,7 @@ export function GestorDashboardView({
                 </div>
             )}
 
-            {/* Configuración de Asistencia por Programa */}
-            {currentProgram && (
-                <Card className="rounded-3xl border border-border/80 shadow-xs bg-card p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="space-y-1">
-                            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                                <CalendarDays className="w-4 h-4 text-primary" />
-                                <span>Permitir edición de fechas anteriores</span>
-                            </h3>
-                            <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                                Si está activo, los instructores del programa <strong className="text-foreground font-bold">{currentProgram.name}</strong> pueden registrar o modificar asistencias de semanas anteriores libremente.
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                            <Switch
-                                id="program-allow-past-attendance"
-                                checked={allowPastAttendanceEdit}
-                                onCheckedChange={async (checked) => {
-                                    setAllowPastAttendanceEdit(checked);
-                                    try {
-                                        const { toggleProgramPastAttendanceEditAction } = await import("@/features/admin/actions/academicActions");
-                                        await toggleProgramPastAttendanceEditAction(currentProgram.id, checked);
-                                        toast.success(checked ? "Edición de fechas anteriores permitida para este programa" : "Edición de fechas anteriores restringida a la semana actual");
-                                    } catch (err: any) {
-                                        toast.error("Error al actualizar la configuración del programa");
-                                        setAllowPastAttendanceEdit(!checked);
-                                    }
-                                }}
-                                className="data-[state=checked]:bg-primary"
-                            />
-                        </div>
-                    </div>
-                </Card>
-            )}
+
 
             {/* Activity & User Distribution Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -336,7 +295,7 @@ export function GestorDashboardView({
                     <CardHeader>
                         <CardTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
                             <TrendingUp className="h-5 w-5 text-primary" />
-                            Comunidad del Programa
+                            Comunidad del Área
                         </CardTitle>
                         <CardDescription className="text-muted-foreground text-xs">
                             Aprendices e instructores en {currentProgram?.name}
@@ -383,7 +342,7 @@ export function GestorDashboardView({
                         <div>
                             <CardTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
                                 <Clock className="h-5 w-5 text-primary" />
-                                Actividad Reciente del Programa
+                                Actividad Reciente del Área
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs">
                                 Últimas calificaciones, observaciones y asistencias en {currentProgram?.name}
@@ -394,7 +353,7 @@ export function GestorDashboardView({
                         <div className="space-y-3">
                             {filteredRecentActivity.length === 0 ? (
                                 <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl border-dashed border border-border/60 text-xs font-medium">
-                                    No se ha registrado actividad reciente en este programa.
+                                    No se ha registrado actividad reciente en esta área.
                                 </div>
                             ) : (
                                 filteredRecentActivity.slice(0, 5).map((activity, idx) => (

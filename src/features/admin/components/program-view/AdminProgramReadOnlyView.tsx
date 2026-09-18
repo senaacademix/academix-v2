@@ -71,15 +71,15 @@ export function AdminProgramReadOnlyView({
                         className="gap-2 text-xs font-bold rounded-xl hover:bg-muted/60 self-start text-muted-foreground hover:text-foreground"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        <span>Volver a Lista de Programas</span>
+                        <span>Volver a Lista de Áreas</span>
                     </Button>
 
                     {allPrograms.length > 1 && onSelectProgram && (
                         <div className="flex items-center gap-2 self-start sm:self-auto">
-                            <span className="text-xs text-muted-foreground font-semibold">Cambiar programa:</span>
+                            <span className="text-xs text-muted-foreground font-semibold">Cambiar área:</span>
                             <Select value={program.id} onValueChange={onSelectProgram}>
                                 <SelectTrigger className="h-8 text-xs font-bold rounded-xl w-[220px]">
-                                    <SelectValue placeholder="Seleccionar programa..." />
+                                    <SelectValue placeholder="Seleccionar área..." />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {allPrograms.map((p: any) => (
@@ -113,7 +113,7 @@ export function AdminProgramReadOnlyView({
                                     </Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground font-medium max-w-2xl leading-relaxed">
-                                    {program.description || "Sin descripción oficial proporcionada para este programa de formación profesional."}
+                                    {program.description || "Sin descripción oficial proporcionada para esta área de formación profesional."}
                                 </p>
 
                                 {/* Gestores list */}
@@ -196,7 +196,7 @@ export function AdminProgramReadOnlyView({
                             className="rounded-xl flex-1 py-2 text-xs font-bold gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                         >
                             <BookOpen className="h-4 w-4" />
-                            <span>Malla Curricular ({periods.length})</span>
+                            <span>Programas de Formación ({periods.length})</span>
                         </TabsTrigger>
 
                         <TabsTrigger

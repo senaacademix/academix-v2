@@ -52,6 +52,13 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
 }) {
+  const isFullscreen =
+    typeof className === "string" &&
+    ((className.includes("w-full") && className.includes("max-w-none")) ||
+      className.includes("w-screen") ||
+      className.includes("h-screen") ||
+      className.includes("100vw"));
+
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -72,8 +79,15 @@ function SheetContent({
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-3 right-3 p-2 rounded-xl opacity-70 transition-all hover:opacity-100 hover:bg-accent/80 focus:ring-2 focus:outline-hidden disabled:pointer-events-none cursor-pointer touch-manipulation select-none active:scale-95">
-          <XIcon className="size-4" />
+        <SheetPrimitive.Close
+          className={cn(
+            isFullscreen
+              ? "absolute top-3.5 right-4 sm:top-4 sm:right-6 inline-flex items-center justify-center gap-1.5 h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl border border-border/80 bg-background/95 hover:bg-muted font-bold text-xs text-foreground shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer z-50 select-none focus:outline-none focus:ring-2 focus:ring-ring"
+              : "ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-3 right-3 p-2 rounded-xl opacity-70 transition-all hover:opacity-100 hover:bg-accent/80 focus:ring-2 focus:outline-hidden disabled:pointer-events-none cursor-pointer touch-manipulation select-none active:scale-95"
+          )}
+        >
+          <XIcon className={cn(isFullscreen ? "w-3.5 h-3.5 shrink-0" : "size-4")} />
+          {isFullscreen && <span>Cerrar</span>}
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>

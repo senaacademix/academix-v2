@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Save, Trash2, Edit, Users, Search, UsersRound, Link2, GraduationCap } from "lucide-react";
+import { Plus, Save, Trash2, Edit, Users, Search, UsersRound, Link2, GraduationCap, X } from "lucide-react";
 import MDEditor from "@uiw/react-md-editor";
 import { getCourseWorkGroups } from "../actions/workGroupActions";
 import { WorkGroupManagerDialog } from "./WorkGroupManagerDialog";
@@ -500,12 +500,21 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
 
       {/* Activity Dialog — Full Screen */}
       <Dialog open={isActivityDialogOpen} onOpenChange={setIsActivityDialogOpen}>
-        <DialogContent className="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !p-0 !rounded-none flex flex-col overflow-hidden bg-background !border-0" data-color-mode="auto">
+        <DialogContent showCloseButton={false} className="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !p-0 !rounded-none flex flex-col overflow-hidden bg-background !border-0" data-color-mode="auto">
           <DialogHeader className="px-6 py-4 border-b shrink-0 flex flex-row items-center justify-between">
             <div>
               <DialogTitle className="text-xl font-black">{activityForm.id ? "Editar" : "Nueva"} Actividad</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground mt-0.5">Define los detalles, descripción y configuración de la actividad.</DialogDescription>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsActivityDialogOpen(false)}
+              className="h-8 px-3 rounded-lg border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Cerrar</span>
+            </Button>
           </DialogHeader>
 
           {/* Main content — overflow-hidden so columns manage their own scroll */}
@@ -582,12 +591,23 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
         </DialogContent>
       </Dialog>
       <Dialog open={isBulkGradeDialogOpen} onOpenChange={setIsBulkGradeDialogOpen}>
-        <DialogContent className="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !p-0 !rounded-none flex flex-col overflow-hidden bg-background !border-0">
-          <DialogHeader className="p-6 pb-4 border-b shrink-0">
-            <DialogTitle>Asignación Masiva de Notas</DialogTitle>
-            <DialogDescription>
-              Asigna una misma nota a varios aprendices para la actividad <strong>{bulkGradeActivity?.title}</strong>.
-            </DialogDescription>
+        <DialogContent showCloseButton={false} className="!fixed !inset-0 !top-0 !left-0 !translate-x-0 !translate-y-0 !max-w-none !w-screen !h-screen !m-0 !p-0 !rounded-none flex flex-col overflow-hidden bg-background !border-0">
+          <DialogHeader className="p-6 pb-4 border-b shrink-0 flex flex-row items-center justify-between">
+            <div>
+              <DialogTitle>Asignación Masiva de Notas</DialogTitle>
+              <DialogDescription>
+                Asigna una misma nota a varios aprendices para la actividad <strong>{bulkGradeActivity?.title}</strong>.
+              </DialogDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBulkGradeDialogOpen(false)}
+              className="h-8 px-3 rounded-lg border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Cerrar</span>
+            </Button>
           </DialogHeader>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-4">

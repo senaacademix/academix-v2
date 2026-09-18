@@ -542,7 +542,7 @@ export const CurriculumPdfDocument: React.FC<{
     options?.institutionTag?.trim() || "AcademiX • Sistema Institucional de Gestión y Programación Académica";
   const progName = options?.programName?.trim() || program.name;
   const mainTitle =
-    options?.mainTitle?.trim() || `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${progName.toUpperCase()}`;
+    options?.mainTitle?.trim() || `PROGRAMA DE FORMACIÓN: ${progName.toUpperCase()}`;
   const progDesc =
     options?.programDescription !== undefined
       ? options.programDescription
@@ -594,14 +594,14 @@ export const CurriculumPdfDocument: React.FC<{
           {chunkIdx === 0 && (
             <View style={styles.statsBar}>
               <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Periodos y Líneas</Text>
+                <Text style={styles.statLabel}>Periodos y Programas</Text>
                 <Text style={styles.statValue}>
                   {periods.length} {periods.length === 1 ? "Periodo" : "Periodos"}
                 </Text>
                 <Text style={styles.statSub}>
                   {selectedTimelinesList.length > 0
-                    ? `${selectedTimelinesList.length} ${selectedTimelinesList.length === 1 ? "Línea Seleccionada" : "Líneas Seleccionadas"}`
-                    : "Todas las líneas"}
+                    ? `${selectedTimelinesList.length} ${selectedTimelinesList.length === 1 ? "Programa Seleccionado" : "Programas Seleccionados"}`
+                    : "Todos los programas"}
                 </Text>
               </View>
               <View style={styles.statItem}>

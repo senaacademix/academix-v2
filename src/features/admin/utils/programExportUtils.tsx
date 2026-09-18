@@ -467,7 +467,7 @@ export async function exportProgramOverviewPdf(program: any) {
 }
 
 // =============================================================
-// 2. PESTAÑA: MALLA CURRICULAR
+// 2. PESTAÑA: PROGRAMAS DE FORMACIÓN
 // =============================================================
 
 export async function exportProgramCurriculumExcel(program: any) {
@@ -476,12 +476,12 @@ export async function exportProgramCurriculumExcel(program: any) {
     wb.created = new Date();
 
     const periods = program.periods || [];
-    const sheet = wb.addWorksheet("Malla Curricular");
+    const sheet = wb.addWorksheet("Programas de Formación");
 
     // Title
     sheet.mergeCells("A1:F1");
     const titleCell = sheet.getCell("A1");
-    titleCell.value = `ACADEMIX — MALLA CURRICULAR: ${program.name.toUpperCase()}`;
+    titleCell.value = `ACADEMIX — PROGRAMAS DE FORMACIÓN: ${program.name.toUpperCase()}`;
     titleCell.font = { name: "Segoe UI", size: 14, bold: true, color: { argb: "FFFFFFFF" } };
     titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4338CA" } };
     titleCell.alignment = { vertical: "middle", horizontal: "center" };
@@ -577,11 +577,11 @@ export async function exportProgramCurriculumPdf(program: any) {
     });
 
     const doc = (
-        <Document title={`Malla Curricular - ${program.name}`}>
+        <Document title={`Programa de Formación - ${program.name}`}>
             <Page size="A4" style={pdfStyles.page}>
                 <View style={pdfStyles.headerBanner}>
                     <View style={pdfStyles.headerTitleBlock}>
-                        <Text style={pdfStyles.brandTitle}>ACADEMIX — MALLA CURRICULAR</Text>
+                        <Text style={pdfStyles.brandTitle}>ACADEMIX — PROGRAMA DE FORMACIÓN</Text>
                         <Text style={pdfStyles.subTitle}>Programa: {program.name} | Periodos y Asignaturas</Text>
                     </View>
                     <View style={pdfStyles.badge}>
@@ -648,7 +648,7 @@ export async function exportProgramCurriculumPdf(program: any) {
                 })}
 
                 <View style={pdfStyles.footer}>
-                    <Text style={pdfStyles.footerText}>AcademiX Platform • Malla Curricular Institucional</Text>
+                    <Text style={pdfStyles.footerText}>AcademiX Platform • Programa de Formación Institucional</Text>
                     <Text style={pdfStyles.footerText}>Generado el {format(new Date(), "dd/MM/yyyy HH:mm")}</Text>
                 </View>
             </Page>

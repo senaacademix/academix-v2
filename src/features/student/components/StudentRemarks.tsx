@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getStudentRemarksAction } from "@/features/student/actions/remarkActions";
 import { markRemarkViewed } from "@/features/student/actions/studentActions";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquareWarning, Award, Search, Info, CalendarDays, Eye, EyeOff } from "lucide-react";
+import { MessageSquareWarning, Award, Search, Info, CalendarDays, Eye, EyeOff, X } from "lucide-react";
 import { format } from "date-fns";
 import { formatName } from "@/lib/utils";
 import { formatCalendarDate } from "@/lib/dateUtils";
@@ -165,7 +165,7 @@ export function StudentRemarks({ courseId, userId }: StudentRemarksProps) {
 
             {/* View Remark Dialog — full screen */}
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                <DialogContent className="!fixed !inset-0 !max-w-none !max-h-none !w-screen !h-screen !rounded-none !translate-x-0 !translate-y-0 flex flex-col p-0 gap-0">
+                <DialogContent showCloseButton={false} className="!fixed !inset-0 !max-w-none !max-h-none !w-screen !h-screen !rounded-none !translate-x-0 !translate-y-0 flex flex-col p-0 gap-0">
                     
                     {/* Header */}
                     <DialogHeader className="shrink-0 px-6 py-4 border-b bg-background flex flex-row items-center gap-3">
@@ -176,8 +176,9 @@ export function StudentRemarks({ courseId, userId }: StudentRemarksProps) {
                                 {viewingRemark && formatCalendarDate(viewingRemark.date, "dd 'de' MMMM 'de' yyyy")}
                             </DialogDescription>
                         </div>
-                        <Button variant="outline" size="sm" className="shrink-0" onClick={() => setIsViewDialogOpen(false)}>
-                            Cerrar
+                        <Button variant="outline" size="sm" className="shrink-0 font-bold text-xs gap-1.5 h-8 px-3 rounded-lg border-border/80 hover:bg-muted text-foreground shadow-2xs cursor-pointer" onClick={() => setIsViewDialogOpen(false)}>
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cerrar</span>
                         </Button>
                     </DialogHeader>
 

@@ -172,9 +172,9 @@ export function AdminDashboard({
             link: "/dashboard/admin/users"
         },
         {
-            title: "Programas de Formación",
+            title: "Áreas de Formación",
             value: (stats as any).programs?.total ?? 0,
-            description: "Programas activos registrados",
+            description: "Áreas activas registradas",
             icon: FolderKanban,
             color: "text-purple-500",
             bg: "bg-purple-500/10",
@@ -183,7 +183,7 @@ export function AdminDashboard({
         {
             title: "Gestores Académicos",
             value: (stats.users as any).gestor || 0,
-            description: "Gestores asignados a programas",
+            description: "Gestores asignados a áreas",
             icon: UserCheck,
             color: "text-emerald-500",
             bg: "bg-emerald-500/10",
@@ -219,7 +219,7 @@ export function AdminDashboard({
         },
         {
             title: "Estructura Curricular",
-            description: "Administra el programa de formación, trimestres, competencias y asignación de ambientes.",
+            description: "Administra el área de formación, trimestres, competencias y asignación de ambientes.",
             link: `/dashboard/admin/courses?programId=${currentProgram.id}`,
             icon: BookOpen,
             color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
@@ -264,12 +264,12 @@ export function AdminDashboard({
                             <h1 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
                                 Selecciona tu{" "}
                                 <span className="bg-gradient-to-r from-foreground via-foreground/80 to-primary bg-clip-text text-transparent">
-                                    Programa de Formación
+                                    Área de Formación
                                 </span>
                             </h1>
                             <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed font-medium">
                                 {userName ? `Hola ${userName}. ` : ""}
-                                Selecciona uno de los programas de formación asignados por la Coordinación Académica para ingresar y administrar sus fichas, aprendices, horarios y módulos operativos.
+                                Selecciona una de las áreas de formación asignadas por la Coordinación Académica para ingresar y administrar sus fichas, aprendices, horarios y módulos operativos.
                             </p>
                         </div>
 
@@ -292,7 +292,7 @@ export function AdminDashboard({
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
-                                    Guía de programas y funciones para el Gestor
+                                    Guía de áreas y funciones para el Gestor
                                 </TooltipContent>
                             </Tooltip>
                         </div>
@@ -307,10 +307,10 @@ export function AdminDashboard({
                         </div>
                         <div className="space-y-1 max-w-md">
                             <h3 className="text-base font-bold text-amber-900 dark:text-amber-200">
-                                Sin programas de formación asignados
+                                Sin áreas de formación asignadas
                             </h3>
                             <p className="text-xs text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
-                                Aún no tienes programas vinculados a tu perfil. Solicita a la Coordinación Académica que te asigne tus programas de formación para poder ingresar.
+                                Aún no tienes áreas vinculadas a tu perfil. Solicita a la Coordinación Académica que te asigne tus áreas de formación para poder ingresar.
                             </p>
                         </div>
                     </div>
@@ -320,10 +320,10 @@ export function AdminDashboard({
                             <div>
                                 <h2 className="text-lg font-black text-foreground tracking-tight flex items-center gap-2">
                                     <School className="w-5 h-5 text-primary" />
-                                    Tus Programas Asignados ({managedPrograms.length})
+                                    Tus Áreas Asignadas ({managedPrograms.length})
                                 </h2>
                                 <p className="text-xs text-muted-foreground font-medium">
-                                    Haz clic en el programa que deseas gestionar para abrir su panel de control.
+                                    Haz clic en el área que deseas gestionar para abrir su panel de control.
                                 </p>
                             </div>
                         </div>
@@ -478,7 +478,7 @@ export function AdminDashboard({
                                     className="rounded-2xl h-11 border-border/80 bg-background/80 text-foreground hover:bg-muted text-xs font-bold shadow-xs gap-2"
                                 >
                                     <RotateCcw className="h-4 w-4 text-primary" />
-                                    Cambiar Programa
+                                    Cambiar Área
                                 </Button>
 
                                 <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
@@ -541,7 +541,7 @@ export function AdminDashboard({
                     <div>
                         <h2 className="text-lg font-black text-foreground tracking-tight flex items-center gap-2">
                             <Layers className="w-5 h-5 text-primary" />
-                            Módulos de Gestión del Programa
+                            Módulos de Gestión del Área
                         </h2>
                         <p className="text-xs text-muted-foreground font-medium">
                             Accesos rápidos directos para {currentProgram?.name}.
@@ -583,7 +583,7 @@ export function AdminDashboard({
                     <CardHeader>
                         <CardTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
                             <TrendingUp className="h-5 w-5 text-primary" />
-                            {isGestor ? "Comunidad del Programa" : "Equipo de Gestión"}
+                            {isGestor ? "Comunidad del Área" : "Equipo de Gestión"}
                         </CardTitle>
                         <CardDescription className="text-muted-foreground text-xs">
                             {isGestor 
@@ -635,7 +635,7 @@ export function AdminDashboard({
                         <div>
                             <CardTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
                                 <Clock className="h-5 w-5 text-primary" />
-                                {isGestor ? "Actividad Reciente del Programa" : "Actividad Reciente del Sistema"}
+                                {isGestor ? "Actividad Reciente del Área" : "Actividad Reciente del Sistema"}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs">
                                 {isGestor 
@@ -656,7 +656,7 @@ export function AdminDashboard({
                                     return (
                                         <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl border-dashed border border-border/60 text-xs font-medium">
                                             {isGestor 
-                                                ? "No se ha registrado actividad reciente en este programa."
+                                                ? "No se ha registrado actividad reciente en esta área."
                                                 : "No se ha registrado actividad reciente de administración."
                                             }
                                         </div>

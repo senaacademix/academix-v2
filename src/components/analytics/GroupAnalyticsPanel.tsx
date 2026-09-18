@@ -8,6 +8,7 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
+    DialogClose,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -37,7 +38,7 @@ import {
     LineChart,
     Line
 } from "recharts";
-import { Users, GraduationCap, UserX, UserCheck, BookOpen, AlertTriangle, CheckCircle2, Clock, Calendar, AlertCircle, Settings, Info, Eye, EyeOff, Trash2, ExternalLink, FileText, FileSpreadsheet, Mail, Loader2, Search, Award, LogOut, History } from "lucide-react";
+import { Users, GraduationCap, UserX, UserCheck, BookOpen, AlertTriangle, CheckCircle2, Clock, Calendar, AlertCircle, Settings, Info, Eye, EyeOff, Trash2, ExternalLink, FileText, FileSpreadsheet, Mail, Loader2, Search, Award, LogOut, History, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -898,14 +899,38 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
     const content = (
         <div className={`flex flex-col h-full ${inline ? 'w-full bg-transparent' : 'bg-slate-50 dark:bg-slate-950'}`}>
             {!inline && (
-                <DialogHeader className="p-6 pb-2 shrink-0 border-b bg-white dark:bg-slate-900 shadow-sm">
-                    <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                        <BarChart className="w-6 h-6 text-primary" />
-                        Analítica del Grupo: {analyticsData?.groupName || "Cargando..."}
-                    </DialogTitle>
-                    <DialogDescription>
-                        Vista general de rendimiento, asistencia y comportamiento de todos los aprendices.
-                    </DialogDescription>
+                <DialogHeader className="p-6 pb-4 shrink-0 border-b bg-white dark:bg-slate-900 shadow-sm flex flex-row items-center justify-between">
+                    <div>
+                        <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                            <BarChart className="w-6 h-6 text-primary" />
+                            Analítica del Grupo: {analyticsData?.groupName || "Cargando..."}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Vista general de rendimiento, asistencia y comportamiento de todos los aprendices.
+                        </DialogDescription>
+                    </div>
+                    {onOpenChange ? (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onOpenChange(false)}
+                            className="h-9 px-3.5 rounded-xl border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cerrar</span>
+                        </Button>
+                    ) : (
+                        <DialogClose asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 px-3.5 rounded-xl border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                                <span>Cerrar</span>
+                            </Button>
+                        </DialogClose>
+                    )}
                 </DialogHeader>
             )}
 
@@ -2084,7 +2109,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="fixed inset-0 z-50 w-screen h-screen max-w-none sm:max-w-none md:max-w-none lg:max-w-none xl:max-w-none m-0 rounded-none p-0 flex flex-col bg-slate-50 dark:bg-slate-950 border-0 !translate-x-0 !translate-y-0 !left-0 !top-0">
+                <DialogContent showCloseButton={false} className="fixed inset-0 z-50 w-screen h-screen max-w-none sm:max-w-none md:max-w-none lg:max-w-none xl:max-w-none m-0 rounded-none p-0 flex flex-col bg-slate-50 dark:bg-slate-950 border-0 !translate-x-0 !translate-y-0 !left-0 !top-0">
                     {content}
                 </DialogContent>
             </Dialog>

@@ -63,10 +63,10 @@ export async function createTimelineAction(data: {
     const session = await requireAdmin();
 
     if (!data.name || data.name.trim().length < 2) {
-        throw new Error("El nombre de la línea de tiempo debe tener al menos 2 caracteres");
+        throw new Error("El nombre del programa de formación debe tener al menos 2 caracteres");
     }
     if (!data.programId) {
-        throw new Error("El programa de formación es obligatorio");
+        throw new Error("El área de formación es obligatoria");
     }
 
     // Si se marca como default, desmarcar las existentes
@@ -106,7 +106,7 @@ export async function createTimelineAction(data: {
         userId: session.user.id,
         userName: session.user.name || "Admin",
         userRole: "admin",
-        description: `Línea de tiempo creada: ${timeline.name}`,
+        description: `Programa de formación creado: ${timeline.name}`,
         metadata: { name: timeline.name, programId: timeline.programId },
         success: true,
     });
@@ -130,7 +130,7 @@ export async function updateTimelineAction(
     const session = await requireAdmin();
 
     if (!data.name || data.name.trim().length < 2) {
-        throw new Error("El nombre de la línea de tiempo debe tener al menos 2 caracteres");
+        throw new Error("El nombre del programa de formación debe tener al menos 2 caracteres");
     }
 
     const existing = await prisma.curriculumTimeline.findUnique({
@@ -139,7 +139,7 @@ export async function updateTimelineAction(
     });
 
     if (!existing) {
-        throw new Error("Línea de tiempo no encontrada");
+        throw new Error("Programa de formación no encontrado");
     }
 
     if (data.isDefault) {
@@ -167,7 +167,7 @@ export async function updateTimelineAction(
         userId: session.user.id,
         userName: session.user.name || "Admin",
         userRole: "admin",
-        description: `Línea de tiempo actualizada: ${updated.name}`,
+        description: `Programa de formación actualizado: ${updated.name}`,
         metadata: { name: updated.name },
         success: true,
     });
@@ -194,16 +194,16 @@ export async function deleteTimelineAction(id: string) {
     });
 
     if (!timeline) {
-        throw new Error("Línea de tiempo no encontrada");
+        throw new Error("Programa de formación no encontrado");
     }
 
-    // Verificar que el programa tenga más de 1 línea de tiempo
+    // Verificar que el área tenga más de 1 programa de formación
     const count = await prisma.curriculumTimeline.count({
         where: { programId: timeline.programId }
     });
 
     if (count <= 1) {
-        throw new Error("No es posible eliminar la única línea de tiempo del programa. El programa debe tener al menos una línea.");
+        throw new Error("No es posible eliminar el único programa de formación del área. El área debe tener al menos un programa.");
     }
 
     // Si era la por defecto, promover otra
@@ -231,7 +231,7 @@ export async function deleteTimelineAction(id: string) {
         userId: session.user.id,
         userName: session.user.name || "Admin",
         userRole: "admin",
-        description: `Línea de tiempo eliminada: ${timeline.name}`,
+        description: `Programa de formación eliminado: ${timeline.name}`,
         metadata: { name: timeline.name },
         success: true,
     });
@@ -247,7 +247,7 @@ export async function duplicateTimelineAction(timelineId: string, newName: strin
     const session = await requireAdmin();
 
     if (!newName || newName.trim().length < 2) {
-        throw new Error("El nombre de la nueva línea de tiempo debe tener al menos 2 caracteres");
+        throw new Error("El nombre del nuevo programa de formación debe tener al menos 2 caracteres");
     }
 
     const source = await prisma.curriculumTimeline.findUnique({
@@ -264,7 +264,7 @@ export async function duplicateTimelineAction(timelineId: string, newName: strin
     });
 
     if (!source) {
-        throw new Error("Línea de tiempo origen no encontrada");
+        throw new Error("Programa de formación origen no encontrado");
     }
 
     // Crear la nueva línea
@@ -313,7 +313,7 @@ export async function duplicateTimelineAction(timelineId: string, newName: strin
         userId: session.user.id,
         userName: session.user.name || "Admin",
         userRole: "admin",
-        description: `Línea de tiempo duplicada: ${duplicated.name} (desde ${source.name})`,
+        description: `Programa de formación duplicado: ${duplicated.name} (desde ${source.name})`,
         metadata: { name: duplicated.name, sourceId: source.id },
         success: true,
     });

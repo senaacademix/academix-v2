@@ -337,7 +337,7 @@ export function ProgramOverviewTab({ program, onNavigateTab }: ProgramOverviewTa
                             <div>
                                 <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Descripción Curricular</span>
                                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                                    {program.description || "Sin descripción proporcionada para este programa de formación."}
+                                    {program.description || "Sin descripción proporcionada para esta área de formación."}
                                 </p>
                             </div>
 

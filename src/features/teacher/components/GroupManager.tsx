@@ -5761,7 +5761,7 @@ const handleOpenAnalytics = async () => {
 
             {/* Student Analytics Dialog */}
             <Dialog open={!!selectedStudentForAnalytics} onOpenChange={(open) => !open && setSelectedStudentForAnalytics(null)}>
-                <DialogContent className="!max-w-[100vw] sm:!max-w-[100vw] w-screen h-screen m-0 p-6 !rounded-none overflow-y-auto border-none bg-background flex flex-col">
+                <DialogContent showCloseButton={false} className="!max-w-[100vw] sm:!max-w-[100vw] w-screen h-screen m-0 p-6 !rounded-none overflow-y-auto border-none bg-background flex flex-col">
                     {selectedStudentForAnalytics && (
                         <div className="space-y-6 flex-1 flex flex-col min-h-0">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b">
@@ -5787,6 +5787,15 @@ const handleOpenAnalytics = async () => {
                                         <span>{selectedStudentForAnalytics.email}</span>
                                     </DialogDescription>
                                 </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSelectedStudentForAnalytics(null)}
+                                    className="h-9 px-3.5 rounded-xl border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer self-start sm:self-center"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                    <span>Cerrar</span>
+                                </Button>
                             </div>
                             <div className="flex-1 overflow-y-auto min-h-0">
                                 <StudentRecords studentId={selectedStudentForAnalytics.id} hideTables={false} hideDocumentation={true} />
@@ -5898,12 +5907,13 @@ const handleOpenAnalytics = async () => {
                                 </span>
                             </div>
                             <Button 
-                                variant="ghost" 
-                                size="icon"
+                                variant="outline" 
+                                size="sm"
                                 onClick={exitSequentialFullscreen}
-                                className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                                className="h-8 px-3 rounded-lg border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
                             >
-                                <X className="w-5 h-5" />
+                                <X className="w-3.5 h-3.5" />
+                                <span>Cerrar</span>
                             </Button>
                         </div>
 

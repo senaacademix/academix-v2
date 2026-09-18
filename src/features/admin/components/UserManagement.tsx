@@ -1221,7 +1221,7 @@ export function UserManagement({
 
             {/* Student Academic Record Dialog */}
             <Dialog open={detailsSheetOpen} onOpenChange={(open) => !open && setDetailsSheetOpen(false)}>
-                <DialogContent className="!max-w-[100vw] sm:!max-w-[100vw] w-screen h-screen m-0 p-6 !rounded-none overflow-y-auto border-none bg-background flex flex-col">
+                <DialogContent showCloseButton={false} className="!max-w-[100vw] sm:!max-w-[100vw] w-screen h-screen m-0 p-6 !rounded-none overflow-y-auto border-none bg-background flex flex-col">
                     {selectedUser && (
                         <div className="space-y-6 flex-1 flex flex-col min-h-0">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b">
@@ -1253,6 +1253,15 @@ export function UserManagement({
                                         )}
                                     </DialogDescription>
                                 </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDetailsSheetOpen(false)}
+                                    className="h-9 px-3.5 rounded-xl border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer self-start sm:self-center"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                    <span>Cerrar</span>
+                                </Button>
                             </div>
                             <div className="flex-1 overflow-y-auto min-h-0">
                                 <StudentRecords studentId={selectedUser.id} hideTables={false} hideDocumentation={true} />

@@ -76,7 +76,7 @@ export default async function RootLayout({
           </TooltipProvider>
           <NetworkStatus />
           <PWARegister />
-          <Toaster />
+          <Toaster position="bottom-left" />
         </ThemeProvider>
       </body>
     </html>

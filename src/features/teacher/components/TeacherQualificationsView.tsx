@@ -186,7 +186,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                 // First save the current state
                 await updateTeacherQualificationsAction(targetTeacherId, selectedQualCourses, selectedScheduleId);
                 // Then publish/lock
-                await publishTeacherQualificationsAction(targetTeacherId);
+                await publishTeacherQualificationsAction(targetTeacherId, selectedScheduleId);
                 toast.success("Materias publicadas y bloqueadas con éxito");
                 setPublishDialogOpen(false);
                 await loadQualifications(selectedScheduleId);
@@ -200,9 +200,9 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         if (!targetTeacherId) return;
         startTransition(async () => {
             try {
-                await adminLockTeacherQualificationsAction(targetTeacherId);
+                await adminLockTeacherQualificationsAction(targetTeacherId, selectedScheduleId);
                 toast.success("Materias aprobadas y bloqueadas con éxito");
-                await loadQualifications();
+                await loadQualifications(selectedScheduleId);
                 if (onAdminActionComplete) onAdminActionComplete();
             } catch (e: any) {
                 toast.error(e.message || "Error al bloquear materias");
@@ -214,9 +214,9 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         if (!targetTeacherId) return;
         startTransition(async () => {
             try {
-                await unlockTeacherQualificationsAction(targetTeacherId);
+                await unlockTeacherQualificationsAction(targetTeacherId, selectedScheduleId);
                 toast.success("Materias desbloqueadas con éxito");
-                await loadQualifications();
+                await loadQualifications(selectedScheduleId);
                 if (onAdminActionComplete) onAdminActionComplete();
             } catch (e: any) {
                 toast.error(e.message || "Error al desbloquear materias");
@@ -331,108 +331,125 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
             )}
 
             {/* Status alerts */}
-            {locked ? (
-                <div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
-                    <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                        <p className="font-semibold text-sm">Materias Publicadas y Bloqueadas</p>
-                        <p className="text-xs opacity-90 mt-0.5">
-                            {isAdminMode 
-                                ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Instructor"
-                                    ? `Las materias fueron guardadas y bloqueadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()}. Desbloquea para permitir o realizar cambios.`
-                                    : "El instructor ha publicado sus materias y no puede editarlas.")
-                                : "Las materias que dictas están registradas y bloqueadas para edición. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
-                        </p>
-                        {lastModifiedBy && (
-                            <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-block">
-                                Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, targetTeacherId)}) 
-                                {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+            {(() => {
+                const activeScheduleName = schedules.find(s => s.id === selectedScheduleId)?.name;
+                return locked ? (
+                    <div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+                        <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
+                                <span>Materias Publicadas y Bloqueadas</span>
+                                {activeScheduleName && (
+                                    <span className="font-mono text-[11px] font-bold text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30">
+                                        Horario: {activeScheduleName}
+                                    </span>
+                                )}
                             </p>
-                        )}
-                    </div>
-                    {isAdminMode && (
-                        <Button 
-                            size="sm" 
-                            onClick={handleAdminUnlock} 
-                            disabled={isPending}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-                        >
-                            Desbloquear
-                        </Button>
-                    )}
-                </div>
-            ) : (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-300">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-sm">Materias en Modo Borrador</p>
-                            <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
-                                {isAdminMode
+                            <p className="text-xs opacity-90 mt-0.5">
+                                {isAdminMode 
                                     ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Instructor"
-                                        ? `Las materias fueron editadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()} y permanecen en modo borrador.`
-                                        : "El instructor aún puede editar sus materias.")
-                                    : "Puedes configurar qué materias de tu programa estás en capacidad de dictar. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
+                                        ? `Las materias fueron guardadas y bloqueadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()} para este horario. Desbloquea para permitir o realizar cambios.`
+                                        : "El instructor ha publicado sus materias para este horario y no puede editarlas.")
+                                    : "Las materias que dictas están registradas y bloqueadas para este horario institucional. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
                             </p>
                             {lastModifiedBy && (
-                                <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-block">
+                                <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-block">
                                     Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, targetTeacherId)}) 
                                     {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                                 </p>
                             )}
                         </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-1 sm:pt-0">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleSaveChanges} 
-                            disabled={isPending}
-                            className="bg-background text-foreground hover:bg-muted font-bold text-xs"
-                        >
-                            {isPending ? "Guardando..." : "Guardar Cambios"}
-                        </Button>
-                        {isAdminMode ? (
+                        {isAdminMode && (
                             <Button 
                                 size="sm" 
-                                onClick={handleAdminLock} 
+                                onClick={handleAdminUnlock} 
                                 disabled={isPending}
-                                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
                             >
-                                {isPending ? "Aprobando..." : "Aprobar y Bloquear"}
+                                Desbloquear
                             </Button>
-                        ) : (
-                            <AlertDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-                                <AlertDialogTrigger asChild>
-                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs">
-                                        Publicar y Bloquear
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="max-w-[90vw] sm:max-w-lg rounded-2xl">
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle className="flex items-center gap-2">
-                                            <Lock className="w-5 h-5 text-amber-600" />
-                                            ¿Confirmas publicar tus materias?
-                                        </AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Una vez publicadas, tus materias habilitadas quedarán **bloqueadas** y no podrás realizar más cambios. Solo un administrador podrá desbloquearlas.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction 
-                                            onClick={handlePublish}
-                                            className="bg-amber-600 hover:bg-amber-700 text-white"
-                                        >
-                                            Confirmar y Bloquear
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
                         )}
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
+                                    <span>Materias en Modo Borrador</span>
+                                    {activeScheduleName && (
+                                        <span className="font-mono text-[11px] font-bold text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30">
+                                            Horario: {activeScheduleName}
+                                        </span>
+                                    )}
+                                </p>
+                                <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
+                                    {isAdminMode
+                                        ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Instructor"
+                                            ? `Las materias fueron editadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()} y permanecen en modo borrador para este horario.`
+                                            : "El instructor aún puede editar sus materias para este horario.")
+                                        : "Puedes configurar qué materias de tu programa estás en capacidad de dictar para este horario. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
+                                </p>
+                                {lastModifiedBy && (
+                                    <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-block">
+                                        Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, targetTeacherId)}) 
+                                        {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-1 sm:pt-0">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={handleSaveChanges} 
+                                disabled={isPending}
+                                className="bg-background text-foreground hover:bg-muted font-bold text-xs"
+                            >
+                                {isPending ? "Guardando..." : "Guardar Cambios"}
+                            </Button>
+                            {isAdminMode ? (
+                                <Button 
+                                    size="sm" 
+                                    onClick={handleAdminLock} 
+                                    disabled={isPending}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs"
+                                >
+                                    {isPending ? "Aprobando..." : "Aprobar y Bloquear"}
+                                </Button>
+                            ) : (
+                                <AlertDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs">
+                                            Publicar y Bloquear
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="max-w-[90vw] sm:max-w-lg rounded-2xl">
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="flex items-center gap-2">
+                                                <Lock className="w-5 h-5 text-amber-600" />
+                                                ¿Confirmas publicar tus materias?
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Una vez publicadas, tus materias habilitadas quedarán **bloqueadas** y no podrás realizar más cambios. Solo un administrador podrá desbloquearlas.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction 
+                                                onClick={handlePublish}
+                                                className="bg-amber-600 hover:bg-amber-700 text-white"
+                                            >
+                                                Confirmar y Bloquear
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Qualifications Selection Card */}
             <Card className="border-none shadow-sm bg-background">

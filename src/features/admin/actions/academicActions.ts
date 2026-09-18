@@ -199,7 +199,7 @@ export async function createProgramAction(data: { name: string; description?: st
             timelines: {
                 create: {
                     name: `${data.name.trim()} - Jornada Regular`,
-                    description: `Línea de tiempo principal para ${data.name.trim()}`,
+                    description: `Programa de formación principal para ${data.name.trim()}`,
                     isDefault: true,
                 }
             },

@@ -28,6 +28,7 @@ import {
   ArrowRight,
   HelpCircle,
   GitBranch,
+  X,
 } from "lucide-react";
 import { SchedulePanelHelpModal } from "./SchedulePanelHelpModal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -392,7 +393,7 @@ export function ScheduleGroupSlotsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="fixed inset-0 top-0 left-0 translate-x-0 translate-y-0 w-screen h-screen max-w-none sm:max-w-none !max-w-none !w-screen min-w-full min-h-full rounded-none m-0 border-0 flex flex-col p-0 overflow-hidden bg-background shadow-none z-50">
+      <DialogContent showCloseButton={false} className="fixed inset-0 top-0 left-0 translate-x-0 translate-y-0 w-screen h-screen max-w-none sm:max-w-none !max-w-none !w-screen min-w-full min-h-full rounded-none m-0 border-0 flex flex-col p-0 overflow-hidden bg-background shadow-none z-50">
         {/* Header */}
         <DialogHeader className="p-6 pb-4 border-b border-border/80 bg-muted/20">
           <div className="flex items-center justify-between gap-4">
@@ -415,19 +416,31 @@ export function ScheduleGroupSlotsModal({
               </div>
             </div>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setIsHelpOpen(true)}
-                  className="w-9 h-9 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs shrink-0 mr-8"
-                >
-                  <HelpCircle className="w-4.5 h-4.5 text-primary" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Grupos</TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-2 shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsHelpOpen(true)}
+                    className="w-9 h-9 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs shrink-0"
+                  >
+                    <HelpCircle className="w-4.5 h-4.5 text-primary" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Grupos</TooltipContent>
+              </Tooltip>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                className="h-9 px-3.5 rounded-xl border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Cerrar</span>
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -456,10 +469,10 @@ export function ScheduleGroupSlotsModal({
           </div>
 
           {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col min-h-0">
             {/* TAB 1: Assign Groups */}
-            <TabsContent value="groups" className="mt-0 space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            <TabsContent value="groups" className="mt-0 flex-1 flex flex-col min-h-0 space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between shrink-0">
                 <div className="relative flex-1">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -487,7 +500,7 @@ export function ScheduleGroupSlotsModal({
               </div>
 
               {/* Group Checkboxes List */}
-              <div className="border border-border/80 rounded-2xl p-3 bg-muted/10 max-h-[380px] overflow-y-auto">
+              <div className="border border-border/80 rounded-2xl p-3.5 bg-muted/10 flex-1 min-h-[260px] overflow-y-auto">
                 {groupsList.length === 0 ? (
                   <div className="text-center py-10 px-4 space-y-3">
                     <Users className="w-10 h-10 mx-auto text-muted-foreground/40" />
@@ -513,7 +526,7 @@ export function ScheduleGroupSlotsModal({
                     No se encontraron grupos en etapa lectiva que coincidan con la búsqueda.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
                     {filteredAvailableGroups.map((grp) => {
                       const isSelected = selectedGroupIds.includes(grp.id);
                       return (
@@ -618,7 +631,7 @@ export function ScheduleGroupSlotsModal({
                 )}
               </div>
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 shrink-0">
                 <span>
                   {selectedGroupIds.length} de {groupsList.length} grupos seleccionados
                 </span>
@@ -699,7 +712,7 @@ export function ScheduleGroupSlotsModal({
                                       variant="outline"
                                       className="text-[10px] font-semibold text-muted-foreground bg-muted/40 border-border/70 py-0.5"
                                     >
-                                      Sin línea asignada
+                                      Sin programa asignado
                                     </Badge>
                                   )}
                                 </div>

@@ -275,7 +275,7 @@ export function ProgramGroupsTab({ program }: ProgramGroupsTabProps) {
                                             </Badge>
                                         </div>
                                         <p className="text-xs text-muted-foreground font-medium">
-                                            {activeGroup.description || "Ficha del programa de formación institucional."}
+                                            {activeGroup.description || "Ficha del área de formación institucional."}
                                         </p>
                                     </div>
 

@@ -78,7 +78,7 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
       },
       {
         title: "Atajos a Módulos Operativos",
-        description: "Accede con un solo clic a la gestión de usuarios, malla curricular, horarios y configuración institucional.",
+        description: "Accede con un solo clic a la gestión de usuarios, programas de formación, horarios y configuración institucional.",
         icon: <Sparkles className="w-4 h-4 text-blue-500" />,
       },
     ],
@@ -87,31 +87,31 @@ const ADMIN_DASHBOARD_HELP_CONFIG: Record<AdminDashboardTabKey, TabHelpConfig> =
 
   programs: {
     key: "programs",
-    tabLabel: "Programas",
-    title: "Programas de Formación y Navegación Curricular",
-    badge: "Módulo: Programas",
+    tabLabel: "Áreas",
+    title: "Áreas de Formación y Navegación Curricular",
+    badge: "Módulo: Áreas",
     badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
     icon: <FolderKanban className="w-5 h-5 text-emerald-500" />,
     bgIcon: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-    subtitle: "Selección y monitoreo de programas asignados a gestores o administración global de mallas curriculares.",
+    subtitle: "Selección y monitoreo de áreas asignadas a gestores o administración global de programas de formación.",
     features: [
       {
-        title: "Selector de Programa para Gestores",
-        description: "Si eres Gestor Académico, filtra todo el sistema seleccionando el programa de formación que tienes a cargo.",
+        title: "Selector de Área para Gestores",
+        description: "Si eres Gestor Académico, filtra todo el sistema seleccionando el área de formación que tienes a cargo.",
         icon: <FolderKanban className="w-4 h-4 text-emerald-500" />,
       },
       {
-        title: "Métricas por Programa",
-        description: "Conoce el conteo específico de aprendices, asignaturas e instructores de cada programa de formación.",
+        title: "Métricas por Área",
+        description: "Conoce el conteo específico de aprendices, asignaturas e instructores de cada área de formación.",
         icon: <Layers className="w-4 h-4 text-emerald-500" />,
       },
       {
         title: "Cambio Rápido de Contexto",
-        description: "Alterna fácilmente entre los diferentes programas asignados usando el botón 'Cambiar Programa'.",
+        description: "Alterna fácilmente entre las diferentes áreas asignadas usando el botón 'Cambiar Área'.",
         icon: <RotateCcw className="w-4 h-4 text-emerald-500" />,
       },
     ],
-    workflowTip: "Para el rol Gestor, seleccionar un programa adapta instantáneamente las vistas de usuarios, mallas y horarios a ese programa.",
+    workflowTip: "Para el rol Gestor, seleccionar un área adapta instantáneamente las vistas de usuarios, programas y horarios a esa área.",
   },
 
   users: {

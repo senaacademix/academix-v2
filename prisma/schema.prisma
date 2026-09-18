@@ -47,6 +47,8 @@ model User {
   availabilitiesCreated  TeacherAvailability[]          @relation("AvailabilityCreatedBy")
   teacherScheduleQualifications TeacherScheduleQualification[] @relation("TeacherScheduleQualifications")
   qualificationsCreated        TeacherScheduleQualification[] @relation("QualificationCreatedBy")
+  teacherScheduleLocks         TeacherScheduleLock[]          @relation("TeacherScheduleLocks")
+  scheduleLocksCreated         TeacherScheduleLock[]          @relation("ScheduleLockModifier")
   groupsTaught          Group[]                @relation("GroupTeachers")
   qualifiedCourses      Course[]               @relation("TeacherQualifiedCourses")
   coursesTaught         Course[]               @relation("CourseTeacher")
@@ -512,6 +514,24 @@ model TeacherScheduleQualification {
   @@map("teacher_schedule_qualification")
 }
 
+model TeacherScheduleLock {
+  id                      String           @id @default(cuid())
+  teacherId               String
+  teacher                 User             @relation("TeacherScheduleLocks", fields: [teacherId], references: [id], onDelete: Cascade)
+  academicScheduleId      String
+  academicSchedule        AcademicSchedule @relation(fields: [academicScheduleId], references: [id], onDelete: Cascade)
+  availabilityLocked      Boolean          @default(false)
+  qualificationsLocked    Boolean          @default(false)
+  allowPastAttendanceEdit Boolean          @default(false)
+  lockedById              String?
+  lockedBy                User?            @relation("ScheduleLockModifier", fields: [lockedById], references: [id], onDelete: SetNull)
+  updatedAt               DateTime         @updatedAt
+  createdAt               DateTime         @default(now())
+
+  @@unique([teacherId, academicScheduleId])
+  @@map("teacher_schedule_lock")
+}
+
 model CourseWorkGroup {
   id        String   @id @default(cuid())
   name      String
@@ -653,6 +673,7 @@ model AcademicSchedule {
   courses     Course[]
   teacherAvailabilities TeacherAvailability[]
   teacherQualifications TeacherScheduleQualification[]
+  teacherScheduleLocks  TeacherScheduleLock[]
 
   @@map("academic_schedule")
 }

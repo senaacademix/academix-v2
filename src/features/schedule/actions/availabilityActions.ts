@@ -97,17 +97,46 @@ export async function getTeacherAvailabilityAction(academicScheduleId?: string) 
         ]
     });
 
-    return {
-        teacherId: userId,
-        teacherName: user?.name || "Profesor",
-        locked: user?.availabilityLocked ?? false,
-        programs: user?.programs || [],
-        lastModifiedBy: user?.availabilityLastModifiedBy ? {
+    let isLocked = false;
+    let modifier = null;
+    let modifiedAt: Date | null = null;
+
+    if (targetScheduleId) {
+        const scheduleLock = await prisma.teacherScheduleLock.findUnique({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId: userId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            include: {
+                lockedBy: { select: { id: true, name: true, role: true } }
+            }
+        });
+        if (scheduleLock) {
+            isLocked = scheduleLock.availabilityLocked;
+            if (scheduleLock.lockedBy) {
+                modifier = scheduleLock.lockedBy;
+            }
+            modifiedAt = scheduleLock.updatedAt;
+        }
+    } else {
+        isLocked = user?.availabilityLocked ?? false;
+        modifier = user?.availabilityLastModifiedBy ? {
             id: user.availabilityLastModifiedBy.id,
             name: user.availabilityLastModifiedBy.name,
             role: user.availabilityLastModifiedBy.role
-        } : null,
-        updatedAt: user?.availabilityUpdatedAt,
+        } : null;
+        modifiedAt = user?.availabilityUpdatedAt || null;
+    }
+
+    return {
+        teacherId: userId,
+        teacherName: user?.name || "Profesor",
+        locked: isLocked,
+        programs: user?.programs || [],
+        lastModifiedBy: modifier,
+        updatedAt: modifiedAt,
         schedules,
         slots: slots.map(s => ({
             id: s.id,
@@ -220,17 +249,29 @@ export async function saveTeacherAvailabilityAction(
     const session = await requireTeacher();
     const userId = session.user.id;
 
-    // Check lock status
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { availabilityLocked: true }
-    });
-
-    if (user?.availabilityLocked) {
-        throw new Error("Tu disponibilidad está bloqueada y no puede ser modificada.");
-    }
-
     const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    if (targetScheduleId) {
+        const scheduleLock = await prisma.teacherScheduleLock.findUnique({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId: userId,
+                    academicScheduleId: targetScheduleId
+                }
+            }
+        });
+        if (scheduleLock?.availabilityLocked) {
+            throw new Error("Tu disponibilidad está bloqueada para este horario y no puede ser modificada.");
+        }
+    } else {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { availabilityLocked: true }
+        });
+        if (user?.availabilityLocked) {
+            throw new Error("Tu disponibilidad está bloqueada y no puede ser modificada.");
+        }
+    }
 
     // Save in transaction with granular diff
     await prisma.$transaction(async (tx) => {
@@ -252,30 +293,55 @@ export async function saveTeacherAvailabilityAction(
 }
 
 // 3. Publish and lock teacher availability
-export async function publishTeacherAvailabilityAction() {
+export async function publishTeacherAvailabilityAction(academicScheduleId?: string) {
     const session = await requireTeacher();
     const userId = session.user.id;
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
 
-    // Check lock status
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { availabilityLocked: true }
-    });
+    if (targetScheduleId) {
+        const existingLock = await prisma.teacherScheduleLock.findUnique({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId: userId,
+                    academicScheduleId: targetScheduleId
+                }
+            }
+        });
+        if (existingLock?.availabilityLocked) {
+            throw new Error("Tu disponibilidad ya está publicada para este horario.");
+        }
 
-    if (user?.availabilityLocked) {
-        throw new Error("Tu disponibilidad ya está publicada.");
+        await prisma.teacherScheduleLock.upsert({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId: userId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            update: {
+                availabilityLocked: true,
+                lockedById: userId
+            },
+            create: {
+                teacherId: userId,
+                academicScheduleId: targetScheduleId,
+                availabilityLocked: true,
+                lockedById: userId
+            }
+        });
+    } else {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { 
+                availabilityLocked: true,
+                availabilityLastModifiedById: userId,
+                availabilityUpdatedAt: new Date()
+            }
+        });
     }
 
-    await prisma.user.update({
-        where: { id: userId },
-        data: { 
-            availabilityLocked: true,
-            availabilityLastModifiedById: userId,
-            availabilityUpdatedAt: new Date()
-        }
-    });
-
     revalidatePath("/dashboard/teacher/schedule");
+    revalidatePath("/dashboard/gestor/schedules");
     return { success: true };
 }
 
@@ -353,18 +419,47 @@ export async function getTeacherAvailabilityForAdminAction(teacherId: string, ac
         ]
     });
 
+    let isLocked = false;
+    let modifier = null;
+    let modifiedAt: Date | null = null;
+
+    if (targetScheduleId) {
+        const scheduleLock = await prisma.teacherScheduleLock.findUnique({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            include: {
+                lockedBy: { select: { id: true, name: true, role: true } }
+            }
+        });
+        if (scheduleLock) {
+            isLocked = scheduleLock.availabilityLocked;
+            if (scheduleLock.lockedBy) {
+                modifier = scheduleLock.lockedBy;
+            }
+            modifiedAt = scheduleLock.updatedAt;
+        }
+    } else {
+        isLocked = user.availabilityLocked;
+        modifier = user.availabilityLastModifiedBy ? {
+            id: user.availabilityLastModifiedBy.id,
+            name: user.availabilityLastModifiedBy.name,
+            role: user.availabilityLastModifiedBy.role
+        } : null;
+        modifiedAt = user.availabilityUpdatedAt;
+    }
+
     return {
         teacherId,
         teacherName: user.name,
         teacherEmail: user.email,
-        locked: user.availabilityLocked,
+        locked: isLocked,
         programs: user.programs || [],
-        lastModifiedBy: user.availabilityLastModifiedBy ? {
-            id: user.availabilityLastModifiedBy.id,
-            name: user.availabilityLastModifiedBy.name,
-            role: user.availabilityLastModifiedBy.role
-        } : null,
-        updatedAt: user.availabilityUpdatedAt,
+        lastModifiedBy: modifier,
+        updatedAt: modifiedAt,
         schedules,
         slots: slots.map(s => ({
             id: s.id,
@@ -385,17 +480,39 @@ export async function getTeacherAvailabilityForAdminAction(teacherId: string, ac
 }
 
 // 5. Unlock availability by admin
-export async function unlockTeacherAvailabilityAction(teacherId: string) {
+export async function unlockTeacherAvailabilityAction(teacherId: string, academicScheduleId?: string) {
     const session = await requireAdmin();
-    
-    await prisma.user.update({
-        where: { id: teacherId },
-        data: { 
-            availabilityLocked: false,
-            availabilityLastModifiedById: session.user.id,
-            availabilityUpdatedAt: new Date()
-        }
-    });
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    if (targetScheduleId) {
+        await prisma.teacherScheduleLock.upsert({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            update: {
+                availabilityLocked: false,
+                lockedById: session.user.id
+            },
+            create: {
+                teacherId,
+                academicScheduleId: targetScheduleId,
+                availabilityLocked: false,
+                lockedById: session.user.id
+            }
+        });
+    } else {
+        await prisma.user.update({
+            where: { id: teacherId },
+            data: { 
+                availabilityLocked: false,
+                availabilityLastModifiedById: session.user.id,
+                availabilityUpdatedAt: new Date()
+            }
+        });
+    }
 
     // Audit log
     const { auditLogger } = await import("@/features/admin/services/auditLogger");
@@ -406,25 +523,48 @@ export async function unlockTeacherAvailabilityAction(teacherId: string) {
         userId: session.user.id,
         userName: session.user.name || "Admin",
         userRole: "admin",
-        description: `Disponibilidad de docente desbloqueada por administrador`,
+        description: `Disponibilidad de docente desbloqueada para horario ${targetScheduleId || "general"}`,
         success: true,
     });
 
     revalidatePath("/dashboard/admin/teachers");
+    revalidatePath("/dashboard/gestor/schedules");
     return { success: true };
 }
 
-export async function adminLockTeacherAvailabilityAction(teacherId: string) {
+export async function adminLockTeacherAvailabilityAction(teacherId: string, academicScheduleId?: string) {
     const session = await requireAdmin();
-    
-    await prisma.user.update({
-        where: { id: teacherId },
-        data: { 
-            availabilityLocked: true,
-            availabilityLastModifiedById: session.user.id,
-            availabilityUpdatedAt: new Date()
-        }
-    });
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    if (targetScheduleId) {
+        await prisma.teacherScheduleLock.upsert({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            update: {
+                availabilityLocked: true,
+                lockedById: session.user.id
+            },
+            create: {
+                teacherId,
+                academicScheduleId: targetScheduleId,
+                availabilityLocked: true,
+                lockedById: session.user.id
+            }
+        });
+    } else {
+        await prisma.user.update({
+            where: { id: teacherId },
+            data: { 
+                availabilityLocked: true,
+                availabilityLastModifiedById: session.user.id,
+                availabilityUpdatedAt: new Date()
+            }
+        });
+    }
 
     // Audit log
     const { auditLogger } = await import("@/features/admin/services/auditLogger");
@@ -435,11 +575,12 @@ export async function adminLockTeacherAvailabilityAction(teacherId: string) {
         userId: session.user.id,
         userName: session.user.name || "Admin",
         userRole: "admin",
-        description: `Disponibilidad de docente publicada/aprobada por administrador`,
+        description: `Disponibilidad de docente publicada/aprobada para horario ${targetScheduleId || "general"}`,
         success: true,
     });
 
     revalidatePath("/dashboard/admin/teachers");
+    revalidatePath("/dashboard/gestor/schedules");
     return { success: true };
 }
 

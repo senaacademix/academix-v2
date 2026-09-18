@@ -377,7 +377,7 @@ export function InteractiveWeeklyCalendarGrid({
               <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
                 <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
                   <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
-                  <span>Línea de Tiempo</span>
+                  <span>Programa de Formación</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground font-normal leading-tight">
                   {group.period.timeline.name}

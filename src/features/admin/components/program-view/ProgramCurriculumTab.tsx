@@ -75,13 +75,13 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
 
     const handleExportPdf = async () => {
         setIsExportingPdf(true);
-        toast.info("Generando PDF de la malla curricular con @react-pdf/renderer...");
+        toast.info("Generando PDF del programa de formación con @react-pdf/renderer...");
         try {
             await exportProgramCurriculumPdf(program);
-            toast.success("PDF de la malla curricular descargado exitosamente");
+            toast.success("PDF del programa de formación descargado exitosamente");
         } catch (e) {
             console.error(e);
-            toast.error("Error al exportar la malla curricular en PDF");
+            toast.error("Error al exportar el programa de formación en PDF");
         } finally {
             setIsExportingPdf(false);
         }
@@ -89,13 +89,13 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
 
     const handleExportExcel = async () => {
         setIsExportingExcel(true);
-        toast.info("Generando Excel de la malla curricular con ExcelJS...");
+        toast.info("Generando Excel del programa de formación con ExcelJS...");
         try {
             await exportProgramCurriculumExcel(program);
-            toast.success("Excel de la malla curricular descargado exitosamente");
+            toast.success("Excel del programa de formación descargado exitosamente");
         } catch (e) {
             console.error(e);
-            toast.error("Error al exportar la malla curricular en Excel");
+            toast.error("Error al exportar el programa de formación en Excel");
         } finally {
             setIsExportingExcel(false);
         }
@@ -142,7 +142,7 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
     const filterOptions = useMemo(() => {
         if (timelines.length > 0) {
             return [
-                { key: "ALL", label: "Todas las Líneas", count: totalPeriods },
+                { key: "ALL", label: "Todos los Programas", count: totalPeriods },
                 ...timelines.map((tl: any) => ({
                     key: tl.id,
                     label: tl.name,
@@ -195,7 +195,7 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
                         onClick={handleExportPdf}
                         disabled={isExportingPdf}
                         className="h-9 gap-1.5 rounded-xl text-xs font-bold border-red-500/30 text-red-700 dark:text-red-300 bg-red-500/10 hover:bg-red-500/20 shadow-xs shrink-0"
-                        title="Exportar malla curricular en PDF (@react-pdf/renderer)"
+                        title="Exportar programa de formación en PDF (@react-pdf/renderer)"
                     >
                         {isExportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
                         <span>Exportar PDF</span>
@@ -207,7 +207,7 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
                         onClick={handleExportExcel}
                         disabled={isExportingExcel}
                         className="h-9 gap-1.5 rounded-xl text-xs font-bold border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-xs shrink-0"
-                        title="Exportar malla curricular en Excel estilizado (ExcelJS)"
+                        title="Exportar programa de formación en Excel estilizado (ExcelJS)"
                     >
                         {isExportingExcel ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
                         <span>Exportar Excel</span>

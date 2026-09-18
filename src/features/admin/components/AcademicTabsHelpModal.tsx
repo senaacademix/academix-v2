@@ -72,7 +72,7 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
       },
       {
         title: "Estructura de Periodos",
-        description: "Visualiza el conteo global de periodos formativos (trimestres/semestres) y líneas de tiempo curriculares.",
+        description: "Visualiza el conteo global de periodos formativos (trimestres/semestres) y programas de formación.",
         icon: <Calendar className="w-4 h-4 text-blue-500" />,
       },
       {
@@ -96,13 +96,13 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
 
   periods: {
     key: "periods",
-    tabLabel: "Malla Curricular",
-    title: "Malla Curricular, Periodos y Asignaturas",
-    badge: "Pestaña: Malla Curricular",
+    tabLabel: "Programas de Formación",
+    title: "Programas de Formación, Periodos y Asignaturas",
+    badge: "Pestaña: Programas de Formación",
     badgeColor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
     icon: <BookOpen className="w-5 h-5 text-indigo-500" />,
     bgIcon: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
-    subtitle: "Estructuración de la malla curricular, periodos lectivos y catálogo de materias con intensidades horarias por semana.",
+    subtitle: "Estructuración de programas de formación, periodos lectivos y catálogo de materias con intensidades horarias por semana.",
     features: [
       {
         title: "Periodos Normales y Especiales",
@@ -121,7 +121,7 @@ const TABS_HELP_CONFIG: Record<AcademicTabKey, TabHelpConfig> = {
       },
       {
         title: "Importación y Exportación JSON",
-        description: "Exporta la malla curricular en un archivo JSON para respaldo o importa estructuras completas en segundos.",
+        description: "Exporta el programa de formación en un archivo JSON para respaldo o importa estructuras completas en segundos.",
         icon: <Upload className="w-4 h-4 text-indigo-500" />,
       },
       {

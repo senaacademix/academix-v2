@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle } from "lucide-react";
+import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
@@ -2450,7 +2450,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
 
             {/* Activity Detail Modal — full screen */}
             <Dialog open={!!activityDetail} onOpenChange={open => { if (!open) setActivityDetail(null); }}>
-                <DialogContent className="!fixed !inset-0 !max-w-none !max-h-none !w-screen !h-screen !rounded-none !translate-x-0 !translate-y-0 flex flex-col p-0 gap-0">
+                <DialogContent showCloseButton={false} className="!fixed !inset-0 !max-w-none !max-h-none !w-screen !h-screen !rounded-none !translate-x-0 !translate-y-0 flex flex-col p-0 gap-0">
 
                     {/* Header */}
                     <DialogHeader className="shrink-0 px-6 py-4 border-b bg-background flex flex-row items-center gap-3">
@@ -2459,8 +2459,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                             <DialogTitle className="text-xl font-black leading-tight">{activityDetail?.title}</DialogTitle>
                             <DialogDescription className="text-xs mt-0.5">Descripción e instrucciones de la actividad.</DialogDescription>
                         </div>
-                        <Button variant="outline" size="sm" className="shrink-0" onClick={() => setActivityDetail(null)}>
-                            Cerrar
+                        <Button variant="outline" size="sm" className="shrink-0 font-bold text-xs gap-1.5 h-8 px-3 rounded-lg border-border/80 hover:bg-muted text-foreground shadow-2xs cursor-pointer" onClick={() => setActivityDetail(null)}>
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cerrar</span>
                         </Button>
                     </DialogHeader>
 
@@ -2566,7 +2567,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
 
             {/* Observation Detail Modal — full screen */}
             <Dialog open={!!remarkDetail} onOpenChange={open => { if (!open) setRemarkDetail(null); }}>
-                <DialogContent className="!fixed !inset-0 !max-w-none !max-h-none !w-screen !h-screen !rounded-none !translate-x-0 !translate-y-0 flex flex-col p-0 gap-0">
+                <DialogContent showCloseButton={false} className="!fixed !inset-0 !max-w-none !max-h-none !w-screen !h-screen !rounded-none !translate-x-0 !translate-y-0 flex flex-col p-0 gap-0">
                     {/* Header */}
                     <DialogHeader className="shrink-0 px-6 py-4 border-b bg-background flex flex-row items-center gap-3">
                         <ShieldAlert className="w-5 h-5 text-primary shrink-0" />
@@ -2576,8 +2577,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                 Observación de {remarkDetail?.course?.title} — Instructor: {remarkDetail ? formatTeacherName(remarkDetail.teacher) : ""}
                             </DialogDescription>
                         </div>
-                        <Button variant="outline" size="sm" className="shrink-0" onClick={() => setRemarkDetail(null)}>
-                            Cerrar
+                        <Button variant="outline" size="sm" className="shrink-0 font-bold text-xs gap-1.5 h-8 px-3 rounded-lg border-border/80 hover:bg-muted text-foreground shadow-2xs cursor-pointer" onClick={() => setRemarkDetail(null)}>
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cerrar</span>
                         </Button>
                     </DialogHeader>
 

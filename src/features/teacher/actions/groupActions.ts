@@ -22,26 +22,70 @@ async function checkIsCourseWeekLocked(courseId: string, dateObj: Date): Promise
     const course = await prisma.course.findUnique({
         where: { id: courseId },
         select: {
+            teacherId: true,
+            academicScheduleId: true,
             group: {
                 select: {
-                    program: {
-                        select: { allowPastAttendanceEdit: true }
-                    }
+                    programId: true,
                 }
             },
             period: {
                 select: {
-                    program: {
-                        select: { allowPastAttendanceEdit: true }
-                    }
+                    programId: true,
                 }
             }
         }
     });
 
-    const allowPast = course?.group?.program?.allowPastAttendanceEdit ?? course?.period?.program?.allowPastAttendanceEdit ?? false;
+    if (!course) return true;
 
-    return !allowPast;
+    // Check instructor-specific permission in the academic schedule
+    if (course.teacherId) {
+        let scheduleId = course.academicScheduleId;
+        if (!scheduleId) {
+            const programId = course.group?.programId || course.period?.programId;
+            // 1. Check if dateObj falls in an academic schedule
+            let schedule = await prisma.academicSchedule.findFirst({
+                where: {
+                    ...(programId ? { programId } : {}),
+                    startDate: { lte: dateObj },
+                    endDate: { gte: dateObj }
+                },
+                orderBy: { startDate: 'desc' }
+            });
+            // 2. Or fallback to current schedule
+            if (!schedule) {
+                const now = new Date();
+                schedule = await prisma.academicSchedule.findFirst({
+                    where: {
+                        ...(programId ? { programId } : {}),
+                        startDate: { lte: now },
+                        endDate: { gte: now }
+                    },
+                    orderBy: { startDate: 'desc' }
+                });
+            }
+            scheduleId = schedule?.id || null;
+        }
+
+        if (scheduleId) {
+            const lock = await prisma.teacherScheduleLock.findUnique({
+                where: {
+                    teacherId_academicScheduleId: {
+                        teacherId: course.teacherId,
+                        academicScheduleId: scheduleId
+                    }
+                },
+                select: { allowPastAttendanceEdit: true }
+            });
+
+            if (lock && lock.allowPastAttendanceEdit) {
+                return false; // Permitted for this teacher in this schedule
+            }
+        }
+    }
+
+    return true;
 }
 
 async function requireTeacher() {

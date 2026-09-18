@@ -1299,7 +1299,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     const handleSaveProgram = async () => {
         if (!programName || programName.trim().length < 2) {
-            toast.error("El nombre del programa debe tener al menos 2 caracteres");
+            toast.error("El nombre del área de formación debe tener al menos 2 caracteres");
             return;
         }
 
@@ -1311,19 +1311,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         description: programDescription,
                         gestorIds: programGestorIds
                     });
-                    toast.success("Programa de formación actualizado");
+                    toast.success("Área de formación actualizada");
                 } else {
                     await createProgramAction({
                         name: programName,
                         description: programDescription,
                         gestorIds: programGestorIds
                     });
-                    toast.success("Programa de formación creado");
+                    toast.success("Área de formación creada");
                 }
                 setProgramDialogOpen(false);
                 await refreshAll();
             } catch (error: any) {
-                toast.error(error.message || "Error al guardar el programa");
+                toast.error(error.message || "Error al guardar el área de formación");
             }
         });
     };
@@ -1356,7 +1356,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const handleSaveTimeline = async () => {
         if (!selectedProgram) return;
         if (!timelineName.trim() || timelineName.trim().length < 2) {
-            toast.error("El nombre de la línea de tiempo debe tener al menos 2 caracteres");
+            toast.error("El nombre del programa de formación debe tener al menos 2 caracteres");
             return;
         }
 
@@ -1368,7 +1368,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         description: timelineDescription,
                         isDefault: timelineIsDefault,
                     });
-                    toast.success("Línea de tiempo actualizada exitosamente");
+                    toast.success("Programa de formación actualizado exitosamente");
                 } else {
                     const created = await createTimelineAction({
                         programId: selectedProgram.id,
@@ -1376,13 +1376,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         description: timelineDescription,
                         isDefault: timelineIsDefault,
                     });
-                    toast.success("Línea de tiempo creada exitosamente");
+                    toast.success("Programa de formación creado exitosamente");
                     setSelectedTimelineId(created.id);
                 }
                 setTimelineDialogOpen(false);
                 await refreshAll();
             } catch (error: any) {
-                toast.error(error.message || "Error al guardar la línea de tiempo");
+                toast.error(error.message || "Error al guardar el programa de formación");
             }
         });
     };
@@ -1390,19 +1390,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const handleConfirmDuplicateTimeline = async () => {
         if (!timelineToDuplicate) return;
         if (!duplicateTimelineName.trim() || duplicateTimelineName.trim().length < 2) {
-            toast.error("El nombre de la nueva línea debe tener al menos 2 caracteres");
+            toast.error("El nombre del nuevo programa debe tener al menos 2 caracteres");
             return;
         }
 
         startTransition(async () => {
             try {
                 const duplicated = await duplicateTimelineAction(timelineToDuplicate.id, duplicateTimelineName);
-                toast.success("Línea de tiempo duplicada con todos sus periodos y materias");
+                toast.success("Programa de formación duplicado con todos sus periodos y materias");
                 setDuplicateTimelineDialogOpen(false);
                 setSelectedTimelineId(duplicated.id);
                 await refreshAll();
             } catch (error: any) {
-                toast.error(error.message || "Error al duplicar la línea de tiempo");
+                toast.error(error.message || "Error al duplicar el programa de formación");
             }
         });
     };
@@ -1411,7 +1411,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         if (!selectedProgram) return;
         const count = (selectedProgram.timelines || []).length;
         if (count <= 1) {
-            toast.error("No es posible eliminar la única línea de tiempo del programa");
+            toast.error("No es posible eliminar el único programa de formación de esta área");
             return;
         }
         setTimelineToDelete(tl);
@@ -1423,13 +1423,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         startTransition(async () => {
             try {
                 await deleteTimelineAction(tl.id);
-                toast.success("Línea de tiempo eliminada");
+                toast.success("Programa de formación eliminado");
                 const remaining = (selectedProgram.timelines || []).filter(t => t.id !== tl.id);
                 setSelectedTimelineId(remaining[0]?.id || "");
                 setTimelineToDelete(null);
                 await refreshAll();
             } catch (error: any) {
-                toast.error(error.message || "Error al eliminar la línea de tiempo");
+                toast.error(error.message || "Error al eliminar el programa de formación");
             }
         });
     };
@@ -1835,7 +1835,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     const handleExportPeriodsJSON = () => {
         if (!selectedProgram) return;
-        simulateExportProgress("Generando archivo de malla curricular...", () => {
+        simulateExportProgress("Generando archivo del programa de formación...", () => {
             try {
                 const dataToExport = selectedProgram.periods.map(period => ({
                     name: period.name,
@@ -1855,11 +1855,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 )}`;
                 const downloadAnchor = document.createElement("a");
                 downloadAnchor.setAttribute("href", jsonString);
-                downloadAnchor.setAttribute("download", `Malla_Curricular_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
+                downloadAnchor.setAttribute("download", `Programa_Formacion_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
                 document.body.appendChild(downloadAnchor);
                 downloadAnchor.click();
                 downloadAnchor.remove();
-                toast.success("Malla curricular exportada con éxito");
+                toast.success("Estructura del programa exportada con éxito");
             } catch (err: any) {
                 toast.error("Error al exportar: " + err.message);
             }
@@ -1895,7 +1895,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
         setPdfConfig(prev => ({
             institutionTag: prev.institutionTag || "AcademiX • Sistema Institucional de Gestión y Programación Académica",
-            mainTitle: `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}${titleSuffix}`,
+            mainTitle: `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}${titleSuffix}`,
             programName: selectedProgram.name,
             programDescription: selectedProgram.description || "",
             badgeText: prev.badgeText || "Plan de Estudios Oficial",
@@ -1911,17 +1911,17 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const handleExecuteDownloadCurriculumPdf = async () => {
         if (!selectedProgram) return;
         if (pdfConfig.selectedTimelineIds && pdfConfig.selectedTimelineIds.length === 0) {
-            toast.error("Debes seleccionar al menos una línea temporal para exportar");
+            toast.error("Debes seleccionar al menos un programa de formación para exportar");
             return;
         }
         setIsExportingCurriculumPDF(true);
-        const toastId = toast.loading("Generando Malla Curricular en PDF...");
+        const toastId = toast.loading("Generando Programa de Formación en PDF...");
         try {
             await generateAndDownloadCurriculumPdf(selectedProgram, pdfConfig);
-            toast.success("Malla Curricular descargada con éxito", { id: toastId });
+            toast.success("Programa de Formación descargado con éxito", { id: toastId });
             setIsPdfConfigModalOpen(false);
         } catch (err: any) {
-            console.error("Error al exportar Malla Curricular:", err);
+            console.error("Error al exportar Programa de Formación:", err);
             toast.error("Error al generar el PDF: " + (err.message || "Error desconocido"), { id: toastId });
         } finally {
             setIsExportingCurriculumPDF(false);
@@ -2004,8 +2004,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 if (failedList.length > 0) {
                     setImportSummary({
                         isOpen: true,
-                        title: "Reporte de Importación de Malla Curricular",
-                        description: "Resumen del proceso de guardado de la malla curricular en este programa.",
+                        title: "Reporte de Importación de Programa de Formación",
+                        description: "Resumen del proceso de guardado del programa de formación en esta área.",
                         entityName: "Periodos",
                         total: data.length,
                         successCount: successCount,
@@ -2949,7 +2949,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             try {
                 if (deleteType === "program") {
                     await deleteProgramAction(deleteItemId);
-                    toast.success("Programa de formación eliminado exitosamente");
+                    toast.success("Área de formación eliminada exitosamente");
                     if (selectedProgram?.id === deleteItemId) {
                         router.push(coursesBasePath);
                     }
@@ -3053,16 +3053,16 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             {selectedProgram === null && currentUserRole === "admin" && (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Programas de Formación</h2>
+                        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Áreas de Formación</h2>
                         <p className="text-muted-foreground">
-                            Crea y gestiona los Programas de Formación de la institución.
+                            Crea y gestiona las Áreas de Formación de la institución.
                         </p>
                     </div>
                     {!isObserver && (
                         <div className="flex gap-2">
                             <Button onClick={openCreateProgram} className="shadow-md hover:shadow-lg transition-all">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Nuevo Programa
+                                Nueva Área de Formación
                             </Button>
                         </div>
                     )}
@@ -3074,21 +3074,21 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     programs.length === 0 ? (
                         <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border/70 shadow-xs">
                             <GraduationCap className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-                            <h3 className="font-bold text-lg text-foreground">Sin Programa de Formación Asignado</h3>
+                            <h3 className="font-bold text-lg text-foreground">Sin Área de Formación Asignada</h3>
                             <p className="text-muted-foreground text-xs max-w-sm mx-auto mt-1">
-                                No tienes un programa de formación asignado. Contacta al Administrador de la institución para asignarte a uno.
+                                No tienes un área de formación asignada. Contacta al Administrador de la institución para asignarte a una.
                             </p>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-20 space-y-4 rounded-3xl border border-border/60 bg-card/50">
                             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                            <p className="text-xs text-muted-foreground font-medium">Cargando datos del programa de formación...</p>
+                            <p className="text-xs text-muted-foreground font-medium">Cargando datos del área de formación...</p>
                         </div>
                     )
                 ) : programIdParam ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-4 rounded-3xl border border-border/60 bg-card/50">
                         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                        <p className="text-xs text-muted-foreground font-medium">Cargando datos del programa de formación...</p>
+                        <p className="text-xs text-muted-foreground font-medium">Cargando datos del área de formación...</p>
                     </div>
                 ) : (
                     /* TABLE VIEW OF ALL PROGRAMS FOR ADMIN ONLY */
@@ -3096,13 +3096,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     {programs.length === 0 ? (
                         <div className="text-center py-20 bg-muted/10 rounded-2xl border border-dashed border-muted/50">
                             <GraduationCap className="h-16 w-16 text-muted/30 mx-auto mb-4" />
-                            <h3 className="font-semibold text-lg">No hay programas de formación</h3>
+                            <h3 className="font-semibold text-lg">No hay áreas de formación</h3>
                             <p className="text-muted-foreground text-sm max-w-sm mx-auto mt-1">
-                                Crea tu primer programa de formación profesional para empezar a organizar periodos académicos y grupos.
+                                Crea tu primera área de formación profesional para empezar a organizar periodos académicos y grupos.
                             </p>
                             {!isObserver && (
                                 <Button onClick={openCreateProgram} className="mt-4">
-                                    <Plus className="mr-2 h-4 w-4" /> Crear Programa
+                                    <Plus className="mr-2 h-4 w-4" /> Crear Área de Formación
                                 </Button>
                             )}
                         </div>
@@ -3110,13 +3110,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         <Card className="border border-border/80 bg-card shadow-xs rounded-3xl overflow-hidden">
                             <div className="p-5 border-b border-border/70 flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-base font-bold text-foreground">Programas de Formación Activos</h3>
+                                    <h3 className="text-base font-bold text-foreground">Áreas de Formación Activas</h3>
                                     <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                        Lista de todos los programas de formación registrados en la institución.
+                                        Lista de todas las áreas de formación registradas en la institución.
                                     </p>
                                 </div>
                                 <Badge variant="outline" className="text-xs font-bold px-3 py-1 rounded-xl bg-primary/10 text-primary border-primary/20">
-                                    {programs.length} {programs.length === 1 ? "Programa" : "Programas"}
+                                    {programs.length} {programs.length === 1 ? "Área" : "Áreas"}
                                 </Badge>
                             </div>
 
@@ -3124,7 +3124,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow>
-                                            <TableHead className="w-[350px] font-bold">Programa de Formación</TableHead>
+                                            <TableHead className="w-[350px] font-bold">Área de Formación</TableHead>
                                             <TableHead className="text-center font-bold">Aprendices / Alumnos</TableHead>
                                             <TableHead className="font-bold">Gestores Asignados</TableHead>
                                             <TableHead className="text-right font-bold w-[120px]">Acciones</TableHead>
@@ -3145,7 +3145,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                     setSelectedProgram(program);
                                                                     router.push(`${coursesBasePath}?programId=${program.id}`);
                                                                 }}
-                                                                title="Visualizar este programa"
+                                                                title="Visualizar esta área"
                                                             >
                                                                 <GraduationCap className="h-5 w-5" />
                                                             </div>
@@ -3155,7 +3155,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                     setSelectedProgram(program);
                                                                     router.push(`${coursesBasePath}?programId=${program.id}`);
                                                                 }}
-                                                                title="Visualizar este programa"
+                                                                title="Visualizar esta área"
                                                             >
                                                                 <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1">
                                                                     {program.name}
@@ -3209,7 +3209,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                         variant="ghost"
                                                                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
                                                                         onClick={() => openEditProgram(program)}
-                                                                        title="Editar programa"
+                                                                        title="Editar área de formación"
                                                                     >
                                                                         <Edit className="h-4 w-4" />
                                                                     </Button>
@@ -3219,7 +3219,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                             variant="ghost"
                                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                                             onClick={() => triggerDelete("program", program.id, program.name)}
-                                                                            title="Eliminar programa"
+                                                                            title="Eliminar área de formación"
                                                                         >
                                                                             <Trash2 className="h-4 w-4" />
                                                                         </Button>
@@ -3248,7 +3248,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                     className="h-8 text-xs font-bold gap-1.5 rounded-xl shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 ml-1"
                                                                 >
                                                                     <Eye className="h-3.5 w-3.5" />
-                                                                    Visualizar Programa
+                                                                    Visualizar Área
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -3309,7 +3309,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 ) : (
                                     <FileText className="h-3.5 w-3.5 mr-1.5" />
                                 )}
-                                Malla PDF
+                                Programa PDF
                             </Button>
                             {currentUserRole === "admin" && (
                                 <>
@@ -3330,7 +3330,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         <div className="flex items-center gap-2">
                             <TabsList className="flex flex-1 md:max-w-none overflow-x-auto bg-muted/40 p-1 rounded-xl scrollbar-none justify-start md:justify-center">
                                 <TabsTrigger value="overview" className="rounded-lg flex-1 shrink-0">Vista General</TabsTrigger>
-                                <TabsTrigger value="periods" className="rounded-lg flex-1 shrink-0">Malla Curricular</TabsTrigger>
+                                <TabsTrigger value="periods" className="rounded-lg flex-1 shrink-0">Programas de Formación</TabsTrigger>
                                 <TabsTrigger value="groups" className="rounded-lg flex-1 shrink-0">Grupos y Aprendices</TabsTrigger>
                                 <TabsTrigger value="teachers" className="rounded-lg flex-1 shrink-0">Instructores</TabsTrigger>
                                 <TabsTrigger value="environments" className="rounded-lg flex-1 shrink-0">Ambientes</TabsTrigger>
@@ -3447,7 +3447,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 <div className="flex items-baseline gap-2 pl-1 mt-1">
                                                     <span className="text-2xl font-black text-foreground tracking-tight">{selectedProgram.periods.length}</span>
                                                     <span className="text-[11px] text-muted-foreground font-medium truncate">
-                                                        {(selectedProgram.timelines || []).length} {(selectedProgram.timelines || []).length === 1 ? "línea de tiempo" : "líneas de tiempo"}
+                                                        {(selectedProgram.timelines || []).length} {(selectedProgram.timelines || []).length === 1 ? "programa de formación" : "programas de formación"}
                                                     </span>
                                                 </div>
                                             </Card>
@@ -3503,12 +3503,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                             {/* Columna Izquierda: Información de Programa y Línea de Tiempo */}
                                             <div className="lg:col-span-2 space-y-6">
-                                                {/* Card: Línea de tiempo & Información general */}
+                                                {/* Card: Cronograma & Información general */}
                                                 <Card className="bg-background">
                                                     <CardHeader className="pb-3 border-b border-muted/20">
                                                         <CardTitle className="text-base font-bold flex items-center gap-2">
                                                             <Activity className="h-5 w-5 text-primary" />
-                                                            Línea de Tiempo e Información de {selectedProgram.name}
+                                                            Cronograma e Información de {selectedProgram.name}
                                                         </CardTitle>
                                                     </CardHeader>
                                                     <CardContent className="p-6 space-y-5">
@@ -3704,76 +3704,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                         {/* SUB-TAB: PERIODS & COURSES */}
                         <TabsContent value="periods" className="space-y-6 mt-0">
-                            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
-                                <h4 className="text-base font-semibold text-muted-foreground">Malla Curricular de {selectedProgram.name}</h4>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => setIsTabsHelpOpen(true)}
-                                                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
-                                            >
-                                                <HelpCircle className="w-3.5 h-3.5 text-primary" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Malla Curricular</TooltipContent>
-                                    </Tooltip>
-                                    <Button
-                                        onClick={openPdfConfigModal}
-                                        disabled={isExportingCurriculumPDF}
-                                        variant="outline"
-                                        size="sm"
-                                        className="shadow-sm border-rose-500/20 text-rose-600 hover:text-rose-700 hover:bg-rose-500/5 dark:text-rose-400 font-semibold"
-                                    >
-                                        {isExportingCurriculumPDF ? (
-                                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                                        ) : (
-                                            <FileText className="h-4 w-4 mr-1.5 text-rose-500" />
-                                        )}
-                                        Malla Curricular PDF
-                                    </Button>
-                                    <Button onClick={handleExportPeriodsJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
-                                        <Download className="h-4 w-4 mr-1.5" />
-                                        Exportar JSON
-                                    </Button>
-                                    {!isObserver && (
-                                        <>
-                                            <div className="relative">
-                                                <input
-                                                    type="file"
-                                                    accept=".json"
-                                                    onChange={handleImportPeriodsJSON}
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                />
-                                                <Button variant="outline" size="sm" className="shadow-sm border-amber-500/20 text-amber-600 hover:text-amber-700 hover:bg-amber-500/5 dark:text-amber-400">
-                                                    <Upload className="h-4 w-4 mr-1.5" />
-                                                    Importar JSON
-                                                </Button>
-                                            </div>
-                                            <Button onClick={openCreatePeriod} size="sm" className="shadow-sm">
-                                                <Plus className="h-4 w-4 mr-1.5" />
-                                                Agregar Periodo
-                                            </Button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Sección de Líneas de Tiempo Curriculares */}
-                            <div className="bg-card/70 border border-border/80 rounded-2xl p-4 shadow-xs space-y-3 mb-6">
+                            {/* Sección de Programas de Formación */}
+                            <div className="bg-card/70 border border-border/80 rounded-2xl p-4 shadow-xs space-y-3">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div className="space-y-0.5">
                                         <div className="flex items-center gap-2">
                                             <Layers className="w-4 h-4 text-primary" />
-                                            <h4 className="text-sm font-bold text-foreground">Líneas de Tiempo Curriculares</h4>
+                                            <h4 className="text-sm font-bold text-foreground">Programas de Formación</h4>
                                             <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground">
                                                 {(selectedProgram.timelines || []).length} disponibles
                                             </Badge>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            Gestiona múltiples mallas y enfoques para este programa. Cada línea cuenta con su propia estructura de periodos y materias.
+                                            Gestiona múltiples programas de formación para esta área. Cada programa cuenta con su propia estructura de periodos y materias.
                                         </p>
                                     </div>
 
@@ -3786,7 +3729,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             className="h-8 text-xs font-bold border-primary/30 text-primary hover:bg-primary/10 shrink-0"
                                         >
                                             <Plus className="w-3.5 h-3.5 mr-1" />
-                                            Nueva Línea de Tiempo
+                                            Nuevo Programa de Formación
                                         </Button>
                                     )}
                                 </div>
@@ -3833,7 +3776,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            title="Duplicar línea y materias"
+                                                            title="Duplicar programa y materias"
                                                             onClick={() => openDuplicateTimeline(tl)}
                                                             className={cn("p-1 rounded hover:bg-black/10 transition-colors", isSelected ? "hover:bg-white/20" : "")}
                                                         >
@@ -3842,7 +3785,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                         {(selectedProgram.timelines || []).length > 1 && (
                                                             <button
                                                                 type="button"
-                                                                title="Eliminar línea de tiempo"
+                                                                title="Eliminar programa de formación"
                                                                 onClick={() => handleDeleteTimeline(tl)}
                                                                 className={cn("p-1 rounded hover:bg-red-500/20 text-red-400 transition-colors", isSelected ? "hover:bg-red-500/40 text-white" : "")}
                                                             >
@@ -3859,12 +3802,70 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 {(() => {
                                     const activeTl = (selectedProgram.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id));
                                     if (!activeTl?.description) return null;
+                                    const desc = activeTl.description.replace(/^Línea de tiempo principal para/i, "Programa de formación principal para");
                                     return (
                                         <p className="text-[11px] text-muted-foreground italic px-1 pt-0.5">
-                                            {activeTl.description}
+                                            {desc}
                                         </p>
                                     );
                                 })()}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
+                                <h4 className="text-base font-semibold text-muted-foreground">Programas de Formación de {selectedProgram.name}</h4>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => setIsTabsHelpOpen(true)}
+                                                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                                            >
+                                                <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Programas de Formación</TooltipContent>
+                                    </Tooltip>
+                                    <Button
+                                        onClick={openPdfConfigModal}
+                                        disabled={isExportingCurriculumPDF}
+                                        variant="outline"
+                                        size="sm"
+                                        className="shadow-sm border-rose-500/20 text-rose-600 hover:text-rose-700 hover:bg-rose-500/5 dark:text-rose-400 font-semibold"
+                                    >
+                                        {isExportingCurriculumPDF ? (
+                                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                        ) : (
+                                            <FileText className="h-4 w-4 mr-1.5 text-rose-500" />
+                                        )}
+                                        Programa de Formación PDF
+                                    </Button>
+                                    <Button onClick={handleExportPeriodsJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
+                                        <Download className="h-4 w-4 mr-1.5" />
+                                        Exportar JSON
+                                    </Button>
+                                    {!isObserver && (
+                                        <>
+                                            <div className="relative">
+                                                <input
+                                                    type="file"
+                                                    accept=".json"
+                                                    onChange={handleImportPeriodsJSON}
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                />
+                                                <Button variant="outline" size="sm" className="shadow-sm border-amber-500/20 text-amber-600 hover:text-amber-700 hover:bg-amber-500/5 dark:text-amber-400">
+                                                    <Upload className="h-4 w-4 mr-1.5" />
+                                                    Importar JSON
+                                                </Button>
+                                            </div>
+                                            <Button onClick={openCreatePeriod} size="sm" className="shadow-sm">
+                                                <Plus className="h-4 w-4 mr-1.5" />
+                                                Agregar Periodo
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
 
                             {(() => {
@@ -3878,13 +3879,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     return (
                                         <div className="text-center py-16 bg-muted/5 rounded-2xl border border-dashed border-muted/30 animate-in fade-in duration-200">
                                             <Calendar className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
-                                            <h4 className="font-semibold text-sm">Sin Periodos en esta Línea de Tiempo</h4>
+                                            <h4 className="font-semibold text-sm">Sin Periodos en este Programa de Formación</h4>
                                             <p className="text-muted-foreground text-xs mt-1 max-w-sm mx-auto">
-                                                Aún no hay periodos académicos registrados para la línea &quot;{activeTl?.name || "Seleccionada"}&quot;.
+                                                Aún no hay periodos académicos registrados para el programa &quot;{activeTl?.name || "Seleccionado"}&quot;.
                                             </p>
                                             {!isObserver && (
                                                 <Button onClick={openCreatePeriod} className="mt-4 h-9 text-xs font-bold" size="sm">
-                                                    <Plus className="mr-1.5 h-4 w-4" /> Agregar Periodo a esta Línea
+                                                    <Plus className="mr-1.5 h-4 w-4" /> Agregar Periodo a este Programa
                                                 </Button>
                                             )}
                                         </div>
@@ -4375,15 +4376,15 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             <Dialog open={programDialogOpen} onOpenChange={setProgramDialogOpen}>
                 <DialogContent className="max-w-[450px]">
                     <DialogHeader>
-                        <DialogTitle>{programToEdit ? "Editar Programa de Formación" : "Crear Programa de Formación"}</DialogTitle>
-                        <DialogDescription>Completa la información del programa para tu institución.</DialogDescription>
+                        <DialogTitle>{programToEdit ? "Editar Área de Formación" : "Crear Área de Formación"}</DialogTitle>
+                        <DialogDescription>Completa la información del área de formación para tu institución.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
                         <div className="space-y-2">
-                            <Label htmlFor="progName">Nombre del Programa</Label>
+                            <Label htmlFor="progName">Nombre del Área de Formación</Label>
                             <Input
                                 id="progName"
-                                placeholder="Ej: Ingeniería de Sistemas, Técnico de Redes..."
+                                placeholder="Ej: Sistemas e Informática, Telecomunicaciones, Gestión..."
                                 value={programName}
                                 onChange={(e) => setProgramName(e.target.value)}
                             />
@@ -4392,7 +4393,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <Label htmlFor="progDesc">Descripción</Label>
                             <Textarea
                                 id="progDesc"
-                                placeholder="Detalles o descripción breve del programa formativo..."
+                                placeholder="Detalles o descripción breve del área formativa..."
                                 value={programDescription}
                                 onChange={(e) => setProgramDescription(e.target.value)}
                                 className="h-24 min-h-[60px] max-h-[140px] overflow-y-auto resize-y text-xs leading-relaxed [field-sizing:fixed]"
@@ -4450,18 +4451,18 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Layers className="w-5 h-5 text-primary" />
-                            <span>{timelineToEdit ? "Editar Línea de Tiempo" : "Crear Nueva Línea de Tiempo"}</span>
+                            <span>{timelineToEdit ? "Editar Programa de Formación" : "Crear Nuevo Programa de Formación"}</span>
                         </DialogTitle>
                         <DialogDescription>
-                            Define una variante o denominación descriptiva para este programa (Ej: &quot;{selectedProgram?.name} - Jornada Nocturna&quot;).
+                            Define una denominación descriptiva para este programa de formación (Ej: &quot;{selectedProgram?.name} - Jornada Diurna&quot;).
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
                         <div className="space-y-2">
-                            <Label htmlFor="tlName">Denominación Descriptiva de la Línea</Label>
+                            <Label htmlFor="tlName">Denominación Descriptiva del Programa de Formación</Label>
                             <Input
                                 id="tlName"
-                                placeholder="Ej: Técnico en Software - Jornada Nocturna"
+                                placeholder="Ej: Técnico en Software - Jornada Diurna"
                                 value={timelineName}
                                 onChange={(e) => setTimelineName(e.target.value)}
                                 className="text-xs font-semibold"
@@ -4488,7 +4489,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 onCheckedChange={(checked) => setTimelineIsDefault(checked === true)}
                             />
                             <Label htmlFor="tlDefault" className="text-xs font-semibold cursor-pointer select-none">
-                                Establecer como línea principal por defecto del programa
+                                Establecer como programa principal por defecto de esta área
                             </Label>
                         </div>
                     </div>
@@ -4497,7 +4498,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             Cancelar
                         </Button>
                         <Button onClick={handleSaveTimeline} disabled={isPending} className="font-bold">
-                            {timelineToEdit ? "Actualizar Línea" : "Crear Línea"}
+                            {timelineToEdit ? "Actualizar Programa" : "Crear Programa"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -4509,15 +4510,15 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Copy className="w-5 h-5 text-primary" />
-                            <span>Duplicar Línea de Tiempo Curricular</span>
+                            <span>Duplicar Programa de Formación</span>
                         </DialogTitle>
                         <DialogDescription>
-                            Se clonarán automáticamente todos los periodos y materias plantilla de &quot;{timelineToDuplicate?.name}&quot; hacia la nueva línea.
+                            Se clonarán automáticamente todos los periodos y materias plantilla de &quot;{timelineToDuplicate?.name}&quot; hacia el nuevo programa.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
                         <div className="space-y-2">
-                            <Label htmlFor="dupTlName">Denominación para la nueva Línea</Label>
+                            <Label htmlFor="dupTlName">Denominación para el nuevo Programa</Label>
                             <Input
                                 id="dupTlName"
                                 placeholder="Ej: Técnico en Software - Fin de Semana"
@@ -4532,7 +4533,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             Cancelar
                         </Button>
                         <Button onClick={handleConfirmDuplicateTimeline} disabled={isPending} className="font-bold">
-                            Duplicar Línea Completa
+                            Duplicar Programa Completo
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -4564,7 +4565,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     </div>
                                     <div>
                                         <AlertDialogTitle className="text-xl font-bold text-foreground">
-                                            Eliminar Línea de Tiempo
+                                            Eliminar Programa de Formación
                                         </AlertDialogTitle>
                                         <p className="text-xs text-muted-foreground font-medium mt-0.5">
                                             Esta acción no se puede deshacer.
@@ -4607,7 +4608,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     )}
 
                                     <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
-                                        ¿Estás seguro de eliminar la línea de tiempo <strong className="text-foreground font-bold">&quot;{timelineToDelete?.name}&quot;</strong>? Se eliminarán permanentemente todos los periodos y materias plantilla asociados a esta línea.
+                                        ¿Estás seguro de eliminar el programa de formación <strong className="text-foreground font-bold">&quot;{timelineToDelete?.name}&quot;</strong>? Se eliminarán permanentemente todos los periodos y materias plantilla asociados a este programa.
                                     </AlertDialogDescription>
                                 </div>
                             </AlertDialogHeader>
@@ -4636,7 +4637,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     ) : (
                                         <>
                                             <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                                            Eliminar Línea
+                                            Eliminar Programa
                                         </>
                                     )}
                                 </AlertDialogAction>
@@ -4651,11 +4652,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 <DialogContent className="max-w-[450px]">
                     <DialogHeader>
                         <DialogTitle>{periodToEdit ? "Editar Periodo Académico" : "Agregar Periodo Académico"}</DialogTitle>
-                        <DialogDescription>Define un periodo académico bajo la línea seleccionada de {selectedProgram?.name}.</DialogDescription>
+                        <DialogDescription>Define un periodo académico bajo el programa seleccionado de {selectedProgram?.name}.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
                         <div className="space-y-2">
-                            <Label htmlFor="perTimeline">Línea de Tiempo Curricular</Label>
+                            <Label htmlFor="perTimeline">Programa de Formación</Label>
                             <select
                                 id="perTimeline"
                                 value={periodTimelineId}
@@ -5135,14 +5136,25 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
             {/* ============ DIALOG: TEACHER QUALIFICATIONS (MATERIAS) ============ */}
             <Dialog open={qualDialogOpen} onOpenChange={setQualDialogOpen}>
-                <DialogContent className="max-w-[100vw] sm:max-w-[100vw] w-screen h-[100dvh] max-h-[100dvh] rounded-none m-0 border-0 flex flex-col p-4 sm:p-6">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {qualTeacher ? `Materias de ${qualTeacher.name}` : "Cargando..."}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Selecciona las materias que este instructor está calificado para impartir.
-                        </DialogDescription>
+                <DialogContent showCloseButton={false} className="max-w-[100vw] sm:max-w-[100vw] w-screen h-[100dvh] max-h-[100dvh] rounded-none m-0 border-0 flex flex-col p-4 sm:p-6">
+                    <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b">
+                        <div>
+                            <DialogTitle>
+                                {qualTeacher ? `Materias de ${qualTeacher.name}` : "Cargando..."}
+                            </DialogTitle>
+                            <DialogDescription>
+                                Selecciona las materias que este instructor está calificado para impartir.
+                            </DialogDescription>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setQualDialogOpen(false)}
+                            className="h-8 px-3 rounded-lg border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cerrar</span>
+                        </Button>
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto p-4 max-h-[70vh]">
                         {qualTeacher && (
@@ -5328,7 +5340,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold">
                             <FileText className="w-5 h-5 text-rose-500 shrink-0" />
-                            Configurar y Exportar Malla Curricular
+                            Configurar y Exportar Programa de Formación
                         </DialogTitle>
                         <DialogDescription className="text-xs">
                             Personaliza el membrete, logo institucional y parámetros del documento antes de generar el PDF oficial.
@@ -5477,7 +5489,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     value={pdfConfig.mainTitle}
                                     onChange={(e) => setPdfConfig(prev => ({ ...prev, mainTitle: e.target.value }))}
                                     className="h-8 text-xs font-medium"
-                                    placeholder="Malla Curricular..."
+                                    placeholder="Programa de Formación..."
                                 />
                             </div>
 
@@ -5505,13 +5517,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 />
                             </div>
 
-                            {/* Selección de Líneas de Tiempo Curriculares */}
+                            {/* Selección de Programas de Formación */}
                             {Boolean(selectedProgram && (selectedProgram.timelines || []).length > 0) && selectedProgram && (
                                 <div className="bg-muted/30 p-3.5 rounded-xl border border-border/70 space-y-2.5">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-xs font-bold flex items-center gap-1.5">
                                             <GitBranch className="w-3.5 h-3.5 text-primary" />
-                                            <span>Líneas Temporales a Incluir</span>
+                                            <span>Programas de Formación a Incluir</span>
                                             <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-semibold bg-background">
                                                 {(pdfConfig.selectedTimelineIds || []).length} de {(selectedProgram.timelines || []).length}
                                             </Badge>
@@ -5524,7 +5536,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                     setPdfConfig(prev => ({
                                                         ...prev,
                                                         selectedTimelineIds: allIds,
-                                                        mainTitle: `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`
+                                                        mainTitle: `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`
                                                     }));
                                                 }}
                                                 className="text-primary hover:underline font-bold px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
@@ -5544,7 +5556,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         </div>
                                     </div>
                                     <p className="text-[11px] text-muted-foreground">
-                                        Elige qué líneas temporales curriculares se exportarán en el documento.
+                                        Elige qué programas de formación se exportarán en el documento.
                                     </p>
 
                                     <div className="grid grid-cols-1 gap-1.5 max-h-[140px] overflow-y-auto pr-1">
@@ -5565,9 +5577,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                         let newTitle = pdfConfig.mainTitle;
                                                         if (next.length === 1) {
                                                             const singleTl = (selectedProgram.timelines || []).find((t: any) => t.id === next[0]);
-                                                            newTitle = `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()} (${singleTl?.name.toUpperCase() || ""})`;
+                                                            newTitle = `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()} (${singleTl?.name.toUpperCase() || ""})`;
                                                         } else if (next.length > 1) {
-                                                            newTitle = `MALLA CURRICULAR Y PLAN DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`;
+                                                            newTitle = `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`;
                                                         }
 
                                                         setPdfConfig(prev => ({
@@ -5608,7 +5620,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     {(pdfConfig.selectedTimelineIds || []).length === 0 && (
                                         <p className="text-[11px] text-destructive font-semibold flex items-center gap-1 pt-1">
                                             <AlertCircle className="w-3 h-3 shrink-0" />
-                                            Debes seleccionar al menos una línea temporal para exportar.
+                                            Debes seleccionar al menos un programa de formación para exportar.
                                         </p>
                                     )}
                                 </div>
@@ -5716,7 +5728,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     </div>
                                     <div>
                                         <AlertDialogTitle className="text-xl font-bold text-foreground">
-                                            {deleteType === "program" ? "Eliminar Programa de Formación" : "¿Estás absolutamente seguro?"}
+                                            {deleteType === "program" ? "Eliminar Área de Formación" : "¿Estás absolutamente seguro?"}
                                         </AlertDialogTitle>
                                         <p className="text-xs text-muted-foreground font-medium mt-0.5">
                                             {deleteType === "program" 
@@ -5728,7 +5740,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                                 {deleteType === "program" ? (
                                     <div className="space-y-4 pt-2">
-                                        {/* Banner de Programa a Eliminar */}
+                                        {/* Banner de Área a Eliminar */}
                                         <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-between">
                                             <div className="flex items-center gap-2.5">
                                                 <School className="w-5 h-5 text-primary" />
@@ -5809,7 +5821,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     </div>
                                 ) : deleteType === "teacher" ? (
                                     <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
-                                        Desvincularás al instructor <strong>{deleteItemName}</strong> de <strong>{selectedProgram?.name}</strong>. El instructor mantendrá su cuenta en el sistema pero ya no estará asociado a este programa de formación.
+                                        Desvincularás al instructor <strong>{deleteItemName}</strong> de <strong>{selectedProgram?.name}</strong>. El instructor mantendrá su cuenta en el sistema pero ya no estará asociado a esta área de formación.
                                     </AlertDialogDescription>
                                 ) : (
                                     <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
@@ -5875,15 +5887,26 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
             {/* ============ DIALOG: VIEW & UNLOCK TEACHER AVAILABILITY ============ */}
             <Dialog open={adminTeacherAvailabilityOpen} onOpenChange={setAdminTeacherAvailabilityOpen}>
-                <DialogContent className="max-w-[100vw] sm:max-w-[100vw] w-screen h-[100dvh] max-h-[100dvh] rounded-none m-0 border-0 flex flex-col p-4 sm:p-6">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-primary" />
-                            <span>Disponibilidad: {selectedTeacherForAvailability?.name}</span>
-                        </DialogTitle>
-                        <DialogDescription>
-                            Visualiza la disponibilidad horaria configurada por el instructor para la semana.
-                        </DialogDescription>
+                <DialogContent showCloseButton={false} className="max-w-[100vw] sm:max-w-[100vw] w-screen h-[100dvh] max-h-[100dvh] rounded-none m-0 border-0 flex flex-col p-4 sm:p-6">
+                    <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b">
+                        <div>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Calendar className="w-5 h-5 text-primary" />
+                                <span>Disponibilidad: {selectedTeacherForAvailability?.name}</span>
+                            </DialogTitle>
+                            <DialogDescription>
+                                Visualiza la disponibilidad horaria configurada por el instructor para la semana.
+                            </DialogDescription>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAdminTeacherAvailabilityOpen(false)}
+                            className="h-8 px-3 rounded-lg border-border/80 hover:bg-muted text-foreground font-bold text-xs gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cerrar</span>
+                        </Button>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto p-4 max-h-[70vh]">
@@ -5922,7 +5945,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <Label htmlFor="gcCatalogCourse">Seleccionar Asignatura del Catálogo *</Label>
                             {catalogCourses.length === 0 ? (
                                 <div className="p-3 text-xs bg-yellow-500/10 border border-yellow-500/20 text--600 dark:text--400 rounded-xl">
-                                    No hay asignaturas en el catálogo. Agrégalas en la pestaña "Malla Curricular".
+                                    No hay asignaturas en el catálogo. Agrégalas en la pestaña "Programas de Formación".
                                 </div>
                             ) : (
                                 <Select 

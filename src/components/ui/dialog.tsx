@@ -55,6 +55,15 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  const isFullscreen =
+    typeof className === "string" &&
+    (className.includes("w-screen") ||
+      className.includes("h-screen") ||
+      className.includes("100vw") ||
+      className.includes("100dvh") ||
+      className.includes("100vh") ||
+      (className.includes("inset-0") && className.includes("fixed")));
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -70,9 +79,14 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-3 right-3 p-2 rounded-xl opacity-70 ring-offset-background transition-all hover:opacity-100 hover:bg-accent/80 focus:ring-2 focus:ring-ring focus:outline-hidden disabled:pointer-events-none cursor-pointer touch-manipulation select-none active:scale-95 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className={cn(
+              isFullscreen
+                ? "absolute top-3.5 right-4 sm:top-4 sm:right-6 inline-flex items-center justify-center gap-1.5 h-8 sm:h-9 px-3 sm:px-3.5 rounded-xl border border-border/80 bg-background/95 hover:bg-muted font-bold text-xs text-foreground shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer z-50 select-none focus:outline-none focus:ring-2 focus:ring-ring"
+                : "absolute top-3 right-3 p-2 rounded-xl opacity-70 ring-offset-background transition-all hover:opacity-100 hover:bg-accent/80 focus:ring-2 focus:ring-ring focus:outline-hidden disabled:pointer-events-none cursor-pointer touch-manipulation select-none active:scale-95 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            )}
           >
-            <XIcon />
+            <XIcon className={cn(isFullscreen ? "w-3.5 h-3.5 shrink-0" : undefined)} />
+            {isFullscreen && <span>Cerrar</span>}
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}

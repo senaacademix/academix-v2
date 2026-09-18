@@ -164,7 +164,7 @@ export function ProgramTeachersTab({ program }: ProgramTeachersTabProps) {
                     <UserCheck className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                     <h4 className="font-bold text-foreground text-sm">No se encontraron instructores</h4>
                     <p className="text-xs text-muted-foreground max-w-xs mx-auto mt-1">
-                        {searchQuery ? "Ningún instructor coincide con la búsqueda." : "No hay instructores vinculados a este programa de formación."}
+                        {searchQuery ? "Ningún instructor coincide con la búsqueda." : "No hay instructores vinculados a esta área de formación."}
                     </p>
                 </div>
             ) : (

@@ -610,10 +610,10 @@ export function TeacherUsersManagement({
             {/* Associated Program Information / Selector */}
             {programs && programs.length > 1 && !programId ? (
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Programa de Formación *</Label>
+                <Label className="text-xs font-bold">Área de Formación *</Label>
                 <Select value={selectedProgramId} onValueChange={setSelectedProgramId} disabled={isPending}>
                   <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Seleccionar programa" />
+                    <SelectValue placeholder="Seleccionar área" />
                   </SelectTrigger>
                   <SelectContent>
                     {programs.map((p) => (
@@ -627,11 +627,11 @@ export function TeacherUsersManagement({
             ) : (
               (programId || (programs && programs.length > 0)) && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-muted-foreground">Programa de Formación Asociado</Label>
+                  <Label className="text-xs font-bold text-muted-foreground">Área de Formación Asociada</Label>
                   <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
                     <BookOpen className="w-4 h-4 shrink-0" />
                     <span className="text-xs font-semibold truncate">
-                      {programs?.find(p => p.id === (programId || selectedProgramId))?.name || "Programa seleccionado"}
+                      {programs?.find(p => p.id === (programId || selectedProgramId))?.name || "Área seleccionada"}
                     </span>
                   </div>
                 </div>

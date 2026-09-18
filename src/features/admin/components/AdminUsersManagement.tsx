@@ -386,13 +386,13 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
         }
 
         if (role === "gestor" && selectedProgramIds.length === 0) {
-            toast.error("Debes asignar al menos un programa de formación al Gestor Académico");
+            toast.error("Debes asignar al menos un área de formación al Gestor Académico");
             return;
         }
 
         if (role === "observer") {
             if (selectedProgramIds.length === 0) {
-                toast.error("Debes asignar al menos un programa de formación al Observador");
+                toast.error("Debes asignar al menos un área de formación al Observador");
                 return;
             }
             if (selectedGroupIds.length === 0) {
@@ -452,13 +452,13 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
         }
 
         if (role === "gestor" && selectedProgramIds.length === 0) {
-            toast.error("Debes asignar al menos un programa de formación al Gestor Académico");
+            toast.error("Debes asignar al menos un área de formación al Gestor Académico");
             return;
         }
 
         if (role === "observer") {
             if (selectedProgramIds.length === 0) {
-                toast.error("Debes asignar al menos un programa de formación al Observador");
+                toast.error("Debes asignar al menos un área de formación al Observador");
                 return;
             }
             if (selectedGroupIds.length === 0) {
@@ -726,7 +726,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                             <TableRow>
                                 <TableHead className="w-[280px]">Usuario</TableHead>
                                 <TableHead className="w-[180px]">Identificación</TableHead>
-                                <TableHead className="w-[220px]">Rol y Asignaciones</TableHead>
+                                <TableHead className="min-w-[240px]">Rol y Asignaciones</TableHead>
                                 <TableHead className="w-[150px] text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -765,22 +765,63 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                                         </TableCell>
                                         <TableCell>
                                             {user.role === "gestor" ? (
-                                                <div className="flex flex-col gap-1 items-start">
+                                                <div className="flex flex-col gap-1.5 items-start">
                                                     <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold gap-1">
                                                         <UserCog className="h-3.5 w-3.5" /> Gestor Académico
                                                     </Badge>
-                                                    <span className="text-[11px] text-muted-foreground font-medium">
-                                                        {user.programs?.length || 0} programa(s) asignado(s)
-                                                    </span>
+                                                    {user.programs && user.programs.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1 items-center max-w-[280px]">
+                                                            {user.programs.map((prog) => {
+                                                                const progName = prog.name || programs.find(p => p.id === prog.id)?.name || "Área";
+                                                                return (
+                                                                    <Badge 
+                                                                        key={prog.id} 
+                                                                        variant="outline" 
+                                                                        title={progName}
+                                                                        className="text-[10.5px] font-semibold bg-primary/10 text-primary border-primary/25 rounded-md px-2 py-0.5 shadow-2xs"
+                                                                    >
+                                                                        {progName}
+                                                                    </Badge>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[11px] text-muted-foreground italic">
+                                                            Sin áreas asignadas
+                                                        </span>
+                                                    )}
                                                 </div>
                                             ) : user.role === "observer" ? (
-                                                <div className="flex flex-col gap-1 items-start">
+                                                <div className="flex flex-col gap-1.5 items-start">
                                                     <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-bold gap-1">
                                                         <Eye className="h-3.5 w-3.5" /> Observador
                                                     </Badge>
-                                                    <span className="text-[11px] text-muted-foreground font-medium">
-                                                        {user.programs?.length || 0} programa(s) • {user.observedGroups?.length || 0} ficha(s)
-                                                    </span>
+                                                    {user.programs && user.programs.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1 items-center max-w-[280px]">
+                                                            {user.programs.map((prog) => {
+                                                                const progName = prog.name || programs.find(p => p.id === prog.id)?.name || "Área";
+                                                                return (
+                                                                    <Badge 
+                                                                        key={prog.id} 
+                                                                        variant="outline" 
+                                                                        title={progName}
+                                                                        className="text-[10.5px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25 rounded-md px-2 py-0.5 shadow-2xs"
+                                                                    >
+                                                                        {progName}
+                                                                    </Badge>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[11px] text-muted-foreground italic">
+                                                            Sin áreas asignadas
+                                                        </span>
+                                                    )}
+                                                    {user.observedGroups && user.observedGroups.length > 0 && (
+                                                        <span className="text-[10.5px] text-muted-foreground font-medium">
+                                                            {user.observedGroups.length} ficha(s) observada(s)
+                                                        </span>
+                                                    )}
                                                 </div>
                                             ) : (
                                                 <Badge className="bg-primary/10 text-primary border border-primary/20 font-bold gap-1">
@@ -936,19 +977,19 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                             />
                         </div>
 
-                        {/* Asignación de Programas si es Gestor */}
+                        {/* Asignación de Áreas si es Gestor */}
                         {role === "gestor" && (
                             <div className="md:col-span-2 space-y-1.5 border border-border/80 rounded-xl p-3 bg-muted/30">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-black text-foreground">Programas de Formación Asignados *</Label>
-                                    <span className="text-xs font-bold text-primary">{selectedProgramIds.length} seleccionados</span>
+                                    <Label className="text-xs font-black text-foreground">Áreas de Formación Asignadas *</Label>
+                                    <span className="text-xs font-bold text-primary">{selectedProgramIds.length} seleccionadas</span>
                                 </div>
                                 <p className="text-[11px] text-muted-foreground">
-                                    El Gestor Académico solo podrá administrar fichas, estudiantes y horarios de los programas marcados.
+                                    El Gestor Académico solo podrá administrar fichas, estudiantes y horarios de las áreas marcadas.
                                 </p>
                                 <ScrollArea className="h-28 rounded-lg border border-border/60 p-2 bg-card">
                                     {programs.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground p-2">No hay programas de formación creados.</p>
+                                        <p className="text-xs text-muted-foreground p-2">No hay áreas de formación creadas.</p>
                                     ) : (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                             {programs.map(prog => (
@@ -1084,19 +1125,19 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                             />
                         </div>
 
-                        {/* Asignación de Programas si es Gestor */}
+                        {/* Asignación de Áreas si es Gestor */}
                         {role === "gestor" && (
                             <div className="md:col-span-2 space-y-1.5 border border-border/80 rounded-xl p-3 bg-muted/30">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-black text-foreground">Programas de Formación Asignados *</Label>
-                                    <span className="text-xs font-bold text-primary">{selectedProgramIds.length} seleccionados</span>
+                                    <Label className="text-xs font-black text-foreground">Áreas de Formación Asignadas *</Label>
+                                    <span className="text-xs font-bold text-primary">{selectedProgramIds.length} seleccionadas</span>
                                 </div>
                                 <p className="text-[11px] text-muted-foreground">
-                                    El Gestor Académico solo podrá administrar fichas, estudiantes y horarios de los programas marcados.
+                                    El Gestor Académico solo podrá administrar fichas, estudiantes y horarios de las áreas marcadas.
                                 </p>
                                 <ScrollArea className="h-28 rounded-lg border border-border/60 p-2 bg-card">
                                     {programs.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground p-2">No hay programas de formación creados.</p>
+                                        <p className="text-xs text-muted-foreground p-2">No hay áreas de formación creadas.</p>
                                     ) : (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                             {programs.map(prog => (

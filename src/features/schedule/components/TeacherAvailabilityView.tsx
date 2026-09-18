@@ -64,30 +64,56 @@ const toMin = (t: string) => {
     return h * 60 + m;
 };
 
-const getSchedulePeriodStyles = (startTimeStr: string) => {
+const getSchedulePeriodStyles = (startTimeStr: string, endTimeStr?: string) => {
     const start = toMin(startTimeStr);
-    if (start < 720) {
-        return {
-            gradient: "from-sky-500/10 via-sky-500/5 to-transparent dark:from-sky-500/15 dark:to-transparent border-sky-500/20 dark:border-sky-500/30",
-            text: "text-sky-700 dark:text-sky-300",
-            icon: Cloud,
-            label: "Mañana"
-        };
-    } else if (start < 1080) {
-        return {
-            gradient: "from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-500/15 dark:to-transparent border-amber-500/20 dark:border-amber-500/30",
-            text: "text-amber-700 dark:text-amber-300",
-            icon: Sun,
-            label: "Tarde"
-        };
+    const end = endTimeStr ? toMin(endTimeStr) : start + 60;
+
+    // Mañana: < 12:00 (< 720 min)
+    // Tarde: 12:00 a 18:00 (720 a 1080 min)
+    // Noche: >= 18:00 (>= 1080 min)
+    const touchesMorning = start < 720;
+    const touchesAfternoon = start < 1080 && end > 720;
+    const touchesNight = end > 1080 || start >= 1080;
+
+    const periods: string[] = [];
+    if (touchesMorning) periods.push("Mañana");
+    if (touchesAfternoon) periods.push("Tarde");
+    if (touchesNight) periods.push("Noche");
+
+    let gradient = "from-sky-500/10 via-sky-500/5 to-transparent dark:from-sky-500/15 dark:to-transparent border-sky-500/20 dark:border-sky-500/30";
+    let text = "text-sky-700 dark:text-sky-300";
+
+    if (periods.length >= 3) {
+        gradient = "from-sky-500/10 via-amber-500/10 to-purple-500/10 dark:from-sky-500/15 dark:via-amber-500/10 dark:to-purple-500/15 border-primary/30";
+        text = "text-foreground";
+    } else if (touchesMorning && touchesAfternoon) {
+        gradient = "from-sky-500/10 via-amber-500/10 to-transparent dark:from-sky-500/15 dark:via-amber-500/10 dark:to-transparent border-amber-500/30";
+        text = "text-amber-800 dark:text-amber-200";
+    } else if (touchesAfternoon && touchesNight) {
+        gradient = "from-amber-500/10 via-purple-500/10 to-transparent dark:from-amber-500/15 dark:via-purple-500/10 dark:to-transparent border-purple-500/30";
+        text = "text-purple-800 dark:text-purple-200";
+    } else if (touchesMorning && touchesNight) {
+        gradient = "from-sky-500/10 via-purple-500/10 to-transparent border-indigo-500/30";
+        text = "text-indigo-800 dark:text-indigo-200";
+    } else if (touchesMorning) {
+        gradient = "from-sky-500/10 via-sky-500/5 to-transparent dark:from-sky-500/15 dark:to-transparent border-sky-500/20 dark:border-sky-500/30";
+        text = "text-sky-700 dark:text-sky-300";
+    } else if (touchesAfternoon) {
+        gradient = "from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-500/15 dark:to-transparent border-amber-500/20 dark:border-amber-500/30";
+        text = "text-amber-700 dark:text-amber-300";
     } else {
-        return {
-            gradient: "from-indigo-500/10 via-indigo-500/5 to-transparent dark:from-indigo-500/15 dark:to-transparent border-indigo-500/20 dark:border-indigo-500/30",
-            text: "text-indigo-700 dark:text-indigo-300",
-            icon: Moon,
-            label: "Noche"
-        };
+        gradient = "from-indigo-500/10 via-indigo-500/5 to-transparent dark:from-indigo-500/15 dark:to-transparent border-indigo-500/20 dark:border-indigo-500/30";
+        text = "text-indigo-700 dark:text-indigo-300";
     }
+
+    return {
+        gradient,
+        text,
+        touchesMorning,
+        touchesAfternoon,
+        touchesNight,
+        label: periods.join(" · ") || "Horario"
+    };
 };
 
 // 24-hour format options in 1-hour intervals (00:00 to 23:00)
@@ -231,8 +257,8 @@ export function TeacherAvailabilityView({
         loadAvailability(selectedScheduleId);
     }, [selectedScheduleId]);
 
-    const loadAvailability = async (schedId?: string) => {
-        setLoading(true);
+    const loadAvailability = async (schedId?: string, silent: boolean = false) => {
+        if (!silent) setLoading(true);
         const targetSched = schedId !== undefined ? schedId : selectedScheduleId;
         try {
             const data = isAdminMode && teacherId 
@@ -268,7 +294,7 @@ export function TeacherAvailabilityView({
         } catch (e: any) {
             toast.error(e.message || "Error al cargar la disponibilidad");
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -413,7 +439,7 @@ export function TeacherAvailabilityView({
                     await saveTeacherAvailabilityAction(updatedSlots, selectedScheduleId);
                 }
                 toast.success("Disponibilidad guardada exitosamente");
-                await loadAvailability(selectedScheduleId);
+                await loadAvailability(selectedScheduleId, true);
                 if (onAdminActionComplete) onAdminActionComplete();
             } catch (e: any) {
                 toast.error(e.message || "Error al guardar los cambios");
@@ -430,7 +456,7 @@ export function TeacherAvailabilityView({
                     await saveTeacherAvailabilityAction(slots, selectedScheduleId);
                 }
                 toast.success("Borrador de disponibilidad guardado exitosamente");
-                await loadAvailability(selectedScheduleId);
+                await loadAvailability(selectedScheduleId, true);
                 if (onAdminActionComplete) onAdminActionComplete();
             } catch (e: any) {
                 toast.error(e.message || "Error al guardar los cambios");
@@ -444,14 +470,14 @@ export function TeacherAvailabilityView({
                 // First save the current slots state to ensure DB matches exactly the UI
                 if (isAdminMode && teacherId) {
                     await adminSaveTeacherAvailabilityAction(teacherId, slots, selectedScheduleId);
-                    await adminLockTeacherAvailabilityAction(teacherId);
+                    await adminLockTeacherAvailabilityAction(teacherId, selectedScheduleId);
                 } else {
                     await saveTeacherAvailabilityAction(slots, selectedScheduleId);
-                    await publishTeacherAvailabilityAction();
+                    await publishTeacherAvailabilityAction(selectedScheduleId);
                 }
                 toast.success("Disponibilidad publicada y bloqueada con éxito");
                 setPublishDialogOpen(false);
-                await loadAvailability(selectedScheduleId);
+                await loadAvailability(selectedScheduleId, true);
                 if (onAdminActionComplete) onAdminActionComplete();
             } catch (e: any) {
                 toast.error(e.message || "Error al publicar la disponibilidad");
@@ -463,9 +489,9 @@ export function TeacherAvailabilityView({
         if (!isAdminMode || !teacherId) return;
         startTransition(async () => {
             try {
-                await unlockTeacherAvailabilityAction(teacherId);
+                await unlockTeacherAvailabilityAction(teacherId, selectedScheduleId);
                 toast.success("Disponibilidad desbloqueada con éxito");
-                await loadAvailability();
+                await loadAvailability(selectedScheduleId, true);
                 if (onAdminActionComplete) onAdminActionComplete();
             } catch (e: any) {
                 toast.error(e.message || "Error al desbloquear la disponibilidad");
@@ -480,6 +506,8 @@ export function TeacherAvailabilityView({
             </div>
         );
     }
+
+    const activeScheduleName = schedules.find(s => s.id === selectedScheduleId)?.name;
 
     return (
         <div className="space-y-6">
@@ -550,13 +578,20 @@ export function TeacherAvailabilityView({
                     <div className="flex items-start gap-3">
                         <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
                         <div>
-                            <p className="font-semibold text-sm">Disponibilidad Publicada y Bloqueada</p>
+                            <p className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
+                                <span>Disponibilidad Publicada y Bloqueada</span>
+                                {activeScheduleName && (
+                                    <span className="font-mono text-[11px] font-bold text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30">
+                                        Horario: {activeScheduleName}
+                                    </span>
+                                )}
+                            </p>
                             <p className="text-xs opacity-90 mt-0.5">
                                 {isAdminMode 
                                     ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Instructor"
-                                        ? `La disponibilidad fue guardada y bloqueada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()}. Desbloquea para permitir o realizar cambios.`
-                                        : "El instructor completó su registro y no puede editarlo. Desbloquea para permitir o realizar cambios.")
-                                    : "Tu disponibilidad horaria semanal está registrada y bloqueada para edición. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
+                                        ? `La disponibilidad fue guardada y bloqueada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()} para este horario. Desbloquea para permitir o realizar cambios.`
+                                        : "El instructor completó su registro para este horario y no puede editarlo. Desbloquea para permitir o realizar cambios.")
+                                    : "Tu disponibilidad horaria semanal está registrada y bloqueada para este horario. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
                             </p>
                             {lastModifiedBy && (
                                 <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-block">
@@ -582,13 +617,20 @@ export function TeacherAvailabilityView({
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                         <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-sm">Disponibilidad en Modo Borrador</p>
+                            <p className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
+                                <span>Disponibilidad en Modo Borrador</span>
+                                {activeScheduleName && (
+                                    <span className="font-mono text-[11px] font-bold text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30">
+                                        Horario: {activeScheduleName}
+                                    </span>
+                                )}
+                            </p>
                             <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
                                 {isAdminMode 
                                     ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Instructor"
-                                        ? `La disponibilidad fue editada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()} y permanece en modo borrador.`
-                                        : "El instructor aún puede editar su disponibilidad.")
-                                    : "Puedes configurar y modificar tus horas de disponibilidad de lunes a domingo. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
+                                        ? `La disponibilidad fue editada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()} y permanece en modo borrador para este horario.`
+                                        : "El instructor aún puede editar su disponibilidad para este horario.")
+                                    : "Puedes configurar y modificar tus horas de disponibilidad para este horario institucional. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
                             </p>
                             {lastModifiedBy && (
                                 <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-block">
@@ -751,8 +793,7 @@ export function TeacherAvailabilityView({
                                                     );
                                                 }
 
-                                                const styles = getSchedulePeriodStyles(slot.startTime);
-                                                const IconComp = styles.icon;
+                                                const styles = getSchedulePeriodStyles(slot.startTime, slot.endTime);
                                                 const effectiveTargetTeacherId = currentTeacherId || teacherId;
                                                 const slotAuthor = slot.createdBy || (effectiveTargetTeacherId ? { id: effectiveTargetTeacherId, name: currentTeacherName || "Instructor", role: "teacher" } : null);
                                                 const authorRoleLabel = getAuthorRoleLabel(slotAuthor, effectiveTargetTeacherId);
@@ -765,12 +806,43 @@ export function TeacherAvailabilityView({
                                                         className={`bg-gradient-to-br flex items-center justify-between p-2 rounded-lg border text-xs font-medium group transition-all duration-200 ${styles.gradient}`}
                                                     >
                                                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                                            <span className={`flex items-center gap-1.5 ${styles.text} truncate`}>
-                                                                <IconComp className="w-3.5 h-3.5 shrink-0" /> 
-                                                                <span className="font-mono font-bold tracking-tight">{slot.startTime} – {slot.endTime}</span>
-                                                                <span className="text-[10px] opacity-75 font-normal">({formatDuration(slot.startTime, slot.endTime)})</span>
-                                                                <span className="text-[10px] opacity-60">· {styles.label}</span>
-                                                            </span>
+                                                            <div className="flex items-center gap-1 shrink-0">
+                                                                {styles.touchesMorning && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <span className="text-sky-500 dark:text-sky-400 cursor-help inline-flex">
+                                                                                <Cloud className="w-3.5 h-3.5 shrink-0" />
+                                                                            </span>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top" className="text-[10px] py-0.5 px-1.5">Jornada Mañana</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                                {styles.touchesAfternoon && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <span className="text-amber-500 dark:text-amber-400 cursor-help inline-flex">
+                                                                                <Sun className="w-3.5 h-3.5 shrink-0" />
+                                                                            </span>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top" className="text-[10px] py-0.5 px-1.5">Jornada Tarde</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                                {styles.touchesNight && (
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <span className="text-purple-600 dark:text-purple-400 cursor-help inline-flex">
+                                                                                <Moon className="w-3.5 h-3.5 shrink-0" />
+                                                                            </span>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent side="top" className="text-[10px] py-0.5 px-1.5">Jornada Noche</TooltipContent>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </div>
+                                                            <div className={`flex items-center gap-1.5 ${styles.text} min-w-0 truncate`}>
+                                                                <span className="font-mono font-bold tracking-tight shrink-0">{slot.startTime} – {slot.endTime}</span>
+                                                                <span className="text-[10px] opacity-75 font-normal shrink-0">({formatDuration(slot.startTime, slot.endTime)})</span>
+                                                                <span className="text-[10px] opacity-60 truncate">· {styles.label}</span>
+                                                            </div>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
                                                                     <Badge 

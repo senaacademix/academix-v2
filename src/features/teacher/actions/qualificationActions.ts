@@ -142,23 +142,52 @@ export async function getTeacherQualificationsAction(teacherId: string, academic
         select: { id: true, name: true, startDate: true, endDate: true, isActive: true, isPublished: true }
     });
 
+    let isLocked = false;
+    let modifier = null;
+    let modifiedAt: Date | null = null;
+
+    if (targetScheduleId) {
+        const scheduleLock = await prisma.teacherScheduleLock.findUnique({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            include: {
+                lockedBy: { select: { id: true, name: true, role: true } }
+            }
+        });
+        if (scheduleLock) {
+            isLocked = scheduleLock.qualificationsLocked;
+            if (scheduleLock.lockedBy) {
+                modifier = scheduleLock.lockedBy;
+            }
+            modifiedAt = scheduleLock.updatedAt;
+        }
+    } else {
+        isLocked = teacher.qualifiedCoursesLocked || false;
+        modifier = teacher.qualificationsLastModifiedBy ? {
+            id: teacher.qualificationsLastModifiedBy.id,
+            name: teacher.qualificationsLastModifiedBy.name,
+            role: teacher.qualificationsLastModifiedBy.role
+        } : null;
+        modifiedAt = teacher.qualificationsUpdatedAt;
+    }
+
     return {
         teacherId,
         teacherName: teacher.name || "Profesor",
         programs: teacher.programs || [],
         qualifiedCourses: normalQualifiedCourses,
         qualificationsCreatedBy,
-        locked: teacher.qualifiedCoursesLocked || false,
+        locked: isLocked,
         schedules: schedules.map(s => ({
             ...s,
             isActive: isScheduleCurrent(s.startDate, s.endDate)
         })),
-        lastModifiedBy: teacher.qualificationsLastModifiedBy ? {
-            id: teacher.qualificationsLastModifiedBy.id,
-            name: teacher.qualificationsLastModifiedBy.name,
-            role: teacher.qualificationsLastModifiedBy.role
-        } : null,
-        updatedAt: teacher.qualificationsUpdatedAt
+        lastModifiedBy: modifier,
+        updatedAt: modifiedAt
     };
 }
 
@@ -179,11 +208,29 @@ export async function updateTeacherQualificationsAction(teacherId: string, cours
         }
     });
 
-    if (teacher?.qualifiedCoursesLocked && session.user.role !== "admin" && session.user.role !== "gestor") {
-        throw new Error("La configuración de materias está bloqueada y no se puede modificar.");
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    let isLocked = false;
+    if (targetScheduleId) {
+        const scheduleLock = await prisma.teacherScheduleLock.findUnique({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            }
+        });
+        if (scheduleLock) {
+            isLocked = scheduleLock.qualificationsLocked;
+        }
+    } else {
+        isLocked = teacher?.qualifiedCoursesLocked ?? false;
     }
 
-    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+    if (isLocked && session.user.role !== "admin" && session.user.role !== "gestor") {
+        throw new Error("La configuración de materias está bloqueada para este horario y no se puede modificar.");
+    }
+
     let hasChanges = false;
 
     if (targetScheduleId) {
@@ -247,48 +294,184 @@ export async function updateTeacherQualificationsAction(teacherId: string, cours
 }
 
 // Bloquea las asignaturas (publicar)
-export async function publishTeacherQualificationsAction(teacherId: string) {
+export async function publishTeacherQualificationsAction(teacherId: string, academicScheduleId?: string) {
     const session = await getSession();
     if (!session) throw new Error("Unauthorized");
     if (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.id !== teacherId) throw new Error("Unauthorized");
 
-    await prisma.user.update({
-        where: { id: teacherId },
-        data: { 
-            qualifiedCoursesLocked: true,
-            qualificationsLastModifiedById: session.user.id,
-            qualificationsUpdatedAt: new Date()
-        }
-    });
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    if (targetScheduleId) {
+        await prisma.teacherScheduleLock.upsert({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            update: {
+                qualificationsLocked: true,
+                lockedById: session.user.id
+            },
+            create: {
+                teacherId,
+                academicScheduleId: targetScheduleId,
+                qualificationsLocked: true,
+                lockedById: session.user.id
+            }
+        });
+    } else {
+        await prisma.user.update({
+            where: { id: teacherId },
+            data: { 
+                qualifiedCoursesLocked: true,
+                qualificationsLastModifiedById: session.user.id,
+                qualificationsUpdatedAt: new Date()
+            }
+        });
+    }
+
+    revalidatePath("/dashboard/admin/teachers");
+    revalidatePath("/dashboard/gestor/schedules");
 }
 
-// Desbloquea las asignaturas (por el admin)
-export async function unlockTeacherQualificationsAction(teacherId: string) {
+// Desbloquea las asignaturas (por el admin o gestor)
+export async function unlockTeacherQualificationsAction(teacherId: string, academicScheduleId?: string) {
     const session = await getSession();
     if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) throw new Error("Unauthorized");
     
-    await prisma.user.update({
-        where: { id: teacherId },
-        data: { 
-            qualifiedCoursesLocked: false,
-            qualificationsLastModifiedById: session.user.id,
-            qualificationsUpdatedAt: new Date()
-        }
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    if (targetScheduleId) {
+        await prisma.teacherScheduleLock.upsert({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            update: {
+                qualificationsLocked: false,
+                lockedById: session.user.id
+            },
+            create: {
+                teacherId,
+                academicScheduleId: targetScheduleId,
+                qualificationsLocked: false,
+                lockedById: session.user.id
+            }
+        });
+    } else {
+        await prisma.user.update({
+            where: { id: teacherId },
+            data: { 
+                qualifiedCoursesLocked: false,
+                qualificationsLastModifiedById: session.user.id,
+                qualificationsUpdatedAt: new Date()
+            }
+        });
+    }
+
+    // Audit log
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+        action: "UPDATE",
+        entity: "USER",
+        entityId: teacherId,
+        userId: session.user.id,
+        userName: session.user.name || "Admin",
+        userRole: session.user.role,
+        description: `Materias habilitadas de docente desbloqueadas para horario ${targetScheduleId || "general"}`,
+        success: true,
     });
+
     revalidatePath("/dashboard/admin/teachers");
+    revalidatePath("/dashboard/gestor/schedules");
     return { success: true };
 }
 
-export async function adminLockTeacherQualificationsAction(teacherId: string) {
+export async function adminLockTeacherQualificationsAction(teacherId: string, academicScheduleId?: string) {
     const session = await getSession();
     if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) throw new Error("Unauthorized");
     
-    await prisma.user.update({
-        where: { id: teacherId },
-        data: { 
-            qualifiedCoursesLocked: true,
-            qualificationsLastModifiedById: session.user.id,
-            qualificationsUpdatedAt: new Date()
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+
+    if (targetScheduleId) {
+        await prisma.teacherScheduleLock.upsert({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            },
+            update: {
+                qualificationsLocked: true,
+                lockedById: session.user.id
+            },
+            create: {
+                teacherId,
+                academicScheduleId: targetScheduleId,
+                qualificationsLocked: true,
+                lockedById: session.user.id
+            }
+        });
+    } else {
+        await prisma.user.update({
+            where: { id: teacherId },
+            data: { 
+                qualifiedCoursesLocked: true,
+                qualificationsLastModifiedById: session.user.id,
+                qualificationsUpdatedAt: new Date()
+            }
+        });
+    }
+
+    // Audit log
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+        action: "UPDATE",
+        entity: "USER",
+        entityId: teacherId,
+        userId: session.user.id,
+        userName: session.user.name || "Admin",
+        userRole: session.user.role,
+        description: `Materias habilitadas de instructor publicadas/aprobadas para horario ${targetScheduleId || "general"}`,
+        success: true,
+    });
+
+    revalidatePath("/dashboard/admin/teachers");
+    revalidatePath("/dashboard/gestor/schedules");
+    return { success: true };
+}
+
+// Bloqueo o desbloqueo unificado de Disponibilidad y Materias para un horario / trimestre
+export async function adminLockBothTeacherScheduleAction(teacherId: string, academicScheduleId: string, lock: boolean) {
+    const session = await getSession();
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) throw new Error("Unauthorized");
+    
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+    if (!targetScheduleId) {
+        throw new Error("Se requiere un horario académico específico.");
+    }
+
+    await prisma.teacherScheduleLock.upsert({
+        where: {
+            teacherId_academicScheduleId: {
+                teacherId,
+                academicScheduleId: targetScheduleId
+            }
+        },
+        update: {
+            availabilityLocked: lock,
+            qualificationsLocked: lock,
+            lockedById: session.user.id
+        },
+        create: {
+            teacherId,
+            academicScheduleId: targetScheduleId,
+            availabilityLocked: lock,
+            qualificationsLocked: lock,
+            lockedById: session.user.id
         }
     });
 
@@ -300,29 +483,109 @@ export async function adminLockTeacherQualificationsAction(teacherId: string) {
         entityId: teacherId,
         userId: session.user.id,
         userName: session.user.name || "Admin",
-        userRole: "admin",
-        description: `Materias habilitadas de instructor publicadas/aprobadas por administrador`,
+        userRole: session.user.role,
+        description: `${lock ? "Bloqueo" : "Desbloqueo"} conjunto de Disponibilidad y Materias para horario ${targetScheduleId}`,
         success: true,
     });
 
+    revalidatePath("/dashboard/admin/teachers");
+    revalidatePath("/dashboard/gestor/schedules");
+    return { success: true };
+}
+
+export async function getTeacherScheduleLockStatusAction(teacherId: string, academicScheduleId: string) {
+    const session = await getSession();
+    if (!session) throw new Error("Unauthorized");
+
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+    if (!targetScheduleId) {
+        return { availabilityLocked: false, qualificationsLocked: false, lockedBy: null, updatedAt: null };
+    }
+
+    const lock = await prisma.teacherScheduleLock.findUnique({
+        where: {
+            teacherId_academicScheduleId: {
+                teacherId,
+                academicScheduleId: targetScheduleId
+            }
+        },
+        include: {
+            lockedBy: { select: { id: true, name: true, role: true } }
+        }
+    });
+
+    if (lock) {
+        return {
+            availabilityLocked: lock.availabilityLocked,
+            qualificationsLocked: lock.qualificationsLocked,
+            allowPastAttendanceEdit: lock.allowPastAttendanceEdit ?? false,
+            lockedBy: lock.lockedBy,
+            updatedAt: lock.updatedAt
+        };
+    }
+
+    return {
+        availabilityLocked: false,
+        qualificationsLocked: false,
+        allowPastAttendanceEdit: false,
+        lockedBy: null,
+        updatedAt: null
+    };
+}
+
+export async function toggleTeacherSchedulePastAttendanceAction(teacherId: string, academicScheduleId: string, allow: boolean) {
+    const session = await getSession();
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) throw new Error("Unauthorized");
+    
+    const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
+    if (!targetScheduleId) {
+        throw new Error("Se requiere un horario académico específico.");
+    }
+
+    await prisma.teacherScheduleLock.upsert({
+        where: {
+            teacherId_academicScheduleId: {
+                teacherId,
+                academicScheduleId: targetScheduleId
+            }
+        },
+        update: {
+            allowPastAttendanceEdit: allow,
+            lockedById: session.user.id
+        },
+        create: {
+            teacherId,
+            academicScheduleId: targetScheduleId,
+            allowPastAttendanceEdit: allow,
+            availabilityLocked: false,
+            qualificationsLocked: false,
+            lockedById: session.user.id
+        }
+    });
+
+    // Audit log
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+        action: "UPDATE",
+        entity: "USER",
+        entityId: teacherId,
+        userId: session.user.id,
+        userName: session.user.name || "Gestor",
+        userRole: session.user.role,
+        description: `${allow ? "Habilitó" : "Restringió"} edición de fechas anteriores para el instructor en horario ${targetScheduleId}`,
+        success: true,
+    });
+
+    revalidatePath("/dashboard/gestor/schedules");
     revalidatePath("/dashboard/admin/teachers");
     return { success: true };
 }
 
 // Guarda las asignaturas y las bloquea (por el admin)
-export async function adminSaveTeacherQualificationsAction(teacherId: string, courseIds: string[]) {
+export async function adminSaveTeacherQualificationsAction(teacherId: string, courseIds: string[], academicScheduleId?: string) {
     const session = await getSession();
     if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) throw new Error("Unauthorized");
 
-    await prisma.user.update({
-        where: { id: teacherId },
-        data: {
-            qualifiedCourses: {
-                set: courseIds.map(id => ({ id }))
-            },
-            qualifiedCoursesLocked: true,
-            qualificationsLastModifiedById: session.user.id,
-            qualificationsUpdatedAt: new Date()
-        }
-    });
+    await updateTeacherQualificationsAction(teacherId, courseIds, academicScheduleId);
+    await adminLockTeacherQualificationsAction(teacherId, academicScheduleId);
 }

@@ -135,7 +135,7 @@ export function NavMain({
 
                         <span
                           className={cn(
-                            "truncate text-[12.5px] sm:text-[13px] tracking-tight leading-tight transition-all duration-150 group-data-[collapsible=icon]:hidden",
+                            "whitespace-nowrap text-[12.5px] sm:text-[13px] tracking-tight leading-tight transition-all duration-150 group-data-[collapsible=icon]:hidden",
                             active
                               ? "font-bold text-primary"
                               : "font-medium text-sidebar-foreground/80 group-hover/menu-button:text-sidebar-foreground group-hover/menu-button:font-semibold"
@@ -187,7 +187,7 @@ export function NavMain({
                         )}
                         <span
                           className={cn(
-                            "truncate text-[12.5px] sm:text-[13px] tracking-tight leading-tight transition-all duration-150 group-data-[collapsible=icon]:hidden",
+                            "whitespace-nowrap text-[12.5px] sm:text-[13px] tracking-tight leading-tight transition-all duration-150 group-data-[collapsible=icon]:hidden",
                             active
                               ? "font-bold text-primary"
                               : "font-medium text-sidebar-foreground/80 group-hover/menu-button:text-sidebar-foreground group-hover/menu-button:font-semibold"

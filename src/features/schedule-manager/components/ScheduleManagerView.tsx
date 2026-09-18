@@ -194,7 +194,6 @@ export function ScheduleManagerView({
 
   const handleRefresh = () => {
     router.refresh();
-    window.location.reload();
   };
 
   // Toggle Public / Draft status (Only allowed on active schedule)

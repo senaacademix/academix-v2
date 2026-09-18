@@ -363,11 +363,11 @@ export function GroupSelectorSidebar({
           <Select value={selectedTimelineId} onValueChange={setSelectedTimelineId}>
             <SelectTrigger className="w-full h-7 text-[11px] rounded-xl bg-primary/10 border-primary/20 font-semibold px-2 gap-1.5 shadow-2xs text-primary hover:bg-primary/15 transition-colors">
               <GitBranch className="w-3 h-3 text-primary shrink-0" />
-              <SelectValue placeholder="Línea de Tiempo" />
+              <SelectValue placeholder="Programa de Formación" />
             </SelectTrigger>
             <SelectContent className="rounded-xl text-xs max-h-56">
               <SelectItem value="all" className="font-bold cursor-pointer">
-                Todas las Líneas ({timelines.length})
+                Todos los Programas ({timelines.length})
               </SelectItem>
               {timelines.map((t) => (
                 <SelectItem key={t.id} value={t.id} className="cursor-pointer font-medium">
@@ -482,7 +482,7 @@ export function GroupSelectorSidebar({
                       <TooltipContent side="top" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
                         <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
                           <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
-                          <span>Línea de Tiempo</span>
+                          <span>Programa de Formación</span>
                         </div>
                         <p className="text-[11px] text-muted-foreground font-normal leading-tight">
                           {g.period.timeline.name}
