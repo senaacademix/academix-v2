@@ -58,6 +58,8 @@ export default async function Page({
                     courseId={courseId} 
                     initialStudents={students} 
                     courseTitle={course.title}
+                    voceroPrincipalId={course.group?.voceroPrincipalId}
+                    voceroSuplenteId={course.group?.voceroSuplenteId}
                 />
             </TabsContent>
             <TabsContent value="roulette" className="mt-0 outline-none">

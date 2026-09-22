@@ -60,15 +60,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatName, getInitials } from "@/lib/utils";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
+import { StudentVoceroBadge } from "@/components/StudentVoceroBadge";
 
 export function StudentManager({ 
     courseId, 
     initialStudents,
-    courseTitle 
+    courseTitle,
+    voceroPrincipalId,
+    voceroSuplenteId
 }: { 
     courseId: string, 
     initialStudents: any[],
-    courseTitle: string
+    courseTitle: string,
+    voceroPrincipalId?: string | null,
+    voceroSuplenteId?: string | null
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -330,9 +335,10 @@ export function StudentManager({
                                                                     </TableCell>
                                                                     <TableCell className="font-medium p-2">
                                                                         <div className="flex flex-col">
-                                                                            <span className="flex items-center gap-1.5">
+                                                                            <span className="flex items-center gap-1.5 flex-wrap">
                                                                                 <span>{formatName(student.name, student.profile)}</span>
                                                                                 <StudentNovedadBadge novedad={student.profile?.novedad} color={student.profile?.novedadColor} />
+                                                                                <StudentVoceroBadge size="sm" role={student.id === voceroPrincipalId ? "PRINCIPAL" : student.id === voceroSuplenteId ? "SUPLENTE" : null} />
                                                                             </span>
                                                                             <span className="text-[10px] text-muted-foreground sm:hidden">
                                                                                 {student.profile?.identificacion || student.email}
@@ -381,9 +387,10 @@ export function StudentManager({
                                                     <AvatarFallback>{getInitials(formatName(selectedStudent.name, selectedStudent.profile))}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex-1">
-                                                     <p className="font-medium text-sm flex items-center gap-1.5">
+                                                     <p className="font-medium text-sm flex items-center gap-1.5 flex-wrap">
                                                          <span>{formatName(selectedStudent.name, selectedStudent.profile)}</span>
                                                          <StudentNovedadBadge novedad={selectedStudent.profile?.novedad} color={selectedStudent.profile?.novedadColor} />
+                                                         <StudentVoceroBadge size="sm" role={selectedStudent.id === voceroPrincipalId ? "PRINCIPAL" : selectedStudent.id === voceroSuplenteId ? "SUPLENTE" : null} />
                                                      </p>
                                                     <p className="text-xs text-muted-foreground">{selectedStudent.email}</p>
                                                     {selectedStudent.profile?.identificacion && (
@@ -507,9 +514,10 @@ export function StudentManager({
                                         <AvatarFallback>{getInitials(formatName(enrollment.user.name, enrollment.user.profile))}</AvatarFallback>
                                     </Avatar>
                                 </TableCell>
-                                <TableCell className="font-medium flex items-center gap-1.5">
+                                <TableCell className="font-medium flex items-center gap-1.5 flex-wrap">
                                     <span>{formatName(enrollment.user.name, enrollment.user.profile)}</span>
                                     <StudentNovedadBadge novedad={enrollment.user.profile?.novedad} color={enrollment.user.profile?.novedadColor} />
+                                    <StudentVoceroBadge size="sm" role={enrollment.user.id === voceroPrincipalId ? "PRINCIPAL" : enrollment.user.id === voceroSuplenteId ? "SUPLENTE" : null} />
                                 </TableCell>
                                 <TableCell>{enrollment.user.profile?.identificacion || "-"}</TableCell>
                                 <TableCell className="truncate max-w-[200px]">{enrollment.user.email}</TableCell>

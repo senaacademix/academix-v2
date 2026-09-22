@@ -80,6 +80,9 @@ model User {
   observedPrograms             Program[]         @relation("ObserverPrograms")
   observedGroups               Group[]           @relation("ObserverGroups")
   reportedScheduleNovelties    ScheduleNovelty[] @relation("ReportedNovelties")
+  electionsCreated             GroupElection[]   @relation("TeacherElections")
+  candidacies                  ElectionCandidate[] @relation("StudentCandidacies")
+  electionVotes                ElectionVote[]    @relation("StudentVotes")
 
   @@unique([email])
   @@map("user")
@@ -476,6 +479,10 @@ model Group {
   scheduleNovelties ScheduleNovelty[]
   scheduleEvents ScheduleEvent[]
   groupEnrollments GroupEnrollment[]
+  elections GroupElection[]
+
+  voceroPrincipalId String?
+  voceroSuplenteId  String?
 
   @@map("group")
 }
@@ -782,6 +789,68 @@ model GroupEnrollment {
   @@unique([studentId, groupId])
   @@map("group_enrollment")
 }
+
+enum ElectionStatus {
+  POSTULATION
+  VOTING
+  CLOSED
+  CANCELLED
+}
+
+model GroupElection {
+  id                  String              @id @default(cuid())
+  groupId             String
+  group               Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdByTeacherId  String
+  createdByTeacher    User                @relation("TeacherElections", fields: [createdByTeacherId], references: [id], onDelete: Cascade)
+  title               String              @default("Elección de Vocero y Suplente")
+  description         String?
+  status              ElectionStatus      @default(POSTULATION)
+  allowBlankVote      Boolean             @default(true)
+  minCandidates       Int                 @default(2)
+  startedAt           DateTime?
+  endedAt             DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  candidates          ElectionCandidate[]
+  votes               ElectionVote[]
+
+  @@index([groupId, status])
+  @@map("group_election")
+}
+
+model ElectionCandidate {
+  id          String         @id @default(cuid())
+  electionId  String
+  election    GroupElection  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User           @relation("StudentCandidacies", fields: [studentId], references: [id], onDelete: Cascade)
+  proposal    String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  votes       ElectionVote[]
+
+  @@unique([electionId, studentId])
+  @@map("election_candidate")
+}
+
+model ElectionVote {
+  id           String             @id @default(cuid())
+  electionId   String
+  election     GroupElection      @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User               @relation("StudentVotes", fields: [studentId], references: [id], onDelete: Cascade)
+  candidateId  String?
+  candidate    ElectionCandidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  isBlankVote  Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+
+  @@unique([electionId, studentId])
+  @@map("election_vote")
+}
+
 
 
 

@@ -17,6 +17,7 @@ import { getCourseActivities, createActivity, updateActivity, deleteActivity, sa
 import { formatName, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
+import { StudentVoceroBadge } from "@/components/StudentVoceroBadge";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,9 +26,11 @@ import { Card, CardContent } from "@/components/ui/card";
 interface GradeManagerPanelProps {
   courses: any[];
   students: any[];
+  voceroPrincipalId?: string | null;
+  voceroSuplenteId?: string | null;
 }
 
-export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps) {
+export function GradeManagerPanel({ courses, students, voceroPrincipalId, voceroSuplenteId }: GradeManagerPanelProps) {
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [activities, setActivities] = useState<any[]>([]);
   const [usePercentageWeights, setUsePercentageWeights] = useState(true);
@@ -463,9 +466,10 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
                         <AvatarFallback className="text-[10px] font-bold bg-primary/5 text-primary">{getInitials(formatName(student.name, student.profile))}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className="leading-tight flex items-center gap-1.5">
+                        <span className="leading-tight flex items-center gap-1.5 flex-wrap">
                           <span>{formatName(student.name, student.profile)}</span>
                           <StudentNovedadBadge novedad={student.profile?.novedad} color={student.profile?.novedadColor} />
+                          <StudentVoceroBadge size="sm" role={student.id === voceroPrincipalId ? "PRINCIPAL" : student.id === voceroSuplenteId ? "SUPLENTE" : null} />
                         </span>
                         <span className="text-[10px] text-muted-foreground/80 font-normal">{student.email}</span>
                       </div>
@@ -692,9 +696,10 @@ export function GradeManagerPanel({ courses, students }: GradeManagerPanelProps)
                               <AvatarImage src={student.image} />
                               <AvatarFallback className="text-[10px]">{getInitials(formatName(student.name, student.profile))}</AvatarFallback>
                             </Avatar>
-                            <span className="flex items-center gap-1.5">
+                            <span className="flex items-center gap-1.5 flex-wrap">
                               <span>{formatName(student.name, student.profile)}</span>
                               <StudentNovedadBadge novedad={student.profile?.novedad} color={student.profile?.novedadColor} />
+                              <StudentVoceroBadge size="sm" role={student.id === voceroPrincipalId ? "PRINCIPAL" : student.id === voceroSuplenteId ? "SUPLENTE" : null} />
                             </span>
                           </div>
                         </TableCell>

@@ -82,7 +82,7 @@ import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock } from "lucide-react";
+import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, Award, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -116,6 +116,7 @@ import { CourseDocLinks } from "./CourseDocLinks";
 import { GroupAnalyticsPanel } from "@/components/analytics/GroupAnalyticsPanel";
 import { StudentRecords } from "@/features/student/components/StudentRecords";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
+import { StudentVoceroBadge } from "@/components/StudentVoceroBadge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { GradeManagerPanel } from "./GradeManagerPanel";
 import { TeacherHelpModal } from "./TeacherHelpModal";
@@ -2117,6 +2118,24 @@ const handleOpenAnalytics = async () => {
                                             <Badge variant="outline" className="text-xs font-bold text-muted-foreground bg-background/80 px-3 py-1.5 rounded-xl border-border shadow-2xs">
                                                 Total: <strong className="text-primary font-black ml-1">{filteredStudents.length}</strong> {filteredStudents.length === 1 ? "aprendiz" : "aprendices"}
                                             </Badge>
+                                            {selectedGroup?.voceroPrincipalId && (() => {
+                                                const vocero = (selectedGroup.students || []).find((st: any) => st.id === selectedGroup.voceroPrincipalId);
+                                                return vocero ? (
+                                                    <Badge variant="outline" className="text-xs font-black text-amber-800 dark:text-amber-300 bg-amber-500/15 border-amber-500/30 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                                                        <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                                        <span>Vocero: <strong className="font-black">{formatName(vocero.name, vocero.profile)}</strong></span>
+                                                    </Badge>
+                                                ) : null;
+                                            })()}
+                                            {selectedGroup?.voceroSuplenteId && (() => {
+                                                const suplente = (selectedGroup.students || []).find((st: any) => st.id === selectedGroup.voceroSuplenteId);
+                                                return suplente ? (
+                                                    <Badge variant="outline" className="text-xs font-black text-sky-800 dark:text-sky-300 bg-sky-500/15 border-sky-500/30 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                                                        <ShieldCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                                                        <span>Suplente: <strong className="font-black">{formatName(suplente.name, suplente.profile)}</strong></span>
+                                                    </Badge>
+                                                ) : null;
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
@@ -2170,12 +2189,21 @@ const handleOpenAnalytics = async () => {
                                         )}
                                     </div>
 
-                                    {filteredStudents.map((s: any) => (
+                                    {filteredStudents.map((s: any) => {
+                                        const isVoceroPrincipal = s.id === selectedGroup?.voceroPrincipalId;
+                                        const isVoceroSuplente = s.id === selectedGroup?.voceroSuplenteId;
+                                        return (
                                         <div
                                             key={s.id}
                                             className={cn(
                                                 "p-3.5 rounded-2xl border bg-card shadow-xs transition-all flex flex-col gap-2.5",
-                                                selectedStudents.includes(s.id) ? "border-primary/50 bg-primary/5 shadow-primary/5" : "border-border/70"
+                                                selectedStudents.includes(s.id) 
+                                                    ? "border-primary/50 bg-primary/5 shadow-primary/5" 
+                                                    : isVoceroPrincipal 
+                                                    ? "border-amber-500/50 bg-amber-500/[0.04] shadow-amber-500/10 ring-1 ring-amber-500/20" 
+                                                    : isVoceroSuplente 
+                                                    ? "border-sky-500/50 bg-sky-500/[0.04] shadow-sky-500/10 ring-1 ring-sky-500/20" 
+                                                    : "border-border/70"
                                             )}
                                         >
                                             {/* Top info section: Full width for name, doc and contact */}
@@ -2186,7 +2214,14 @@ const handleOpenAnalytics = async () => {
                                                         onCheckedChange={() => toggleStudentSelection(s.id)}
                                                     />
                                                 </div>
-                                                <Avatar className="h-10 w-10 border bg-primary/10 text-primary font-black shrink-0 border-primary/20">
+                                                <Avatar className={cn(
+                                                    "h-10 w-10 border font-black shrink-0",
+                                                    isVoceroPrincipal 
+                                                        ? "border-amber-500/60 bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/30" 
+                                                        : isVoceroSuplente 
+                                                        ? "border-sky-500/60 bg-sky-500/15 text-sky-700 dark:text-sky-300 ring-2 ring-sky-500/30" 
+                                                        : "border-primary/20 bg-primary/10 text-primary"
+                                                )}>
                                                     <AvatarImage src={s.image} />
                                                     <AvatarFallback className="text-xs font-black">{s.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
                                                 </Avatar>
@@ -2194,6 +2229,7 @@ const handleOpenAnalytics = async () => {
                                                     <div className="font-extrabold text-xs text-foreground flex items-center gap-1.5 flex-wrap">
                                                         <span className="break-words leading-tight">{formatName(s.name, s.profile)}</span>
                                                         <StudentNovedadBadge novedad={s.profile?.novedad} color={s.profile?.novedadColor} />
+                                                        <StudentVoceroBadge role={isVoceroPrincipal ? "PRINCIPAL" : isVoceroSuplente ? "SUPLENTE" : null} />
                                                     </div>
                                                     <div className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
                                                         <span className="font-mono">Doc: <strong className="text-foreground/90">{s.profile?.identificacion || "S/D"}</strong></span>
@@ -2290,7 +2326,7 @@ const handleOpenAnalytics = async () => {
                                                 </Button>
                                             </div>
                                         </div>
-                                    ))}
+                                    ); })}
                                     {filteredStudents.length === 0 && (
                                         <div className="text-center py-8 text-muted-foreground text-xs bg-muted/20 rounded-2xl border border-dashed border-border">
                                             No se encontraron aprendices
@@ -2318,6 +2354,8 @@ const handleOpenAnalytics = async () => {
                                         <TableBody>
                                             {filteredStudents.map((s: any) => {
                                                 const isChecked = selectedStudents.includes(s.id);
+                                                const isVoceroPrincipal = s.id === selectedGroup?.voceroPrincipalId;
+                                                const isVoceroSuplente = s.id === selectedGroup?.voceroSuplenteId;
                                                 return (
                                                     <TableRow 
                                                         key={s.id} 
@@ -2325,6 +2363,10 @@ const handleOpenAnalytics = async () => {
                                                             "transition-colors duration-150 border-b border-border/50",
                                                             isChecked 
                                                                 ? "bg-primary/5 hover:bg-primary/10" 
+                                                                : isVoceroPrincipal
+                                                                ? "bg-amber-500/[0.05] hover:bg-amber-500/[0.09]"
+                                                                : isVoceroSuplente
+                                                                ? "bg-sky-500/[0.05] hover:bg-sky-500/[0.09]"
                                                                 : "hover:bg-muted/30"
                                                         )}
                                                     >
@@ -2336,16 +2378,31 @@ const handleOpenAnalytics = async () => {
                                                         </TableCell>
                                                         <TableCell className="py-3">
                                                             <div className="flex items-center gap-3">
-                                                                <Avatar className="h-9 w-9 border border-primary/20 bg-primary/10 text-primary shadow-2xs shrink-0">
+                                                                <Avatar className={cn(
+                                                                    "h-9 w-9 border shadow-2xs shrink-0",
+                                                                    isVoceroPrincipal 
+                                                                        ? "border-amber-500/60 bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/30" 
+                                                                        : isVoceroSuplente 
+                                                                        ? "border-sky-500/60 bg-sky-500/15 text-sky-700 dark:text-sky-300 ring-2 ring-sky-500/30" 
+                                                                        : "border-primary/20 bg-primary/10 text-primary"
+                                                                )}>
                                                                     <AvatarImage src={s.image} />
-                                                                    <AvatarFallback className="text-xs font-black text-primary">
+                                                                    <AvatarFallback className={cn(
+                                                                        "text-xs font-black",
+                                                                        isVoceroPrincipal 
+                                                                            ? "text-amber-700 dark:text-amber-300" 
+                                                                            : isVoceroSuplente 
+                                                                            ? "text-sky-700 dark:text-sky-300" 
+                                                                            : "text-primary"
+                                                                    )}>
                                                                         {s.name?.substring(0, 2).toUpperCase()}
                                                                     </AvatarFallback>
                                                                 </Avatar>
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-bold text-sm text-foreground flex items-center gap-2">
+                                                                    <span className="font-bold text-sm text-foreground flex items-center gap-2 flex-wrap">
                                                                         <span>{formatName(s.name, s.profile)}</span>
                                                                         <StudentNovedadBadge novedad={s.profile?.novedad} color={s.profile?.novedadColor} />
+                                                                        <StudentVoceroBadge size="sm" role={isVoceroPrincipal ? "PRINCIPAL" : isVoceroSuplente ? "SUPLENTE" : null} />
                                                                     </span>
                                                                     <span className="text-[11px] text-muted-foreground font-mono md:hidden">
                                                                         ID: {s.profile?.identificacion || "—"}
@@ -2496,6 +2553,8 @@ const handleOpenAnalytics = async () => {
                                 <GradeManagerPanel 
                                     courses={selectedGroup.courses || []}
                                     students={filteredStudents}
+                                    voceroPrincipalId={selectedGroup.voceroPrincipalId}
+                                    voceroSuplenteId={selectedGroup.voceroSuplenteId}
                                 />
                             </TabsContent>
 
@@ -2861,6 +2920,7 @@ const handleOpenAnalytics = async () => {
                                                                     <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                                                                         <span className="truncate">{formatName(s.name, s.profile)}</span>
                                                                         <StudentNovedadBadge novedad={s.profile?.novedad} color={s.profile?.novedadColor} />
+                                                                        <StudentVoceroBadge size="sm" role={s.id === selectedGroup?.voceroPrincipalId ? "PRINCIPAL" : s.id === selectedGroup?.voceroSuplenteId ? "SUPLENTE" : null} />
                                                                         {isDualLateAndLeave && (
                                                                             <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60">
                                                                                 Tarde + Retiro
@@ -3096,9 +3156,10 @@ const handleOpenAnalytics = async () => {
                                                                                     </AvatarFallback>
                                                                                 </Avatar>
                                                                                 <div className="min-w-0">
-                                                                                    <div className="font-semibold text-sm text-foreground truncate max-w-[280px] flex items-center gap-1.5">
+                                                                                    <div className="font-semibold text-sm text-foreground truncate max-w-[280px] flex items-center gap-1.5 flex-wrap">
                                                                                         <span>{formatName(s.name, s.profile)}</span>
                                                                                         <StudentNovedadBadge novedad={s.profile?.novedad} color={s.profile?.novedadColor} />
+                                                                                        <StudentVoceroBadge size="sm" role={s.id === selectedGroup?.voceroPrincipalId ? "PRINCIPAL" : s.id === selectedGroup?.voceroSuplenteId ? "SUPLENTE" : null} />
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -4257,9 +4318,10 @@ const handleOpenAnalytics = async () => {
                                                                             <td className={`sm:sticky sm:left-0 z-10 px-4 py-2 font-semibold text-foreground border-r border-border/40 whitespace-nowrap transition-colors ${
                                                                                 i % 2 === 0 ? "bg-background" : "bg-neutral-50 dark:bg-zinc-900"
                                                                             } group-hover/row:bg-muted`}>
-                                                                                <div className="flex items-center gap-2">
+                                                                                <div className="flex items-center gap-2 flex-wrap">
                                                                                     <span>{formatName(s.name, s.profile)}</span>
                                                                                     <StudentNovedadBadge novedad={s.profile?.novedad} color={s.profile?.novedadColor} />
+                                                                                    <StudentVoceroBadge size="sm" role={s.id === selectedGroup?.voceroPrincipalId ? "PRINCIPAL" : s.id === selectedGroup?.voceroSuplenteId ? "SUPLENTE" : null} />
                                                                                 </div>
                                                                             </td>
                                                                             {displayedDays.map(d => {
@@ -5821,6 +5883,7 @@ const handleOpenAnalytics = async () => {
                                             {formatName(selectedStudentForAnalytics.name, selectedStudentForAnalytics.profile)}
                                         </span>
                                         <StudentNovedadBadge novedad={selectedStudentForAnalytics.profile?.novedad} color={selectedStudentForAnalytics.profile?.novedadColor} />
+                                        <StudentVoceroBadge role={selectedStudentForAnalytics.id === selectedGroup?.voceroPrincipalId ? "PRINCIPAL" : selectedStudentForAnalytics.id === selectedGroup?.voceroSuplenteId ? "SUPLENTE" : null} />
                                     </DialogTitle>
                                     <DialogDescription className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
                                         <span>{selectedStudentForAnalytics.email}</span>

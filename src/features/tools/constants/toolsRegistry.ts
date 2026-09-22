@@ -2,6 +2,7 @@ import {
     FileSpreadsheet,
     Dices,
     Shuffle,
+    Award,
     LucideIcon
 } from "lucide-react";
 
@@ -88,5 +89,28 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
         ],
         author: "AcademiX Instructor",
         allowedRoles: ["teacher"]
+    },
+    {
+        id: "vocero-election",
+        title: "Elección de Vocero y Suplente",
+        shortTitle: "Elección de Vocero",
+        description: "Habilita y gestiona el proceso democrático de postulación, votación virtual en tiempo real y escrutinio transparente para elegir el Vocero Principal y Vocero Suplente de la ficha.",
+        category: "Dinámicas",
+        status: "available",
+        isAutonomous: false,
+        version: "v1.0",
+        icon: Award,
+        color: "text-amber-500 dark:text-amber-400",
+        badgeBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25",
+        features: [
+            "Habilitación controlada de postulaciones por ficha",
+            "Control de quórum mínimo (mínimo 2 postulantes requeridos)",
+            "Voto secreto, definitivo e irreversible para aprendices",
+            "Opción democrática oficial de Voto en Blanco",
+            "Escrutinio y conteo en tiempo real 100% transparente",
+            "Proclamación oficial de Vocero Principal y Suplente"
+        ],
+        author: "AcademiX Elecciones",
+        allowedRoles: ["teacher", "admin"]
     }
 ];

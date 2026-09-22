@@ -6,6 +6,7 @@ import { ToolsHub } from "./ToolsHub";
 import { SofiaReportsTool } from "./SofiaReportsTool";
 import { TeacherRouletteTool } from "./TeacherRouletteTool";
 import { TeacherGroupGeneratorTool } from "./TeacherGroupGeneratorTool";
+import { TeacherVoceroElectionTool } from "./TeacherVoceroElectionTool";
 import { ArrowLeft, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TOOLS_REGISTRY } from "../constants/toolsRegistry";
@@ -61,6 +62,14 @@ function ToolsDashboardContent({ initialGroups = [], userRole = "gestor" }: Tool
             return (
                 <div className="h-full flex-1 flex flex-col min-h-0 overflow-hidden animate-in fade-in duration-300">
                     <TeacherGroupGeneratorTool groups={initialGroups} onBack={handleBackToHub} />
+                </div>
+            );
+        }
+
+        if (selectedToolId === "vocero-election") {
+            return (
+                <div className="h-full flex-1 flex flex-col min-h-0 animate-in fade-in duration-300">
+                    <TeacherVoceroElectionTool groups={initialGroups} onBack={handleBackToHub} />
                 </div>
             );
         }
