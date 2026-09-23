@@ -36,7 +36,8 @@ if (process.env.NODE_ENV === "production") {
   const adapter = new PrismaPg(pool);
   prisma = new PrismaClient({ adapter });
 } else {
-  if (!globalForPrisma.prisma) {
+  // If prisma was cached in globalThis before running prisma generate, recreate it
+  if (!globalForPrisma.prisma || !(globalForPrisma.prisma as any).groupElection) {
     const pool = createPool();
     globalForPrisma.pgPool = pool;
     
@@ -48,4 +49,5 @@ if (process.env.NODE_ENV === "production") {
   prisma = globalForPrisma.prisma;
 }
 
+export { prisma };
 export default prisma;

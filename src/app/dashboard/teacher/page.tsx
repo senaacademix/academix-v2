@@ -8,6 +8,9 @@ import prisma from "@/lib/prisma";
 
 import { getFormattedTodayDate, isScheduleCurrent } from "@/lib/dateUtils";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function Page() {
   const session = await auth.api.getSession({ headers: await headers() });
   const user = session?.user as any;

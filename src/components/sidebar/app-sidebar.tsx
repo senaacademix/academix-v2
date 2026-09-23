@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { BookOpen, Calendar, Users, FileText, Activity, ScrollText, Home, Wrench, ClipboardList, Settings2, GraduationCap, Building2, CalendarDays, BarChart3, UserCog, CalendarClock, Sparkles, RotateCcw, School, Globe, Eye } from "lucide-react"
+import { BookOpen, Calendar, Users, FileText, Activity, ScrollText, Home, Wrench, ClipboardList, Settings2, GraduationCap, Building2, CalendarDays, BarChart3, UserCog, CalendarClock, Sparkles, RotateCcw, School, Globe, Eye, Award } from "lucide-react"
 
 import { NavMain, NavGroup } from "@/components/sidebar/nav-main"
 import { NavUser } from "@/components/sidebar/nav-user"
@@ -248,6 +248,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     title: "Programación Horaria",
                     url: "/dashboard/student/schedule",
                     icon: CalendarClock,
+                    isActive: false,
+                  },
+                  {
+                    title: "Elección de Vocero",
+                    url: "/dashboard/student/elections",
+                    icon: Award,
                     isActive: false,
                   },
                 ]
