@@ -234,7 +234,7 @@ export function TeacherUsersManagement({
     startTransition(async () => {
       try {
         const fullName = `${newNombres.trim()} ${newApellido.trim()}`;
-        const user = await createUserAction({
+        const res = await createUserAction({
           email: newEmail.trim().toLowerCase(),
           name: fullName,
           role: "teacher",
@@ -246,6 +246,14 @@ export function TeacherUsersManagement({
           programId: effectiveProgramId,
         });
 
+        if (!res || !res.success) {
+          toast.error("No se pudo registrar el instructor", {
+            description: res?.error || "Ocurrió un error inesperado al procesar la solicitud.",
+          });
+          return;
+        }
+
+        const user = res.user;
         const newTeacher: TeacherUser = {
           id: user.id,
           name: user.name,
@@ -269,7 +277,7 @@ export function TeacherUsersManagement({
         });
 
         onTeacherCreated?.(newTeacher);
-        toast.success("Instructor registrado exitosamente");
+        toast.success(res.message || "Instructor registrado exitosamente");
         setCreateDialogOpen(false);
         resetForm();
         setSearchQuery("");

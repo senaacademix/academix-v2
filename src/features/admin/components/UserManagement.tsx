@@ -579,7 +579,7 @@ export function UserManagement({
         startTransition(async () => {
             try {
                 const fullName = `${newNombres.trim()} ${newApellido.trim()}`;
-                const user = await createUserAction({
+                const res = await createUserAction({
                     email: newUserEmail.trim().toLowerCase(),
                     name: fullName,
                     role: "student",
@@ -590,6 +590,15 @@ export function UserManagement({
                     apellido: newApellido.trim(),
                     telefono: newTelefono.trim() || undefined
                 });
+
+                if (!res || !res.success) {
+                    toast.error("Error al crear usuario", {
+                        description: res?.error || "No se pudo registrar el usuario"
+                    });
+                    return;
+                }
+
+                const user = res.user;
 
                 const newUserItem: User = {
                     id: user.id,

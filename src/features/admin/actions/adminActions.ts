@@ -504,134 +504,72 @@ export async function createUserAction(data: {
     nombres?: string;
     apellido?: string;
     telefono?: string;
-}) {
-    await requireAdmin();
-
-    const emailNorm = data.email.trim().toLowerCase();
-    const idenNorm = data.identificacion ? data.identificacion.trim() : undefined;
-    const nameNorm = data.name.trim();
-
-    // Validar programId si fue enviado
-    let validProgramId: string | undefined = undefined;
-    if (data.programId && data.programId !== "none" && data.programId !== "all") {
-        const prog = await prisma.program.findUnique({
-            where: { id: data.programId },
-            select: { id: true }
-        });
-        if (prog) {
-            validProgramId = prog.id;
+}): Promise<{ success: true; user: any; message?: string } | { success: false; error: string }> {
+    try {
+        const session = await getSession();
+        if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
+            return { success: false, error: "No tienes permisos de Administrador o Gestor para realizar esta acción." };
         }
-    }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-        where: { email: emailNorm },
-        include: {
-            profile: true,
-            programs: { select: { id: true, name: true } },
-            group: { select: { id: true, name: true } }
+        const emailNorm = data.email?.trim().toLowerCase();
+        const idenNorm = data.identificacion ? data.identificacion.trim() : undefined;
+        const nameNorm = data.name?.trim();
+
+        if (!emailNorm || !nameNorm) {
+            return { success: false, error: "El correo electrónico y el nombre son obligatorios." };
         }
-    });
 
-    if (existingUser) {
-        if (existingUser.role === "teacher" && data.role === "teacher") {
-            if (validProgramId) {
-                const alreadyConnected = existingUser.programs.some(p => p.id === validProgramId);
-                if (alreadyConnected) {
-                    throw new Error("El instructor ya se encuentra registrado y vinculado a esta área de formación.");
-                }
-
-                const updatedUser = await prisma.user.update({
-                    where: { id: existingUser.id },
-                    data: {
-                        programs: {
-                            connect: { id: validProgramId }
-                        },
-                        profile: existingUser.profile ? {
-                            update: {
-                                ...(idenNorm && !existingUser.profile.identificacion ? { identificacion: idenNorm } : {}),
-                                ...(data.telefono && !existingUser.profile.telefono ? { telefono: data.telefono.trim() } : {}),
-                            }
-                        } : (idenNorm || data.nombres || data.apellido) ? {
-                            create: {
-                                identificacion: idenNorm || "",
-                                nombres: data.nombres || nameNorm.split(" ")[0] || "",
-                                apellido: data.apellido || nameNorm.split(" ").slice(1).join(" ") || "",
-                                telefono: data.telefono?.trim() || null,
-                                dataProcessingConsent: true,
-                                dataProcessingConsentDate: new Date(),
-                            }
-                        } : undefined
-                    },
-                    include: {
-                        profile: true,
-                        group: { select: { id: true, name: true } }
-                    }
-                });
-
-                const { auditLogger } = await import("@/features/admin/services/auditLogger");
-                const session = await getSession();
-                await auditLogger.log({
-                    action: "CREATE",
-                    entity: "USER",
-                    entityId: updatedUser.id,
-                    userId: session?.user.id,
-                    userName: session?.user.name || "Admin",
-                    userRole: (session?.user.role as any) || "admin",
-                    description: `Instructor existente ${updatedUser.name} (${emailNorm}) vinculado al programa ID ${validProgramId}`,
-                    metadata: { email: emailNorm, role: data.role, programId: validProgramId },
-                    success: true,
-                });
-
-                revalidatePath("/dashboard/admin/users");
-                revalidatePath("/dashboard/gestor/users");
-                revalidatePath("/dashboard/admin/courses");
-                revalidatePath("/dashboard/gestor/courses");
-                revalidatePath(`/dashboard/admin/courses?programId=${validProgramId}`);
-                revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
-                revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
-
-                return updatedUser;
-            } else {
-                throw new Error("Ya existe un instructor registrado con este correo electrónico en la institución.");
+        // Validar programId si fue enviado
+        let validProgramId: string | undefined = undefined;
+        if (data.programId && data.programId !== "none" && data.programId !== "all") {
+            const prog = await prisma.program.findUnique({
+                where: { id: data.programId },
+                select: { id: true }
+            });
+            if (prog) {
+                validProgramId = prog.id;
             }
-        } else {
-            throw new Error(`Ya existe un usuario registrado con este correo electrónico con el rol de ${existingUser.role || "usuario"}.`);
         }
-    }
 
-    if (idenNorm) {
-        const existingProfile = await prisma.profile.findFirst({
-            where: { identificacion: idenNorm },
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({
+            where: { email: emailNorm },
             include: {
-                user: {
-                    include: {
-                        profile: true,
-                        programs: { select: { id: true, name: true } },
-                        group: { select: { id: true, name: true } }
-                    }
-                }
+                profile: true,
+                programs: { select: { id: true, name: true } },
+                group: { select: { id: true, name: true } }
             }
         });
-        if (existingProfile) {
-            if (existingProfile.user?.role === "teacher" && data.role === "teacher") {
+
+        if (existingUser) {
+            if (existingUser.role === "teacher" && data.role === "teacher") {
                 if (validProgramId) {
-                    const alreadyConnected = existingProfile.user.programs.some(p => p.id === validProgramId);
+                    const alreadyConnected = existingUser.programs.some(p => p.id === validProgramId);
                     if (alreadyConnected) {
-                        throw new Error(`Ya existe un instructor con el documento ${idenNorm} vinculado a esta área.`);
+                        return { success: false, error: "El instructor ya se encuentra registrado y vinculado a esta área de formación." };
                     }
 
                     const updatedUser = await prisma.user.update({
-                        where: { id: existingProfile.userId },
+                        where: { id: existingUser.id },
                         data: {
                             programs: {
                                 connect: { id: validProgramId }
                             },
-                            profile: {
+                            profile: existingUser.profile ? {
                                 update: {
-                                    ...(data.telefono && !existingProfile.telefono ? { telefono: data.telefono.trim() } : {})
+                                    ...(idenNorm && !existingUser.profile.identificacion ? { identificacion: idenNorm } : {}),
+                                    ...(data.telefono && !existingUser.profile.telefono ? { telefono: data.telefono.trim() } : {}),
                                 }
-                            }
+                            } : (idenNorm || data.nombres || data.apellido) ? {
+                                create: {
+                                    identificacion: idenNorm || "",
+                                    nombres: data.nombres || nameNorm.split(" ")[0] || "",
+                                    apellido: data.apellido || nameNorm.split(" ").slice(1).join(" ") || "",
+                                    telefono: data.telefono?.trim() || null,
+                                    dataProcessingConsent: true,
+                                    dataProcessingConsentDate: new Date(),
+                                }
+                            } : undefined
                         },
                         include: {
                             profile: true,
@@ -640,7 +578,6 @@ export async function createUserAction(data: {
                     });
 
                     const { auditLogger } = await import("@/features/admin/services/auditLogger");
-                    const session = await getSession();
                     await auditLogger.log({
                         action: "CREATE",
                         entity: "USER",
@@ -648,8 +585,8 @@ export async function createUserAction(data: {
                         userId: session?.user.id,
                         userName: session?.user.name || "Admin",
                         userRole: (session?.user.role as any) || "admin",
-                        description: `Instructor con documento ${idenNorm} vinculado al programa ID ${validProgramId}`,
-                        metadata: { email: emailNorm, role: data.role, programId: validProgramId, identificacion: idenNorm },
+                        description: `Instructor existente ${updatedUser.name} (${emailNorm}) vinculado al programa ID ${validProgramId}`,
+                        metadata: { email: emailNorm, role: data.role, programId: validProgramId },
                         success: true,
                     });
 
@@ -661,89 +598,161 @@ export async function createUserAction(data: {
                     revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
                     revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
 
-                    return updatedUser;
+                    return { success: true, user: updatedUser, message: "Instructor vinculado exitosamente a esta área de formación." };
                 } else {
-                    throw new Error(`Ya existe un instructor registrado con el número de documento: ${idenNorm}`);
+                    return { success: false, error: "Ya existe un instructor registrado con este correo electrónico en la institución." };
                 }
             } else {
-                throw new Error(`Ya existe un perfil registrado con el número de documento: ${idenNorm}`);
+                return { success: false, error: `Ya existe un usuario registrado con este correo electrónico con el rol de ${existingUser.role || "usuario"}.` };
             }
         }
-    }
 
-    // Hash password
-    const { hashPassword } = await import("better-auth/crypto");
-    const hashedPassword = await hashPassword(data.password);
+        if (idenNorm) {
+            const existingProfile = await prisma.profile.findFirst({
+                where: { identificacion: idenNorm },
+                include: {
+                    user: {
+                        include: {
+                            profile: true,
+                            programs: { select: { id: true, name: true } },
+                            group: { select: { id: true, name: true } }
+                        }
+                    }
+                }
+            });
+            if (existingProfile) {
+                if (existingProfile.user?.role === "teacher" && data.role === "teacher") {
+                    if (validProgramId) {
+                        const alreadyConnected = existingProfile.user.programs.some(p => p.id === validProgramId);
+                        if (alreadyConnected) {
+                            return { success: false, error: `Ya existe un instructor con el documento ${idenNorm} vinculado a esta área de formación.` };
+                        }
 
-    // Create user with account
-    const user = await prisma.user.create({
-        data: {
-            id: crypto.randomUUID(),
-            email: emailNorm,
-            name: nameNorm,
-            role: data.role,
-            groupId: data.groupId || null,
-            emailVerified: true,
-            ...(data.role === "teacher" && validProgramId ? {
-                programs: {
-                    connect: { id: validProgramId }
-                }
-            } : {}),
-            profile: (idenNorm || data.nombres || data.apellido) ? {
-                create: {
-                    identificacion: idenNorm || "",
-                    nombres: data.nombres || nameNorm.split(" ")[0] || "",
-                    apellido: data.apellido || nameNorm.split(" ").slice(1).join(" ") || "",
-                    telefono: data.telefono?.trim() || null,
-                    dataProcessingConsent: data.role !== "student",
-                    dataProcessingConsentDate: data.role !== "student" ? new Date() : null,
-                }
-            } : undefined,
-            accounts: {
-                create: {
-                    id: crypto.randomUUID(),
-                    accountId: crypto.randomUUID(),
-                    providerId: "credential",
-                    password: hashedPassword,
-                }
-            }
-        },
-        include: {
-            profile: true,
-            group: {
-                select: {
-                    id: true,
-                    name: true
+                        const updatedUser = await prisma.user.update({
+                            where: { id: existingProfile.userId },
+                            data: {
+                                programs: {
+                                    connect: { id: validProgramId }
+                                },
+                                profile: {
+                                    update: {
+                                        ...(data.telefono && !existingProfile.telefono ? { telefono: data.telefono.trim() } : {})
+                                    }
+                                }
+                            },
+                            include: {
+                                profile: true,
+                                group: { select: { id: true, name: true } }
+                            }
+                        });
+
+                        const { auditLogger } = await import("@/features/admin/services/auditLogger");
+                        await auditLogger.log({
+                            action: "CREATE",
+                            entity: "USER",
+                            entityId: updatedUser.id,
+                            userId: session?.user.id,
+                            userName: session?.user.name || "Admin",
+                            userRole: (session?.user.role as any) || "admin",
+                            description: `Instructor con documento ${idenNorm} vinculado al programa ID ${validProgramId}`,
+                            metadata: { email: emailNorm, role: data.role, programId: validProgramId, identificacion: idenNorm },
+                            success: true,
+                        });
+
+                        revalidatePath("/dashboard/admin/users");
+                        revalidatePath("/dashboard/gestor/users");
+                        revalidatePath("/dashboard/admin/courses");
+                        revalidatePath("/dashboard/gestor/courses");
+                        revalidatePath(`/dashboard/admin/courses?programId=${validProgramId}`);
+                        revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
+                        revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
+
+                        return { success: true, user: updatedUser, message: "Instructor vinculado exitosamente a esta área de formación." };
+                    } else {
+                        return { success: false, error: `Ya existe un instructor registrado con el número de documento: ${idenNorm}` };
+                    }
+                } else {
+                    return { success: false, error: `Ya existe un perfil registrado con el número de documento: ${idenNorm}` };
                 }
             }
         }
-    });
 
-    // 🎯 AUDIT LOG
-    const { auditLogger } = await import("@/features/admin/services/auditLogger");
-    const session = await getSession();
-    await auditLogger.log({
-        action: "CREATE",
-        entity: "USER",
-        entityId: user.id,
-        userId: session?.user.id,
-        userName: session?.user.name || "Admin",
-        userRole: (session?.user.role as any) || "admin",
-        description: `Usuario ${data.role} creado: ${nameNorm} (${emailNorm})${validProgramId ? ` asociado al programa ID ${validProgramId}` : ""}`,
-        metadata: { email: emailNorm, role: data.role, programId: validProgramId, groupId: data.groupId },
-        success: true,
-    });
+        // Hash password
+        const { hashPassword } = await import("better-auth/crypto");
+        const hashedPassword = await hashPassword(data.password || idenNorm || "12345678");
 
-    revalidatePath("/dashboard/admin/users");
-    revalidatePath("/dashboard/gestor/users");
-    revalidatePath("/dashboard/admin/courses");
-    revalidatePath("/dashboard/gestor/courses");
-    if (validProgramId) {
-        revalidatePath(`/dashboard/admin/courses?programId=${validProgramId}`);
-        revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
-        revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
+        // Create user with account
+        const user = await prisma.user.create({
+            data: {
+                id: crypto.randomUUID(),
+                email: emailNorm,
+                name: nameNorm,
+                role: data.role,
+                groupId: data.groupId || null,
+                emailVerified: true,
+                ...(data.role === "teacher" && validProgramId ? {
+                    programs: {
+                        connect: { id: validProgramId }
+                    }
+                } : {}),
+                profile: (idenNorm || data.nombres || data.apellido) ? {
+                    create: {
+                        identificacion: idenNorm || "",
+                        nombres: data.nombres || nameNorm.split(" ")[0] || "",
+                        apellido: data.apellido || nameNorm.split(" ").slice(1).join(" ") || "",
+                        telefono: data.telefono?.trim() || null,
+                        dataProcessingConsent: data.role !== "student",
+                        dataProcessingConsentDate: data.role !== "student" ? new Date() : null,
+                    }
+                } : undefined,
+                accounts: {
+                    create: {
+                        id: crypto.randomUUID(),
+                        accountId: crypto.randomUUID(),
+                        providerId: "credential",
+                        password: hashedPassword,
+                    }
+                }
+            },
+            include: {
+                profile: true,
+                group: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            }
+        });
+
+        // 🎯 AUDIT LOG
+        const { auditLogger } = await import("@/features/admin/services/auditLogger");
+        await auditLogger.log({
+            action: "CREATE",
+            entity: "USER",
+            entityId: user.id,
+            userId: session?.user.id,
+            userName: session?.user.name || "Admin",
+            userRole: (session?.user.role as any) || "admin",
+            description: `Usuario ${data.role} creado: ${nameNorm} (${emailNorm})${validProgramId ? ` asociado al programa ID ${validProgramId}` : ""}`,
+            metadata: { email: emailNorm, role: data.role, programId: validProgramId, groupId: data.groupId },
+            success: true,
+        });
+
+        revalidatePath("/dashboard/admin/users");
+        revalidatePath("/dashboard/gestor/users");
+        revalidatePath("/dashboard/admin/courses");
+        revalidatePath("/dashboard/gestor/courses");
+        if (validProgramId) {
+            revalidatePath(`/dashboard/admin/courses?programId=${validProgramId}`);
+            revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
+            revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
+        }
+        return { success: true, user, message: "Usuario creado exitosamente." };
+    } catch (error: any) {
+        console.error("Error in createUserAction:", error);
+        return { success: false, error: error.message || "Error al procesar el registro de usuario en el servidor." };
     }
-    return user;
 }
 
 export async function updateTeacherUserAction(data: {
