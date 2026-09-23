@@ -159,12 +159,14 @@ model Course {
   description          String?
   externalUrl          String? // Optional external course URL (e.g., Google Classroom, Moodle)
   icon                 String?
-  usePercentageWeights Boolean   @default(true)
-  weeklyHours          Float?    @default(0)
-  badge                String?
-  badgeColor           String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  usePercentageWeights     Boolean   @default(true)
+  attendancePenaltyEnabled Boolean   @default(false)
+  maxPenaltyPercentage    Float     @default(0)
+  weeklyHours              Float?    @default(0)
+  badge                    String?
+  badgeColor               String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
   
   enrollments        Enrollment[]
   attendances        Attendance[]

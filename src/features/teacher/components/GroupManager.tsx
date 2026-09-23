@@ -119,6 +119,7 @@ import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
 import { StudentVoceroBadge } from "@/components/StudentVoceroBadge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { GradeManagerPanel } from "./GradeManagerPanel";
+import { getLostHoursForAttendance, extractTimeHHmm, calculateTotalScheduledHours, calculateStudentAttendanceLoss, getSessionScheduleForDay, getSessionTimeOptions } from "@/lib/gradePenaltyUtils";
 import { TeacherHelpModal } from "./TeacherHelpModal";
 import {
     AlertDialog,
@@ -339,7 +340,9 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         };
         
         const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-        const scheduledDays = course?.schedules?.map((s: any) => s.dayOfWeek) || [];
+        const scheduledDays = (course?.schedules && course.schedules.length > 0)
+            ? course.schedules.map((s: any) => s.dayOfWeek)
+            : (selectedGroup.scheduleSlots?.map((s: any) => s.dayOfWeek) || []);
         
         const classDays: Date[] = [];
         const cur = new Date(startDate);
@@ -425,26 +428,15 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     }, [selectedGroup]);
 
     const timeOptions = useMemo(() => {
-        if (!selectedGroup) return [];
-        const start = selectedGroup.startTime || "08:00";
-        const end = selectedGroup.endTime || "12:00";
-        const slots = [];
-        try {
-            const [sh, sm] = start.split(":").map(Number);
-            const [eh, em] = end.split(":").map(Number);
-            let currentMin = sh * 60 + sm;
-            const endMin = eh * 60 + em;
-            while (currentMin <= endMin) {
-                const h = Math.floor(currentMin / 60).toString().padStart(2, "0");
-                const m = (currentMin % 60).toString().padStart(2, "0");
-                slots.push(`${h}:${m}`);
-                currentMin += 15;
-            }
-        } catch (e) {
-            console.error("Error generating time slots", e);
+        const slots: string[] = [];
+        // Generar intervalos de 15 minutos cubriendo todas las jornadas SENA (06:00 a 22:00) como fallback global
+        for (let m = 6 * 60; m <= 22 * 60; m += 15) {
+            const h = Math.floor(m / 60).toString().padStart(2, "0");
+            const min = (m % 60).toString().padStart(2, "0");
+            slots.push(`${h}:${min}`);
         }
         return slots;
-    }, [selectedGroup?.startTime, selectedGroup?.endTime]);
+    }, []);
     
     // Students Tab State
     const [searchQuery, setSearchQuery] = useState("");
@@ -661,6 +653,34 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     const [attCourseId, setAttCourseId] = useState<string>("");
     // We only store ABSENT or LATE in attRecords. If a student is not here, they are PRESENT.
     const [attRecords, setAttRecords] = useState<Record<string, { status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE_EARLY", arrivalTime?: string, departureTime?: string, justification?: string }>>({});
+
+    // Opciones dinámicas de horario calculadas estrictamente según la programación del grupo/materia para el día seleccionado
+    const currentSessionTimeOptions = useMemo(() => {
+        if (!selectedGroup || !attCourseId || !attDate) {
+            return {
+                sessionStart: "08:00",
+                sessionEnd: "12:00",
+                dayOfWeekStr: "MONDAY",
+                scheduleFound: false,
+                startM: 480,
+                endM: 720,
+                lateOptions: [] as string[],
+                leaveOptions: [] as string[]
+            };
+        }
+        const { sessionStart, sessionEnd, dayOfWeekStr, scheduleFound } = getSessionScheduleForDay(selectedGroup, attCourseId, attDate);
+        const { startM, endM, lateOptions, leaveOptions } = getSessionTimeOptions(sessionStart, sessionEnd);
+        return {
+            sessionStart,
+            sessionEnd,
+            dayOfWeekStr,
+            scheduleFound,
+            startM,
+            endM,
+            lateOptions,
+            leaveOptions
+        };
+    }, [selectedGroup, attCourseId, attDate]);
     const [isSavingAtt, setIsSavingAtt] = useState(false);
     const [selectedDayFilter, setSelectedDayFilter] = useState<number | null>(null);
     const [historyStudentFilter, setHistoryStudentFilter] = useState<string>("all");
@@ -1031,8 +1051,8 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             // Keep PRESENT status in state so the card style stays green
             newRecords[rec.userId] = {
                 status: rec.status,
-                arrivalTime: rec.arrivalTime ? new Date(rec.arrivalTime).toISOString().substring(11, 16) : undefined,
-                departureTime: rec.departureTime ? new Date(rec.departureTime).toISOString().substring(11, 16) : undefined,
+                arrivalTime: extractTimeHHmm(rec.arrivalTime) || undefined,
+                departureTime: extractTimeHHmm(rec.departureTime) || undefined,
                 justification: rec.justification || undefined
             };
         });
@@ -1221,27 +1241,34 @@ const handleOpenAnalytics = async () => {
         }
         if (!attCourseId) return toast.error("Selecciona una materia");
 
+        // Obtener horario programado de la materia o grupo para la fecha seleccionada
+        const { sessionStart, sessionEnd } = getSessionScheduleForDay(selectedGroup, attCourseId, attDate);
+        const { startM: startMins, endM: endMins } = getSessionTimeOptions(sessionStart, sessionEnd);
+
         const now = new Date();
         const currentHour = now.getHours();
         const currentMin = now.getMinutes();
         const totalMins = currentHour * 60 + currentMin;
+        const isToday = attDate === getTodayColombianDate();
 
-        let timeString: string;
-        if (timeOptions && timeOptions.length > 0) {
-            let closestDiff = Infinity;
-            let closestSlot = timeOptions[0];
-            for (const slot of timeOptions) {
-                const [sh, sm] = slot.split(":").map(Number);
-                const slotMins = sh * 60 + sm;
-                const diff = Math.abs(slotMins - totalMins);
-                if (diff < closestDiff) {
-                    closestDiff = diff;
-                    closestSlot = slot;
-                }
-            }
-            timeString = closestSlot;
+        let defaultLateTime: string;
+        let defaultLeaveTime: string;
+
+        if (isToday && totalMins > startMins && totalMins < endMins) {
+            // Durante la clase en vivo: redondear al múltiplo de 15 minutos más cercano
+            const rounded = Math.round(totalMins / 15) * 15;
+            const clampedLate = Math.min(Math.max(rounded, startMins + 15), endMins);
+            const clampedLeave = Math.max(Math.min(rounded, endMins - 15), startMins);
+            defaultLateTime = `${Math.floor(clampedLate / 60).toString().padStart(2, "0")}:${(clampedLate % 60).toString().padStart(2, "0")}`;
+            defaultLeaveTime = `${Math.floor(clampedLeave / 60).toString().padStart(2, "0")}:${(clampedLeave % 60).toString().padStart(2, "0")}`;
         } else {
-            timeString = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+            // Fuera de clase o fecha distinta:
+            // Tarde: 15 minutos después del inicio de clase
+            const lateSlot = Math.min(startMins + 15, endMins);
+            defaultLateTime = `${Math.floor(lateSlot / 60).toString().padStart(2, "0")}:${(lateSlot % 60).toString().padStart(2, "0")}`;
+            // Retiro: 1 hora antes de finalizar (o 15 min antes si clase corta)
+            const leaveSlot = Math.max(startMins, endMins - 60);
+            defaultLeaveTime = `${Math.floor(leaveSlot / 60).toString().padStart(2, "0")}:${(leaveSlot % 60).toString().padStart(2, "0")}`;
         }
 
         const prevRecord = attRecords[studentId];
@@ -1255,13 +1282,25 @@ const handleOpenAnalytics = async () => {
             if (hasLate) {
                 newArrivalTime = undefined;
             } else {
-                newArrivalTime = prevRecord?.arrivalTime || timeString;
+                // Si la hora previa está fuera de la franja programada para el día, reemplazarla por defaultLateTime
+                const prevM = prevRecord?.arrivalTime ? (() => {
+                    const [h, m] = prevRecord.arrivalTime.split(":").map(Number);
+                    return isNaN(h) ? -1 : h * 60 + (m || 0);
+                })() : -1;
+                const isPrevValid = prevM >= (startMins + 15) && prevM <= endMins;
+                newArrivalTime = isPrevValid ? prevRecord?.arrivalTime : defaultLateTime;
             }
         } else if (type === "LEAVE_EARLY") {
             if (hasLeaveEarly) {
                 newDepartureTime = undefined;
             } else {
-                newDepartureTime = prevRecord?.departureTime || timeString;
+                // Si la hora previa está fuera de la franja programada para el día, reemplazarla por defaultLeaveTime
+                const prevM = prevRecord?.departureTime ? (() => {
+                    const [h, m] = prevRecord.departureTime.split(":").map(Number);
+                    return isNaN(h) ? -1 : h * 60 + (m || 0);
+                })() : -1;
+                const isPrevValid = prevM >= startMins && prevM <= (endMins - 15);
+                newDepartureTime = isPrevValid ? prevRecord?.departureTime : defaultLeaveTime;
             }
         }
 
@@ -2555,6 +2594,8 @@ const handleOpenAnalytics = async () => {
                                     students={filteredStudents}
                                     voceroPrincipalId={selectedGroup.voceroPrincipalId}
                                     voceroSuplenteId={selectedGroup.voceroSuplenteId}
+                                    group={selectedGroup}
+                                    attendanceHistory={attendanceHistory}
                                 />
                             </TabsContent>
 
@@ -2857,29 +2898,17 @@ const handleOpenAnalytics = async () => {
                                                 const totalLateHours = courseHistory
                                                     .filter(a => (a.status === 'LATE' || !!a.arrivalTime) && a.arrivalTime)
                                                     .reduce((sum, a) => {
-                                                        const aDate = new Date(a.date);
-                                                        const dayIndex = aDate.getUTCDay();
-                                                        const dayOfWeekName = daysOfWeekEng[dayIndex];
-                                                        const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-                                                        const scheduleForDay = course?.schedules?.find((sched: any) => sched.dayOfWeek === dayOfWeekName);
-                                                        const startTimeStr = scheduleForDay?.startTime || selectedGroup.startTime || "06:00";
-                                                        const arrivalTimeStr = a.arrivalTime ? (typeof a.arrivalTime === 'string' ? a.arrivalTime : new Date(a.arrivalTime).toISOString().substring(11, 16)) : "";
-                                                        const diff = arrivalTimeStr ? calculateHoursDiff(startTimeStr, arrivalTimeStr) : 0;
-                                                        return sum + diff;
+                                                        const { sessionStart: startTimeStr, sessionEnd: endTimeStr } = getSessionScheduleForDay(selectedGroup, attCourseId, a.date);
+                                                        const lost = getLostHoursForAttendance(startTimeStr, endTimeStr, a.arrivalTime, a.departureTime);
+                                                        return sum + lost.lateLostHours;
                                                     }, 0);
 
                                                 const totalLeaveHours = courseHistory
                                                     .filter(a => (a.status === 'LEAVE_EARLY' || !!a.departureTime) && a.departureTime)
                                                     .reduce((sum, a) => {
-                                                        const aDate = new Date(a.date);
-                                                        const dayIndex = aDate.getUTCDay();
-                                                        const dayOfWeekName = daysOfWeekEng[dayIndex];
-                                                        const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-                                                        const scheduleForDay = course?.schedules?.find((sched: any) => sched.dayOfWeek === dayOfWeekName);
-                                                        const endTimeStr = scheduleForDay?.endTime || selectedGroup.endTime || "12:00";
-                                                        const departureTimeStr = a.departureTime ? (typeof a.departureTime === 'string' ? a.departureTime : new Date(a.departureTime).toISOString().substring(11, 16)) : "";
-                                                        const diff = departureTimeStr ? calculateHoursDiff(departureTimeStr, endTimeStr) : 0;
-                                                        return sum + diff;
+                                                        const { sessionStart: startTimeStr, sessionEnd: endTimeStr } = getSessionScheduleForDay(selectedGroup, attCourseId, a.date);
+                                                        const lost = getLostHoursForAttendance(startTimeStr, endTimeStr, a.arrivalTime, a.departureTime);
+                                                        return sum + lost.leaveLostHours;
                                                     }, 0);
 
                                                  return (
@@ -3011,12 +3040,12 @@ const handleOpenAnalytics = async () => {
                                                         {/* Time input nested if Late */}
                                                         <AnimatePresence>
                                                             {isLate && (() => {
-                                                                const dayIndex = new Date(attDate + "T12:00:00").getDay();
-                                                                const dayOfWeekName = daysOfWeekEng[dayIndex];
-                                                                const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-                                                                const scheduleForDay = course?.schedules?.find((sched: any) => sched.dayOfWeek === dayOfWeekName);
-                                                                const startTimeStr = scheduleForDay?.startTime || selectedGroup.startTime || "06:00";
-                                                                const diff = rec?.arrivalTime ? calculateHoursDiff(startTimeStr, rec.arrivalTime) : 0;
+                                                                const lostInfo = getLostHoursForAttendance(
+                                                                    currentSessionTimeOptions.sessionStart,
+                                                                    currentSessionTimeOptions.sessionEnd,
+                                                                    rec?.arrivalTime,
+                                                                    rec?.departureTime
+                                                                );
                                                                 return (
                                                                     <motion.div 
                                                                         initial={{ opacity: 0, height: 0, marginTop: 0 }} 
@@ -3034,7 +3063,10 @@ const handleOpenAnalytics = async () => {
                                                                                     onChange={e => updateLateTime(s.id, e.target.value)}
                                                                                 >
                                                                                     <option value="" disabled>Seleccione...</option>
-                                                                                    {timeOptions.map(time => (
+                                                                                    {rec?.arrivalTime && !currentSessionTimeOptions.lateOptions.includes(rec.arrivalTime) && (
+                                                                                        <option value={rec.arrivalTime}>{rec.arrivalTime} (Fuera de rango)</option>
+                                                                                    )}
+                                                                                    {currentSessionTimeOptions.lateOptions.map(time => (
                                                                                         <option key={time} value={time}>
                                                                                             {time}
                                                                                         </option>
@@ -3043,7 +3075,7 @@ const handleOpenAnalytics = async () => {
                                                                             </div>
                                                                             <div className="flex justify-between items-center text-[10px] font-bold text-amber-800 dark:text-amber-300 px-1 border-t border-amber-200/30 pt-1">
                                                                                 <span>Horas perdidas:</span>
-                                                                                <span className="text-xs font-black">{diff.toFixed(1)} hrs</span>
+                                                                                <span className="text-xs font-black">{lostInfo.lateLostHours.toFixed(1)} hrs</span>
                                                                             </div>
                                                                         </div>
                                                                     </motion.div>
@@ -3054,12 +3086,12 @@ const handleOpenAnalytics = async () => {
                                                         {/* Time input nested if Leave Early */}
                                                         <AnimatePresence>
                                                             {isLeaveEarly && (() => {
-                                                                const dayIndex = new Date(attDate + "T12:00:00").getDay();
-                                                                const dayOfWeekName = daysOfWeekEng[dayIndex];
-                                                                const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-                                                                const scheduleForDay = course?.schedules?.find((sched: any) => sched.dayOfWeek === dayOfWeekName);
-                                                                const endTimeStr = scheduleForDay?.endTime || selectedGroup.endTime || "12:00";
-                                                                const diff = rec?.departureTime ? calculateHoursDiff(rec.departureTime, endTimeStr) : 0;
+                                                                const lostInfo = getLostHoursForAttendance(
+                                                                    currentSessionTimeOptions.sessionStart,
+                                                                    currentSessionTimeOptions.sessionEnd,
+                                                                    rec?.arrivalTime,
+                                                                    rec?.departureTime
+                                                                );
                                                                 return (
                                                                     <motion.div 
                                                                         initial={{ opacity: 0, height: 0, marginTop: 0 }} 
@@ -3077,7 +3109,10 @@ const handleOpenAnalytics = async () => {
                                                                                     onChange={e => updateLeaveTime(s.id, e.target.value)}
                                                                                 >
                                                                                     <option value="" disabled>Seleccione...</option>
-                                                                                    {timeOptions.map(time => (
+                                                                                    {rec?.departureTime && !currentSessionTimeOptions.leaveOptions.includes(rec.departureTime) && (
+                                                                                        <option value={rec.departureTime}>{rec.departureTime} (Fuera de rango)</option>
+                                                                                    )}
+                                                                                    {currentSessionTimeOptions.leaveOptions.map(time => (
                                                                                         <option key={time} value={time}>
                                                                                             {time}
                                                                                         </option>
@@ -3086,7 +3121,7 @@ const handleOpenAnalytics = async () => {
                                                                             </div>
                                                                             <div className="flex justify-between items-center text-[10px] font-bold text-blue-800 dark:text-blue-300 px-1 border-t border-blue-200/30 pt-1">
                                                                                 <span>Horas perdidas:</span>
-                                                                                <span className="text-xs font-black">{diff.toFixed(1)} hrs</span>
+                                                                                <span className="text-xs font-black">{lostInfo.leaveLostHours.toFixed(1)} hrs</span>
                                                                             </div>
                                                                         </div>
                                                                     </motion.div>
@@ -3143,8 +3178,9 @@ const handleOpenAnalytics = async () => {
                                                                 const daysOfWeekEng = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
                                                                 const rec = attRecords[s.id];
                                                                 const isAbsent = rec.status === "ABSENT";
-                                                                const isLate = rec.status === "LATE";
-                                                                const isLeaveEarly = rec.status === "LEAVE_EARLY";
+                                                                const isLate = rec.status === "LATE" || !!rec.arrivalTime;
+                                                                const isLeaveEarly = rec.status === "LEAVE_EARLY" || !!rec.departureTime;
+                                                                const isDualLateAndLeave = isLate && isLeaveEarly;
                                                                 return (
                                                                     <TableRow key={s.id} className="hover:bg-muted/10 transition-colors">
                                                                         <TableCell className="pl-6 py-3.5">
@@ -3171,81 +3207,86 @@ const handleOpenAnalytics = async () => {
                                                                             <Badge variant="outline" className={`font-bold text-xs ${
                                                                                 isAbsent 
                                                                                     ? 'text-red-600 border-red-200 bg-red-50 dark:bg-red-950/20' 
-                                                                                    : isLate 
-                                                                                        ? 'text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/20'
-                                                                                        : 'text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/20'
+                                                                                    : isDualLateAndLeave
+                                                                                        ? 'text-purple-600 border-purple-200 bg-purple-50 dark:bg-purple-950/20'
+                                                                                        : isLate 
+                                                                                            ? 'text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/20'
+                                                                                            : 'text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/20'
                                                                             }`}>
-                                                                                {isAbsent ? "Inasistencia" : isLate ? "Llegada Tarde" : "Retiro Temprano"}
+                                                                                {isAbsent ? "Inasistencia" : isDualLateAndLeave ? "Tarde + Retiro" : isLate ? "Llegada Tarde" : "Retiro Temprano"}
                                                                             </Badge>
                                                                         </TableCell>
                                                                         <TableCell className="text-center">
-                                                                            {isLate ? (
-                                                                                <div className="flex flex-col gap-1 items-center justify-center">
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">Ingreso:</span>
-                                                                                        <select
-                                                                                            disabled={isSavingAtt}
-                                                                                            className="h-6 w-[105px] rounded-md border border-amber-300 dark:border-amber-900/60 bg-white dark:bg-black text-[10px] font-bold text-amber-900 dark:text-amber-200 px-1 outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                                            value={rec.arrivalTime || ""}
-                                                                                            onChange={e => updateLateTime(s.id, e.target.value)}
-                                                                                        >
-                                                                                            <option value="" disabled>Seleccione...</option>
-                                                                                            {timeOptions.map(time => (
-                                                                                                <option key={time} value={time}>
-                                                                                                    {time}
-                                                                                                </option>
-                                                                                            ))}
-                                                                                        </select>
-                                                                                    </div>
-                                                                                    {(() => {
-                                                                                        const dayIndex = new Date(attDate + "T12:00:00").getDay();
-                                                                                        const dayOfWeekName = daysOfWeekEng[dayIndex];
-                                                                                        const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-                                                                                        const scheduleForDay = course?.schedules?.find((sched: any) => sched.dayOfWeek === dayOfWeekName);
-                                                                                        const startTimeStr = scheduleForDay?.startTime || selectedGroup.startTime || "06:00";
-                                                                                        const diff = rec.arrivalTime ? calculateHoursDiff(startTimeStr, rec.arrivalTime) : 0;
-                                                                                        return (
-                                                                                            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">
-                                                                                                {diff.toFixed(1)} hrs perdidas
+                                                                            {(() => {
+                                                                                const lostInfo = getLostHoursForAttendance(
+                                                                                    currentSessionTimeOptions.sessionStart,
+                                                                                    currentSessionTimeOptions.sessionEnd,
+                                                                                    rec?.arrivalTime,
+                                                                                    rec?.departureTime
+                                                                                );
+
+                                                                                if (isAbsent) {
+                                                                                    return <span className="text-xs text-muted-foreground font-semibold">Día completo ({lostInfo.sessionDuration.toFixed(1)} hrs)</span>;
+                                                                                }
+
+                                                                                return (
+                                                                                    <div className="flex flex-col gap-1.5 items-center justify-center">
+                                                                                        {isLate && (
+                                                                                            <div className="flex items-center gap-1.5">
+                                                                                                <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">Ingreso:</span>
+                                                                                                <select
+                                                                                                    disabled={isSavingAtt}
+                                                                                                    className="h-6 w-[95px] rounded-md border border-amber-300 dark:border-amber-900/60 bg-white dark:bg-black text-[10px] font-bold text-amber-900 dark:text-amber-200 px-1 outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                                                    value={rec.arrivalTime || ""}
+                                                                                                    onChange={e => updateLateTime(s.id, e.target.value)}
+                                                                                                >
+                                                                                                    <option value="" disabled>Seleccione...</option>
+                                                                                                    {rec?.arrivalTime && !currentSessionTimeOptions.lateOptions.includes(rec.arrivalTime) && (
+                                                                                                        <option value={rec.arrivalTime}>{rec.arrivalTime} (Fuera de rango)</option>
+                                                                                                    )}
+                                                                                                    {currentSessionTimeOptions.lateOptions.map(time => (
+                                                                                                        <option key={time} value={time}>
+                                                                                                            {time}
+                                                                                                        </option>
+                                                                                                    ))}
+                                                                                                </select>
+                                                                                                <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">
+                                                                                                    {lostInfo.lateLostHours.toFixed(1)} h
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {isLeaveEarly && (
+                                                                                            <div className="flex items-center gap-1.5">
+                                                                                                <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">Retiro:</span>
+                                                                                                <select
+                                                                                                    disabled={isSavingAtt}
+                                                                                                    className="h-6 w-[95px] rounded-md border border-blue-300 dark:border-blue-900/60 bg-white dark:bg-black text-[10px] font-bold text-blue-900 dark:text-blue-200 px-1 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                                                    value={rec.departureTime || ""}
+                                                                                                    onChange={e => updateLeaveTime(s.id, e.target.value)}
+                                                                                                >
+                                                                                                    <option value="" disabled>Seleccione...</option>
+                                                                                                    {rec?.departureTime && !currentSessionTimeOptions.leaveOptions.includes(rec.departureTime) && (
+                                                                                                        <option value={rec.departureTime}>{rec.departureTime} (Fuera de rango)</option>
+                                                                                                    )}
+                                                                                                    {currentSessionTimeOptions.leaveOptions.map(time => (
+                                                                                                        <option key={time} value={time}>
+                                                                                                            {time}
+                                                                                                        </option>
+                                                                                                    ))}
+                                                                                                </select>
+                                                                                                <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400">
+                                                                                                    {lostInfo.leaveLostHours.toFixed(1)} h
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {isDualLateAndLeave && (
+                                                                                            <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">
+                                                                                                Total perdido: {lostInfo.totalLostHours.toFixed(1)} hrs
                                                                                             </span>
-                                                                                        );
-                                                                                    })()}
-                                                                                </div>
-                                                                            ) : isLeaveEarly ? (
-                                                                                <div className="flex flex-col gap-1 items-center justify-center">
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">Retiro:</span>
-                                                                                        <select
-                                                                                            disabled={isSavingAtt}
-                                                                                            className="h-6 w-[105px] rounded-md border border-blue-300 dark:border-blue-900/60 bg-white dark:bg-black text-[10px] font-bold text-blue-900 dark:text-blue-200 px-1 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                                            value={rec.departureTime || ""}
-                                                                                            onChange={e => updateLeaveTime(s.id, e.target.value)}
-                                                                                        >
-                                                                                            <option value="" disabled>Seleccione...</option>
-                                                                                            {timeOptions.map(time => (
-                                                                                                <option key={time} value={time}>
-                                                                                                    {time}
-                                                                                                </option>
-                                                                                            ))}
-                                                                                        </select>
+                                                                                        )}
                                                                                     </div>
-                                                                                    {(() => {
-                                                                                        const dayIndex = new Date(attDate + "T12:00:00").getDay();
-                                                                                        const dayOfWeekName = daysOfWeekEng[dayIndex];
-                                                                                        const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-                                                                                        const scheduleForDay = course?.schedules?.find((sched: any) => sched.dayOfWeek === dayOfWeekName);
-                                                                                        const endTimeStr = scheduleForDay?.endTime || selectedGroup.endTime || "12:00";
-                                                                                        const diff = rec.departureTime ? calculateHoursDiff(rec.departureTime, endTimeStr) : 0;
-                                                                                        return (
-                                                                                            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400">
-                                                                                                {diff.toFixed(1)} hrs perdidas
-                                                                                            </span>
-                                                                                        );
-                                                                                    })()}
-                                                                                </div>
-                                                                            ) : (
-                                                                                <span className="text-xs text-muted-foreground">Día completo</span>
-                                                                            )}
+                                                                                );
+                                                                            })()}
                                                                         </TableCell>
                                                                         <TableCell className="text-right pr-6">
                                                                             <Button 
@@ -3267,7 +3308,10 @@ const handleOpenAnalytics = async () => {
                                         )}
                                     </div>
                                 ) : attMode === "metrics" ? (() => {
-                                    // Get group start/end times and calculate group daily duration
+                                    const currentCourse = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
+                                    const { start: effectiveStart, end: effectiveEnd } = getEffectiveDatesForCourse(selectedGroup, attCourseId);
+
+                                    // Get group start/end times and calculate fallback daily duration
                                     const gStart = selectedGroup.startTime || "08:00";
                                     const gEnd = selectedGroup.endTime || "12:00";
                                     
@@ -3275,10 +3319,28 @@ const handleOpenAnalytics = async () => {
                                     const [geh, gem] = gEnd.split(":").map(Number);
                                     const groupDailyHours = Math.max(0, (geh * 60 + gem - (gsh * 60 + gsm)) / 60);
 
-                                    // Get all scheduled dates
+                                    const daysOfWeekEng = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+
+                                    const getSessionInfoForDate = (dateVal: string | Date) => {
+                                        const d = typeof dateVal === "string" ? new Date(dateVal.includes("T") ? dateVal : dateVal + "T12:00:00Z") : dateVal;
+                                        const dayName = daysOfWeekEng[d.getUTCDay()];
+                                        const sch = currentCourse?.schedules?.find((s: any) => s.dayOfWeek === dayName) ||
+                                                    selectedGroup?.scheduleSlots?.find((s: any) => s.dayOfWeek === dayName);
+                                        const start = sch?.startTime || selectedGroup.startTime || "08:00";
+                                        const end = sch?.endTime || selectedGroup.endTime || "12:00";
+                                        const duration = sch ? calculateHoursDiff(sch.startTime, sch.endTime) : groupDailyHours;
+                                        return { start, end, duration: duration > 0 ? duration : (groupDailyHours || 4) };
+                                    };
+
+                                    // Get all scheduled dates within the active schedule period (inicio y fin de horario vigente)
                                     const validDaysList = getValidClassDaysList();
                                     const totalClassDays = validDaysList.length;
-                                    const totalScheduledHours = totalClassDays * groupDailyHours;
+
+                                    // Horas totales programadas calculadas con base en las franjas horarias semanales de la materia
+                                    // dentro del rango de inicio y fin del horario vigente:
+                                    const totalScheduledHours = validDaysList.length > 0
+                                        ? validDaysList.reduce((sum: number, dStr: string) => sum + getSessionInfoForDate(dStr).duration, 0)
+                                        : calculateTotalScheduledHours(currentCourse, selectedGroup, { startDate: effectiveStart, endDate: effectiveEnd }, attendanceHistory);
 
                                     if (totalClassDays === 0) {
                                         return (
@@ -3296,83 +3358,30 @@ const handleOpenAnalytics = async () => {
                                         );
                                     }
 
-                                    // Calculate metrics per student
+                                    // Calculate metrics per student using the centralized and verified attendance loss engine
                                     const studentMetrics = selectedGroup.students?.map((student: any) => {
-                                        const studentRecords = attendanceHistory.filter((rec: any) => 
-                                            rec.courseId === attCourseId && 
-                                            rec.userId === student.id
+                                        const loss = calculateStudentAttendanceLoss(
+                                            student.id,
+                                            attCourseId,
+                                            attendanceHistory || [],
+                                            currentCourse,
+                                            selectedGroup,
+                                            { startDate: effectiveStart, endDate: effectiveEnd }
                                         );
 
-                                        // Absences
-                                        const absentRecords = studentRecords.filter(r => r.status === "ABSENT");
-                                        const absentCount = absentRecords.length;
-                                        
-                                        const absentHours = absentCount * groupDailyHours;
-
-                                        // Late arrivals
-                                        const lateRecords = studentRecords.filter(r => r.status === "LATE");
-                                        const lateCount = lateRecords.length;
-
-                                        let lateHours = 0;
-                                        lateRecords.forEach(rec => {
-                                            if (!rec.arrivalTime) return;
-                                            
-                                            const [sh, sm] = gStart.split(":").map(Number);
-                                            let timePart = "";
-                                            try {
-                                                const dateObj = new Date(rec.arrivalTime);
-                                                if (isNaN(dateObj.getTime())) {
-                                                    throw new Error("Invalid date");
-                                                }
-                                                timePart = dateObj.toISOString().substring(11, 16);
-                                            } catch (e) {
-                                                timePart = typeof rec.arrivalTime === "string" ? rec.arrivalTime : "00:00";
-                                            }
-                                            const [ah, am] = timePart.split(":").map(Number);
-
-                                            const schedMin = sh * 60 + sm;
-                                            const arrMin = ah * 60 + am;
-
-                                            if (arrMin > schedMin) {
-                                                lateHours += (arrMin - schedMin) / 60;
-                                            }
-                                        });
-
-                                        // Leave early arrivals
-                                        const leaveRecords = studentRecords.filter(r => r.status === "LEAVE_EARLY");
-                                        const leaveCount = leaveRecords.length;
-
-                                        let leaveHours = 0;
-                                        leaveRecords.forEach(rec => {
-                                            if (!rec.departureTime) return;
-                                            
-                                            const [eh, em] = gEnd.split(":").map(Number);
-                                            let timePart = "";
-                                            try {
-                                                const dateObj = new Date(rec.departureTime);
-                                                if (isNaN(dateObj.getTime())) {
-                                                    throw new Error("Invalid date");
-                                                }
-                                                timePart = dateObj.toISOString().substring(11, 16);
-                                            } catch (e) {
-                                                timePart = typeof rec.departureTime === "string" ? rec.departureTime : "00:00";
-                                            }
-                                            const [dh, dm] = timePart.split(":").map(Number);
-
-                                            const schedMin = eh * 60 + em;
-                                            const depMin = dh * 60 + dm;
-
-                                            if (schedMin > depMin) {
-                                                leaveHours += (schedMin - depMin) / 60;
-                                            }
-                                        });
+                                        const absentCount = loss.absentCount;
+                                        const absentHours = loss.absentHours;
+                                        const lateCount = loss.lateCount;
+                                        const lateHours = loss.lateHours;
+                                        const leaveCount = loss.leaveCount;
+                                        const leaveHours = loss.leaveHours;
+                                        const totalLostHours = loss.totalLostHours;
 
                                         // Attendance rates
                                         const attendanceDaysRate = totalClassDays > 0 
                                             ? Math.max(0, Math.min(100, ((totalClassDays - absentCount) / totalClassDays) * 100))
                                             : 100;
 
-                                        const totalLostHours = absentHours + lateHours + leaveHours;
                                         const attendanceHoursRate = totalScheduledHours > 0
                                             ? Math.max(0, Math.min(100, ((totalScheduledHours - totalLostHours) / totalScheduledHours) * 100))
                                             : 100;
@@ -3394,6 +3403,7 @@ const handleOpenAnalytics = async () => {
                                             lateHours,
                                             leaveCount,
                                             leaveHours,
+                                            totalLostHours,
                                             attendanceDaysRate,
                                             attendanceHoursRate,
                                             lateDaysRate,
@@ -3530,11 +3540,36 @@ const handleOpenAnalytics = async () => {
                                             {/* KPI Grid */}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                                 <div className="bg-card border rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Carga Horaria Programada</span>
+                                                    <div className="mt-2 flex flex-col items-start gap-0.5">
+                                                        <span className="text-3xl font-black text-foreground">{totalScheduledHours.toFixed(1)} hs</span>
+                                                        <span className="text-[10px] font-bold text-muted-foreground">({totalClassDays} sesiones dentro del horario vigente)</span>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-card border rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Asistencia Efectiva Promedio</span>
+                                                    <div className="mt-2 flex flex-col items-start gap-0.5">
+                                                        <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{avgAttendanceHours.toFixed(1)}%</span>
+                                                        <span className="text-[10px] font-bold text-muted-foreground">({avgAttendanceDays.toFixed(1)}% por asistencia de días)</span>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-card border rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Inasistencias (Faltas)</span>
+                                                    <div className="mt-2 flex flex-col items-start gap-0.5">
+                                                        <span className="text-3xl font-black text-red-600 dark:text-red-400">
+                                                            {studentMetrics.reduce((acc: number, m: any) => acc + m.absentCount, 0)}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-muted-foreground">
+                                                            ({studentMetrics.reduce((acc: number, m: any) => acc + m.absentHours, 0).toFixed(1)} hs perdidas por falta)
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-card border rounded-2xl p-4 flex flex-col justify-between shadow-sm">
                                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pérdida (Tardes y Retiros)</span>
-                                                    <span className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-2 flex flex-col items-start gap-0.5">
-                                                        <span>{(avgLateHours + avgLeaveHours).toFixed(2)}%</span>
+                                                    <div className="mt-2 flex flex-col items-start gap-0.5">
+                                                        <span className="text-3xl font-black text-amber-600 dark:text-amber-400">{(avgLateHours + avgLeaveHours).toFixed(2)}%</span>
                                                         <span className="text-[10px] font-bold text-muted-foreground">({avgLateHours.toFixed(1)}% Tardes / {avgLeaveHours.toFixed(1)}% Retiros)</span>
-                                                    </span>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -4164,12 +4199,8 @@ const handleOpenAnalytics = async () => {
                                     attendanceHistory.filter((a: any) => a.courseId === attCourseId).forEach((a: any) => {
                                         if (!lookup[a.userId]) lookup[a.userId] = {};
                                         const ds = toUTCDateStr(new Date(a.date));
-                                        const arrTime = a.arrivalTime 
-                                            ? (typeof a.arrivalTime === 'string' ? a.arrivalTime : new Date(a.arrivalTime).toISOString().substring(11, 16)) 
-                                            : undefined;
-                                        const depTime = a.departureTime 
-                                            ? (typeof a.departureTime === 'string' ? a.departureTime : new Date(a.departureTime).toISOString().substring(11, 16)) 
-                                            : undefined;
+                                        const arrTime = extractTimeHHmm(a.arrivalTime) || undefined;
+                                        const depTime = extractTimeHHmm(a.departureTime) || undefined;
                                         lookup[a.userId][ds] = {
                                             status: a.status,
                                             justification: a.justification || undefined,
@@ -4178,13 +4209,18 @@ const handleOpenAnalytics = async () => {
                                         };
                                     });
 
-                                    const statusCell = (record: { status: string; justification?: string } | undefined) => {
+                                    const statusCell = (record: { status: string; justification?: string; arrivalTime?: string; departureTime?: string } | undefined) => {
                                         if (!record || record.status === "PRESENT") return (
                                             <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">P</span>
                                         );
                                         if (record.justification) return (
                                             <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">E</span>
                                         );
+                                        if ((record.status === "LATE" || record.status === "LEAVE_EARLY") && record.arrivalTime && record.departureTime) {
+                                            return (
+                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700">T+R</span>
+                                            );
+                                        }
                                         if (record.status === "LATE") return (
                                             <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">T</span>
                                         );
@@ -5698,12 +5734,25 @@ const handleOpenAnalytics = async () => {
                             if (!detailStudent) return null;
                             const studentHistory = attendanceHistory.filter(a => a.userId === detailStudent.id && a.status !== 'PRESENT');
                             const absencesList = studentHistory.filter(a => a.status === 'ABSENT');
-                            const latesList = studentHistory.filter(a => a.status === 'LATE');
+                            const latesList = studentHistory.filter(a => a.status === 'LATE' || a.status === 'LEAVE_EARLY' || a.arrivalTime || a.departureTime);
 
                             const renderRecordCard = (att: any) => {
                                 const dateLabel = formatCalendarDate(att.date, "eeee, d 'de' MMMM 'de' yyyy");
                                 const isAbsent = att.status === 'ABSENT';
                                 const isJustified = !!(att.justification?.trim() || att.justificationUrl);
+                                const isLate = att.status === 'LATE' || !!att.arrivalTime;
+                                const isLeaveEarly = att.status === 'LEAVE_EARLY' || !!att.departureTime;
+                                const isDual = isLate && isLeaveEarly;
+
+                                const badgeLabel = isAbsent ? "Falta" : isDual ? "Tarde + Retiro" : isLate ? "Tarde" : isLeaveEarly ? "Retiro" : att.status;
+                                const badgeClass = isAbsent 
+                                    ? "bg-red-50 text-red-700 border-red-200 text-[10px]" 
+                                    : isDual 
+                                        ? "bg-amber-100 text-amber-800 border-amber-300 text-[10px]"
+                                        : isLate 
+                                            ? "bg-amber-50 text-amber-700 border-amber-200 text-[10px]" 
+                                            : "bg-blue-50 text-blue-700 border-blue-200 text-[10px]";
+
                                 return (
                                     <div key={att.id} className="p-3 rounded-xl border border-border bg-card/50 flex flex-col gap-1.5 text-left">
                                         <div className="flex items-center justify-between gap-2">
@@ -5712,17 +5761,22 @@ const handleOpenAnalytics = async () => {
                                                 <Badge className={isJustified ? "bg-emerald-500 hover:bg-emerald-500 text-white text-[10px]" : "bg-red-500 hover:bg-red-500 text-white text-[10px]"}>
                                                     {isJustified ? "Justificado" : "No Justificado"}
                                                 </Badge>
-                                                <Badge variant="outline" className={isAbsent ? "bg-red-50 text-red-700 border-red-200 text-[10px]" : "bg-amber-50 text-amber-700 border-amber-200 text-[10px]"}>
-                                                    {isAbsent ? "Falta" : "Tarde"}
+                                                <Badge variant="outline" className={badgeClass}>
+                                                    {badgeLabel}
                                                 </Badge>
                                             </div>
                                         </div>
                                         <div className="text-[11px] text-muted-foreground">
                                             <span className="font-semibold text-primary">Materia:</span> {att.course?.title || "N/A"}
                                         </div>
-                                        {att.status === 'LATE' && att.arrivalTime && (
+                                        {att.arrivalTime && (
                                             <div className="text-[11px] text-muted-foreground">
-                                                <span className="font-semibold text-amber-600">Hora Ingreso:</span> {format(new Date(att.arrivalTime), "HH:mm")}
+                                                <span className="font-semibold text-amber-600">Hora Ingreso:</span> {formatTime12h(att.arrivalTime)}
+                                            </div>
+                                        )}
+                                        {att.departureTime && (
+                                            <div className="text-[11px] text-muted-foreground">
+                                                <span className="font-semibold text-blue-600">Hora Retiro:</span> {formatTime12h(att.departureTime)}
                                             </div>
                                         )}
                                         <div className="mt-1 flex items-center justify-between gap-2 pt-1 border-t border-muted/30">
@@ -5738,7 +5792,7 @@ const handleOpenAnalytics = async () => {
                                                         studentName: detailStudent ? formatName(detailStudent.name, detailStudent.profile) : "Aprendiz",
                                                         studentId: detailStudent?.profile?.identificacion,
                                                         date: dateLabel,
-                                                        status: isAbsent ? "Falta" : "Tarde",
+                                                        status: isAbsent ? "Falta" : isDual ? "Tarde + Retiro" : isLate ? "Tarde" : "Retiro",
                                                         justification: att.justification || "",
                                                         linkUrl: getJustificationLink(att)
                                                     })}
@@ -5761,7 +5815,7 @@ const handleOpenAnalytics = async () => {
                                             Faltas ({absencesList.length})
                                         </TabsTrigger>
                                         <TabsTrigger value="tardes" className="rounded-lg text-xs font-bold py-1.5 data-[state=active]:bg-background">
-                                            Llegadas Tarde ({latesList.length})
+                                            Tardes y Retiros ({latesList.length})
                                         </TabsTrigger>
                                     </TabsList>
                                     
@@ -5781,7 +5835,7 @@ const handleOpenAnalytics = async () => {
                                         <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1.5 custom-scrollbar">
                                             {latesList.length === 0 ? (
                                                 <div className="text-center py-8 text-sm text-muted-foreground italic bg-muted/20 rounded-xl border border-dashed border-muted">
-                                                    No hay llegadas tarde registradas.
+                                                    No hay llegadas tarde o retiros registrados.
                                                 </div>
                                             ) : (
                                                 latesList.map(renderRecordCard)
@@ -6109,27 +6163,33 @@ const handleOpenAnalytics = async () => {
                                                     className="mt-6 w-full max-w-xs shrink-0 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex flex-col items-center gap-2"
                                                 >
                                                     <Label className="text-xs font-bold text-amber-700 dark:text-amber-400">AJUSTAR HORA DE INGRESO</Label>
-                                                    <Input 
-                                                        type="time" 
+                                                    <select 
                                                         disabled={isSavingAtt}
-                                                        className="h-10 w-36 text-center text-base font-bold bg-background border-amber-300 dark:border-amber-900"
+                                                        className="h-10 w-40 rounded-lg border border-amber-300 dark:border-amber-900 bg-background text-base font-bold text-center text-amber-900 dark:text-amber-200 px-2 outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
                                                         value={rec?.arrivalTime || ""}
                                                         onChange={e => updateLateTime(currentStudent.id, e.target.value)} 
-                                                    />
+                                                    >
+                                                        <option value="" disabled>Seleccione...</option>
+                                                        {rec?.arrivalTime && !currentSessionTimeOptions.lateOptions.includes(rec.arrivalTime) && (
+                                                            <option value={rec.arrivalTime}>{rec.arrivalTime} (Fuera de rango)</option>
+                                                        )}
+                                                        {currentSessionTimeOptions.lateOptions.map(time => (
+                                                            <option key={time} value={time}>{time}</option>
+                                                        ))}
+                                                    </select>
                                                     {rec?.arrivalTime && (() => {
-                                                         const daysOfWeekEng = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
-                                                         const dayIndex = new Date(attDate + "T12:00:00").getDay();
-                                                         const dayOfWeekName = daysOfWeekEng[dayIndex];
-                                                         const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-                                                         const scheduleForDay = course?.schedules?.find((s: any) => s.dayOfWeek === dayOfWeekName);
-                                                         const startTimeStr = scheduleForDay?.startTime || selectedGroup.startTime || "06:00";
-                                                         const lostHrs = calculateHoursDiff(startTimeStr, rec.arrivalTime);
-                                                         return lostHrs > 0 ? (
-                                                             <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
-                                                                 Horas perdidas: {lostHrs.toFixed(2)} hs
-                                                             </p>
-                                                         ) : null;
-                                                     })()}
+                                                        const lost = getLostHoursForAttendance(
+                                                            currentSessionTimeOptions.sessionStart,
+                                                            currentSessionTimeOptions.sessionEnd,
+                                                            rec.arrivalTime,
+                                                            rec.departureTime
+                                                        );
+                                                        return (
+                                                            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+                                                                Horas perdidas: {lost.lateLostHours.toFixed(1)} hs
+                                                            </p>
+                                                        );
+                                                    })()}
                                                 </motion.div>
                                             )}
                                             {isLeaveEarly && (
@@ -6140,27 +6200,33 @@ const handleOpenAnalytics = async () => {
                                                     className="mt-6 w-full max-w-xs shrink-0 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex flex-col items-center gap-2"
                                                 >
                                                     <Label className="text-xs font-bold text-blue-700 dark:text-blue-400">HORA DE RETIRO</Label>
-                                                    <Input 
-                                                        type="time" 
+                                                    <select 
                                                         disabled={isSavingAtt}
-                                                        className="h-10 w-36 text-center text-base font-bold bg-background border-blue-300 dark:border-blue-900"
+                                                        className="h-10 w-40 rounded-lg border border-blue-300 dark:border-blue-900 bg-background text-base font-bold text-center text-blue-900 dark:text-blue-200 px-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                                                         value={rec?.departureTime || ""}
                                                         onChange={e => updateLeaveTime(currentStudent.id, e.target.value)} 
-                                                    />
+                                                    >
+                                                        <option value="" disabled>Seleccione...</option>
+                                                        {rec?.departureTime && !currentSessionTimeOptions.leaveOptions.includes(rec.departureTime) && (
+                                                            <option value={rec.departureTime}>{rec.departureTime} (Fuera de rango)</option>
+                                                        )}
+                                                        {currentSessionTimeOptions.leaveOptions.map(time => (
+                                                            <option key={time} value={time}>{time}</option>
+                                                        ))}
+                                                    </select>
                                                     {rec?.departureTime && (() => {
-                                                         const daysOfWeekEng = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
-                                                         const dayIndex = new Date(attDate + "T12:00:00").getDay();
-                                                         const dayOfWeekName = daysOfWeekEng[dayIndex];
-                                                         const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
-                                                         const scheduleForDay = course?.schedules?.find((s: any) => s.dayOfWeek === dayOfWeekName);
-                                                         const endTimeStr = scheduleForDay?.endTime || selectedGroup.endTime || "12:00";
-                                                         const lostHrs = calculateHoursDiff(rec.departureTime, endTimeStr);
-                                                         return lostHrs > 0 ? (
-                                                             <p className="text-[11px] text-blue-600 dark:text-blue-400 font-bold">
-                                                                 Horas perdidas: {lostHrs.toFixed(2)} hs
-                                                             </p>
-                                                         ) : null;
-                                                     })()}
+                                                        const lost = getLostHoursForAttendance(
+                                                            currentSessionTimeOptions.sessionStart,
+                                                            currentSessionTimeOptions.sessionEnd,
+                                                            rec.arrivalTime,
+                                                            rec.departureTime
+                                                        );
+                                                        return (
+                                                            <p className="text-[11px] text-blue-600 dark:text-blue-400 font-bold">
+                                                                Horas perdidas: {lost.leaveLostHours.toFixed(1)} hs
+                                                            </p>
+                                                        );
+                                                    })()}
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>

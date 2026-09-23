@@ -29,7 +29,7 @@ function DraggableStudent({ student }: { student: any }) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 p-3 bg-background border rounded-lg shadow-sm group hover:border-primary/50 transition-colors ${isDragging ? 'border-primary ring-2 ring-primary/20' : ''}`}
+      className={`flex items-center gap-3 p-3 bg-card border rounded-xl shadow-xs group hover:border-primary/50 hover:shadow-sm transition-all select-none ${isDragging ? 'border-primary ring-2 ring-primary/20 shadow-md opacity-80' : ''}`}
     >
       <div {...listeners} {...attributes} className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground">
         <GripVertical className="w-4 h-4" />
@@ -91,7 +91,7 @@ function DroppableColumn({ id, title, students, onNameChange, onDelete, isUnassi
       <div className="flex-1 overflow-y-auto min-h-0">
         <div 
           ref={setNodeRef}
-          className={`p-4 min-h-[200px] h-full space-y-3 transition-colors ${isOver ? 'bg-primary/5' : ''}`}
+          className={`p-4 min-h-[200px] h-full flex flex-col gap-2.5 transition-colors ${isOver ? 'bg-primary/5' : ''}`}
         >
           {students.map(s => (
             <DraggableStudent key={s.id} student={s} />
@@ -118,8 +118,8 @@ function DroppableColumn({ id, title, students, onNameChange, onDelete, isUnassi
 function DroppableUnassigned({ students }: { students: any[] }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'unassigned' });
   return (
-    <div className={`flex-1 overflow-y-auto p-4 space-y-2 transition-colors ${isOver ? 'bg-primary/5' : ''}`}>
-      <div ref={setNodeRef} className="min-h-[200px] h-full pb-20">
+    <div className={`flex-1 overflow-y-auto p-4 transition-colors ${isOver ? 'bg-primary/5' : ''}`}>
+      <div ref={setNodeRef} className="min-h-[200px] h-full pb-20 flex flex-col gap-2.5">
         {students.map(s => (
           <DraggableStudent key={s.id} student={s} />
         ))}

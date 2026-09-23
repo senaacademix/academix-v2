@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
 import { isDateInColombianWeek, parseDateStringToUTCMidday } from "@/lib/dateUtils";
+import { calculateStudentAttendanceLoss } from "@/lib/gradePenaltyUtils";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
@@ -222,19 +223,19 @@ export async function saveAttendanceBatch(
 
         const parseArrivalTime = (timeStr: string | undefined | null) => {
             if (!timeStr) return null;
-            const dateParsed = new Date(timeStr);
-            if (!isNaN(dateParsed.getTime())) {
-                return dateParsed;
-            }
             if (/^\d{2}:\d{2}$/.test(timeStr)) {
                 const yyyy = dateObj.getUTCFullYear();
                 const mm = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
                 const dd = String(dateObj.getUTCDate()).padStart(2, "0");
-                const fullDateTimeStr = `${yyyy}-${mm}-${dd}T${timeStr}:00`;
+                const fullDateTimeStr = `${yyyy}-${mm}-${dd}T${timeStr}:00.000Z`;
                 const d = new Date(fullDateTimeStr);
                 if (!isNaN(d.getTime())) {
                     return d;
                 }
+            }
+            const dateParsed = new Date(timeStr);
+            if (!isNaN(dateParsed.getTime())) {
+                return dateParsed;
             }
             return null;
         };
@@ -402,6 +403,8 @@ export async function getGroupRemarksHistory(groupId: string) {
                     id: true,
                     title: true,
                     teacherId: true,
+                    schedules: true,
+                    academicSchedule: true,
                     activities: {
                         select: {
                             grades: {
@@ -426,7 +429,7 @@ export async function getGroupRemarksHistory(groupId: string) {
     // Fetch attendances
     const attendances = await prisma.attendance.findMany({
         where: { courseId: { in: courseIds } },
-        select: { status: true, date: true, userId: true, courseId: true }
+        select: { status: true, date: true, userId: true, courseId: true, arrivalTime: true, departureTime: true }
     });
 
     // Fetch remarks
@@ -489,8 +492,15 @@ export async function getGroupRemarksHistory(groupId: string) {
         let gradesCount = 0;
         const courseGrades: Record<string, number> = {};
 
-        const courseAttendances: Record<string, { present: number, absent: number, late: number }> = {};
+        const courseAttendances: Record<string, { present: number, absent: number, late: number, leaveEarly: number, absentHours: number, lateHours: number, leaveEarlyHours: number, totalClasses: number }> = {};
         const courseRemarks: Record<string, { attention: number, commendation: number }> = {};
+
+        let globalAbsentCount = 0;
+        let globalLateCount = 0;
+        let globalLeaveCount = 0;
+        let globalAbsentHours = 0;
+        let globalLateHours = 0;
+        let globalLeaveHours = 0;
 
         coursesTaught.forEach(c => {
             // Grades
@@ -506,14 +516,28 @@ export async function getGroupRemarksHistory(groupId: string) {
             });
             courseGrades[c.id] = cCount > 0 ? Number((cScore / cCount).toFixed(2)) : 0;
 
-            // Attendances
-            const cAtts = attendances.filter(a => a.userId === student.id && a.courseId === c.id);
-            const cAbsent = cAtts.filter(a => a.status === 'ABSENT').length;
-            const cLate = cAtts.filter(a => a.status === 'LATE').length;
-            // Assuming course total classes is total dates for that course
+            // Attendances using accurate loss calculator
+            const loss = calculateStudentAttendanceLoss(student.id, c.id, attendances as any, c as any, group as any);
             const cDates = new Set(attendances.filter(a => a.courseId === c.id).map(a => new Date(a.date).toISOString().split('T')[0]));
-            const cPresent = Math.max(0, cDates.size - cAbsent - cLate);
-            courseAttendances[c.id] = { present: cPresent, absent: cAbsent, late: cLate };
+            const cPresent = Math.max(0, cDates.size - loss.absentCount - loss.lateCount - loss.leaveCount);
+            
+            courseAttendances[c.id] = {
+                present: cPresent,
+                absent: loss.absentCount,
+                late: loss.lateCount,
+                leaveEarly: loss.leaveCount,
+                absentHours: loss.absentHours,
+                lateHours: loss.lateHours,
+                leaveEarlyHours: loss.leaveHours,
+                totalClasses: cDates.size
+            };
+
+            globalAbsentCount += loss.absentCount;
+            globalLateCount += loss.lateCount;
+            globalLeaveCount += loss.leaveCount;
+            globalAbsentHours += loss.absentHours;
+            globalLateHours += loss.lateHours;
+            globalLeaveHours += loss.leaveHours;
 
             // Remarks
             const cRems = remarks.filter(r => r.userId === student.id && r.courseId === c.id);
@@ -533,12 +557,24 @@ export async function getGroupRemarksHistory(groupId: string) {
             courseGrades,
             courseAttendances,
             courseRemarks,
-            attendances: { present, absent, late },
+            attendances: {
+                present: Math.max(0, totalCourseClasses - globalAbsentCount - globalLateCount - globalLeaveCount),
+                absent: globalAbsentCount,
+                late: globalLateCount,
+                leaveEarly: globalLeaveCount,
+                absentHours: globalAbsentHours,
+                lateHours: globalLateHours,
+                leaveEarlyHours: globalLeaveHours
+            },
             remarks: { attention, commendation }
         };
     }).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
-    const coursesList = coursesTaught.map(c => ({ id: c.id, title: c.title }));
+    const coursesList = coursesTaught.map(c => ({
+        id: c.id,
+        title: c.title,
+        schedules: c.schedules?.map((s: any) => ({ dayOfWeek: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime }))
+    }));
 
     return {
         studentMetrics,
@@ -644,17 +680,19 @@ export async function saveSingleAttendanceAction(
             // Handle arrivalTime parse if late or arrivalTime provided
             let dbArrivalTime: Date | null = null;
             if (arrivalTime) {
-                const dateParsed = new Date(arrivalTime);
-                if (!isNaN(dateParsed.getTime())) {
-                    dbArrivalTime = dateParsed;
-                } else if (/^\d{2}:\d{2}$/.test(arrivalTime)) {
+                if (/^\d{2}:\d{2}$/.test(arrivalTime)) {
                     const yyyy = dateObj.getUTCFullYear();
                     const mm = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
                     const dd = String(dateObj.getUTCDate()).padStart(2, "0");
-                    const fullDateTimeStr = `${yyyy}-${mm}-${dd}T${arrivalTime}:00`;
+                    const fullDateTimeStr = `${yyyy}-${mm}-${dd}T${arrivalTime}:00.000Z`;
                     const d = new Date(fullDateTimeStr);
                     if (!isNaN(d.getTime())) {
                         dbArrivalTime = d;
+                    }
+                } else {
+                    const dateParsed = new Date(arrivalTime);
+                    if (!isNaN(dateParsed.getTime())) {
+                        dbArrivalTime = dateParsed;
                     }
                 }
             } else if (dbStatus === "LATE") {
@@ -664,17 +702,19 @@ export async function saveSingleAttendanceAction(
             // Handle departureTime parse if leave early or departureTime provided
             let dbDepartureTime: Date | null = null;
             if (departureTime) {
-                const dateParsed = new Date(departureTime);
-                if (!isNaN(dateParsed.getTime())) {
-                    dbDepartureTime = dateParsed;
-                } else if (/^\d{2}:\d{2}$/.test(departureTime)) {
+                if (/^\d{2}:\d{2}$/.test(departureTime)) {
                     const yyyy = dateObj.getUTCFullYear();
                     const mm = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
                     const dd = String(dateObj.getUTCDate()).padStart(2, "0");
-                    const fullDateTimeStr = `${yyyy}-${mm}-${dd}T${departureTime}:00`;
+                    const fullDateTimeStr = `${yyyy}-${mm}-${dd}T${departureTime}:00.000Z`;
                     const d = new Date(fullDateTimeStr);
                     if (!isNaN(d.getTime())) {
                         dbDepartureTime = d;
+                    }
+                } else {
+                    const dateParsed = new Date(departureTime);
+                    if (!isNaN(dateParsed.getTime())) {
+                        dbDepartureTime = dateParsed;
                     }
                 }
             } else if (dbStatus === "LEAVE_EARLY") {

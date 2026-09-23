@@ -37,7 +37,11 @@ export async function getCourseActivities(courseId: string) {
 
         const course = await prisma.course.findUnique({
             where: { id: courseId },
-            select: { usePercentageWeights: true }
+            select: { 
+                usePercentageWeights: true,
+                attendancePenaltyEnabled: true,
+                maxPenaltyPercentage: true,
+            }
         });
 
         const activities = await prisma.activity.findMany({
@@ -52,11 +56,40 @@ export async function getCourseActivities(courseId: string) {
         
         return { 
             activities, 
-            usePercentageWeights: course?.usePercentageWeights ?? true 
+            usePercentageWeights: course?.usePercentageWeights ?? true,
+            attendancePenaltyEnabled: course?.attendancePenaltyEnabled ?? false,
+            maxPenaltyPercentage: course?.maxPenaltyPercentage ?? 0,
         };
     } catch (error) {
         console.error("Error fetching course activities:", error);
-        return { activities: [], usePercentageWeights: true };
+        return { activities: [], usePercentageWeights: true, attendancePenaltyEnabled: false, maxPenaltyPercentage: 0 };
+    }
+}
+
+export async function updateCourseAttendancePenalty(
+    courseId: string, 
+    attendancePenaltyEnabled: boolean, 
+    maxPenaltyPercentage: number
+) {
+    try {
+        const teacher = await requireTeacherOrAdmin();
+        await verifyCourseTeacher(courseId, teacher);
+
+        const clampedPercentage = Math.max(0, Math.min(100, Number(maxPenaltyPercentage) || 0));
+
+        await prisma.course.update({
+            where: { id: courseId },
+            data: { 
+                attendancePenaltyEnabled,
+                maxPenaltyPercentage: clampedPercentage
+            }
+        });
+        
+        revalidatePath("/dashboard/teacher");
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error updating course attendance penalty:", error);
+        return { success: false, error: error.message };
     }
 }
 
@@ -221,6 +254,9 @@ export async function getStudentGrades(userId: string) {
                     include: {
                         teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
                         schedules: { orderBy: { dayOfWeek: 'asc' } },
+                        academicSchedule: true,
+                        attendances: { where: { userId } },
+                        group: { select: { id: true, name: true, startDate: true, endDate: true } },
                         activities: {
                             orderBy: { createdAt: 'asc' },
                             include: {
@@ -263,9 +299,11 @@ export async function getStudentGrades(userId: string) {
                 name: true,
                 courses: {
                     include: {
-                        group: { select: { id: true, name: true } },
+                        group: { select: { id: true, name: true, startDate: true, endDate: true } },
                         teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
                         schedules: { orderBy: { dayOfWeek: 'asc' } },
+                        academicSchedule: true,
+                        attendances: { where: { userId } },
                         activities: {
                             orderBy: { createdAt: 'asc' },
                             include: {
@@ -277,7 +315,7 @@ export async function getStudentGrades(userId: string) {
             }
         });
 
-        const groupCourses: any[] = groups.flatMap(g => g.courses);
+        const groupCourses: any[] = (groups as any[]).flatMap(g => g.courses || []);
 
         // ── 3. Unir y deduplicar por id ───────────────────────────────────────
         const allCourses = [...directCourses];

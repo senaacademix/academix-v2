@@ -84,7 +84,7 @@ export function ThemeSelector({ themes }: ThemeSelectorProps) {
   }, [activeTheme, themes, mounted]);
 
   const handleFontLoading = (css: string) => {
-    const fontVars = ['--font-sans', '--font-serif', '--font-mono'];
+    const fontVars = ['--font-sans', '--font-heading', '--font-serif', '--font-mono'];
     const foundFonts = new Set<string>();
 
     fontVars.forEach(v => {

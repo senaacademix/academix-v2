@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle, X } from "lucide-react";
+import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle, X, AlertTriangle } from "lucide-react";
+import { calculateTotalScheduledHours, calculateStudentAttendanceLoss, calculatePenalizedGrade, getLostHoursForAttendance, formatTime12h, calculateHoursDiff } from "@/lib/gradePenaltyUtils";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
@@ -1289,7 +1290,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                         }
                                     }
                                     const absentCount = entries.filter(e => e.status === "ABSENT").length;
-                                    const lateCount = entries.filter(e => e.status === "LATE").length;
                                     
                                     let dailyHours = 6;
                                     if (course.schedules && course.schedules.length > 0) {
@@ -1300,7 +1300,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                             dailyHours = (eh * 60 + em - (sh * 60 + sm)) / 60;
                                         }
                                     }
-                                    const totalScheduledHours = totalClassDays * dailyHours;
+                                    const totalScheduledHours = calculateTotalScheduledHours(course, course.group, records?.scheduleDates, entries);
                                     
                                     let absentHours = 0;
                                     let lateHours = 0;
@@ -1311,48 +1311,25 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                             SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6
                                         };
                                         const targetDay = new Date(rec.date).getUTCDay();
+                                        const sch = course.schedules?.find((s: any) => daysMap[s.dayOfWeek] === targetDay) || course.schedules?.[0];
+                                        const sessionStart = sch?.startTime || "06:00";
+                                        const sessionEnd = sch?.endTime || "22:00";
+                                        const [sh, sm] = sessionStart.split(":").map(Number);
+                                        const [eh, em] = sessionEnd.split(":").map(Number);
+                                        const sessionDailyHours = (eh * 60 + em - (sh * 60 + sm)) / 60;
+                                        const effectiveDailyHours = sessionDailyHours > 0 ? sessionDailyHours : dailyHours;
+
                                         if (rec.status === "ABSENT") {
-                                            absentHours += dailyHours;
-                                        } else if (rec.status === "LATE" && rec.arrivalTime && course.schedules && course.schedules.length > 0) {
-                                            const sch = course.schedules.find((s: any) => daysMap[s.dayOfWeek] === targetDay) || course.schedules[0];
-                                            if (sch && sch.startTime) {
-                                                const [sh, sm] = sch.startTime.split(":").map(Number);
-                                                let ah = 0, am = 0;
-                                                try {
-                                                    const dateObj = new Date(rec.arrivalTime);
-                                                    if (!isNaN(dateObj.getTime())) {
-                                                        ah = parseInt(dateObj.toISOString().substring(11, 13));
-                                                        am = parseInt(dateObj.toISOString().substring(14, 16));
-                                                    }
-                                                } catch(e) {}
-                                                const arrMin = ah * 60 + am;
-                                                const schedMin = sh * 60 + sm;
-                                                if (arrMin > schedMin) {
-                                                    lateHours += (arrMin - schedMin) / 60;
-                                                }
-                                            }
-                                        } else if (rec.status === "LEAVE_EARLY" && rec.departureTime && course.schedules && course.schedules.length > 0) {
-                                            const sch = course.schedules.find((s: any) => daysMap[s.dayOfWeek] === targetDay) || course.schedules[0];
-                                            if (sch && sch.endTime) {
-                                                const [eh, em] = sch.endTime.split(":").map(Number);
-                                                let dh = 0, dm = 0;
-                                                try {
-                                                    const dateObj = new Date(rec.departureTime);
-                                                    if (!isNaN(dateObj.getTime())) {
-                                                        dh = parseInt(dateObj.toISOString().substring(11, 13));
-                                                        dm = parseInt(dateObj.toISOString().substring(14, 16));
-                                                    }
-                                                } catch(e) {}
-                                                const depMin = dh * 60 + dm;
-                                                const schedEndMin = eh * 60 + em;
-                                                if (schedEndMin > depMin) {
-                                                    leaveHours += (schedEndMin - depMin) / 60;
-                                                }
-                                            }
+                                            absentHours += effectiveDailyHours;
+                                        } else if (rec.status === "LATE" || rec.status === "LEAVE_EARLY" || rec.arrivalTime || rec.departureTime) {
+                                            const lost = getLostHoursForAttendance(sessionStart, sessionEnd, rec.arrivalTime, rec.departureTime);
+                                            lateHours += lost.lateHours;
+                                            leaveHours += lost.leaveEarlyHours;
                                         }
                                     });
 
-                                    const leaveCount = entries.filter(e => e.status === "LEAVE_EARLY").length;
+                                    const lateCount = entries.filter(e => e.status === "LATE" || (e.arrivalTime && e.status !== "PRESENT" && e.status !== "ABSENT")).length;
+                                    const leaveCount = entries.filter(e => e.status === "LEAVE_EARLY" || (e.departureTime && e.status !== "PRESENT" && e.status !== "ABSENT")).length;
                                     const absenceRate = totalClassDays > 0 ? Math.max(0, Math.min(100, (absentCount / totalClassDays) * 100)) : 0;
                                     const lateRate = totalClassDays > 0 ? Math.max(0, Math.min(100, (lateCount / totalClassDays) * 100)) : 0;
                                     const leaveRate = totalClassDays > 0 ? Math.max(0, Math.min(100, (leaveCount / totalClassDays) * 100)) : 0;
@@ -1550,19 +1527,56 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                     <TableRow key={att.id}>
                                                                         <TableCell>
                                                                             <div className="font-semibold">{format(fromUTC(att.date), "EEE d MMM yyyy", { locale: es })}</div>
-                                                                            {att.arrivalTime && <div className="text-xs text-muted-foreground mt-0.5">Llegada: {format(new Date(att.arrivalTime), "HH:mm")}</div>}
-                                                                            {att.departureTime && <div className="text-xs text-muted-foreground mt-0.5">Retiro: {format(new Date(att.departureTime), "HH:mm")}</div>}
+                                                                            {att.arrivalTime && <div className="text-xs text-muted-foreground mt-0.5">Llegada: {formatTime12h(att.arrivalTime)}</div>}
+                                                                            {att.departureTime && <div className="text-xs text-muted-foreground mt-0.5">Retiro: {formatTime12h(att.departureTime)}</div>}
+                                                                            {(() => {
+                                                                                if (att.status === "PRESENT") return null;
+                                                                                const daysMap: Record<string, number> = {
+                                                                                    SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6
+                                                                                };
+                                                                                const targetDay = new Date(att.date).getUTCDay();
+                                                                                const sch = att.course?.schedules?.find((s: any) => daysMap[s.dayOfWeek] === targetDay) || att.course?.schedules?.[0];
+                                                                                const sessionStart = sch?.startTime || "08:00";
+                                                                                const sessionEnd = sch?.endTime || "12:00";
+                                                                                const lost = getLostHoursForAttendance(sessionStart, sessionEnd, att.arrivalTime, att.departureTime);
+                                                                                const sessionHours = Math.max(0.5, calculateHoursDiff(sessionStart, sessionEnd) || 4);
+                                                                                const lostH = att.status === "ABSENT" ? sessionHours : lost.totalLostHours;
+                                                                                if (lostH <= 0) return null;
+                                                                                return (
+                                                                                    <div className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 shadow-2xs">
+                                                                                        <Clock className="w-2.5 h-2.5 shrink-0" />
+                                                                                        <span>{lostH}h perdidas</span>
+                                                                                    </div>
+                                                                                );
+                                                                            })()}
                                                                         </TableCell>
                                                                         <TableCell className="text-center">
-                                                                            <Badge variant="outline" className={`text-xs font-bold w-28 h-6 inline-flex items-center justify-center ${
-                                                                                att.status === 'LATE' 
-                                                                                    ? 'text-amber-600 border-amber-200 bg-amber-50' 
-                                                                                    : att.status === 'LEAVE_EARLY'
-                                                                                        ? 'text-blue-600 border-blue-200 bg-blue-50'
-                                                                                        : 'text-red-600 border-red-200 bg-red-50'
-                                                                            }`}>
-                                                                                {att.status === 'LATE' ? 'Llegada Tarde' : att.status === 'LEAVE_EARLY' ? 'Retiro Temprano' : 'Ausencia'}
-                                                                            </Badge>
+                                                                            {(() => {
+                                                                                const isAbsent = att.status === 'ABSENT';
+                                                                                const isLate = att.status === 'LATE' || !!att.arrivalTime;
+                                                                                const isLeaveEarly = att.status === 'LEAVE_EARLY' || !!att.departureTime;
+                                                                                const isDual = isLate && isLeaveEarly;
+
+                                                                                let badgeClass = "text-red-600 border-red-200 bg-red-50";
+                                                                                let label = "Ausencia";
+
+                                                                                if (isDual) {
+                                                                                    badgeClass = "text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300";
+                                                                                    label = "Tarde + Retiro";
+                                                                                } else if (isLate) {
+                                                                                    badgeClass = "text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400";
+                                                                                    label = "Llegada Tarde";
+                                                                                } else if (isLeaveEarly) {
+                                                                                    badgeClass = "text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400";
+                                                                                    label = "Retiro Temprano";
+                                                                                }
+
+                                                                                return (
+                                                                                    <Badge variant="outline" className={`text-xs font-bold w-28 h-6 inline-flex items-center justify-center ${badgeClass}`}>
+                                                                                        {label}
+                                                                                    </Badge>
+                                                                                );
+                                                                            })()}
                                                                         </TableCell>
                                                                         <TableCell className="text-left">
                                                                             {isJustified ? (
@@ -1671,19 +1685,52 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                 courses.map(course => {
                                     let totalScore = 0;
                                     let totalWeight = 0;
+                                    let count = 0;
 
                                     course.activities.forEach((act: any) => {
                                         const grade = act.grades[0];
                                         if (grade && grade.score > 0) {
                                             totalScore += grade.score * (act.weight / 100);
                                             totalWeight += act.weight;
+                                            count++;
                                         }
                                     });
 
-                                    const currentAverage = totalWeight > 0
-                                        ? (totalScore / (totalWeight / 100)).toFixed(2)
-                                        : "-";
-                                    const avgNum = parseFloat(currentAverage);
+                                    const hasGrades = totalWeight > 0 || count > 0;
+                                    const rawGrade = hasGrades ? (totalWeight > 0 ? totalScore / (totalWeight / 100) : totalScore / count) : null;
+
+                                    let loss: any = null;
+                                    let totalScheduledHours = 0;
+                                    let penaltyResult: any = null;
+                                    let finalDisplay = rawGrade !== null ? rawGrade.toFixed(2) : "-";
+
+                                    const targetUserId = studentId || records?.targetUser?.id;
+                                    if (course.attendancePenaltyEnabled && targetUserId) {
+                                        totalScheduledHours = calculateTotalScheduledHours(course, course.group, records?.scheduleDates, course.attendances || []);
+                                        loss = calculateStudentAttendanceLoss(targetUserId, course.id, course.attendances || [], course, course.group);
+
+                                        if (rawGrade !== null) {
+                                            penaltyResult = calculatePenalizedGrade({
+                                                rawGrade,
+                                                penaltyEnabled: true,
+                                                maxPenaltyPercentage: course.maxPenaltyPercentage || 0,
+                                                totalLostHours: loss.totalLostHours,
+                                                totalScheduledHours,
+                                                lossDetails: {
+                                                    absentHours: loss.absentHours,
+                                                    lateHours: loss.lateHours,
+                                                    leaveHours: loss.leaveHours,
+                                                    absentCount: loss.absentCount,
+                                                    lateCount: loss.lateCount,
+                                                    leaveCount: loss.leaveCount,
+                                                },
+                                            });
+
+                                            finalDisplay = penaltyResult.finalGrade.toFixed(2);
+                                        }
+                                    }
+
+                                    const avgNum = parseFloat(finalDisplay);
 
                                     return (
                                         <Card key={course.id} className="overflow-hidden border-border/50 shadow-sm">
@@ -1713,12 +1760,104 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                     )}
                                                 </div>
                                                 <div className="flex flex-col items-end shrink-0">
-                                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Promedio</span>
-                                                    <span className={`text-3xl font-black ${!isNaN(avgNum) && avgNum < 3.0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                                        {currentAverage}
+                                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                                        {course.attendancePenaltyEnabled ? "Nota Definitiva" : "Promedio"}
                                                     </span>
+                                                    <div className="flex items-baseline gap-2">
+                                                        {penaltyResult?.isPenaltyApplied && (
+                                                            <span className="text-xs text-muted-foreground line-through font-semibold">
+                                                                {rawGrade?.toFixed(2)}
+                                                            </span>
+                                                        )}
+                                                        <span className={`text-3xl font-black ${!isNaN(avgNum) && avgNum < 3.0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                                            {finalDisplay}
+                                                        </span>
+                                                    </div>
+                                                    {/* Badge visible con las horas de inasistencia acumuladas */}
+                                                    {course.attendancePenaltyEnabled && loss && (
+                                                        <div className="flex items-center gap-1.5 mt-1">
+                                                            {loss.totalLostHours > 0 ? (
+                                                                <Badge variant="outline" className="text-[11px] font-bold border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1 py-0.5 shadow-2xs">
+                                                                    <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                                                    <span>{loss.totalLostHours}h inasistencia</span>
+                                                                    {penaltyResult?.isPenaltyApplied && (
+                                                                        <span className="font-extrabold text-amber-800 dark:text-amber-200">
+                                                                            (-{penaltyResult.discountPoints.toFixed(2)} pts)
+                                                                        </span>
+                                                                    )}
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge variant="outline" className="text-[10px] font-medium border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 gap-1 py-0">
+                                                                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                                                                    <span>0h inasist.</span>
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </CardHeader>
+
+                                            {/* Mensaje de transparencia con desglose detallado de horas */}
+                                            {course.attendancePenaltyEnabled && loss && (
+                                                <div className="p-4 sm:p-5 pb-0">
+                                                    {penaltyResult?.isPenaltyApplied ? (
+                                                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-950 dark:text-amber-200 flex items-start gap-3">
+                                                            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                                            <div className="space-y-2 flex-1">
+                                                                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/20 pb-1.5">
+                                                                    <p className="font-extrabold text-sm text-amber-900 dark:text-amber-300">
+                                                                        Penalización por Inasistencia Aplicada
+                                                                    </p>
+                                                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200">
+                                                                        Descuento: -{penaltyResult.discountPoints.toFixed(2)} pts
+                                                                    </span>
+                                                                </div>
+                                                                <p className="leading-relaxed font-medium">
+                                                                    {penaltyResult.transparencyMessage}
+                                                                </p>
+                                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                                                                    <div className="bg-background/60 dark:bg-background/30 rounded-lg p-2 border border-amber-500/15">
+                                                                        <span className="text-muted-foreground block text-[10px]">Horas ausente:</span>
+                                                                        <span className="font-black text-amber-700 dark:text-amber-400">{loss.totalLostHours} hrs</span>
+                                                                    </div>
+                                                                    <div className="bg-background/60 dark:bg-background/30 rounded-lg p-2 border border-amber-500/15">
+                                                                        <span className="text-muted-foreground block text-[10px]">Faltas ({loss.absentCount}):</span>
+                                                                        <span className="font-bold text-foreground">{loss.absentHours} hrs</span>
+                                                                    </div>
+                                                                    <div className="bg-background/60 dark:bg-background/30 rounded-lg p-2 border border-amber-500/15">
+                                                                        <span className="text-muted-foreground block text-[10px]">Tardanzas ({loss.lateCount}):</span>
+                                                                        <span className="font-bold text-foreground">{loss.lateHours} hrs</span>
+                                                                    </div>
+                                                                    <div className="bg-background/60 dark:bg-background/30 rounded-lg p-2 border border-amber-500/15">
+                                                                        <span className="text-muted-foreground block text-[10px]">Retiros ({loss.leaveCount}):</span>
+                                                                        <span className="font-bold text-foreground">{loss.leaveHours} hrs</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ) : rawGrade === null && loss.totalLostHours > 0 ? (
+                                                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-950 dark:text-amber-200 flex items-start gap-3">
+                                                            <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                                            <div className="space-y-1.5 flex-1">
+                                                                <p className="font-extrabold text-sm text-amber-900 dark:text-amber-300">
+                                                                    Penalización por Inasistencia Vigente
+                                                                </p>
+                                                                <p className="leading-relaxed">
+                                                                    Tienes <strong>{loss.totalLostHours} horas de inasistencia</strong> registradas ({loss.absentHours}h por faltas, {loss.lateHours}h por tardanzas, {loss.leaveHours}h por retiros) de un total de <strong>{totalScheduledHours} horas programadas</strong> ({totalScheduledHours > 0 ? Math.round((loss.totalLostHours / totalScheduledHours) * 100) : 0}%).
+                                                                    Tu instructor ha configurado una penalización de hasta el <strong>{course.maxPenaltyPercentage}%</strong> que se aplicará en tu nota definitiva una vez se registren tus calificaciones.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-950 dark:text-emerald-200 flex items-center gap-2.5">
+                                                            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                                            <span>
+                                                                Regla de penalización activa ({course.maxPenaltyPercentage}% máx.), pero tienes <strong>0 horas de inasistencia acumuladas (0%)</strong>. Tu nota definitiva se mantiene intacta.
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                             <CardContent className="p-0">
                                                 {course.activities.length === 0 ? (
                                                     <div className="p-8 text-center text-muted-foreground text-sm">

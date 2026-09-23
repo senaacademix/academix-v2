@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
+import React, { useState, useEffect, useTransition, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -9,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Save, Trash2, Edit, Users, Search, UsersRound, Link2, GraduationCap, X } from "lucide-react";
+import { Plus, Save, Trash2, Edit, Users, Search, UsersRound, Link2, GraduationCap, X, AlertTriangle, Info, AlertCircle, Clock } from "lucide-react";
 import MDEditor from "@uiw/react-md-editor";
 import { getCourseWorkGroups } from "../actions/workGroupActions";
 import { WorkGroupManagerDialog } from "./WorkGroupManagerDialog";
-import { getCourseActivities, createActivity, updateActivity, deleteActivity, saveStudentGrades, toggleCourseWeightMode } from "../actions/gradeActions";
+import { getCourseActivities, createActivity, updateActivity, deleteActivity, saveStudentGrades, toggleCourseWeightMode, updateCourseAttendancePenalty } from "../actions/gradeActions";
 import { formatName, getInitials } from "@/lib/utils";
+import { calculateTotalScheduledHours, calculateStudentAttendanceLoss, calculatePenalizedGrade } from "@/lib/gradePenaltyUtils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
 import { StudentVoceroBadge } from "@/components/StudentVoceroBadge";
@@ -28,12 +29,16 @@ interface GradeManagerPanelProps {
   students: any[];
   voceroPrincipalId?: string | null;
   voceroSuplenteId?: string | null;
+  group?: any;
+  attendanceHistory?: any[];
 }
 
-export function GradeManagerPanel({ courses, students, voceroPrincipalId, voceroSuplenteId }: GradeManagerPanelProps) {
+export function GradeManagerPanel({ courses, students, voceroPrincipalId, voceroSuplenteId, group, attendanceHistory }: GradeManagerPanelProps) {
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [activities, setActivities] = useState<any[]>([]);
   const [usePercentageWeights, setUsePercentageWeights] = useState(true);
+  const [attendancePenaltyEnabled, setAttendancePenaltyEnabled] = useState(false);
+  const [maxPenaltyPercentage, setMaxPenaltyPercentage] = useState<number>(0);
   const [grades, setGrades] = useState<Record<string, Record<string, string>>>({}); // [activityId][studentId] = score as string
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -71,6 +76,8 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
     const data = await getCourseActivities(selectedCourseId) as any;
     setActivities(data.activities);
     setUsePercentageWeights(data.usePercentageWeights);
+    setAttendancePenaltyEnabled(data.attendancePenaltyEnabled ?? false);
+    setMaxPenaltyPercentage(data.maxPenaltyPercentage ?? 0);
     
     // Initialize grades state
     const newGrades: Record<string, Record<string, string>> = {};
@@ -282,15 +289,36 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
   };
 
   const getColorForGrade = (val: string) => {
-    if (!val || val === "-") return { input: "bg-transparent text-foreground", badge: "bg-muted text-muted-foreground" };
+    if (!val || val === "-") return { 
+      input: "bg-transparent text-foreground", 
+      badge: "bg-muted/60 text-muted-foreground border border-border/60 shadow-none font-bold" 
+    };
     const num = parseFloat(val);
-    if (isNaN(num)) return { input: "bg-transparent text-foreground", badge: "bg-muted text-muted-foreground" };
-    if (num < 3.0) return { input: "text-red-600 dark:text-red-400 font-bold", badge: "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/20" };
-    if (num >= 4.0) return { input: "text-green-700 dark:text-green-400 font-bold", badge: "bg-green-500 hover:bg-green-600 text-white shadow-sm shadow-green-500/20" };
-    return { input: "text-amber-700 dark:text-amber-400 font-bold", badge: "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/20" };
+    if (isNaN(num)) return { 
+      input: "bg-transparent text-foreground", 
+      badge: "bg-muted/60 text-muted-foreground border border-border/60 shadow-none font-bold" 
+    };
+    if (num < 3.0) return { 
+      input: "text-destructive dark:text-rose-400 font-extrabold", 
+      badge: "bg-destructive/15 text-destructive dark:text-rose-400 border border-destructive/30 shadow-2xs font-black" 
+    };
+    if (num >= 4.0) return { 
+      input: "text-emerald-700 dark:text-emerald-400 font-extrabold", 
+      badge: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 shadow-2xs font-black" 
+    };
+    return { 
+      input: "text-amber-700 dark:text-amber-400 font-extrabold", 
+      badge: "bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 shadow-2xs font-black" 
+    };
   };
 
-  const calculateAverage = (studentId: string) => {
+  const currentCourse = courses.find((c: any) => c.id === selectedCourseId);
+
+  const totalScheduledHours = useMemo(() => {
+    return calculateTotalScheduledHours(currentCourse, group, null, attendanceHistory);
+  }, [currentCourse, group, attendanceHistory]);
+
+  const getStudentGradeResult = (studentId: string) => {
     let totalScore = 0;
     let totalWeight = 0;
     let count = 0;
@@ -299,34 +327,121 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
       const scoreStr = grades[act.id]?.[studentId];
       if (scoreStr && scoreStr !== "") {
         if (usePercentageWeights) {
-            totalScore += parseFloat(scoreStr) * (act.weight / 100);
-            totalWeight += act.weight;
+          totalScore += parseFloat(scoreStr) * (act.weight / 100);
+          totalWeight += act.weight;
         } else {
-            totalScore += parseFloat(scoreStr);
-            count++;
+          totalScore += parseFloat(scoreStr);
+          count++;
         }
       }
     });
 
+    let rawGrade: number | null = null;
     if (usePercentageWeights) {
-        if (totalWeight === 0) return "-";
-        return (totalScore / (totalWeight / 100)).toFixed(2);
+      if (totalWeight > 0) {
+        rawGrade = Number((totalScore / (totalWeight / 100)).toFixed(2));
+      }
     } else {
-        if (count === 0) return "-";
-        return (totalScore / count).toFixed(2);
+      if (count > 0) {
+        rawGrade = Number((totalScore / count).toFixed(2));
+      }
     }
+
+    const loss = calculateStudentAttendanceLoss(
+      studentId, 
+      selectedCourseId, 
+      attendanceHistory || [], 
+      currentCourse, 
+      group
+    );
+
+    if (rawGrade === null) {
+      return {
+        rawGrade: null,
+        finalGrade: null,
+        display: "-",
+        loss,
+        penaltyResult: null,
+      };
+    }
+
+    const penaltyResult = calculatePenalizedGrade({
+      rawGrade,
+      penaltyEnabled: attendancePenaltyEnabled,
+      maxPenaltyPercentage,
+      totalLostHours: loss.totalLostHours,
+      totalScheduledHours,
+      lossDetails: {
+        absentHours: loss.absentHours,
+        lateHours: loss.lateHours,
+        leaveHours: loss.leaveHours,
+        absentCount: loss.absentCount,
+        lateCount: loss.lateCount,
+        leaveCount: loss.leaveCount,
+      },
+    });
+
+    return {
+      rawGrade,
+      finalGrade: penaltyResult.finalGrade,
+      display: penaltyResult.finalGrade.toFixed(2),
+      loss,
+      penaltyResult,
+    };
+  };
+
+  const calculateAverage = (studentId: string) => {
+    return getStudentGradeResult(studentId).display;
+  };
+
+  const handleTogglePenalty = (checked: boolean) => {
+    setAttendancePenaltyEnabled(checked);
+    const newPercentage = checked && (!maxPenaltyPercentage || maxPenaltyPercentage <= 0) ? 50 : maxPenaltyPercentage;
+    if (checked && (!maxPenaltyPercentage || maxPenaltyPercentage <= 0)) {
+      setMaxPenaltyPercentage(50);
+    }
+    startTransition(async () => {
+      const res = await updateCourseAttendancePenalty(selectedCourseId, checked, newPercentage);
+      if (res.success) {
+        toast.success(checked ? "Penalización por inasistencia habilitada" : "Penalización por inasistencia deshabilitada");
+      } else {
+        toast.error("Error al actualizar penalización: " + res.error);
+        setAttendancePenaltyEnabled(!checked);
+      }
+    });
+  };
+
+  const handlePenaltyPercentageChange = (val: string) => {
+    const num = parseFloat(val);
+    if (val === "" || (!isNaN(num) && num >= 0 && num <= 100)) {
+      const safeNum = isNaN(num) ? 0 : num;
+      setMaxPenaltyPercentage(safeNum);
+    }
+  };
+
+  const handleBlurPenaltyPercentage = () => {
+    const val = Math.max(1, Math.min(100, maxPenaltyPercentage || 1));
+    setMaxPenaltyPercentage(val);
+    startTransition(async () => {
+      const res = await updateCourseAttendancePenalty(selectedCourseId, attendancePenaltyEnabled, val);
+      if (res.success) {
+        toast.success(`Tope de penalización guardado en ${val}%`);
+      } else {
+        toast.error("Error al guardar penalización: " + res.error);
+      }
+    });
   };
 
   const handleToggleWeightMode = (checked: boolean) => {
     setUsePercentageWeights(checked);
     startTransition(async () => {
-        const res = await toggleCourseWeightMode(selectedCourseId, checked);
-        if (res.success) {
-            toast.success(checked ? "Pesos por porcentaje activados" : "Pesos por porcentaje desactivados");
-        } else {
-            toast.error("Error al cambiar la configuración: " + res.error);
-            setUsePercentageWeights(!checked); // revert
-        }
+      const res = await toggleCourseWeightMode(selectedCourseId, checked);
+      if (res.success) {
+        toast.success(checked ? "Pesos por porcentaje activados" : "Pesos por porcentaje desactivados");
+      } else {
+        toast.error("Error al cambiar la configuración: " + res.error);
+        setUsePercentageWeights(!checked); // revert
+      }
     });
   };
 
@@ -384,6 +499,40 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
           </div>
         </div>
         <div className="flex gap-2 items-center flex-wrap justify-center lg:justify-end w-full lg:w-auto">
+          {/* Attendance Penalty Switch & Parameter */}
+          <div className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-xl border border-border/70 shadow-2xs w-full sm:w-auto justify-between sm:justify-start">
+             <div className="flex items-center gap-2">
+               <Switch 
+                 checked={attendancePenaltyEnabled} 
+                 onCheckedChange={handleTogglePenalty} 
+                 id="penalty-mode" 
+                 className="scale-75 data-[state=checked]:bg-primary cursor-pointer" 
+               />
+               <Label htmlFor="penalty-mode" className="text-xs font-bold cursor-pointer whitespace-nowrap">
+                 Habilitar penalización por inasistencia
+               </Label>
+             </div>
+             {attendancePenaltyEnabled && (
+               <div className="flex items-center gap-1.5 pl-2 border-l border-border/70 animate-in fade-in zoom-in-95 duration-200">
+                 <Input 
+                   type="number" 
+                   min="1" 
+                   max="100" 
+                   step="1"
+                   value={maxPenaltyPercentage || ""}
+                   onChange={(e) => handlePenaltyPercentageChange(e.target.value)}
+                   onBlur={handleBlurPenaltyPercentage}
+                   onKeyDown={(e) => { if (e.key === "Enter") handleBlurPenaltyPercentage(); }}
+                   className="h-7 w-14 text-center text-xs font-extrabold px-1 rounded-lg bg-primary/10 border-primary/30 text-primary dark:text-primary focus-visible:ring-1 focus-visible:ring-primary"
+                   placeholder="50"
+                   title="Porcentaje (%) máximo de castigo sobre la nota definitiva"
+                   required
+                 />
+                 <span className="text-xs font-black text-primary">%</span>
+               </div>
+             )}
+          </div>
+
           <div className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-xl border border-border/70 shadow-2xs w-full sm:w-auto justify-center sm:justify-start">
              <Switch checked={usePercentageWeights} onCheckedChange={handleToggleWeightMode} id="weight-mode" className="scale-75 data-[state=checked]:bg-primary cursor-pointer" />
              <Label htmlFor="weight-mode" className="text-xs font-bold cursor-pointer whitespace-nowrap">Porcentajes</Label>
@@ -453,11 +602,26 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="w-[100px] min-w-[100px] max-w-[100px] font-bold uppercase text-center bg-muted/10">Definitiva</TableHead>
+                <TableHead className="w-[130px] min-w-[130px] max-w-[140px] font-bold uppercase text-center bg-muted/40 border-l border-border/60">
+                  <div className="flex flex-col items-center justify-center">
+                    <span>Definitiva</span>
+                    {attendancePenaltyEnabled && maxPenaltyPercentage > 0 && (
+                      <span className="text-[10px] text-primary font-bold lowercase tracking-normal">
+                        ({maxPenaltyPercentage}% penaliz.)
+                      </span>
+                    )}
+                  </div>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStudents.map(student => (
+              {filteredStudents.map(student => {
+                const res = getStudentGradeResult(student.id);
+                const hasLoss = res.loss && res.loss.totalLostHours > 0;
+                const isPenalized = attendancePenaltyEnabled && res.penaltyResult?.isPenaltyApplied;
+                const badgeColor = getColorForGrade(res.display);
+
+                return (
                 <TableRow key={student.id} className="hover:bg-muted/30 transition-colors">
                   <TableCell className="font-medium text-sm sticky left-0 bg-background/95 backdrop-blur-sm z-10 shadow-[1px_0_0_0_theme(colors.border)] transition-colors group-hover:bg-muted/30">
                     <div className="flex items-center gap-3 py-1 pl-2">
@@ -470,6 +634,12 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
                           <span>{formatName(student.name, student.profile)}</span>
                           <StudentNovedadBadge novedad={student.profile?.novedad} color={student.profile?.novedadColor} />
                           <StudentVoceroBadge size="sm" role={student.id === voceroPrincipalId ? "PRINCIPAL" : student.id === voceroSuplenteId ? "SUPLENTE" : null} />
+                          {attendancePenaltyEnabled && hasLoss && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 inline-flex items-center gap-1 shadow-2xs">
+                              <Clock className="w-2.5 h-2.5 shrink-0" />
+                              {res.loss?.totalLostHours}h inasist.
+                            </span>
+                          )}
                         </span>
                         <span className="text-[10px] text-muted-foreground/80 font-normal">{student.email}</span>
                       </div>
@@ -489,13 +659,121 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
                       />
                     </TableCell>
                   ))}
-                  <TableCell className="text-center border-l bg-muted/5 w-[100px] min-w-[100px] max-w-[100px]">
-                    <Badge variant="default" className={`w-14 justify-center text-sm font-bold shadow-none ${getColorForGrade(calculateAverage(student.id)).badge}`}>
-                      {calculateAverage(student.id)}
-                    </Badge>
+                  <TableCell className="text-center border-l bg-muted/5 w-[130px] min-w-[130px] max-w-[140px] p-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex flex-col items-center justify-center gap-1 cursor-pointer">
+                            <Badge 
+                              variant="outline" 
+                              className={`w-14 justify-center text-sm font-black shadow-2xs transition-all ${badgeColor.badge}`}
+                            >
+                              {res.display}
+                            </Badge>
+
+                            {/* Horas de inasistencia / Descuento */}
+                            {attendancePenaltyEnabled && (
+                              hasLoss ? (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25 flex items-center gap-1 shadow-2xs">
+                                    <Clock className="w-2.5 h-2.5 shrink-0" />
+                                    <span>{res.loss?.totalLostHours}h inasist.</span>
+                                  </span>
+                                  {isPenalized && (
+                                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 tracking-tight">
+                                      -{res.penaltyResult?.discountPoints.toFixed(2)} pts
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground/60 font-medium">
+                                  0h inasist.
+                                </span>
+                              )
+                            )}
+                          </div>
+                        </TooltipTrigger>
+
+                        <TooltipContent side="left" className="text-xs p-3 max-w-[280px] space-y-1.5 shadow-xl border border-amber-500/20">
+                          {attendancePenaltyEnabled ? (
+                            <>
+                              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold border-b border-border/50 pb-1">
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                <span>Penalización por Inasistencia</span>
+                              </div>
+                              <div className="text-[11px] space-y-1 text-muted-foreground">
+                                <div className="flex justify-between items-center">
+                                  <span>Horas inasistencia (causa):</span>
+                                  <span className="font-extrabold text-amber-600 dark:text-amber-400">{res.loss?.totalLostHours ?? 0} hrs</span>
+                                </div>
+                                {res.loss && (
+                                  <div className="bg-muted/40 rounded p-1.5 space-y-0.5 text-[10px]">
+                                    <div className="flex justify-between text-muted-foreground">
+                                      <span>• Faltas ({res.loss.absentCount}):</span>
+                                      <span className="font-semibold text-foreground">{res.loss.absentHours} hrs</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                      <span>• Llegadas tarde ({res.loss.lateCount}):</span>
+                                      <span className="font-semibold text-foreground">{res.loss.lateHours} hrs</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                      <span>• Retiros anticipados ({res.loss.leaveCount}):</span>
+                                      <span className="font-semibold text-foreground">{res.loss.leaveHours} hrs</span>
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="flex justify-between border-t border-border/40 pt-1">
+                                  <span>Horas programadas materia:</span>
+                                  <span className="font-semibold text-foreground">{totalScheduledHours} hrs</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Porcentaje inasistencia:</span>
+                                  <span className="font-semibold text-foreground">
+                                    {totalScheduledHours > 0 && res.loss ? Math.round((res.loss.totalLostHours / totalScheduledHours) * 100) : 0}%
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Tope regla docente:</span>
+                                  <span className="font-semibold text-foreground">{maxPenaltyPercentage}%</span>
+                                </div>
+
+                                {res.rawGrade !== null ? (
+                                  <>
+                                    <div className="flex justify-between border-t border-border/40 pt-1">
+                                      <span>Nota académica original:</span>
+                                      <span className="font-bold text-foreground">{res.rawGrade.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-amber-700 dark:text-amber-400 font-semibold">
+                                      <span>Descuento aplicado:</span>
+                                      <span className="font-black">-{res.penaltyResult?.discountPoints?.toFixed(2) ?? "0.00"} pts</span>
+                                    </div>
+                                    <div className="flex justify-between text-foreground font-black text-xs border-t border-border/40 pt-1">
+                                      <span>Nota definitiva:</span>
+                                      <span className="text-primary">{res.finalGrade?.toFixed(2)}</span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-[10px] italic text-muted-foreground border-t border-border/40 pt-1">
+                                    Sin actividades calificadas aún. Al calificar, se aplicará el descuento correspondiente por las {res.loss?.totalLostHours ?? 0} hrs ausente.
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <div>
+                              <p className="font-bold">Nota Definitiva: {res.display}</p>
+                              {res.rawGrade !== null && (
+                                <p className="text-muted-foreground mt-0.5 text-[11px]">Promedio ponderado de actividades sin regla de penalización.</p>
+                              )}
+                            </div>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
           </div>

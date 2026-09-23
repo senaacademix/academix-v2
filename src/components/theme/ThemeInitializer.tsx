@@ -47,7 +47,7 @@ export function ThemeInitializer() {
     };
 
     const handleFontLoading = (css: string) => {
-      const fontVars = ['--font-sans', '--font-serif', '--font-mono'];
+      const fontVars = ['--font-sans', '--font-heading', '--font-serif', '--font-mono'];
       const foundFonts = new Set<string>();
 
       fontVars.forEach(v => {
