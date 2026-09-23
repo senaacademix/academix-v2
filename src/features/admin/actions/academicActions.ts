@@ -1203,19 +1203,151 @@ export async function registerTeacherManualAction(data: {
         const emailNorm = data.email.trim().toLowerCase();
         const idenNorm = data.identificacion.trim();
 
+        // Validar programId si fue enviado
+        let validProgramId: string | undefined = undefined;
+        if (data.programId && data.programId !== "none" && data.programId !== "all") {
+            const prog = await prisma.program.findUnique({
+                where: { id: data.programId },
+                select: { id: true }
+            });
+            if (prog) {
+                validProgramId = prog.id;
+            }
+        }
+
         // Validar duplicados en la base de datos
         const existingUser = await prisma.user.findUnique({
-            where: { email: emailNorm }
+            where: { email: emailNorm },
+            include: {
+                profile: true,
+                programs: { select: { id: true, name: true } }
+            }
         });
         if (existingUser) {
-            return { success: false as const, error: "Usuario existente" };
+            if (existingUser.role === "teacher") {
+                if (validProgramId) {
+                    const alreadyInProgram = existingUser.programs.some(p => p.id === validProgramId);
+                    if (alreadyInProgram) {
+                        return { success: false as const, error: "El instructor ya se encuentra vinculado a este programa." };
+                    }
+
+                    const updatedUser = await prisma.user.update({
+                        where: { id: existingUser.id },
+                        data: {
+                            programs: {
+                                connect: { id: validProgramId }
+                            },
+                            profile: existingUser.profile ? {
+                                update: {
+                                    ...(idenNorm && !existingUser.profile.identificacion ? { identificacion: idenNorm } : {}),
+                                    ...(data.telefono && !existingUser.profile.telefono ? { telefono: data.telefono.trim() } : {}),
+                                }
+                            } : {
+                                create: {
+                                    identificacion: idenNorm,
+                                    nombres: data.nombres.trim(),
+                                    apellido: data.apellido.trim(),
+                                    telefono: data.telefono?.trim() || null,
+                                    dataProcessingConsent: true,
+                                    dataProcessingConsentDate: new Date(),
+                                }
+                            }
+                        },
+                        include: { profile: true }
+                    });
+
+                    const { auditLogger } = await import("../services/auditLogger");
+                    await auditLogger.log({
+                        action: "CREATE",
+                        entity: "USER",
+                        entityId: updatedUser.id,
+                        userId: session.user.id,
+                        userName: session.user.name || "Admin",
+                        userRole: (session.user.role as any) || "admin",
+                        description: `Instructor existente ${updatedUser.name} (${emailNorm}) vinculado al programa ID ${validProgramId}`,
+                        metadata: { email: emailNorm, programId: validProgramId, identificacion: idenNorm },
+                        success: true,
+                    });
+
+                    revalidatePath("/dashboard/admin/courses");
+                    revalidatePath("/dashboard/gestor/courses");
+                    revalidatePath("/dashboard/admin/users");
+                    revalidatePath("/dashboard/gestor/users");
+                    revalidatePath(`/dashboard/admin/courses?programId=${validProgramId}`);
+                    revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
+                    revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
+
+                    return { success: true as const, user: updatedUser, profile: updatedUser.profile! };
+                } else {
+                    return { success: false as const, error: "Ya existe un instructor registrado con este correo electrónico en la institución." };
+                }
+            } else {
+                return { success: false as const, error: `Ya existe un usuario con este correo electrónico con el rol de ${existingUser.role || "usuario"}.` };
+            }
         }
 
         const existingProfile = await prisma.profile.findFirst({
-            where: { identificacion: idenNorm }
+            where: { identificacion: idenNorm },
+            include: {
+                user: {
+                    include: {
+                        programs: { select: { id: true, name: true } },
+                        profile: true
+                    }
+                }
+            }
         });
         if (existingProfile) {
-            return { success: false as const, error: `Ya existe un perfil registrado con el número de documento: ${idenNorm}` };
+            if (existingProfile.user?.role === "teacher") {
+                if (validProgramId) {
+                    const alreadyInProgram = existingProfile.user.programs.some(p => p.id === validProgramId);
+                    if (alreadyInProgram) {
+                        return { success: false as const, error: `Ya existe un instructor con el documento ${idenNorm} vinculado a este programa.` };
+                    }
+
+                    const updatedUser = await prisma.user.update({
+                        where: { id: existingProfile.userId },
+                        data: {
+                            programs: {
+                                connect: { id: validProgramId }
+                            },
+                            profile: {
+                                update: {
+                                    ...(data.telefono && !existingProfile.telefono ? { telefono: data.telefono.trim() } : {})
+                                }
+                            }
+                        },
+                        include: { profile: true }
+                    });
+
+                    const { auditLogger } = await import("../services/auditLogger");
+                    await auditLogger.log({
+                        action: "CREATE",
+                        entity: "USER",
+                        entityId: updatedUser.id,
+                        userId: session.user.id,
+                        userName: session.user.name || "Admin",
+                        userRole: (session.user.role as any) || "admin",
+                        description: `Instructor con documento ${idenNorm} vinculado al programa ID ${validProgramId}`,
+                        metadata: { email: emailNorm, programId: validProgramId, identificacion: idenNorm },
+                        success: true,
+                    });
+
+                    revalidatePath("/dashboard/admin/courses");
+                    revalidatePath("/dashboard/gestor/courses");
+                    revalidatePath("/dashboard/admin/users");
+                    revalidatePath("/dashboard/gestor/users");
+                    revalidatePath(`/dashboard/admin/courses?programId=${validProgramId}`);
+                    revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
+                    revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
+
+                    return { success: true as const, user: updatedUser, profile: updatedUser.profile! };
+                } else {
+                    return { success: false as const, error: `Ya existe un instructor registrado con el número de documento: ${idenNorm}` };
+                }
+            } else {
+                return { success: false as const, error: `Ya existe un perfil registrado con el número de documento: ${idenNorm}` };
+            }
         }
 
         // Hash de la contraseña (contraseña inicial es el número de documento)
@@ -1231,9 +1363,9 @@ export async function registerTeacherManualAction(data: {
                     name: `${data.nombres.trim()} ${data.apellido.trim()}`,
                     role: "teacher",
                     emailVerified: true,
-                    ...(data.programId ? {
+                    ...(validProgramId ? {
                         programs: {
-                            connect: { id: data.programId }
+                            connect: { id: validProgramId }
                         }
                     } : {}),
                     accounts: {

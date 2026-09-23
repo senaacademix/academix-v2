@@ -220,7 +220,16 @@ export function TeacherUsersManagement({
       return;
     }
 
-    const effectiveProgramId = programId || selectedProgramId || undefined;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail.trim())) {
+      toast.error("Error", {
+        description: "El formato del correo electrónico no es válido.",
+      });
+      return;
+    }
+
+    const rawProgId = programId || selectedProgramId;
+    const effectiveProgramId = rawProgId && rawProgId !== "none" && rawProgId !== "all" ? rawProgId : undefined;
 
     startTransition(async () => {
       try {
@@ -251,7 +260,14 @@ export function TeacherUsersManagement({
           },
         };
 
-        setTeachers((prev) => [newTeacher, ...prev]);
+        setTeachers((prev) => {
+          const exists = prev.some((t) => t.id === newTeacher.id || t.email.toLowerCase() === newTeacher.email.toLowerCase());
+          if (exists) {
+            return prev.map((t) => (t.id === newTeacher.id || t.email.toLowerCase() === newTeacher.email.toLowerCase() ? newTeacher : t));
+          }
+          return [newTeacher, ...prev];
+        });
+
         onTeacherCreated?.(newTeacher);
         toast.success("Instructor registrado exitosamente");
         setCreateDialogOpen(false);
@@ -616,7 +632,7 @@ export function TeacherUsersManagement({
                     <SelectValue placeholder="Seleccionar área" />
                   </SelectTrigger>
                   <SelectContent>
-                    {programs.map((p) => (
+                    {programs.filter(p => !!p.id).map((p) => (
                       <SelectItem key={p.id} value={p.id} className="text-xs">
                         {p.name}
                       </SelectItem>
@@ -631,7 +647,7 @@ export function TeacherUsersManagement({
                   <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
                     <BookOpen className="w-4 h-4 shrink-0" />
                     <span className="text-xs font-semibold truncate">
-                      {programs?.find(p => p.id === (programId || selectedProgramId))?.name || "Área seleccionada"}
+                      {programs?.find(p => p.id === (programId || selectedProgramId))?.name || (programs && programs.length > 0 ? programs[0].name : "Área de Formación")}
                     </span>
                   </div>
                 </div>

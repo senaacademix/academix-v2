@@ -32,11 +32,14 @@ export default async function GestorUsersPage({
 
     const programs = await getProgramsAction();
 
-    if (session.user.role === "gestor" && !effectiveProgramId) {
-        if (programs.length === 1) {
-            effectiveProgramId = programs[0].id;
-        } else {
-            redirect("/dashboard/gestor");
+    if (session.user.role === "gestor") {
+        const matchingProgram = programs.find((p) => p.id === effectiveProgramId);
+        if (!matchingProgram) {
+            if (programs.length > 0) {
+                effectiveProgramId = programs[0].id;
+            } else {
+                redirect("/dashboard/gestor");
+            }
         }
     }
 
