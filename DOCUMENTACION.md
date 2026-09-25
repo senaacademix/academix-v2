@@ -1,6 +1,6 @@
 # Documentación Integral y Manual Funcional del Sistema — AcademiX V2
 
-AcademiX V2 es una plataforma tecnológica de nivel empresarial diseñada para la gestión académica, control de asistencia, seguimiento conductual (observador digital), evaluación ponderada jerárquica, gestión de infraestructura y planificación horaria anticolisión. El sistema está estructurado con base en el modelo pedagógico del **SENA (Servicio Nacional de Aprendizaje)** de Colombia y centros de formación técnica y tecnológica superior.
+AcademiX V2 es una plataforma tecnológica de nivel empresarial diseñada para la gestión académica, control de asistencia, seguimiento conductual (observador digital), evaluación ponderada jerárquica con motor de penalización por inasistencia, sistema democrático de elección y posesión de voceros (bajo el Reglamento del Aprendiz SENA), gestión de infraestructura y planificación horaria anticolisión. El sistema está estructurado con base en el modelo pedagógico del **SENA (Servicio Nacional de Aprendizaje)** de Colombia y centros de formación técnica y tecnológica superior.
 
 La plataforma conecta a cinco actores principales bajo una arquitectura basada en roles (**RBAC**): **Administrador (`admin`)**, **Gestor Académico (`gestor`)**, **Observador (`observer`)**, **Docente / Instructor (`teacher`)** y **Aprendiz / Estudiante (`student`)**.
 
@@ -17,13 +17,14 @@ La plataforma conecta a cinco actores principales bajo una arquitectura basada e
    - [3.5. Rol: Aprendiz / Estudiante (`student`)](#35-rol-aprendiz--estudiante-student)
 4. [Módulos Especializados del Núcleo](#4-módulos-especializados-del-núcleo)
    - [4.1. Motor de Planificación Horaria y Detección Anticolisión](#41-motor-de-planificación-horaria-y-detección-anticolisión)
-   - [4.2. Sistema de Calificaciones Jerárquicas Ponderadas](#42-sistema-de-calificaciones-jerárquicas-ponderadas)
-   - [4.3. Planilla de Asistencia Matricial y Permisos Extemporáneos](#43-planilla-de-asistencia-matricial-y-permisos-extemporáneos)
+   - [4.2. Sistema de Calificaciones Jerárquicas Ponderadas y Motor de Penalización por Inasistencia](#42-sistema-de-calificaciones-jerárquicas-ponderadas-y-motor-de-penalización-por-inasistencia)
+   - [4.3. Planilla de Asistencia Matricial, Cálculo de Horas Perdidas y Permisos Extemporáneos](#43-planilla-de-asistencia-matricial-cálculo-de-horas-perdidas-y-permisos-extemporáneos)
    - [4.4. Observador Digital y Bitácora Formativa](#44-observador-digital-y-bitácora-formativa)
    - [4.5. Flujo de Planes de Mejoramiento (Compromisos y Firmas)](#45-flujo-de-planes-de-mejoramiento-compromisos-y-firmas)
    - [4.6. Suplantación de Sesión Segura (Impersonation) y Auditoría](#46-suplantación-de-sesión-segura-impersonation-y-auditoría)
    - [4.7. Centro de Herramientas Pedagógicas e Institucionales](#47-centro-de-herramientas-pedagógicas-e-institucionales)
    - [4.8. Estandarización Visual, Responsividad y Motor de Exportación Corporativa](#48-estandarización-visual-responsividad-y-motor-de-exportación-corporativa)
+   - [4.9. Sistema Democrático de Elección y Posesión de Voceros (Reglamento SENA)](#49-sistema-democrático-de-elección-y-posesión-de-voceros-reglamento-sena)
 5. [Diccionario del Modelo de Datos (Prisma ORM)](#5-diccionario-del-modelo-de-datos-prisma-orm)
 6. [Catálogo de Server Actions, Utilidades y APIs](#6-catálogo-de-server-actions-utilidades-y-apis)
 7. [Scripts de Despliegue, Mantenimiento y CLI](#7-scripts-de-despliegue-mantenimiento-y-cli)
@@ -38,9 +39,12 @@ AcademiX V2 sigue los principios de **Clean Architecture** bajo el patrón **Fea
 *   **Lenguaje:** TypeScript estricto con tipado estático en frontend, backend y esquema de datos.
 *   **Base de Datos y ORM:** PostgreSQL (Neon Serverless) operado mediante **Prisma ORM** con características avanzadas de `relationJoins`.
 *   **Autenticación y Seguridad:** **Better Auth** integrado con proveedores de credenciales locales, hash criptográfico de contraseñas, control de sesiones persistentes y suplantación segura de identidad (*impersonation*).
-*   **Diseño y UI:** Tailwind CSS v4, Radix UI Primitives, componentes Shadcn UI, Lucide Icons y paletas temáticas dinámicas HSL.
+*   **Diseño y UI:** Tailwind CSS v4, Radix UI Primitives, componentes Shadcn UI, Lucide Icons y 17 paletas temáticas dinámicas HSL (incluyendo el tema espacial *Interstellar*).
 *   **Notificaciones:** Alertas y toasts reactivos del sistema con `Sonner`.
-*   **Exportación y Reportes Corporativos:** Generación avanzada de libros de cálculo multihoja con formato condicional y banners institucionales mediante **`exceljs`**, y generación declarativa en cliente de documentos vectoriales oficiales A4 con **`@react-pdf/renderer`**.
+*   **Exportación y Reportes Corporativos:**
+    *   Generación avanzada de libros de cálculo multihoja con formato condicional y banners institucionales mediante **`exceljs`**.
+    *   Generación declarativa en cliente de documentos vectoriales oficiales A4 con **`@react-pdf/renderer`**.
+    *   Generación de actas oficiales con validez jurídica institucional y formato auto-ajustable con **`jspdf`** y **`jspdf-autotable`**.
 *   **Interacciones y Animación:** Arrastrar y soltar (*drag and drop*) accesible mediante **`@dnd-kit/core`** y **`@dnd-kit/sortable`**, animaciones físicas con **`Framer Motion`**, síntesis de sonido en tiempo real con **Web Audio API** y efectos de confeti con **`canvas-confetti`**.
 
 ### Estructura de Directorios Modular (Feature-First):
@@ -52,23 +56,30 @@ src/
 │   ├── dashboard/                    # Rutas protegidas por rol
 │   │   ├── admin/                    # Consola de administración general (/tools, /users, etc.)
 │   │   ├── gestor/                   # Consola del Gestor Académico (/tools, /schedules, etc.)
-│   │   ├── teacher/                  # Consola del Instructor (/tools, /attendance, /courses)
-│   │   └── student/                  # Portal del Aprendiz (/records, /evaluations, /schedule)
+│   │   ├── teacher/                  # Consola del Instructor (/tools, /attendance, /courses, /elections)
+│   │   └── student/                  # Portal del Aprendiz (/records, /evaluations, /schedule, /elections)
+│   └── themes/                       # Colección de 17 temas dinámicos (.css)
 ├── features/                         # Lógica dividida por dominio de negocio
 │   ├── admin/                        # Componentes, acciones y servicios de administración
 │   │   ├── actions/                  # Server Actions (adminActions, academicActions)
 │   │   ├── components/               # UI de usuarios, programas, analítica
 │   │   └── services/                 # Servicios de negocio (auditLogger, etc.)
 │   ├── auth/                         # Lógica de inicio de sesión, roles y sesiones
+│   ├── elections/                    # Sistema democrático de elección de voceros (Reglamento SENA)
+│   │   ├── actions/                  # Server Actions electorales (electionActions.ts)
+│   │   ├── components/               # Paneles de profesor, cabina de votación de estudiante y escrutinio
+│   │   ├── services/                 # Lógica electoral y auditoría (electionService.ts)
+│   │   ├── types/                    # Tipos e interfaces de estados electorales
+│   │   └── utils/                    # Generación y exportación de Acta Oficial en PDF (electionActaExport.ts)
 │   ├── schedule/                     # Motor de mallas horarias, colisiones y calendarios
-│   ├── student/                      # Expedientes, inasistencias, planes de mejora
-│   ├── teacher/                      # Planillas de asistencia, notas, ruleta, grupos
+│   ├── student/                      # Expedientes, inasistencias, planes de mejora, notas transparentes
+│   ├── teacher/                      # Planillas de asistencia, notas con penalizaciones, ruleta, grupos
 │   └── tools/                        # Centro de Herramientas Pedagógicas e Institucionales
-│       ├── components/               # ToolsHub, ToolsDashboard, SofiaReportsTool, TeacherRouletteTool, etc.
+│       ├── components/               # ToolsHub, ToolsDashboard, SofiaReportsTool, TeacherRouletteTool, TeacherVoceroElectionTool, etc.
 │       ├── constants/                # toolsRegistry.ts (catálogo centralizado y permisos RBAC)
-│       └── utils/                    # Exportadores corporativos (exceljs y @react-pdf/renderer)
-├── components/                       # Componentes UI globales (Sidebar, Navbar, Theme, Modals)
-├── lib/                              # Cliente Prisma, Auth, utilitarios y constantes
+│       └── utils/                    # Exportadores corporativos (exceljs, @react-pdf/renderer y jspdf)
+├── components/                       # Componentes UI globales (Sidebar, Navbar, Theme, Modals, StudentVoceroBadge)
+├── lib/                              # Cliente Prisma, Auth, utilitarios de penalización (gradePenaltyUtils.ts) y constantes
 └── scripts/                          # Scripts de inicialización y CLI (create-admin, etc.)
 ```
 
@@ -92,15 +103,22 @@ src/
 | **Planificación Horaria y Motor Anticolisión** | Total | Programas a Cargo | Solo Lectura | Declarar Disponibilidad | Ver Horario |
 | **Gestión de Ambientes de Aprendizaje (Aulas)** | Total | Programas a Cargo | Solo Lectura | ❌ Denegado | ❌ Denegado |
 | **Registro y Control Diario de Asistencia** | Supervisión / Permisos | Supervisión | Solo Lectura | Total (Marcación en Fichas) | Ver Inasistencias |
+| **Cálculo de Horas Perdidas en Asistencia** | Supervisión | Supervisión | Solo Lectura | Total (Llegadas/Retiros) | Auditoría en Portal |
 | **Justificación de Inasistencias** | Aprobar / Supervisar | Supervisar | Solo Lectura | Ver y Avalar | Radicar con Soporte |
 | **Aprobación de Permisos Extemporáneos de Asistencia** | Total | Total | Solo Lectura | Solicitar Permiso | ❌ Denegado |
 | **Observador Digital (Anotaciones Formativas)** | Auditoría Global | Auditoría en Programas | Auditoría Solo Lectura | Crear y Gestionar | Leer y Acuse de Recibo |
 | **Calificaciones y Ponderaciones Jerárquicas** | Supervisión General | Supervisión en Programas | Solo Lectura | Configurar y Calificar | Ver Notas y Cortes |
+| **Regla de Penalización de Notas por Inasistencia** | Supervisión | Supervisión | Solo Lectura | **Configurar por Materia** | Auditoría y Desglose |
 | **Planes de Mejoramiento Académico** | Supervisión General | Supervisión en Programas | Solo Lectura | Crear, Asignar y Evaluar | Firmar y Cargar Evidencias |
 | **Centro de Herramientas Pedagógicas (Tools Hub)** | Total | Total | Solo Lectura | Total | ❌ Denegado |
 | **Herramienta: Juicios Evaluativos de Sofía Plus** | Total | Total | Solo Lectura | Total | ❌ Denegado |
 | **Herramienta: Ruleta de Participación y Notas** | ❌ Denegado | ❌ Denegado | ❌ Denegado | **Exclusivo Instructor** | ❌ Denegado |
 | **Herramienta: Creador de Grupos de Trabajo** | ❌ Denegado | ❌ Denegado | ❌ Denegado | **Exclusivo Instructor** | ❌ Denegado |
+| **Herramienta: Elección de Vocero y Suplente** | Total | Supervisión | Solo Lectura | **Total en sus Fichas** | ❌ Denegado |
+| **Postulación como Candidato a Vocería** | ❌ Denegado | ❌ Denegado | ❌ Denegado | ❌ Denegado | **Total (Aprendices Habilitados)** |
+| **Votación de Vocero (Cabina Electoral Secreta)** | ❌ Denegado | ❌ Denegado | ❌ Denegado | ❌ Denegado | **Voto Secreto y Único** |
+| **Descarga de Acta Oficial de Posesión (PDF)** | Total | Total | Solo Lectura | Total | En su Portal |
+| **Distintivo Institucional de Vocería (`Badge`)** | Visualización | Visualización | Visualización | Visualización en Listas | Visualización en Perfil |
 | **Suplantación de Identidad (*Impersonation*)** | Total con Auditoría | ❌ Denegado | ❌ Denegado | ❌ Denegado | ❌ Denegado |
 | **Configuración Institucional (Branding/Temas)** | Total | ❌ Denegado | ❌ Denegado | ❌ Denegado | Preferencias Locales |
 | **Restablecimiento de Contraseñas a Documento** | Total | Aprendices y Docentes | ❌ Denegado | ❌ Denegado | ❌ Denegado |
@@ -158,6 +176,7 @@ El Administrador ostenta la gobernanza directiva, técnica y de seguridad de tod
     *   Crear fichas de formación con código de caracterización, nombre descriptivo, jornada lectiva, fechas de inicio y terminación, y categoría formativa (**Lectiva** o **Productiva**).
     *   Asignar un ambiente de formación principal (aula o laboratorio).
     *   Designar instructor tutor/líder de ficha.
+    *   Visualización y administración de los Voceros elegidos de la ficha (`voceroPrincipalId`, `voceroSuplenteId`).
 *   **Ambientes de Aprendizaje (Aulas y Laboratorios):**
     *   Crear ambientes de formación física o virtual especificando nombre (ej. *Ambiente 302 - Computo*, *Taller Mecánica*), aforo máximo de aprendices, ubicación y recursos disponibles (*PCs, Proyector, Tablero Inteligente, Aire Acondicionado*).
     *   Editar y dar de baja ambientes de formación.
@@ -169,9 +188,10 @@ El Administrador ostenta la gobernanza directiva, técnica y de seguridad de tod
 *   Publicar u ocultar los horarios para aprendices e instructores.
 *   Registrar festivos institucionales y novedades horarias de fuerza mayor.
 
-#### E. Analítica Institucional y Auditoría (`/dashboard/admin/analytics`)
+#### E. Analítica Institucional, Elecciones y Auditoría (`/dashboard/admin/analytics`)
 *   Visualizar KPIs globales: total de aprendices matriculados, instructores activos, fichas en etapa lectiva/productiva, porcentaje de asistencia general.
 *   Matriz de riesgo: aprendices en riesgo académico, deserción por inasistencia o alertas conductuales del observador.
+*   Supervisión y anulación extraordinaria de elecciones de voceros en caso de novedades de fuerza mayor.
 *   Registro de auditoría (*Audit Logs*): trazabilidad de creación, edición y eliminación de usuarios, roles y notas con IP y usuario ejecutor.
 *   **Suplantación de Sesión (*Impersonation*):** Iniciar sesión en un clic con la cuenta de cualquier usuario del centro para verificar errores o prestar soporte remoto, con registro estricto en auditoría.
 
@@ -181,7 +201,7 @@ El Administrador ostenta la gobernanza directiva, técnica y de seguridad de tod
     *   Límite de accesos diarios de aprendices.
     *   Carga horaria máxima permitida por docente.
     *   Restricción de modificación de asistencias a la semana en curso.
-*   **Temas Visuales:** Definir el tema por defecto (Claro, Oscuro o Sistema), esquemas de color de acento HSL institucionales y tema del visor de código.
+*   **Temas Visuales:** Definir el tema por defecto (Claro, Oscuro o Sistema), esquemas de color de acento HSL institucionales y selector de 17 temas dinámicos.
 
 ---
 
@@ -196,6 +216,7 @@ El Gestor Académico es el **coordinador operativo directo** de los programas fo
 
 #### B. Directorio de Aprendices y Matrícula (`/dashboard/gestor/users`)
 *   **Selector Dinámico por Ficha:** Navegación por píldoras (*pills*) de todas las fichas del programa a su cargo.
+*   **Identificación de Vocería:** Visualización de badges oficiales `StudentVoceroBadge` identificando al Vocero Principal y Suplente de cada grupo.
 *   **Filtros por Etapa Formativa:** Filtrado de aprendices en **Etapa Lectiva** vs. **Etapa Productiva**.
 *   **Registro Individual de Aprendices:** Formulario modal de matrícula con autocompletado de identificación, nombres, apellidos, correo, teléfono y asignación de ficha.
 *   **Importación Masiva de Aprendices desde Excel:**
@@ -230,10 +251,9 @@ El Gestor Académico es el **coordinador operativo directo** de los programas fo
 *   Aprobación de solicitudes de permisos de asistencia extemporánea remitidas por los instructores.
 *   Gestión de eventos especiales y novedades de horario en sus programas.
 
-#### F. Seguimiento a Planes de Mejoramiento (`/dashboard/gestor/users?tab=students&subtab=plans`)
-*   Monitoreo centralizado de todos los planes de mejoramiento abiertos por los instructores.
-*   Verificación del estado del plan: *Emitido, Firmado por Aprendiz, Evaluado por Docente*.
-*   Auditoría de evidencias cargadas y notas de recuperación asignadas.
+#### F. Supervisión de Procesos Electorales y Actas de Vocería
+*   Supervisión de la culminación de elecciones de voceros en las fichas del programa.
+*   Descarga y verificación de las Actas Oficiales de Posesión en PDF para legalización de comités formativos.
 
 ---
 
@@ -247,12 +267,13 @@ El Observador es un rol de auditoría, inspección y supervisión pedagógica o 
 
 #### B. Capacidades de Consulta
 *   **Supervisión de Mallas Curriculares:** Consultar competencias, trimestres, intensidades horarias y docentes cualificados.
-*   **Consulta de Fichas y Aprendices:** Visualizar listas de aprendices, datos de contacto, fichas activas y estados formativos.
+*   **Consulta de Fichas y Aprendices:** Visualizar listas de aprendices, datos de contacto, fichas activas, estados formativos y voceros electos.
 *   **Consulta de Asistencias y Observador:**
     *   Ver matrices de asistencia consolidadas por ficha y por estudiante.
     *   Ver bitácora de anotaciones del observador digital realizadas por los instructores.
 *   **Consulta de Horarios:** Visualizar la programación horaria semanal publicada y los ambientes de formación utilizados.
 *   **Seguimiento de Planes de Mejoramiento:** Auditar actas de compromiso, evidencias y calificaciones de recuperación.
+*   **Consulta de Elecciones:** Auditar el escrutinio electoral y descargar las Actas Oficiales de Posesión en PDF.
 *   **Exportación de Reportes:** Descargar reportes en Excel o PDF para fines de inspección y calidad académica.
 
 ---
@@ -265,13 +286,13 @@ El Instructor es el líder pedagógico del aula y administra las fichas a las qu
 *   Selector de Fichas asignadas con badge de competencia y periodo activo.
 *   Acceso a la consola integral de ficha (`GroupManager.tsx`).
 
-#### B. Planilla de Asistencia Matricial (`/dashboard/teacher`)
+#### B. Planilla de Asistencia Matricial y Horas Perdidas (`/dashboard/teacher`)
 *   **Marcación de Estados de Asistencia:**
     *   **`PRESENT` (Presente):** Asistencia puntual a la sesión.
-    *   **`ABSENT` (Ausente):** Inasistencia no justificada.
-    *   **`LATE` (Llegada Tarde):** Retraso con registro opcional de hora de ingreso.
-    *   **`LEAVE_EARLY` (Retiro Temprano):** Abandono antes del fin de la jornada.
-    *   **`EXCUSED` (Excusa / Justificada):** Inasistencia avalada formalmente.
+    *   **`ABSENT` (Ausente):** Inasistencia no justificada. Se acumulan las horas completas de la franja.
+    *   **`LATE` (Llegada Tarde):** Retraso con selector horario de ingreso. Calcula de inmediato las horas lectivas perdidas (`lateLostHours`).
+    *   **`LEAVE_EARLY` (Retiro Temprano):** Abandono previo al fin de la sesión con selector horario de salida. Calcula las horas perdidas (`leaveLostHours`).
+    *   **`EXCUSED` (Excusa / Justificada):** Inasistencia avalada formalmente (no penaliza).
 *   **Navegación Móvil Táctil (`touch-pan-x`):** Desplazamiento horizontal fluido en dispositivos móviles y tabletas sobre toda la matriz de fechas y totales de fallas (`F`), tardanzas (`T`) y retiros (`R`).
 *   **Marcación Rápida:** Botón para marcar a toda la ficha como presente en un solo clic.
 *   **Solicitud de Permiso Extemporáneo:** Formulario para solicitar al Administrador o Gestor la apertura de una semana anterior cerrada para corregir asistencias pasadas.
@@ -285,7 +306,7 @@ El Instructor es el líder pedagógico del aula y administra las fichas a las qu
 *   **Plantillas Predefinidas (`RemarkTemplate`):** Carga rápida de causales y descripciones frecuentes.
 *   **Trazabilidad de Notificación (`viewedAt`):** Registro exacto de fecha y hora en que el aprendiz abrió y leyó la anotación en su portal.
 
-#### D. Calificaciones Ponderadas Jerárquicas (`GradeManagerPanel.tsx`)
+#### D. Calificaciones Ponderadas Jerárquicas y Penalización por Inasistencia (`GradeManagerPanel.tsx`)
 *   **Modos de Evaluación:**
     *   Ponderación porcentual (`usePercentageWeights = true`).
     *   Evaluación acumulativa por puntos.
@@ -293,6 +314,13 @@ El Instructor es el líder pedagógico del aula y administra las fichas a las qu
     *   **Cortes Académicos (`GradeCategory`):** Ej. *Primer Corte (30%)*, *Segundo Corte (30%)*, *Tercer Corte (40%)*.
     *   **Grupos de Actividades (`GradeGroup`):** Ej. *Talleres Prácticos (40%)*, *Exámenes Técnicos (40%)*, *Participación (20%)*.
     *   **Actividades Específicas (`Activity`):** Creación de tareas con peso relativo, fecha límite y opción de recepción de enlace de evidencia.
+*   **Regla de Penalización por Inasistencia (`gradePenaltyUtils.ts`):**
+    *   Interruptor para activar/desactivar la penalización en la materia (`attendancePenaltyEnabled`).
+    *   Definición del tope máximo de penalización (`maxPenaltyPercentage`, ej. hasta el 50% de la calificación final).
+    *   Cálculo automático de la sumatoria de horas perdidas de cada aprendiz (faltas completas + tardanzas + retiros prematuros).
+    *   Cálculo de la tasa de inasistencia frente a las horas totales programadas del curso.
+    *   Deducción matemática transparente de puntos: `Nota Original - Descuento = Nota Definitiva`.
+    *   Tooltip interactivo con desglose de causas para auditoría docente.
 *   **Calificación de Entregas:** Asignación de nota cuantitativa (0.0 a 5.0) y retroalimentación personalizada (*feedback*).
 *   **Exportación Oficial a Excel:** Generación automática de libro de calificaciones con fórmulas de ponderación y formato institucional.
 
@@ -304,14 +332,22 @@ El Instructor es el líder pedagógico del aula y administra las fichas a las qu
 *   **Contrafirma Docente y Evaluación:** Carga del documento con contrafirma del instructor (`teacherSignedDocUrl`), evidencia de sustentación (`evidenceUrl`) y nota definitiva de superación del plan.
 
 #### F. Centro de Herramientas Pedagógicas del Instructor (`/dashboard/teacher/tools`)
-*   **Ruleta de Participación y Notas (`Roulette.tsx`):**
+*   **Elección de Vocero y Suplente (`TeacherVoceroElectionTool.tsx` / `TeacherElectionPanel.tsx`):**
+    *   Habilitación y gobernanza del proceso democrático de la ficha según el Reglamento del Aprendiz SENA.
+    *   Apertura de etapa de postulación de candidatos (`POSTULATION`) con propuestas de campaña.
+    *   Control de quórum mínimo (requiere al menos 2 postulantes para abrir votación).
+    *   Apertura y supervisión de votación secreta en vivo (`VOTING`) con escrutinio en tiempo real (`ElectionTally.tsx`).
+    *   Cierre de comicios (`CLOSED`), proclamación de ganadores (`WinnerShowcase.tsx`), manejo del Voto en Blanco y resolución de empates.
+    *   Asignación automática de Vocero Principal y Suplente en la ficha.
+    *   Generación y descarga inmediata del **Acta Oficial de Elección y Posesión en PDF** con diseño institucional SENA y firmas legales.
+*   **Ruleta de Participación y Notas (`Roulette.tsx` / `TeacherRouletteTool.tsx`):**
     *   Dinámica interactiva con animación física de giro y efectos sonoros retro sintetizados en tiempo real mediante Web Audio API.
     *   Asignación y registro inmediato de calificaciones cuantitativas (0.0 a 5.0).
     *   **Reincorporación No Destructiva de Aprendices:** Permite volver a incluir en la rueda a aprendices que ya salieron sin perder su turno ni su nota registrada en el historial.
     *   Opción de retención inmediata en el modal del ganador (*¡TENEMOS UN GANADOR!*) para permitir que un aprendiz continúe en la ruleta en rondas consecutivas.
     *   Botón de acción masiva *"Reincorporar todos"* para rearmar la ruleta completa conservando todas las calificaciones registradas.
     *   Exportación corporativa de resultados a **Excel (.xlsx)** mediante `exceljs` y **PDF (.pdf)** oficial con `@react-pdf/renderer`.
-*   **Creador de Grupos de Trabajo (`GroupGenerator.tsx`):**
+*   **Creador de Grupos de Trabajo (`GroupGenerator.tsx` / `TeacherGroupGeneratorTool.tsx`):**
     *   Distribución y conformación automática y balanceada de equipos de trabajo mediante algoritmo aleatorio.
     *   Tablero interactivo de organización manual con tecnología Drag & Drop accesible (`@dnd-kit`).
     *   Edición de nombres de equipos en tiempo real, persistencia local y guardado/importación de proyectos en formato `.json`.
@@ -338,11 +374,22 @@ El Aprendiz es el beneficiario de la formación y cuenta con un portal autónomo
     *   Ficha activa y competencia en curso.
     *   Promedio ponderado de calificaciones.
     *   Notificaciones de nuevas observaciones o tareas pendientes.
+*   **Distintivo Honorífico de Vocería:** Si el aprendiz es electo Vocero Principal o Vocero Suplente, se despliega en su tarjeta de presentación el badge distintivo (`StudentVoceroBadge`) que acredita su liderazgo formal en la comunidad formativa.
 *   **Agenda del Día:** Detalle de clases programadas para el día con hora, materia, aula asignada e instructor titular.
 
-#### B. Expediente y Registro Académico (`/dashboard/student/records`)
+#### B. Participación Democrática y Elección de Voceros (`/dashboard/student/elections`)
+*   **Postulación Libre:** Durante la fase de postulación, el aprendiz puede inscribirse voluntariamente como candidato a la vocería de su ficha, ingresando su propuesta de representación, o retirar su postulación antes de que inicie la votación.
+*   **Cabina de Votación a Pantalla Completa (`FullscreenVotingBooth.tsx`):** Al iniciar la jornada electoral, accede a una interfaz inmersiva, confidencial y optimizada para dispositivos móviles y de escritorio.
+*   **Emisión de Voto Secreto y Único:**
+    *   Visualiza las tarjetas de los candidatos postulados con foto y propuestas, además de la tarjeta oficial de **Voto en Blanco**.
+    *   Modal interactivo de confirmación de sufragio (`VoteConfirmDialog.tsx`).
+    *   El voto es personal, secreto, irreversible e inalterable. El sistema garantiza un único voto por aprendiz mediante restricción única en base de datos.
+*   **Escrutinio y Descarga de Acta:** Al cerrarse las elecciones, consulta los resultados definitivos, la proclamación de Vocero Principal y Suplente, y puede descargar el **Acta Oficial de Posesión en PDF**.
+
+#### C. Expediente y Registro Académico (`/dashboard/student/records` y `StudentGrades.tsx`)
 *   **Diseño Full-Width:** Visualización completa de expediente sin restricciones de ancho.
 *   **Historial de Fichas:** Selector para consultar su ficha activa o el historial de notas y asistencias de fichas anteriores (`GroupEnrollment`).
+*   **Auditoría de Penalizaciones por Inasistencia:** Visualización transparente del impacto de sus inasistencias en sus calificaciones: horas totales perdidas (faltas, tardanzas y retiros tempranos), porcentaje de inasistencia de la materia, nota académica original, puntos descontados y nota final resultante.
 *   **Radicación de Justificaciones de Inasistencia:**
     *   Identificación de fechas con estado `ABSENT`.
     *   Formulario de radicación con motivo de la ausencia y enlace a soporte digital (incapacidad médica o calamidad).
@@ -357,7 +404,7 @@ El Aprendiz es el beneficiario de la formación y cuenta con un portal autónomo
     *   Consulta de la calificación final obtenida.
 *   **Descarga de Boletines:** Descarga de reportes académicos y boletines de notas consolidadas en PDF o Excel.
 
-#### C. Consulta de Programación Horaria (`/dashboard/student/schedule`)
+#### D. Consulta de Programación Horaria (`/dashboard/student/schedule`)
 *   Calendario semanal y mensual de clases con ambientes de aprendizaje y docentes.
 *   Consulta de eventos institucionales y festivos que aplican a su ficha.
 *   Visualización de novedades horarias (cambios de aula, suspensiones o sesiones virtuales).
@@ -394,9 +441,9 @@ flowchart TD
 
 ---
 
-### 4.2. Sistema de Calificaciones Jerárquicas Ponderadas
+### 4.2. Sistema de Calificaciones Jerárquicas Ponderadas y Motor de Penalización por Inasistencia
 
-Ubicado en [GradeManagerPanel.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/teacher/components/GradeManagerPanel.tsx):
+Ubicado en [GradeManagerPanel.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/teacher/components/GradeManagerPanel.tsx), [StudentGrades.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/student/components/StudentGrades.tsx) y respaldado por [gradePenaltyUtils.ts](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/lib/gradePenaltyUtils.ts):
 
 ```text
 Curso / Competencia (100%)
@@ -412,17 +459,38 @@ Curso / Competencia (100%)
 └── Corte 3: GradeCategory (Peso: 40%)
 ```
 
-*   Permite alternar entre ponderación porcentual y suma absoluta de puntos.
-*   Cálculo reactivo automático de promedios ponderados por corte y nota final del curso.
-*   Generación de planillas matriciales exportables a Excel con formato institucional de celdas.
+#### Motor Matemático de Penalización por Inasistencia (`gradePenaltyUtils.ts`):
+Para fomentar la puntualidad y permanencia en la formación técnica profesional, el sistema integra una regla de deducción cuantitativa configurable por competencia:
+
+```mermaid
+flowchart LR
+    A[Faltas Completas ABSENT] --> D[Suma Horas Perdidas]
+    B[Llegadas Tarde LATE] --> D
+    C[Retiros Tempranos LEAVE_EARLY] --> D
+    D --> E[% Inasistencia = Horas Perdidas / Horas Programadas]
+    E --> F[Puntos Descontados = Nota Original * % Penalización * % Inasistencia]
+    F --> G[Nota Definitiva = max 0.0, Nota Original - Puntos Descontados]
+```
+
+1.  **Consolidación de Horas Perdidas ($H_{\text{perdidas}}$):**
+    $$H_{\text{perdidas}} = H_{\text{faltas}} + H_{\text{tardanzas}} + H_{\text{retiros\_tempranos}}$$
+2.  **Porcentaje de Inasistencia del Trimestre:**
+    $$\% \text{ Inasistencia} = \min\left(100\%, \frac{H_{\text{perdidas}}}{H_{\text{programadas\_materia}}} \times 100\right)$$
+3.  **Puntos a Descontar sobre la Nota Bruta:**
+    $$\text{Puntos a Descontar} = \text{Nota Bruta} \times \left(\frac{\text{Tope Penalización \%}}{100}\right) \times \left(\frac{\% \text{ Inasistencia}}{100}\right)$$
+4.  **Nota Definitiva Registrada:**
+    $$\text{Nota Definitiva} = \max\left(0.0, \text{Nota Bruta} - \text{Puntos a Descontar}\right)$$
+
+*   **Transparencia Total:** Ambos paneles (instructor y aprendiz) presentan tooltips y cuadros informativos que desglosan con exactitud la causa de cada deducción (ej. *"2 horas de tardanza + 6 horas de falta = 8 horas perdidas (16% inasistencia) -> -0.40 pts"*).
 
 ---
 
-### 4.3. Planilla de Asistencia Matricial y Permisos Extemporáneos
+### 4.3. Planilla de Asistencia Matricial, Cálculo de Horas Perdidas y Permisos Extemporáneos
 
 Implementada en [GroupManager.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/teacher/components/GroupManager.tsx):
 
 *   **Matriz Responsiva:** Tabla interactiva con columnas fijas de aprendices y columnas dinámicas por fecha de formación con scroll horizontal optimizado para móviles (`touch-pan-x`).
+*   **Selectores de Tiempo y Cálculo de Horas Perdidas en Vivo:** Al registrar una llegada tarde (`LATE`) o retiro anticipado (`LEAVE_EARLY`), el docente selecciona la hora exacta mediante un desplegable contextual que calcula de inmediato las horas lectivas perdidas con base en el horario programado.
 *   **Cierre de Semanas:** Si el parámetro `limitAttendanceToCurrentWeek` está activo, las semanas previas quedan bloqueadas para evitar adulteraciones posteriores.
 *   **Flujo de Permiso Extemporáneo (`AttendancePermissionRequest`):**
     1.  El docente solicita modificación indicando ficha, fecha y justificación.
@@ -472,17 +540,19 @@ Implementado mediante Better Auth y [auditLogger.ts](file:///c:/Users/Jhon/Docum
 *   **Propósito:** Soporte remoto inmediato y reproducción de incidencias reportadas por aprendices o instructores sin vulnerar ni solicitar contraseñas.
 *   **Mecanismo:** Generación de un token de sesión temporal donde el campo `impersonatedBy` almacena el identificador del administrador que opera la sesión.
 *   **Banner de Advertencia:** En la interfaz superior aparece una barra flotante que indica: *"Sesión suplantada activa como [Nombre Usuario] - Salir de la suplantación"*.
+
 ---
 
 ### 4.7. Centro de Herramientas Pedagógicas e Institucionales (`src/features/tools/`)
 
-El Centro de Herramientas es un subsistema modular de utilidades de productividad docente y auditoría curricular gobernado por el registro centralizado [toolsRegistry.ts](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/tools/constants/toolsRegistry.ts).
+El Centro de Herramientas es un subsistema modular de utilidades de productividad docente, dinámicas de aula y auditoría curricular gobernado por el registro centralizado [toolsRegistry.ts](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/tools/constants/toolsRegistry.ts).
 
 ```mermaid
 graph TD
     Hub[Centro de Herramientas - ToolsHub] --> Sofia[Reporte Juicios Sofia Plus]
     Hub --> Roulette[Ruleta de Participación y Notas]
     Hub --> Groups[Creador de Grupos de Trabajo]
+    Hub --> Vocero[Elección de Vocero y Suplente]
 
     Sofia --> ExcelS[Excel Corporativo Sofia]
     Sofia --> PdfS[PDF Institucional Sofia]
@@ -496,6 +566,11 @@ graph TD
     Groups --> Json[Guardar / Cargar JSON]
     Groups --> ExcelG[Excel Multihoja exceljs]
     Groups --> PdfG[PDF Oficial react-pdf]
+
+    Vocero --> Booth[Cabina de Votación Secreta]
+    Vocero --> Tally[Escrutinio Transparente en Vivo]
+    Vocero --> Winner[Proclamación Principal / Suplente]
+    Vocero --> ActaPdf[Acta Oficial de Posesión jspdf]
 ```
 
 #### A. Reporte de Juicios Evaluativos de Sofía Plus (`SofiaReportsTool.tsx`)
@@ -513,63 +588,108 @@ Exclusiva para el rol de **Instructor** (`allowedRoles: ["teacher"]`).
     *   Arpegio musical de victoria y lluvia de confeti de partículas al seleccionar al ganador.
 *   **Calificación en Vivo:** Ventana modal inmediata para asignar notas cuantitativas (1.0 a 5.0) o ingreso decimal manual.
 *   **Reincorporación No Destructiva de Aprendices:**
-    *   **Preservación Total del Historial:** A diferencia de sistemas simples que eliminan el registro al volver a colocar a un aprendiz en la ruleta, AcademiX conserva intacto el turno, la fecha y la calificación asignada en la columna de seleccionados y en los reportes finales.
-    *   **Indicador de Estado en Vivo:** Si el aprendiz ya está activo en la ruleta, muestra el badge **`✓ En ruleta`**. Si fue seleccionado y retirado, muestra el botón **`[+ Reincorporar]`**.
-    *   **Opción Directa en Modal de Ganador:** Casilla interactiva `[ ] Mantener en la ruleta (permitir repetir)` para decidir en el instante de la calificación si el aprendiz continúa disponible para las siguientes rondas.
-    *   **Acción Masiva "Reincorporar todos":** Botón en cabecera que permite recargar la rueda completa con toda la ficha sin borrar ninguna de las notas previamente asignadas (ideal para rondas múltiples de evaluación).
-    *   **Gestión Individual de Notas:** Edición de calificaciones vinculada a la marca temporal (`timestamp`) de cada turno particular, evitando sobreescrituras si un aprendiz participa más de una vez.
-    *   **Eliminación Segura (`Trash2`):** Botón para descartar giros erróneos o pruebas del historial.
+    *   **Preservación Total del Historial:** Conserva intacto el turno, la fecha y la calificación asignada en la columna de seleccionados y en los reportes finales.
+    *   **Indicador de Estado en Vivo:** Badge **`✓ En ruleta`** o botón **`[+ Reincorporar]`**.
+    *   **Opción Directa en Modal de Ganador:** Casilla interactiva `[ ] Mantener en la ruleta (permitir repetir)`.
+    *   **Acción Masiva "Reincorporar todos":** Recarga la rueda completa con toda la ficha sin borrar ninguna de las notas previamente asignadas.
 *   **Exportación Corporativa (`rouletteCorporateExport.tsx`):**
-    *   Menú desplegable `<DropdownMenu>` con estado de carga animado (`Loader2`).
-    *   **Excel (.xlsx) con `exceljs`:** Encabezado institucional *Slate 900*, metadatos de ficha y fecha, barra KPI de totales, promedio y tasa de aprobación, encabezados verde esmeralda (`#15803D`), filas cebra y formato condicional con badges para notas aprobadas ($\ge 3.0$) y por mejorar ($< 3.0$).
-    *   **PDF (.pdf) con `@react-pdf/renderer`:** Documento A4 vertical oficial, membrete verde institucional, barra resumen de estadísticas, tabla de notas y pie de página con paginación automática.
+    *   Excel (.xlsx) con `exceljs` con formato condicional y PDF (.pdf) oficial con `@react-pdf/renderer`.
 
 #### C. Creador de Grupos de Trabajo Colaborativo (`GroupGenerator.tsx` / `TeacherGroupGeneratorTool.tsx`)
 Exclusivo para el rol de **Instructor** (`allowedRoles: ["teacher"]`).
-*   **Generador Aleatorio Equitativo:** Algoritmo de distribución aleatoria balanceada para conformar $N$ equipos de trabajo según la cantidad deseada.
-*   **Tablero Kanban con Drag & Drop (`@dnd-kit`):**
-    *   Panel lateral con el listado de aprendices disponibles ("Sin Grupo") con buscador y contador dinámico.
-    *   Arrastre fluido entre columnas y hacia las tarjetas de los equipos de trabajo.
-    *   Renombramiento interactivo del nombre de cada grupo en línea.
-*   **Persistencia y Exportación JSON:** Posibilidad de guardar el estado completo de conformación grupal en archivo `.json` y recargarlo en sesiones posteriores.
-*   **Exportación Corporativa Multihoja (`groupCorporateExport.tsx`):**
-    *   **Excel (.xlsx) con `exceljs`:**
-        *   *Hoja 1 ("Equipos de Trabajo"):* Bloques independientes por cada equipo con cabeceras verde esmeralda suave (`#D1FAE5`), conteo de integrantes, identificación, nombre del aprendiz, rol asignado (*Líder de Equipo*, *Integrante*), columna de firmas/observaciones y sección especial para aprendices sin asignar.
-        *   *Hoja 2 ("Listado Consolidado"):* Tabla maestra consolidada ideal para ordenar, filtrar e imprimir toda la ficha.
-    *   **PDF (.pdf) con `@react-pdf/renderer`:**
-        *   Tarjetas modulares por equipo que evitan saltos de página inadecuados (`wrap={false}`).
-        *   Bloque destacado para aprendices pendientes de asignación.
-        *   Barra KPI con promedio de aprendices por equipo.
-        *   Pie de página institucional numerado.
+*   **Generador Aleatorio Equitativo:** Algoritmo de distribución aleatoria balanceada para conformar $N$ equipos de trabajo.
+*   **Tablero Kanban con Drag & Drop (`@dnd-kit`):** Arrastre fluido entre columnas y hacia las tarjetas de los equipos.
+*   **Persistencia y Exportación JSON:** Guardado y recarga del estado completo en formato `.json`.
+*   **Exportación Corporativa Multihoja (`groupCorporateExport.tsx`):** Excel (.xlsx) con hojas *Equipos de Trabajo* y *Listado Consolidado*, y PDF (.pdf) con tarjetas estructuradas.
+
+#### D. Elección de Vocero y Suplente (`TeacherVoceroElectionTool.tsx` / `TeacherElectionPanel.tsx`)
+Habilitada para roles de **Instructor** y **Administrador** (`allowedRoles: ["teacher", "admin"]`).
+*   Convocatoria controlada de elecciones de vocería por ficha formativa.
+*   Apertura y cierre de fase de postulación con propuestas programáticas.
+*   Control de quórum de candidatos (mínimo 2 postulantes).
+*   Apertura de urnas para votación secreta en tiempo real.
+*   Escrutinio transparente con barra de participación y distribución porcentual.
+*   Proclamación oficial y asignación automática de Vocero Principal y Suplente en el grupo.
+*   Generación y descarga inmediata del **Acta Oficial de Elección y Posesión en PDF** con diseño editorial institucional SENA.
 
 ---
 
 ### 4.8. Estandarización Visual, Responsividad y Motor de Exportación Corporativa
 
-#### A. Patrón "Hero Banner Estándar Dorado"
-Todas las pestañas de ficha de formación (*Aprendices, Asistencia, Observaciones, Planes de Mejoramiento, Calificaciones, Documentación, Analítica*) y los módulos directivos fueron estandarizados bajo un lenguaje visual idéntico:
+#### A. Catálogo de 17 Temas Visuales y Nuevo Tema "Interstellar"
+AcademiX V2 cuenta con un motor dinámico de temas visuales que inyecta tokens CSS semánticos en tiempo real sin recargar la página. La plataforma incluye 17 temas:
+1.  **Predeterminado (Default):** Estilo corporativo SENA con acentos esmeralda.
+2.  **Interstellar (`interstellar.css`):** Paleta inspirada en el cosmos y el abismo espacial profundo (`hsl(230 45% 6%)`), con acentos en *Oro Cósmico / Gargantúa* (`hsl(38 92% 46%)`), tipografías dinámicas `Space Grotesk` y títulos en `Orbitron`.
+3.  **Caffeine, Claude, Clean Slate, Cyberpunk, Deus Ex, Elegant Luxury, Marshmallow, Nature, Notebook, Ocean Breeze, Perplexity, Punk Runner, Slack, Summer, Supabase, VS Code.**
+
+#### B. Patrón "Hero Banner Estándar Dorado"
+Todas las pestañas de ficha de formación (*Aprendices, Asistencia, Observaciones, Planes de Mejoramiento, Calificaciones, Documentación, Analítica, Elecciones*) fueron estandarizadas bajo un lenguaje visual idéntico:
 *   **Contenedor Translúcido:** `bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 relative overflow-hidden shadow-2xs`.
 *   **Marca de Agua SVG Temática:** Ícono vectorial de alta resolución en la esquina superior derecha (`text-primary/5 -right-3 -bottom-6 w-32 h-32 pointer-events-none`).
 *   **Jerarquía Tipográfica:** Títulos en `font-black text-xl sm:text-2xl text-foreground` con subtítulo explicativo y badges de contexto en `bg-primary/10 text-primary border-primary/20`.
 
-#### B. Contención Estricta al Viewport y Eliminación de Scroll de Ventana
-*   Se eliminaron las alturas mínimas rígidas (`min-h-[600px]`) y paddings duplicados que obligaban a la página a desbordarse verticalmente.
+#### C. Contención Estricta al Viewport y Eliminación de Scroll de Ventana
 *   Las herramientas pedagógicas operan bajo un límite estricto de altura respecto a la ventana del navegador (`h-[calc(100vh-170px)]` o `h-full min-h-0 overflow-hidden`).
 *   La página del navegador **no genera scroll vertical**.
-*   Toda navegación extensa (listados de aprendices, historial de ruleta, tableros de grupos) se maneja mediante **scrolls internos asíncronos e independientes** (`overflow-y-auto custom-scrollbar`), preservando siempre visibles la ruleta, la barra de herramientas y los controles de acción.
-*   La rueda de la ruleta se autoescala proporcionalmente según la altura disponible del monitor (`max-h-[min(540px,calc(100vh-210px))]`).
-
-#### C. Consistencia Temática Global en el Sidebar
-*   Sincronización total con la paleta activa (Ocean Breeze, Cyberpunk, Forest, Sunset, Slate, etc.) en todos los roles del sistema (*Admin, Gestor, Instructor, Aprendiz, Observador*).
-*   Eliminación de colores estáticos arcoíris en favor de tokens HSL semánticos.
-*   El indicador activo utiliza un destello dinámico con `var(--primary)` y las píldoras activas usan `bg-primary/10 text-primary border-primary/25`.
-*   Resolución precisa de ítems activos en URLs con parámetros de búsqueda (`item.url.split('?')[0]`).
+*   Toda navegación extensa se maneja mediante **scrolls internos asíncronos e independientes** (`overflow-y-auto custom-scrollbar`).
 
 #### D. Estándar de Exportación Corporativa SENA / AcademiX
 Todos los reportes generados en el sistema siguen una guía de estilo gráfica común:
 *   **Paleta de Color:** Verde SENA Esmeralda (`#15803D`), Acentos Oscuros Slate 900 (`#0F172A`), Fondos Suaves (`#F1F5F9` / `#DCFCE7`).
 *   **Tipografía:** Segoe UI para libros Excel de alta legibilidad y Helvetica para documentos vectoriales PDF.
 *   **Metadatos Automatizados:** Rótulos oficiales con nombre de la ficha, código de caracterización, fecha en español colombiano y autoría institucional.
+
+---
+
+### 4.9. Sistema Democrático de Elección y Posesión de Voceros (Reglamento SENA)
+
+Ubicado en `src/features/elections/` y respaldado por el **Reglamento del Aprendiz SENA (Acuerdo 007 de 2012)**.
+
+```mermaid
+stateDiagram-v2
+    [*] --> POSTULATION: Instructor inicia convocatoria
+    POSTULATION --> VOTING: Quórum válido (>= 2 candidatos)
+    POSTULATION --> CANCELLED: Anulación extraordinaria
+    VOTING --> CLOSED: Instructor cierra urnas
+    VOTING --> CANCELLED: Anulación extraordinaria
+    CLOSED --> [*]: Proclamación y Acta Oficial PDF
+    CLOSED --> POSTULATION: Mayoría Voto en Blanco (Repetir elección)
+```
+
+#### Ciclo de Vida y Reglas de Negocio:
+
+1.  **Fase de Convocatoria y Postulación (`POSTULATION`):**
+    *   El Instructor crea la jornada electoral para la ficha (`createElectionAction`).
+    *   Los aprendices habilitados se postulan voluntariamente ingresando su propuesta formativa (`PostulationDialog.tsx`).
+    *   Un candidato puede retirar su postulación en cualquier momento antes del inicio de votaciones (`withdrawCandidacyAction`).
+    *   **Control de Quórum:** El sistema exige como mínimo 2 candidatos para habilitar la apertura de urnas (`minCandidates = 2`).
+
+2.  **Fase de Jornada Electoral y Voto Secreto (`VOTING`):**
+    *   El docente abre las urnas virtuales (`startVotingAction`).
+    *   Los aprendices acceden a la **Cabina de Votación a Pantalla Completa** ([FullscreenVotingBooth.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/elections/components/student/FullscreenVotingBooth.tsx)).
+    *   Opciones de sufragio: Tarjeta individual por cada candidato postulado y la tarjeta oficial de **Voto en Blanco**.
+    *   **Garantía de Secreto y Unicidad:** La base de datos garantiza mediante `@@unique([electionId, studentId])` en `ElectionVote` que cada aprendiz solo pueda emitir un sufragio. El sistema audita si el aprendiz votó (`hasVoted`), pero nunca revela por quién votó.
+    *   **Escrutinio en Tiempo Real Transparente:** El docente supervisa el porcentaje de participación de la ficha en vivo mediante [ElectionTally.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/elections/components/shared/ElectionTally.tsx).
+
+3.  **Fase de Escrutinio y Cierre (`CLOSED`):**
+    *   El docente realiza el cierre definitivo de comicios (`closeElectionAction`).
+    *   **Regla del Voto en Blanco:** Si el Voto en Blanco obtiene la mayoría simple de los votos, la elección se declara desierta institucionalmente y el sistema solicita convocar a una nueva elección con nuevos postulantes.
+    *   **Proclamación de Ganadores ([WinnerShowcase.tsx](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/elections/components/shared/WinnerShowcase.tsx)):**
+        *   **Vocero Principal:** Candidato con la mayor cantidad de votos válidos.
+        *   **Vocero Suplente:** Candidato con la segunda mayor votación.
+        *   En caso de empate en el primer lugar, el sistema lo notifica para dirimir según el reglamento.
+    *   **Actualización Automática:** La entidad `Group` actualiza `voceroPrincipalId` y `voceroSuplenteId`.
+    *   **Distintivo Oficial (`StudentVoceroBadge.tsx`):** Acreditación visual permanente con badges dorados y azules en toda la plataforma.
+
+4.  **Generación de Acta Oficial de Posesión en PDF ([electionActaExport.ts](file:///c:/Users/Jhon/Documents/Datos/Informacion/2026/Proyectos/AcademixV2/src/features/elections/utils/electionActaExport.ts)):**
+    *   Genera un documento A4 vectorial con diseño editorial oficial SENA:
+        *   Encabezado institucional SENA y número oficial de radicación (`ACTA NO. ELEC-[FICHA]-[FECHA]`).
+        *   Cuadro con datos de la Ficha, Programa, Ambiente de formación e Instructor responsable.
+        *   Tabla estadística de participación electoral (aprendices habilitados, votos emitidos, porcentaje de participación y abstención).
+        *   Tabla oficial de escrutinio con votación detallada por candidato y voto en blanco.
+        *   Proclamación formal de Vocero Principal y Suplente con asignación de deberes normativos (Acuerdo 007 de 2012).
+        *   Declaración juramentada de transparencia democrática.
+        *   Recuadros para firmas oficiales: Instructor / Testigo Electoral, Vocero Principal electo y Vocero Suplente electo.
 
 ---
 
@@ -586,6 +706,7 @@ El archivo [`prisma/schema.prisma`](file:///c:/Users/Jhon/Documents/Datos/Inform
 *   `banReason` (`String`): Motivo de la suspensión.
 *   `groupId` (`String`, FK opcional): Ficha formativa principal (para aprendices).
 *   `availabilityLocked` (`Boolean`): Bloqueo de edición de disponibilidad para docentes.
+*   *Relaciones Electorales:* `electionsCreated` (`GroupElection[]`), `candidacies` (`ElectionCandidate[]`), `electionVotes` (`ElectionVote[]`).
 
 ### 2. `Profile` (Información Personal y Sensible)
 *   `identificacion` (`String`): Cédula de ciudadanía, tarjeta de identidad o documento legal.
@@ -612,6 +733,9 @@ El archivo [`prisma/schema.prisma`](file:///c:/Users/Jhon/Documents/Datos/Inform
 *   `categoria` (`String`): Etapa formativa (**`LECTIVA`** o **`PRODUCTIVA`**).
 *   `startDate` / `endDate` (`DateTime`): Fechas oficiales de vigencia de la ficha.
 *   `environmentId` (`String`, FK): Aula o ambiente de formación asignado.
+*   `voceroPrincipalId` (`String`, FK opcional): Identificador del estudiante electo como Vocero Principal.
+*   `voceroSuplenteId` (`String`, FK opcional): Identificador del estudiante electo como Vocero Suplente.
+*   `elections` (`GroupElection[]`): Historial de jornadas electorales de la ficha.
 
 ### 6. `GroupEnrollment` (Historial de Aprendices en Fichas)
 *   `studentId` (`String`, FK) y `groupId` (`String`, FK).
@@ -623,11 +747,15 @@ El archivo [`prisma/schema.prisma`](file:///c:/Users/Jhon/Documents/Datos/Inform
 *   `title` (`String`): Nombre de la competencia o materia.
 *   `weeklyHours` (`Float`): Horas semanales sugeridas.
 *   `usePercentageWeights` (`Boolean`): Indica si usa ponderación porcentual (100%) o acumulativa.
+*   `attendancePenaltyEnabled` (`Boolean`, default `false`): Activa la regla de penalización por inasistencia en la materia.
+*   `maxPenaltyPercentage` (`Float`, default `0`): Porcentaje máximo de nota a descontar por inasistencia acumulada.
 *   `teacherId` (`String`, FK): Docente titular asignado.
 
 ### 8. `Attendance` (Registro Diario de Asistencia)
 *   `date` (`DateTime`): Fecha de la sesión.
 *   `status` (`AttendanceStatus`): `PRESENT`, `ABSENT`, `LATE`, `LEAVE_EARLY`.
+*   `arrivalTime` (`DateTime` opcional): Hora exacta de ingreso registrada en llegadas tarde.
+*   `departureTime` (`DateTime` opcional): Hora exacta de salida registrada en retiros prematuros.
 *   `justification` (`String`): Motivo radicado por el aprendiz.
 *   `justificationUrl` (`String`): Enlace al comprobante digital.
 
@@ -655,6 +783,34 @@ El archivo [`prisma/schema.prisma`](file:///c:/Users/Jhon/Documents/Datos/Inform
 ### 13. `ScheduleNovelty` (Novedades de Horario)
 *   Tipos: `SCHEDULE_SUSPENSION`, `ROOM_CHANGE`, `CLASS_RESCHEDULE`, `TECHNICAL_OUTAGE`, `INSTITUTIONAL_EVENT`, `VIRTUAL_SESSION`, `OTHER`.
 
+### 14. `GroupElection` (Jornada Electoral de Ficha)
+*   `id` (`String`, PK cuid).
+*   `groupId` (`String`, FK Group): Ficha donde se efectúa la elección.
+*   `createdByTeacherId` (`String`, FK User): Instructor o administrador convocante.
+*   `title` (`String`): Título descriptivo (default: *"Elección de Vocero y Suplente"*).
+*   `description` (`String` opcional): Orientaciones de la jornada.
+*   `status` (`ElectionStatus` enum: `POSTULATION`, `VOTING`, `CLOSED`, `CANCELLED`).
+*   `allowBlankVote` (`Boolean`, default: `true`): Habilitación del Voto en Blanco.
+*   `minCandidates` (`Int`, default: `2`): Quórum mínimo de candidatos postulados.
+*   `startedAt` / `endedAt` (`DateTime` opcional): Marcas temporales de apertura y cierre de urnas.
+*   *Relaciones:* `candidates` (`ElectionCandidate[]`) y `votes` (`ElectionVote[]`).
+
+### 15. `ElectionCandidate` (Candidato a Vocería)
+*   `id` (`String`, PK cuid).
+*   `electionId` (`String`, FK GroupElection): Elección vinculada.
+*   `studentId` (`String`, FK User): Aprendiz postulado.
+*   `proposal` (`String` opcional): Propuesta programática o compromiso electoral.
+*   `votes` (`ElectionVote[]`): Sufragios obtenidos por el candidato.
+*   *Restricción Única:* `@@unique([electionId, studentId])`.
+
+### 16. `ElectionVote` (Sufragio Emitido)
+*   `id` (`String`, PK cuid).
+*   `electionId` (`String`, FK GroupElection).
+*   `studentId` (`String`, FK User): Aprendiz sufragante.
+*   `candidateId` (`String`, FK opcional ElectionCandidate): Candidato seleccionado (`null` si votó en blanco).
+*   `isBlankVote` (`Boolean`, default: `false`): Indicador de sufragio en blanco.
+*   *Restricción de Secreto e Imposibilidad de Doble Voto:* `@@unique([electionId, studentId])`.
+
 ---
 
 ## 6. Catálogo de Server Actions, Utilidades y APIs
@@ -663,7 +819,7 @@ Todas las acciones del servidor se ejecutan bajo el modelo `"use server"` con va
 
 ### A. Acciones de Administración y Usuarios (`adminActions.ts`)
 *   `getAdminDashboardStatsAction()`: Obtiene estadísticas consolidadas para admin o gestor.
-*   `getAllUsersAction({ role, groupId, programId, limit, page })`: Listado paginado y filtrado de usuarios.
+*   `getAllUsersAction({ role, groupId, programId, limit, page })`: Listado paginado y filtrado de usuarios con badges de vocería.
 *   `createUserAction(data)`: Crea estudiantes o docentes con perfil, credenciales y validación de duplicados.
 *   `createAdminOrObserverAction(data)`: Crea Administradores, Gestores u Observadores asociando programas y fichas.
 *   `updateAdminOrObserverAction(id, data)`: Modifica información, roles y asignación de programas/fichas.
@@ -678,33 +834,42 @@ Todas las acciones del servidor se ejecutan bajo el modelo `"use server"` con va
 *   `getProgramsAction()` / `createProgramAction(data)` / `updateProgramAction(id, data)` / `deleteProgramAction(id)`: Ciclo de vida de programas formativos.
 *   `getGroupsAction()` / `createGroupAction(data)` / `updateGroupAction(id, data)` / `deleteGroupAction(id)`: Ciclo de vida de fichas de caracterización.
 *   `createPeriodAction(data)` / `updatePeriodAction(id, data)` / `deletePeriodAction(id)` / `reorderPeriodsAction(ids)`: Manejo de trimestres formativos.
-*   `assignCourseToPeriodAction(data)` / `reorderCoursesAction(ids)` / `deleteCourseAction(id)`: Manejo de competencias en trimestres.
+*   `assignCourseToPeriodAction(data)` / `reorderCoursesAction(ids)` / `deleteCourseAction(id)`: Manejo de competencias en trimestres con parámetros de penalización.
 *   `registerStudentManualAction(data)`: Registro individual de aprendices con asignación a ficha.
 *   `registerStudentsBulkAction(students, groupId)`: Registro masivo desde planilla de Excel.
 *   `transferStudentGroupAction(studentId, newGroupId, notes)`: Traslado formal de ficha con historial.
 *   `getEnvironmentsAction()` / `createEnvironmentAction(data)` / `updateEnvironmentAction(id, data)`: Administración de aulas y ambientes.
 
-### C. Acciones del Docente y Aula (`groupActions.ts`, `attendanceActions.ts`, etc.)
-*   `recordAttendanceAction(courseId, date, records)`: Guarda la asistencia masiva de la sesión.
+### C. Acciones del Docente y Aula (`groupActions.ts`, `attendanceActions.ts`, `gradeActions.ts`)
+*   `recordAttendanceAction(courseId, date, records)`: Guarda la asistencia masiva de la sesión con horas exactas de tardanzas y retiros.
 *   `requestPastAttendancePermissionAction(courseId, date, reason)`: Radica solicitud de modificación extemporánea.
 *   `createRemarkAction(data)` / `getRemarksForStudentAction(userId)`: Registra y consulta anotaciones en el observador.
 *   `markRemarkAsViewedAction(remarkId)`: Estampa la fecha de acuse de recibo del aprendiz.
-*   `saveGradesAction(courseId, grades)`: Registra calificaciones cuantitativas y retroalimentación.
+*   `saveGradesAction(courseId, grades)`: Registra calificaciones cuantitativas y retroalimentación con regla de penalización.
 *   `createImprovementPlanAction(data)` / `signImprovementPlanAction(planId, url)` / `evaluateImprovementPlanAction(planId, score, grade)`: Flujo completo de planes de mejoramiento.
 
-### D. Utilidades y Motores de Exportación en Cliente (`src/features/tools/utils/`)
-*   **Procesamiento de Reportes SOFIA Plus (`sofiaParserActions.ts`):**
-    *   `extractLearningOutcomes(fileBuffer)`: Extrae y desduplica la totalidad de Resultados de Aprendizaje (RAPs) contenidos en el archivo Excel oficial de SOFIA Plus.
-    *   `processSofiaReport(fileBuffer, selectedOutcomes)`: Realiza el procesamiento matricial de juicios evaluativos cruzados por aprendiz y calcula el estado formativo global (`COMPLETO`, `POR EVALUAR`, `POR MEJORAR`).
-*   **Exportación Corporativa de Juicios SOFIA Plus:**
-    *   `exportSofiaReportToCorporateExcel(data, groupInfo)` (`sofiaCorporateExcelExport.ts`): Genera libro Excel institucional con formato condicional, hojas de métricas y sábanas de juicios con paleta SENA.
-    *   `generateAndDownloadSofiaPdf(data, groupInfo)` (`sofiaCorporatePdfExport.tsx`): Genera y descarga documento PDF A4 vectorial con diseño editorial oficial SENA y tablas de seguimiento de aprendices.
-*   **Exportación Corporativa de Ruleta Pedagógica (`rouletteCorporateExport.tsx`):**
-    *   `exportRouletteToCorporateExcel(options)`: Genera libro de cálculo con dos hojas (`Resultados y Calificaciones` con notas/observaciones y `Registro Histórico de Giros` con timestamp y ronda).
-    *   `exportRouletteToCorporatePdf(options)`: Produce acta oficial de sesión participativa en PDF con promedios grupales, detalle de calificaciones y pie de firmas.
-*   **Exportación Corporativa de Equipos de Trabajo (`groupCorporateExport.tsx`):**
-    *   `exportGroupsToCorporateExcel(options)`: Produce libro Excel multihoja con hoja `Matriz de Equipos` (visualización columnar tipo Kanban de grupos) y hoja `Listado Consolidado` (orden alfabético por aprendiz y equipo asignado).
-    *   `exportGroupsToCorporatePdf(options)`: Genera acta formal de conformación de equipos en PDF vectorial A4 con tarjetas estructuradas por grupo, contador de miembros y recuadro de firmas de entrega de proyecto.
+### D. Acciones y Servicios del Proceso Electoral (`electionActions.ts` & `electionService.ts`)
+*   `getGroupElectionAction(groupId)`: Obtiene el estado electoral detallado de la ficha (candidatos, escrutinio en vivo, ganador y rol del usuario).
+*   `getStudentElectionAction()`: Obtiene la información electoral correspondiente a la ficha activa del estudiante autenticado.
+*   `createElectionAction(groupId, title, description)`: Convoca la elección y da inicio a la etapa de postulación de candidatos.
+*   `postulateCandidateAction(electionId, proposal)`: Postulación voluntaria de un aprendiz con su respectiva propuesta programática.
+*   `withdrawCandidacyAction(electionId)`: Retiro voluntario de la candidatura antes del inicio de votaciones.
+*   `startVotingAction(electionId)`: Valida el quórum mínimo (2 candidatos) y realiza la apertura oficial de urnas virtuales.
+*   `castVoteAction(electionId, candidateId, isBlankVote)`: Emisión segura, irreversible y secreta del voto (candidato o voto en blanco).
+*   `closeElectionAction(electionId)`: Cierre de comicios, escrutinio automatizado, proclamación y vinculación de Vocero Principal y Suplente en el grupo.
+*   `cancelElectionAction(electionId)`: Cancelación extraordinaria de la jornada electoral.
+
+### E. Motor Matemático de Penalización por Inasistencia (`gradePenaltyUtils.ts`)
+*   `calculateHoursDiff(startTimeStr, endTimeStr)`: Calcula la diferencia exacta en horas entre marcas de tiempo.
+*   `getLostHoursForAttendance(sessionStart, sessionEnd, arrivalTime, departureTime)`: Determina el tiempo exacto perdido por tardanza y retiro temprano.
+*   `calculateGradePenalties(options)`: Ejecuta el cálculo consolidado de deducción de puntos y nota definitiva con desglose explicativo y validación de topes.
+
+### F. Motores de Exportación Corporativa SENA
+*   **Acta Oficial de Posesión de Voceros en PDF (`electionActaExport.ts`):** Emite el acta legal A4 mediante `jspdf` y `jspdf-autotable` con estadísticas, escrutinio, responsabilidades normativas (Acuerdo 007 de 2012) y firmas.
+*   **Procesamiento de Reportes SOFIA Plus (`sofiaParserActions.ts`):** Extracción y cruce matricial de juicios evaluativos en cliente.
+*   **Exportación Corporativa de Juicios SOFIA Plus:** Generación de Excel institucional (`sofiaCorporateExcelExport.ts`) y PDF vectorial (`sofiaCorporatePdfExport.tsx`).
+*   **Exportación de Ruleta Pedagógica (`rouletteCorporateExport.tsx`):** Generación de Excel con notas de participación y acta PDF oficial.
+*   **Exportación de Equipos de Trabajo (`groupCorporateExport.tsx`):** Excel multihoja y actas PDF estructuradas.
 
 ---
 

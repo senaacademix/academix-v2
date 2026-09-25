@@ -1,12 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getSessionCookie } from "better-auth/cookies";
+import { getClientIp, checkRateLimit } from "@/lib/rate-limiter";
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const clientIp = getClientIp(request);
+
+    // 1. Rate Limiting Perimetral por IP
+    const isAuthRoute = pathname.startsWith("/api/auth");
+    const limit = isAuthRoute ? 15 : 120; // 15 req/min para auth, 120 req/min general
+    const rateKey = `${isAuthRoute ? "auth" : "gen"}:${clientIp}`;
+
+    const rateResult = checkRateLimit(rateKey, limit, 60);
+    if (!rateResult.allowed) {
+        return new NextResponse(
+            JSON.stringify({
+                error: "Demasiadas peticiones. Por motivos de seguridad su IP ha alcanzado el límite de solicitudes temporales.",
+                retryAfter: rateResult.resetSeconds,
+            }),
+            {
+                status: 429,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Retry-After": rateResult.resetSeconds.toString(),
+                    "X-RateLimit-Limit": rateResult.limit.toString(),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": rateResult.resetSeconds.toString(),
+                },
+            }
+        );
+    }
 
     const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
     const hasSessionCookie = !!getSessionCookie(request);
+
+    // 2. Bloqueo estricto perimetral de autoregistro de aprendices
+    if (pathname.startsWith("/api/auth/sign-up")) {
+        return NextResponse.json(
+            { 
+                error: "El autoregistro de aprendices está deshabilitado. Los aprendices solo pueden ser creados por el Gestor Académico." 
+            }, 
+            { status: 403 }
+        );
+    }
+
+    if (pathname === "/signup") {
+        return NextResponse.redirect(new URL("/signin", request.url));
+    }
 
     // Fast-path: Si no hay cookie de sesión y se intenta acceder a dashboard, redirigir inmediatamente
     if (isDashboard && !hasSessionCookie) {
@@ -71,5 +112,6 @@ export const config = {
         "/signup",
         "/dashboard",
         "/dashboard/:path*",
+        "/api/:path*",
     ]
 };

@@ -45,7 +45,7 @@ export function MyEnrollments({
     if (filteredEnrollments.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-xl bg-muted/5">
-                <p className="text-muted-foreground font-medium">No estás inscrito en ninguna materia todavía.</p>
+                <p className="text-muted-foreground font-medium">No tienes materias asignadas en tu programación horaria todavía.</p>
             </div>
         );
     }
@@ -63,7 +63,7 @@ export function MyEnrollments({
                                 <div className="flex flex-col items-center gap-2">
                                     <div className="flex flex-wrap items-center justify-center gap-1.5">
                                         <Badge variant="outline" className="text-[8px] px-2 h-4 uppercase font-black tracking-widest bg-primary/5 text-primary border-primary/20 rounded-full">
-                                            Matriculado
+                                            Asignada
                                         </Badge>
                                         {enrollment.course.group?.name && (
                                             <Badge variant="outline" className="text-[8px] px-2 h-4 font-bold bg-muted/40 border-border/80 rounded-full">

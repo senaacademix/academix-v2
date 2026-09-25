@@ -32,6 +32,11 @@ model User {
   banExpires DateTime?
   icon       String?
 
+  // Rate Limiting & Anti-Fuerza Bruta
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
+  lastFailedLogin      DateTime?
+
 
   // Relations
   enrollments           Enrollment[]
@@ -83,6 +88,7 @@ model User {
   electionsCreated             GroupElection[]   @relation("TeacherElections")
   candidacies                  ElectionCandidate[] @relation("StudentCandidacies")
   electionVotes                ElectionVote[]    @relation("StudentVotes")
+  announcementsCreated         Announcement[]    @relation("AdminAnnouncements")
 
   @@unique([email])
   @@map("user")
@@ -326,6 +332,15 @@ model SystemSettings {
   studentAccessEnabled        Boolean           @default(true)
   limitAttendanceToCurrentWeek Boolean           @default(false)
   
+  // Rate Limiting & Anti-Fuerza Bruta Settings
+  rateLimitEnabled            Boolean           @default(true)
+  rateLimitRequestsPerMinute  Int               @default(60)
+  rateLimitAuthPerMinute      Int               @default(10)
+  authMaxFailedAttempts       Int               @default(5)
+  authLockoutDurationMinutes  Int               @default(15)
+  enableProgressiveDelay      Boolean           @default(true)
+  allowPublicRegistration     Boolean           @default(false)
+
   updatedAt             DateTime         @updatedAt
 
   @@map("system_settings")
@@ -851,6 +866,27 @@ model ElectionVote {
 
   @@unique([electionId, studentId])
   @@map("election_vote")
+}
+
+model Announcement {
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @db.Text
+  excerpt     String?   @db.Text
+  category    String    @default("General")
+  coverImage  String?
+  status      String    @default("DRAFT")
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  isPinned    Boolean   @default(false)
+  authorId    String
+  author      User      @relation("AdminAnnouncements", fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([isPinned])
+  @@map("announcements")
 }
 
 

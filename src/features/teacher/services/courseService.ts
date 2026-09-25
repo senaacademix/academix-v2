@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { format } from "date-fns";
 import { formatName } from "@/lib/utils";
+import { isScheduleCurrent } from "@/lib/dateUtils";
 
 // Persistent cache for resilience
 const courseStudentsCache = new Map<string, any>();
@@ -565,6 +566,11 @@ export const courseService = {
     },
 
     async getStudentEnrollments(userId: string) {
+        const student = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { groupId: true }
+        });
+
         const enrollments = await prisma.enrollment.findMany({
             where: {
                 userId,
@@ -615,14 +621,144 @@ export const courseService = {
                                     }
                                 }
                             }
-                        }
+                        },
+                        teacher: { include: { profile: true } },
+                        schedules: { orderBy: { dayOfWeek: 'asc' } },
+                        academicSchedule: true,
                     },
                 },
             },
         });
 
+        // Cargar materias asignadas directamente a la ficha/grupo del estudiante en la programación horaria
+        let groupCourses: any[] = [];
+        if (student?.groupId) {
+            const activeSchedules = await prisma.academicSchedule.findMany({
+                where: {
+                    isPublished: true,
+                    groupSlots: { some: { groupId: student.groupId } }
+                },
+                orderBy: { startDate: "desc" }
+            });
+            const vigenteSchedule = activeSchedules.find(s => isScheduleCurrent(s.startDate, s.endDate)) || activeSchedules[0];
+
+            groupCourses = await prisma.course.findMany({
+                where: {
+                    groupId: student.groupId,
+                    ...(vigenteSchedule ? {
+                        OR: [
+                            { academicScheduleId: vigenteSchedule.id },
+                            { academicScheduleId: null }
+                        ]
+                    } : {})
+                },
+                include: {
+                    sharedContent: {
+                        orderBy: { createdAt: "asc" }
+                    },
+                    group: {
+                        include: {
+                            program: {
+                                include: {
+                                    timelines: {
+                                        select: { id: true, name: true, isDefault: true }
+                                    }
+                                }
+                            },
+                            scheduleSlots: {
+                                include: {
+                                    period: {
+                                        include: {
+                                            timeline: {
+                                                select: { id: true, name: true }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    gradeCategories: {
+                        include: {
+                            groups: {
+                                include: {
+                                    items: true
+                                }
+                            }
+                        }
+                    },
+                    teacher: { include: { profile: true } },
+                    schedules: { orderBy: { dayOfWeek: 'asc' } },
+                    academicSchedule: true,
+                },
+                orderBy: { order: "asc" }
+            });
+
+            // Si el filtro de horario vigente no arrojó resultados, cargar todas las materias vigentes de la ficha
+            if (groupCourses.length === 0) {
+                groupCourses = await prisma.course.findMany({
+                    where: { groupId: student.groupId },
+                    include: {
+                        sharedContent: {
+                            orderBy: { createdAt: "asc" }
+                        },
+                        group: {
+                            include: {
+                                program: {
+                                    include: {
+                                        timelines: {
+                                            select: { id: true, name: true, isDefault: true }
+                                        }
+                                    }
+                                },
+                                scheduleSlots: {
+                                    include: {
+                                        period: {
+                                            include: {
+                                                timeline: {
+                                                    select: { id: true, name: true }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        gradeCategories: {
+                            include: {
+                                groups: {
+                                    include: {
+                                        items: true
+                                    }
+                                }
+                            }
+                        },
+                        teacher: { include: { profile: true } },
+                        schedules: { orderBy: { dayOfWeek: 'asc' } },
+                        academicSchedule: true,
+                    },
+                    orderBy: { order: "asc" }
+                });
+            }
+        }
+
+        // Combinar matrículas directas y materias asignadas por horario/ficha
+        const combinedEnrollments = [...enrollments];
+        for (const gc of groupCourses) {
+            if (!combinedEnrollments.some(e => e.courseId === gc.id || e.course?.id === gc.id)) {
+                combinedEnrollments.push({
+                    id: `group-course-${gc.id}`,
+                    userId,
+                    courseId: gc.id,
+                    status: 'APPROVED',
+                    createdAt: gc.createdAt,
+                    course: gc
+                } as any);
+            }
+        }
+
         // Fetch all additional data for all enrollments in bulk to avoid N+1 problem
-        const courseIds = enrollments.map(e => e.courseId);
+        const courseIds = combinedEnrollments.map(e => e.courseId);
         
         const [allRemarks, allAttendances] = await Promise.all([
             prisma.remark.findMany({
@@ -643,7 +779,7 @@ export const courseService = {
         ]);
 
         // Map remarks and attendances to their respective courses
-        const enrichedEnrollments = enrollments.map((enrollment) => {
+        const enrichedEnrollments = combinedEnrollments.map((enrollment) => {
             const remarks = allRemarks.filter(r => r.courseId === enrollment.courseId);
             const attendances = allAttendances.filter(a => a.courseId === enrollment.courseId);
 

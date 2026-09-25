@@ -43,17 +43,21 @@ import { formatName } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { GestorDashboardStats, GestorActivityItem } from "../types/gestorTypes";
 import { useGestorProgram } from "../context/GestorProgramContext";
+import { AnnouncementFeedWidget } from "@/features/announcements/components/AnnouncementFeedWidget";
+import { AnnouncementItem } from "@/features/announcements/types";
 
 interface GestorDashboardViewProps {
     stats: GestorDashboardStats;
     recentActivity: GestorActivityItem[];
     userName?: string;
+    announcements?: AnnouncementItem[];
 }
 
 export function GestorDashboardView({ 
     stats, 
     recentActivity, 
-    userName
+    userName,
+    announcements = []
 }: GestorDashboardViewProps) {
     const managedPrograms = stats.managedProgramsList || [];
     const isSingleProgram = managedPrograms.length === 1;
@@ -264,6 +268,9 @@ export function GestorDashboardView({
                     </Link>
                 ))}
             </div>
+
+            {/* Blog de Anuncios Institucionales */}
+            <AnnouncementFeedWidget announcements={announcements} />
 
             {/* Módulos Operativos para el Gestor */}
             {operationalModules && (

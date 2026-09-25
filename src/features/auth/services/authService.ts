@@ -27,6 +27,12 @@ export function getRedirectForSession(session: unknown): string | null {
   return "/dashboard/student";
 }
 
+import {
+  verifyAccountLockoutAction,
+  reportFailedLoginAction,
+  reportSuccessfulLoginAction,
+} from "@/features/security/actions/securityActions";
+
 export async function signInEmail(payload: { email: string; password: string }): Promise<void> {
   if (typeof document !== "undefined") {
     document.cookie = "academix_gestor_program_id=; path=/; max-age=0; SameSite=Lax";
@@ -35,14 +41,55 @@ export async function signInEmail(payload: { email: string; password: string }):
       localStorage.removeItem("academix_gestor_program_id");
     } catch {}
   }
+
+  // 1. Verificar si la cuenta está actualmente bloqueada por fuerza bruta
+  try {
+    const lockout = await verifyAccountLockoutAction(payload.email);
+    if (lockout.locked) {
+      throw new Error(
+        lockout.message ||
+          `Cuenta bloqueada temporalmente por seguridad. Intente de nuevo en ${lockout.remainingMinutes ?? 15} minutos.`
+      );
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("bloqueada")) {
+      throw err;
+    }
+  }
+
+  // 2. Intentar autenticación
   const { data, error } = await authClient.signIn.email({
     email: payload.email,
     password: payload.password,
     callbackURL: "/signin",
   });
+
   if (error) {
-    throw new Error(error.message || "Error al iniciar sesión");
+    // 3. Registrar fallo e informar si se bloqueó o cuántos intentos restan
+    try {
+      const failResult = await reportFailedLoginAction(payload.email);
+      if (failResult.locked) {
+        throw new Error(
+          `Ha superado el límite de ${failResult.maxAttempts} intentos. Su cuenta ha sido bloqueada temporalmente por ${failResult.lockoutMinutes || 15} minutos.`
+        );
+      } else if (failResult.remainingAttempts <= 2 && failResult.remainingAttempts > 0) {
+        throw new Error(
+          `Credenciales incorrectas. Advertencia: Le restan ${failResult.remainingAttempts} intento(s) antes del bloqueo de seguridad.`
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && (err.message.includes("bloqueada") || err.message.includes("Advertencia"))) {
+        throw err;
+      }
+    }
+
+    throw new Error(error.message || "Error al iniciar sesión. Verifique su correo y contraseña.");
   }
+
+  // 4. Inicio exitoso: restablecer contador de fallos
+  try {
+    await reportSuccessfulLoginAction(payload.email);
+  } catch {}
 }
 
 export async function signInSocial(provider: "google"): Promise<void> {
@@ -56,19 +103,15 @@ export async function signInSocial(provider: "google"): Promise<void> {
   await authClient.signIn.social({ provider, callbackURL: "/signin" });
 }
 
-export async function signUpEmail(payload: {
+export async function signUpEmail(_payload: {
   email: string;
   password: string;
   name?: string;
   confirmPassword?: string;
 }): Promise<void> {
-  if (payload.confirmPassword !== undefined && payload.password !== payload.confirmPassword) {
-    throw new Error("Las contraseñas no coinciden");
-  }
-  if (payload.password.length < 8) {
-    throw new Error("La contraseña debe tener al menos 8 caracteres");
-  }
-  await authClient.signUp.email({ email: payload.email, password: payload.password, name: "" });
+  throw new Error(
+    "El autoregistro de aprendices está deshabilitado. Los aprendices solo pueden ser creados por el Gestor Académico."
+  );
 }
 
 export async function signOut(): Promise<void> {

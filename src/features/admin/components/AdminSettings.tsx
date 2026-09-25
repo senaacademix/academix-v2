@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { ShieldCheck, Save, Sparkles, HelpCircle, UserCheck } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ShieldCheck, Save, Sparkles, HelpCircle, UserCheck, Shield } from "lucide-react";
+import { AdminSecurityPanel } from "./AdminSecurityPanel";
+import { SecuritySettingsData } from "@/features/security/services/securityService";
 
 interface AdminSettingsProps {
     initialSettings: {
@@ -23,11 +26,18 @@ interface AdminSettingsProps {
         scheduleEndDate?: Date | string | null;
         maxTeacherHours?: number | null;
     };
+    initialSecuritySettings?: SecuritySettingsData;
+    initialBlockedUsers?: any[];
     initialRequests: any[];
     isObserver?: boolean;
 }
 
-export function AdminSettings({ initialSettings, isObserver = false }: AdminSettingsProps) {
+export function AdminSettings({
+    initialSettings,
+    initialSecuritySettings,
+    initialBlockedUsers = [],
+    isObserver = false,
+}: AdminSettingsProps) {
     const [studentDailyLimit, setStudentDailyLimit] = useState(initialSettings.studentDailyLimit ?? 2);
     const [studentAccessEnabled, setStudentAccessEnabled] = useState<boolean>(
         (initialSettings as any).studentAccessEnabled ?? true
@@ -41,6 +51,16 @@ export function AdminSettings({ initialSettings, isObserver = false }: AdminSett
         (initialSettings as any).studentAccessEnabled
     ]);
 
+    const defaultSecurity: SecuritySettingsData = {
+        rateLimitEnabled: true,
+        rateLimitRequestsPerMinute: 60,
+        rateLimitAuthPerMinute: 10,
+        authMaxFailedAttempts: 5,
+        authLockoutDurationMinutes: 15,
+        enableProgressiveDelay: true,
+        allowPublicRegistration: false,
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -50,14 +70,27 @@ export function AdminSettings({ initialSettings, isObserver = false }: AdminSett
                         Configuración del Sistema
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Gestiona y personaliza las reglas de acceso e inicio de sesión de la plataforma.
+                        Gestiona y personaliza las reglas de acceso, límites de aprendices y seguridad perimetral de la plataforma.
                     </p>
                 </div>
             </div>
 
-            {/* Configuración de Acceso y Límites */}
-            <Card className="rounded-3xl border border-border/80 shadow-xs bg-card overflow-hidden">
-                <CardHeader className="border-b border-border/60 bg-muted/20 p-6">
+            <Tabs defaultValue="access" className="w-full space-y-6">
+                <TabsList className="bg-muted/70 p-1 rounded-2xl border border-border/60">
+                    <TabsTrigger value="access" className="rounded-xl px-5 py-2.5 font-bold text-xs flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                        <UserCheck className="w-4 h-4 text-primary" />
+                        <span>Acceso Estudiantil</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="security" className="rounded-xl px-5 py-2.5 font-bold text-xs flex items-center gap-2 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                        <span>Seguridad & Rate Limit</span>
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="access" className="mt-0">
+                    {/* Configuración de Acceso y Límites */}
+                    <Card className="rounded-3xl border border-border/80 shadow-xs bg-card overflow-hidden">
+                        <CardHeader className="border-b border-border/60 bg-muted/20 p-6">
                     <div className="flex items-center gap-3">
                         <div className="p-3 rounded-2xl bg-primary/10 text-primary border border-primary/20">
                             <ShieldCheck className="w-5 h-5" />
@@ -151,6 +184,15 @@ export function AdminSettings({ initialSettings, isObserver = false }: AdminSett
                     </form>
                 </CardContent>
             </Card>
-        </div>
-    );
+        </TabsContent>
+
+        <TabsContent value="security" className="mt-0">
+            <AdminSecurityPanel
+                initialSettings={initialSecuritySettings || defaultSecurity}
+                initialBlockedUsers={initialBlockedUsers}
+            />
+        </TabsContent>
+    </Tabs>
+</div>
+);
 }

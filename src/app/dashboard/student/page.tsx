@@ -9,16 +9,16 @@ import { getFormattedTodayDate } from "@/lib/dateUtils";
 
 import prisma from "@/lib/prisma";
 
+import { announcementService } from "@/features/announcements/services/announcementService";
+
 export default async function Page() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session || session.user.role !== "student") {
     redirect("/signin");
   }
 
-  const [availableCourses, myEnrollments, pendingEnrollments, themes, studentUserData] = await Promise.all([
-    courseService.getAllCourses(),
+  const [myEnrollments, themes, studentUserData, announcements] = await Promise.all([
     courseService.getStudentEnrollments(session.user.id),
-    courseService.getStudentPendingEnrollments(session.user.id),
     getAvailableThemes(),
     prisma.user.findUnique({
       where: { id: session.user.id },
@@ -60,7 +60,8 @@ export default async function Page() {
           }
         }
       }
-    })
+    }),
+    announcementService.getActiveAnnouncements()
   ]);
 
   const reqHeaders = await headers();
@@ -68,12 +69,11 @@ export default async function Page() {
   const formattedDate = getFormattedTodayDate(timezone);
 
   return <StudentDashboard
-    availableCourses={availableCourses}
     myEnrollments={myEnrollments}
     studentName={session.user.name}
-    pendingEnrollments={pendingEnrollments}
     themes={themes}
     formattedDate={formattedDate}
     studentGroup={studentUserData?.group || null}
+    announcements={announcements}
   />;
 }

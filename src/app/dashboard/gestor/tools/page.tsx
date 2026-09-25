@@ -11,7 +11,7 @@ export const metadata = {
 export default async function GestorToolsPage() {
     const session = await auth.api.getSession({ headers: await headers() });
 
-    if (!session || (session.user.role !== "gestor" && session.user.role !== "admin")) {
+    if (!session || session.user.role !== "gestor") {
         redirect("/dashboard");
     }
 

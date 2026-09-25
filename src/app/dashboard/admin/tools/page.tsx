@@ -1,4 +1,5 @@
-import GestorToolsPage, { metadata } from "../../gestor/tools/page";
+import { redirect } from "next/navigation";
 
-export { metadata };
-export default GestorToolsPage;
+export default function AdminToolsPage() {
+    redirect("/dashboard/admin");
+}

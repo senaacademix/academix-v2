@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CourseCatalog } from "./CourseCatalog";
 import { MyEnrollments } from "./MyEnrollments";
 import { formatName } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -23,23 +21,23 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { getFormattedTodayDate } from "@/lib/dateUtils";
 import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
 import { StudentHelpModal } from "./StudentHelpModal";
+import { AnnouncementFeedWidget } from "@/features/announcements/components/AnnouncementFeedWidget";
+import { AnnouncementItem } from "@/features/announcements/types";
 
 export function StudentDashboard({
-    availableCourses,
     myEnrollments,
     studentName,
-    pendingEnrollments = [],
     themes = [],
     formattedDate,
-    studentGroup = null
+    studentGroup = null,
+    announcements = []
 }: {
-    availableCourses: any[],
     myEnrollments: any[],
     studentName: string,
-    pendingEnrollments?: string[],
     themes?: any[],
     formattedDate?: string,
-    studentGroup?: any
+    studentGroup?: any,
+    announcements?: AnnouncementItem[]
 }) {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -359,14 +357,14 @@ export function StudentDashboard({
                 </div>
             )}
 
-            {pendingEnrollments.length > 0 && !isInsideCourse && (
-                <div className="bg--50 dark:bg--950/20 dark:bg-yellow-900/20 border border--200 dark:border--800/50 dark:border-yellow-800 rounded-lg p-4 text-sm text-yellow-800 dark:text-yellow-200 ml-4 sm:ml-6 md:ml-8 mr-4 sm:mr-6 md:mr-8">
-                    Tienes {pendingEnrollments.length} solicitud{pendingEnrollments.length !== 1 ? 'es' : ''} de inscripción pendiente{pendingEnrollments.length !== 1 ? 's' : ''} de aprobación por el instructor.
+            {!isInsideCourse && (
+                <div className="pt-2">
+                    <AnnouncementFeedWidget announcements={announcements} />
                 </div>
             )}
 
             {/* Content area */}
-            <div className={cn(isInsideCourse ? "h-full" : "")}>
+            <div className={cn(isInsideCourse ? "h-full" : "space-y-4 pt-2")}>
                 {isInsideCourse && (
                     <style jsx global>{`
                         /* Hide the global App Header when inside a course to allow course-specific unified header */
@@ -415,46 +413,37 @@ export function StudentDashboard({
                         themes={themes}
                     />
                 ) : (
-                    <Tabs defaultValue="my-courses" className="space-y-6">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <TabsList className="grid w-full sm:w-auto grid-cols-2">
-                                <TabsTrigger value="my-courses">Mis Materias</TabsTrigger>
-                                <TabsTrigger value="catalog">Catálogo de Materias</TabsTrigger>
-                            </TabsList>
+                    <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-1">
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
+                                    <BookOpen className="w-5 h-5 text-primary" />
+                                    <span>Mis Materias</span>
+                                </h2>
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    Materias y competencias asignadas a tu ficha según la programación horaria vigente
+                                </p>
+                            </div>
+                            <Badge variant="outline" className="text-xs font-bold text-muted-foreground bg-muted/40 border-border/80 px-3 py-1 rounded-full">
+                                {myEnrollments.length} {myEnrollments.length === 1 ? "materia asignada" : "materias asignadas"}
+                            </Badge>
                         </div>
 
-                        <TabsContent value="my-courses" className="space-y-6 mt-0">
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                <MyEnrollments 
-                                    enrollments={myEnrollments} 
-                                    selectedCourse={selectedCourse} 
-                                    onSelectCourse={handleSelectCourse}
-                                    activeTab={activeTab}
-                                    onTabChange={handleTabChange}
-                                    themes={themes}
-                                />
-                            </motion.div>
-                        </TabsContent>
-                        <TabsContent value="catalog" className="space-y-6 mt-0">
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                <CourseCatalog
-                                    courses={availableCourses.filter(course =>
-                                        !myEnrollments.some(enrollment => enrollment.courseId === course.id) &&
-                                        (!course.group?.endDate || new Date(course.group.endDate) >= new Date())
-                                    )}
-                                    pendingEnrollments={pendingEnrollments}
-                                />
-                            </motion.div>
-                        </TabsContent>
-                    </Tabs>
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <MyEnrollments 
+                                enrollments={myEnrollments} 
+                                selectedCourse={selectedCourse} 
+                                onSelectCourse={handleSelectCourse}
+                                activeTab={activeTab}
+                                onTabChange={handleTabChange}
+                                themes={themes}
+                            />
+                        </motion.div>
+                    </div>
                 )}
             </div>
 

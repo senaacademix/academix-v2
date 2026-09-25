@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { BookOpen, Calendar, Users, FileText, Activity, ScrollText, Home, Wrench, ClipboardList, Settings2, GraduationCap, Building2, CalendarDays, BarChart3, UserCog, CalendarClock, Sparkles, RotateCcw, School, Globe, Eye, Award } from "lucide-react"
+import { BookOpen, Calendar, Users, FileText, Activity, ScrollText, Home, Wrench, ClipboardList, Settings2, GraduationCap, Building2, CalendarDays, BarChart3, UserCog, CalendarClock, Sparkles, RotateCcw, School, Globe, Eye, Award, ShieldCheck, Megaphone } from "lucide-react"
 
 import { NavMain, NavGroup } from "@/components/sidebar/nav-main"
 import { NavUser } from "@/components/sidebar/nav-user"
@@ -137,9 +137,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             isActive: false,
           },
           {
-            title: "Herramientas",
-            url: "/dashboard/gestor/tools",
-            icon: Wrench,
+            title: "Blog de Anuncios",
+            url: "/dashboard/admin/announcements",
+            icon: Megaphone,
             isActive: false,
           },
           {

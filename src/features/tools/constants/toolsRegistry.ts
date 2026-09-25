@@ -111,6 +111,6 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
             "Proclamación oficial de Vocero Principal y Suplente"
         ],
         author: "AcademiX Elecciones",
-        allowedRoles: ["teacher", "admin"]
+        allowedRoles: ["teacher"]
     }
 ];

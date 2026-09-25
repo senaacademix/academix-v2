@@ -78,9 +78,9 @@ const STUDENT_TABS_HELP_CONFIG: Record<StudentTabKey, TabHelpConfig> = {
         icon: <History className="w-4 h-4 text-purple-500" />,
       },
       {
-        title: "Seguimiento de Inscripciones",
-        description: "Revisa si tienes solicitudes de matrícula pendientes de aprobación por parte del instructor.",
-        icon: <UserCheck className="w-4 h-4 text-purple-500" />,
+        title: "Materias en Horario",
+        description: "Tus materias y competencias se asignan automáticamente según la programación horaria vigente de tu ficha.",
+        icon: <BookOpen className="w-4 h-4 text-purple-500" />,
       },
       {
         title: "Alertas de Novedad y Seguridad",

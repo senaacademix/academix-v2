@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { AdminDashboard } from "@/features/admin/components/AdminDashboard";
 import { getAdminDashboardStatsAction, getRecentActivityAction } from "@/features/admin/actions/adminActions";
 
+import { announcementService } from "@/features/announcements/services/announcementService";
+
 export default async function AdminDashboardPage() {
   const session = await auth.api.getSession({ headers: await headers() });
 
@@ -11,9 +13,10 @@ export default async function AdminDashboardPage() {
     redirect("/dashboard/student");
   }
 
-  const [stats, recentActivity] = await Promise.all([
+  const [stats, recentActivity, announcements] = await Promise.all([
     getAdminDashboardStatsAction(),
-    getRecentActivityAction(5)
+    getRecentActivityAction(5),
+    announcementService.getActiveAnnouncements()
   ]);
 
   return (
@@ -24,6 +27,7 @@ export default async function AdminDashboardPage() {
         isObserver={session.user.role === "observer"}
         currentUserRole={session.user.role}
         userName={session.user.name || undefined}
+        announcements={announcements}
       />
     </div>
   );

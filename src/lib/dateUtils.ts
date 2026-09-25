@@ -80,20 +80,43 @@ export function formatDateTime(date: Date | string, formatStr: string = "dd/MM/y
 
 /**
  * Retorna la fecha actual formateada en español (ej: "jueves, 23 de julio de 2026").
- * Si se pasa una zona horaria (como "America/Bogota" o la proveniente de x-vercel-ip-timezone),
- * ajusta el cálculo al tiempo local de esa zona horaria.
+ * Por defecto asegura la zona horaria oficial de Colombia (America/Bogota, UTC-5),
+ * evitando discrepancias cuando el servidor corre en UTC (Vercel/Docker/AWS).
  */
-export function getFormattedTodayDate(timeZone?: string): string {
+export function getFormattedTodayDate(timeZone: string = "America/Bogota"): string {
     const options: Intl.DateTimeFormatOptions = {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
+        timeZone,
     };
-    if (timeZone) {
-        options.timeZone = timeZone;
-    }
     return new Intl.DateTimeFormat('es-ES', options).format(new Date());
+}
+
+/**
+ * Formatea una fecha y hora garantizando la zona horaria de Colombia (America/Bogota, UTC-5)
+ * tanto en ejecución del servidor como en el cliente.
+ */
+export function formatColombianDateTime(
+    date: Date | string | null | undefined,
+    options?: Intl.DateTimeFormatOptions
+): string {
+    if (!date) return "";
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) return "Fecha inválida";
+    
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+        timeZone: "America/Bogota",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        ...options,
+    };
+    return new Intl.DateTimeFormat("es-CO", defaultOptions).format(d);
 }
 
 /**

@@ -17,26 +17,38 @@ export const auth = betterAuth({
     },
   },
 
-  // Base de datos hooks para forzar rol student en registro público
+  // Bloquear cualquier intento de registro público directo
   databaseHooks: {
     user: {
       create: {
-        before: async (user) => {
-          return {
-            data: {
-              ...user,
-              role: "student",
-            },
-          };
+        before: async () => {
+          throw new Error(
+            "El autoregistro de aprendices está deshabilitado. Los aprendices solo pueden ser creados por el Gestor Académico."
+          );
         },
       },
     },
   },
 
-  // Configuración de email y contraseña
+  // Configuración de email y contraseña (autoregistro deshabilitado)
   emailAndPassword: {
     enabled: true,
+    disableSignUp: true,
     requireEmailVerification: false,
+  },
+
+  // Rate Limiting nativo de Better Auth para protección de endpoints de autenticación
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 60,
+    storage: "memory",
+    customRules: {
+      "/sign-in/email": {
+        window: 60,
+        max: 5,
+      },
+    },
   },
 
   // Configuración de sesión

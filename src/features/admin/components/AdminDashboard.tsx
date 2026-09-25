@@ -94,16 +94,20 @@ interface AdminDashboardProps {
     isObserver?: boolean;
     currentUserRole?: string;
     userName?: string;
+    announcements?: AnnouncementItem[];
 }
 
 import { useGestorProgram } from "@/features/gestor/context/GestorProgramContext";
+import { AnnouncementFeedWidget } from "@/features/announcements/components/AnnouncementFeedWidget";
+import { AnnouncementItem } from "@/features/announcements/types";
 
 export function AdminDashboard({ 
     stats, 
     recentActivity, 
     isObserver = false,
     currentUserRole = "admin",
-    userName
+    userName,
+    announcements = []
 }: AdminDashboardProps) {
     const isGestor = currentUserRole === "gestor";
     const managedPrograms = stats.managedProgramsList || [];
@@ -603,6 +607,9 @@ export function AdminDashboard({
                     </Link>
                 ))}
             </div>
+
+            {/* Blog de Anuncios Institucionales */}
+            <AnnouncementFeedWidget announcements={announcements} />
 
             {/* Módulos Operativos */}
             {operationalModules && (

@@ -6,6 +6,7 @@ import {
     getGestorDashboardStatsAction, 
     getGestorRecentActivityAction 
 } from "@/features/gestor/actions/gestorActions";
+import { announcementService } from "@/features/announcements/services/announcementService";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,10 @@ export default async function GestorDashboardPage({
     const cookieProgramId = cookieStore.get("academix_gestor_program_id")?.value;
     const effectiveProgramId = resolvedSearchParams?.programId || cookieProgramId;
 
-    const [stats, recentActivity] = await Promise.all([
+    const [stats, recentActivity, announcements] = await Promise.all([
         getGestorDashboardStatsAction(),
-        getGestorRecentActivityAction(10, effectiveProgramId)
+        getGestorRecentActivityAction(10, effectiveProgramId),
+        announcementService.getActiveAnnouncements()
     ]);
 
     return (
@@ -41,6 +43,7 @@ export default async function GestorDashboardPage({
                 stats={stats} 
                 recentActivity={recentActivity} 
                 userName={session.user.name || undefined}
+                announcements={announcements}
             />
         </div>
     );

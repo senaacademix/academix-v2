@@ -29,17 +29,22 @@ import { StatWidget } from "@/components/aicanvas/stat-widget";
 import { QuickCalendarWidget } from "@/components/aicanvas/quick-calendar-widget";
 import { ProgressTrackerCard } from "@/components/aicanvas/progress-tracker-card";
 import { GraduationCap, CheckCircle, Activity, Award } from "lucide-react";
+import { AnnouncementFeedWidget } from "@/features/announcements/components/AnnouncementFeedWidget";
+import { AnnouncementItem } from "@/features/announcements/types";
+import { getActiveAnnouncementsAction } from "@/features/announcements/actions/announcementActions";
 
 interface HomePageProps {
   initialUserName?: string;
   initialUserRole?: string;
   initialDate?: string;
   initialMetrics?: DashboardMetricData | null;
+  initialAnnouncements?: AnnouncementItem[];
 }
 
-export default function HomePage({ initialUserName, initialUserRole, initialDate, initialMetrics }: HomePageProps) {
+export default function HomePage({ initialUserName, initialUserRole, initialDate, initialMetrics, initialAnnouncements }: HomePageProps) {
   const [settings, setSettings] = useState<{ institutionName?: string | null }>({});
   const [metrics, setMetrics] = useState<DashboardMetricData | null>(initialMetrics || null);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(initialAnnouncements || []);
   const [loadingMetrics, setLoadingMetrics] = useState(!initialMetrics);
   const [mounted, setMounted] = useState(false);
   const [clientDate, setClientDate] = useState<string>("");
@@ -58,12 +63,16 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [settingsData, metricsData] = await Promise.all([
+        const [settingsData, metricsData, announcementsData] = await Promise.all([
           getSettingsAction(),
           getDashboardMetricsAction(),
+          getActiveAnnouncementsAction()
         ]);
         setSettings(settingsData || {});
         setMetrics(metricsData);
+        if (announcementsData && announcementsData.length > 0) {
+          setAnnouncements(announcementsData as AnnouncementItem[]);
+        }
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       } finally {
@@ -337,52 +346,104 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
         </StaggerItem>
       </StaggerGroup>
 
-      {/* Main Grid: Quick Access & AI Canvas Widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Quick Access Section */}
-        <section className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <div>
-              <h2 className="text-2xl font-extrabold text-foreground tracking-tight flex items-center gap-2 text-balance">
-                <span>Acceso Rápido</span>
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1 text-pretty">Selecciona el módulo al que deseas acceder</p>
-            </div>
-          </div>
+      {/* Main Grid: Comunicados a la izquierda y Acceso Rápido + Agenda a la derecha */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Columna Principal (2 Columnas en desktop): Anuncios Completos */}
+        <div className="lg:col-span-2 space-y-8 min-w-0">
+          {/* Blog de Anuncios y Comunicados Institucionales (Renderizado Completo en Markdown) */}
+          <AnnouncementFeedWidget announcements={announcements} />
 
-          <StaggerGroup className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {navItems.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <StaggerItem key={index}>
-                  <Link href={item.url} className="group block h-full">
-                    <SpotlightCard className="h-full flex items-center gap-4 transition-all duration-300">
-                      <div className={cn("w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300", item.color)}>
-                        <Icon className="w-6 h-6" />
-                      </div>
+          {/* Si no hay anuncios activos, mostramos Acceso Rápido de forma amplia aquí */}
+          {(!announcements || announcements.length === 0) && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
+                    <span>Módulos de Acceso Rápido</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Accede directamente a tus herramientas y funciones principales</p>
+                </div>
+              </div>
 
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                            {item.title}
-                          </h3>
-                          <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
+              <StaggerGroup className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {navItems.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <StaggerItem key={index}>
+                      <Link href={item.url} className="group block h-full">
+                        <SpotlightCard className="h-full flex items-center gap-4 transition-all duration-300 p-4 rounded-2xl">
+                          <div className={cn("w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300", item.color)}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                                {item.title}
+                              </h3>
+                              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
+                            </div>
+                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                              {item.description}
+                            </p>
+                          </div>
+                        </SpotlightCard>
+                      </Link>
+                    </StaggerItem>
+                  );
+                })}
+              </StaggerGroup>
+            </section>
+          )}
+        </div>
+
+        {/* Columna Lateral Derecha (1 Columna en desktop): Acceso Rápido al inicio + Agenda + Progreso */}
+        <section className="space-y-6 lg:sticky lg:top-20">
+          {/* Módulos de Acceso Rápido (a la derecha, al inicio) cuando hay anuncios */}
+          {announcements && announcements.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+                    Acceso Rápido
+                  </h2>
+                  <p className="text-xs text-muted-foreground">Tus herramientas y funciones</p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {navItems.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link key={index} href={item.url} className="group block">
+                      <SpotlightCard className="flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 border border-border/80 hover:border-primary/40 bg-card/85 shadow-2xs">
+                        <div className={cn("w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300", item.color)}>
+                          <Icon className="w-5 h-5" />
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 text-pretty">
-                          {item.description}
-                        </p>
-                      </div>
-                    </SpotlightCard>
-                  </Link>
-                </StaggerItem>
-              );
-            })}
-          </StaggerGroup>
-        </section>
 
-        {/* Sidebar Widgets Section */}
-        <section className="space-y-6">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                              {item.title}
+                            </h3>
+                            <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-tight line-clamp-1">
+                            {item.description}
+                          </p>
+                        </div>
+                      </SpotlightCard>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Agenda del Día */}
           <QuickCalendarWidget events={metrics?.events || []} />
+
+          {/* Progreso del Período */}
           <ProgressTrackerCard
             title={metrics?.progress.title || "Progreso del Período"}
             subtitle={metrics?.progress.subtitle || "Período Académico Actual"}
