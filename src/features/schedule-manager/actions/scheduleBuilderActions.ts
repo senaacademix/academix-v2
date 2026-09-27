@@ -462,251 +462,282 @@ export async function assignGroupClassScheduleAction(data: {
   endTime: string;   // "12:00"
   weeklyHours?: number;
   editingCourseScheduleId?: string;
-}) {
-  const session = await requireAdmin();
+}): Promise<{ success: boolean; courseScheduleId?: string; courseId?: string; error?: string }> {
+  try {
+    const session = await requireAdmin();
 
-  if (!data.groupId) throw new Error("Grupo no especificado");
-  if (!data.courseTitle || !data.courseTitle.trim()) throw new Error("Título de la materia es obligatorio");
-  if (!data.startTime || !data.endTime) throw new Error("Horas de inicio y fin son obligatorias");
-
-  const [sh, sm] = data.startTime.split(":").map(Number);
-  const [eh, em] = data.endTime.split(":").map(Number);
-  if (eh * 60 + em <= sh * 60 + sm) {
-    throw new Error("La hora de fin debe ser posterior a la hora de inicio");
-  }
-
-  // 0. Validar rango horario de la jornada del grupo en este horario
-  const groupDaySlot = await prisma.scheduleGroupSlot.findFirst({
-    where: {
-      academicScheduleId: data.scheduleId,
-      groupId: data.groupId,
-      dayOfWeek: data.dayOfWeek,
-    },
-  });
-
-  if (groupDaySlot) {
-    if (data.startTime < groupDaySlot.startTime || data.endTime > groupDaySlot.endTime) {
-      throw new Error(
-        `El horario (${data.startTime} - ${data.endTime}) está fuera de la jornada configurada del grupo para el ${data.dayOfWeek} (${groupDaySlot.startTime} - ${groupDaySlot.endTime})`
-      );
+    if (!data.groupId) {
+      return { success: false, error: "Grupo no especificado" };
     }
-  }
+    if (!data.courseTitle || !data.courseTitle.trim()) {
+      return { success: false, error: "Título de la materia es obligatorio" };
+    }
+    if (!data.startTime || !data.endTime) {
+      return { success: false, error: "Horas de inicio y fin son obligatorias" };
+    }
 
-  // 1. Validar si el profesor tiene colisión en otro grupo a esa misma hora y día
-  const resolvedTeacherId = data.teacherId && data.teacherId !== "NONE" ? data.teacherId : null;
+    const [sh, sm] = data.startTime.split(":").map(Number);
+    const [eh, em] = data.endTime.split(":").map(Number);
+    if (eh * 60 + em <= sh * 60 + sm) {
+      return { success: false, error: "La hora de fin debe ser posterior a la hora de inicio" };
+    }
 
-  if (resolvedTeacherId) {
-    const teacherCollision = await prisma.courseSchedule.findFirst({
+    // 0. Validar rango horario de la jornada del grupo en este horario
+    const groupDaySlot = await prisma.scheduleGroupSlot.findFirst({
       where: {
-        id: data.editingCourseScheduleId ? { not: data.editingCourseScheduleId } : undefined,
-        dayOfWeek: data.dayOfWeek,
-        OR: [
-          { teacherId: resolvedTeacherId },
-          { AND: [{ teacherId: null }, { course: { teacherId: resolvedTeacherId } }] }
-        ],
-        course: {
-          groupId: { not: data.groupId }
-        },
-        AND: [
-          {
-            OR: [
-              {
-                AND: [
-                  { startTime: { lte: data.startTime } },
-                  { endTime: { gt: data.startTime } }
-                ]
-              },
-              {
-                AND: [
-                  { startTime: { lt: data.endTime } },
-                  { endTime: { gte: data.endTime } }
-                ]
-              },
-              {
-                AND: [
-                  { startTime: { gte: data.startTime } },
-                  { endTime: { lte: data.endTime } }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      include: {
-        course: {
-          include: {
-            group: { select: { name: true } },
-            teacher: { select: { name: true } }
-          }
-        },
-        teacher: { select: { name: true } }
-      }
-    });
-
-    if (teacherCollision) {
-      const collisionTeacherName = teacherCollision.teacher?.name || teacherCollision.course.teacher?.name || "seleccionado";
-      throw new Error(
-        `Colisión de instructor: El instructor ${collisionTeacherName} ya tiene clase asignada con la ficha ${teacherCollision.course.group?.name || ""} el ${data.dayOfWeek} de ${teacherCollision.startTime} a ${teacherCollision.endTime}`
-      );
-    }
-  }
-
-  // 2. Si se asignó un ambiente, actualizar el ambiente del grupo si corresponde
-  if (data.environmentId && data.environmentId !== "NONE") {
-    await prisma.group.update({
-      where: { id: data.groupId },
-      data: { environmentId: data.environmentId }
-    });
-  }
-
-  // 3. Buscar o crear el curso asignado al grupo en este horario específico
-  let groupCourse = await prisma.course.findFirst({
-    where: {
-      groupId: data.groupId,
-      academicScheduleId: data.scheduleId,
-      title: { equals: data.courseTitle.trim(), mode: "insensitive" }
-    }
-  });
-
-  let courseDescription = data.description ? data.description.trim() : null;
-  if (!courseDescription && data.periodId) {
-    const templateCourse = await prisma.course.findFirst({
-      where: {
-        groupId: null,
-        periodId: data.periodId,
-        title: { equals: data.courseTitle.trim(), mode: "insensitive" }
-      },
-      select: { description: true }
-    });
-    if (templateCourse?.description) {
-      courseDescription = templateCourse.description;
-    }
-  }
-
-  if (!groupCourse) {
-    groupCourse = await prisma.course.create({
-      data: {
-        title: data.courseTitle.trim(),
-        description: courseDescription,
-        groupId: data.groupId,
         academicScheduleId: data.scheduleId,
-        periodId: data.periodId || null,
-        teacherId: resolvedTeacherId,
-        weeklyHours: data.weeklyHours || 0
-      }
+        groupId: data.groupId,
+        dayOfWeek: data.dayOfWeek,
+      },
     });
-  } else {
-    const updates: any = {};
-    // Si el curso no tiene profesor asignado por defecto y este slot tiene uno, guardarlo como fallback
-    if (!groupCourse.teacherId && resolvedTeacherId) {
-      updates.teacherId = resolvedTeacherId;
+
+    if (groupDaySlot) {
+      if (data.startTime < groupDaySlot.startTime || data.endTime > groupDaySlot.endTime) {
+        return {
+          success: false,
+          error: `El horario (${data.startTime} - ${data.endTime}) está fuera de la jornada configurada del grupo para el ${data.dayOfWeek} (${groupDaySlot.startTime} - ${groupDaySlot.endTime})`,
+        };
+      }
     }
-    // Si el curso no tiene descripción y se resolvió una del template o input, actualizarla
-    if (!groupCourse.description && courseDescription) {
-      updates.description = courseDescription;
+
+    // 1. Validar si el profesor tiene colisión en otro grupo a esa misma hora y día
+    const resolvedTeacherId = data.teacherId && data.teacherId !== "NONE" ? data.teacherId : null;
+
+    if (resolvedTeacherId) {
+      const teacherCollision = await prisma.courseSchedule.findFirst({
+        where: {
+          id: data.editingCourseScheduleId ? { not: data.editingCourseScheduleId } : undefined,
+          dayOfWeek: data.dayOfWeek,
+          OR: [
+            { teacherId: resolvedTeacherId },
+            { AND: [{ teacherId: null }, { course: { teacherId: resolvedTeacherId } }] },
+          ],
+          course: {
+            groupId: { not: data.groupId },
+          },
+          AND: [
+            {
+              OR: [
+                {
+                  AND: [
+                    { startTime: { lte: data.startTime } },
+                    { endTime: { gt: data.startTime } },
+                  ],
+                },
+                {
+                  AND: [
+                    { startTime: { lt: data.endTime } },
+                    { endTime: { gte: data.endTime } },
+                  ],
+                },
+                {
+                  AND: [
+                    { startTime: { gte: data.startTime } },
+                    { endTime: { lte: data.endTime } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        include: {
+          course: {
+            include: {
+              group: { select: { name: true } },
+              teacher: { select: { name: true } },
+            },
+          },
+          teacher: { select: { name: true } },
+        },
+      });
+
+      if (teacherCollision) {
+        const collisionTeacherName =
+          teacherCollision.teacher?.name || teacherCollision.course.teacher?.name || "seleccionado";
+        return {
+          success: false,
+          error: `Colisión de instructor: El instructor ${collisionTeacherName} ya tiene clase asignada con la ficha ${teacherCollision.course.group?.name || ""} el ${data.dayOfWeek} de ${teacherCollision.startTime} a ${teacherCollision.endTime}`,
+        };
+      }
     }
-    if (Object.keys(updates).length > 0) {
-      await prisma.course.update({
-        where: { id: groupCourse.id },
-        data: updates
+
+    // 2. Si se asignó un ambiente, actualizar el ambiente del grupo si corresponde
+    if (data.environmentId && data.environmentId !== "NONE") {
+      await prisma.group.update({
+        where: { id: data.groupId },
+        data: { environmentId: data.environmentId },
       });
     }
-  }
 
-  // 4. Crear o Actualizar franja de horario en CourseSchedule para el grupo
-  let resultSlotId: string;
-  if (data.editingCourseScheduleId) {
-    const updatedSlot = await prisma.courseSchedule.update({
-      where: { id: data.editingCourseScheduleId },
-      data: {
-        courseId: groupCourse.id,
-        teacherId: resolvedTeacherId,
-        dayOfWeek: data.dayOfWeek,
-        startTime: data.startTime,
-        endTime: data.endTime
-      }
+    // 3. Buscar o crear el curso asignado al grupo en este horario específico
+    let groupCourse = await prisma.course.findFirst({
+      where: {
+        groupId: data.groupId,
+        academicScheduleId: data.scheduleId,
+        title: { equals: data.courseTitle.trim(), mode: "insensitive" },
+      },
     });
-    resultSlotId = updatedSlot.id;
-  } else {
-    const newScheduleSlot = await prisma.courseSchedule.create({
-      data: {
-        courseId: groupCourse.id,
-        teacherId: resolvedTeacherId,
-        dayOfWeek: data.dayOfWeek,
-        startTime: data.startTime,
-        endTime: data.endTime
+
+    let courseDescription = data.description ? data.description.trim() : null;
+    if (!courseDescription && data.periodId) {
+      const templateCourse = await prisma.course.findFirst({
+        where: {
+          groupId: null,
+          periodId: data.periodId,
+          title: { equals: data.courseTitle.trim(), mode: "insensitive" },
+        },
+        select: { description: true },
+      });
+      if (templateCourse?.description) {
+        courseDescription = templateCourse.description;
       }
+    }
+
+    if (!groupCourse) {
+      groupCourse = await prisma.course.create({
+        data: {
+          title: data.courseTitle.trim(),
+          description: courseDescription,
+          groupId: data.groupId,
+          academicScheduleId: data.scheduleId,
+          periodId: data.periodId || null,
+          teacherId: resolvedTeacherId,
+          weeklyHours: data.weeklyHours || 0,
+        },
+      });
+    } else {
+      const updates: any = {};
+      // Si el curso no tiene profesor asignado por defecto y este slot tiene uno, guardarlo como fallback
+      if (!groupCourse.teacherId && resolvedTeacherId) {
+        updates.teacherId = resolvedTeacherId;
+      }
+      // Si el curso no tiene descripción y se resolvió una del template o input, actualizarla
+      if (!groupCourse.description && courseDescription) {
+        updates.description = courseDescription;
+      }
+      if (Object.keys(updates).length > 0) {
+        await prisma.course.update({
+          where: { id: groupCourse.id },
+          data: updates,
+        });
+      }
+    }
+
+    // 4. Crear o Actualizar franja de horario en CourseSchedule para el grupo
+    let resultSlotId: string;
+    if (data.editingCourseScheduleId) {
+      const updatedSlot = await prisma.courseSchedule.update({
+        where: { id: data.editingCourseScheduleId },
+        data: {
+          courseId: groupCourse.id,
+          teacherId: resolvedTeacherId,
+          dayOfWeek: data.dayOfWeek,
+          startTime: data.startTime,
+          endTime: data.endTime,
+        },
+      });
+      resultSlotId = updatedSlot.id;
+    } else {
+      const newScheduleSlot = await prisma.courseSchedule.create({
+        data: {
+          courseId: groupCourse.id,
+          teacherId: resolvedTeacherId,
+          dayOfWeek: data.dayOfWeek,
+          startTime: data.startTime,
+          endTime: data.endTime,
+        },
+      });
+      resultSlotId = newScheduleSlot.id;
+    }
+
+    // Log de auditoría
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+      action: data.editingCourseScheduleId ? "UPDATE" : "CREATE",
+      entity: "SCHEDULE",
+      entityId: resultSlotId,
+      userId: session.user.id,
+      userName: session.user.name || "Admin",
+      userRole: session.user.role || "admin",
+      description: `${data.editingCourseScheduleId ? "Actualización" : "Asignación"} de clase "${data.courseTitle}" al grupo ID ${data.groupId} (${data.dayOfWeek} ${data.startTime}-${data.endTime})`,
+      metadata: { courseScheduleId: resultSlotId, groupId: data.groupId, title: data.courseTitle },
+      success: true,
     });
-    resultSlotId = newScheduleSlot.id;
+
+    revalidatePath(`/dashboard/admin/schedules/${data.scheduleId}`);
+    revalidatePath("/dashboard/admin/schedules");
+    revalidatePath(`/dashboard/gestor/schedules/${data.scheduleId}`);
+    revalidatePath("/dashboard/gestor/schedules");
+
+    return { success: true, courseScheduleId: resultSlotId, courseId: groupCourse.id };
+  } catch (err: any) {
+    console.error("assignGroupClassScheduleAction error:", err);
+    return { success: false, error: err.message || "Error al guardar la clase en el horario" };
   }
-
-  // Log de auditoría
-  const { auditLogger } = await import("@/features/admin/services/auditLogger");
-  await auditLogger.log({
-    action: data.editingCourseScheduleId ? "UPDATE" : "CREATE",
-    entity: "SCHEDULE",
-    entityId: resultSlotId,
-    userId: session.user.id,
-    userName: session.user.name || "Admin",
-    userRole: "admin",
-    description: `${data.editingCourseScheduleId ? "Actualización" : "Asignación"} de clase "${data.courseTitle}" al grupo ID ${data.groupId} (${data.dayOfWeek} ${data.startTime}-${data.endTime})`,
-    metadata: { courseScheduleId: resultSlotId, groupId: data.groupId, title: data.courseTitle },
-    success: true
-  });
-
-  revalidatePath(`/dashboard/admin/schedules/${data.scheduleId}`);
-  revalidatePath("/dashboard/admin/schedules");
-  return { success: true, courseScheduleId: resultSlotId, courseId: groupCourse.id };
 }
 
 /**
  * Eliminar una franja de clase de un grupo
  */
-export async function deleteGroupClassScheduleAction(scheduleId: string, courseScheduleId: string) {
-  const session = await requireAdmin();
+export async function deleteGroupClassScheduleAction(
+  scheduleId: string,
+  courseScheduleId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await requireAdmin();
 
-  if (!courseScheduleId) throw new Error("ID de franja de clase no especificado");
-
-  const slot = await prisma.courseSchedule.findUnique({
-    where: { id: courseScheduleId },
-    include: {
-      course: { select: { id: true, title: true, groupId: true } }
+    if (!courseScheduleId) {
+      return { success: false, error: "ID de franja de clase no especificado" };
     }
-  });
 
-  if (!slot) throw new Error("La franja de clase no existe");
-
-  await prisma.courseSchedule.delete({
-    where: { id: courseScheduleId }
-  });
-
-  // Si el curso ya no tiene más franjas, opcionalmente verificar si se conserva o elimina
-  const remainingSlots = await prisma.courseSchedule.count({
-    where: { courseId: slot.courseId }
-  });
-
-  if (remainingSlots === 0) {
-    await prisma.course.delete({
-      where: { id: slot.courseId }
+    const slot = await prisma.courseSchedule.findUnique({
+      where: { id: courseScheduleId },
+      include: {
+        course: { select: { id: true, title: true, groupId: true } },
+      },
     });
-  }
 
-  const { auditLogger } = await import("@/features/admin/services/auditLogger");
-  await auditLogger.log({
-    action: "DELETE",
-    entity: "SCHEDULE",
-    entityId: courseScheduleId,
-    userId: session.user.id,
-    userName: session.user.name || "Admin",
-    userRole: "admin",
-    description: `Eliminación de franja de clase "${slot.course.title}" de grupo ${slot.course.groupId}`,
-    metadata: { courseScheduleId },
-    success: true
-  });
+    if (!slot) {
+      return { success: false, error: "La franja de clase no existe" };
+    }
 
-  if (scheduleId) {
-    revalidatePath(`/dashboard/admin/schedules/${scheduleId}`);
+    await prisma.courseSchedule.delete({
+      where: { id: courseScheduleId },
+    });
+
+    // Si el curso ya no tiene más franjas, opcionalmente verificar si se conserva o elimina
+    const remainingSlots = await prisma.courseSchedule.count({
+      where: { courseId: slot.courseId },
+    });
+
+    if (remainingSlots === 0) {
+      await prisma.course.delete({
+        where: { id: slot.courseId },
+      });
+    }
+
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+      action: "DELETE",
+      entity: "SCHEDULE",
+      entityId: courseScheduleId,
+      userId: session.user.id,
+      userName: session.user.name || "Admin",
+      userRole: session.user.role || "admin",
+      description: `Eliminación de franja de clase "${slot.course.title}" de grupo ${slot.course.groupId}`,
+      metadata: { courseScheduleId },
+      success: true,
+    });
+
+    if (scheduleId) {
+      revalidatePath(`/dashboard/admin/schedules/${scheduleId}`);
+      revalidatePath(`/dashboard/gestor/schedules/${scheduleId}`);
+    }
+    revalidatePath("/dashboard/admin/schedules");
+    revalidatePath("/dashboard/gestor/schedules");
+    return { success: true };
+  } catch (err: any) {
+    console.error("deleteGroupClassScheduleAction error:", err);
+    return { success: false, error: err.message || "Error al eliminar la franja de clase" };
   }
-  revalidatePath("/dashboard/admin/schedules");
-  return { success: true };
 }

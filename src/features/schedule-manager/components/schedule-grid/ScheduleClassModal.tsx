@@ -253,7 +253,7 @@ export function ScheduleClassModal({
 
     setIsSubmitting(true);
     try {
-      await assignGroupClassScheduleAction({
+      const res = await assignGroupClassScheduleAction({
         scheduleId,
         groupId: group.id,
         courseTitle: selectedCourseTitle,
@@ -267,6 +267,11 @@ export function ScheduleClassModal({
         weeklyHours: selectedCourse?.weeklyHours || 0,
         editingCourseScheduleId,
       });
+
+      if (!res.success) {
+        toast.error(res.error || "Error al guardar la clase");
+        return;
+      }
 
       toast.success(
         editingCourseScheduleId

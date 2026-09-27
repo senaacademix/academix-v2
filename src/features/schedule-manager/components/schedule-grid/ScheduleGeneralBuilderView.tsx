@@ -231,7 +231,11 @@ export function ScheduleGeneralBuilderView({
     if (!slotToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteGroupClassScheduleAction(data.schedule.id, slotToDelete);
+      const res = await deleteGroupClassScheduleAction(data.schedule.id, slotToDelete);
+      if (!res.success) {
+        toast.error(res.error || "Error al eliminar la clase");
+        return;
+      }
       toast.success("Clase eliminada del horario");
       setSlotToDelete(null);
       await handleRefresh();
