@@ -434,6 +434,8 @@ model Program {
   gestores        User[]     @relation("GestorPrograms")
   observers       User[]     @relation("ObserverPrograms")
   environments    TrainingEnvironment[]
+  academicSchedules AcademicSchedule[]
+  scheduleEvents    ScheduleEvent[]
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -690,6 +692,8 @@ model AcademicSchedule {
   endDate     DateTime
   isActive    Boolean             @default(true)
   isPublished Boolean             @default(true)
+  programId   String?
+  program     Program?            @relation(fields: [programId], references: [id], onDelete: Cascade)
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   groupSlots  ScheduleGroupSlot[]
@@ -699,6 +703,7 @@ model AcademicSchedule {
   teacherQualifications TeacherScheduleQualification[]
   teacherScheduleLocks  TeacherScheduleLock[]
 
+  @@index([programId])
   @@map("academic_schedule")
 }
 
@@ -723,6 +728,8 @@ model ScheduleEvent {
   id                 String           @id @default(cuid())
   academicScheduleId String
   academicSchedule   AcademicSchedule @relation(fields: [academicScheduleId], references: [id], onDelete: Cascade)
+  programId          String?
+  program            Program?         @relation(fields: [programId], references: [id], onDelete: Cascade)
   
   title              String
   description        String?
@@ -740,6 +747,7 @@ model ScheduleEvent {
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
+  @@index([programId])
   @@map("schedule_event")
 }
 

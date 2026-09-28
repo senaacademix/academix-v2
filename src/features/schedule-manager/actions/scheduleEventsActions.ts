@@ -56,16 +56,26 @@ export async function getScheduleEventsDataAction(scheduleId: string, programId?
     const schedule = await prisma.academicSchedule.findUnique({
       where: { id: scheduleId },
       include: {
+        program: {
+          select: { id: true, name: true }
+        },
         events: {
           where: effectiveProgramId ? {
             OR: [
-              { isGeneral: true },
+              { programId: effectiveProgramId },
               { group: { programId: effectiveProgramId } },
-              { groupId: null }
+              {
+                AND: [
+                  { programId: null },
+                  { groupId: null },
+                  { academicSchedule: { programId: effectiveProgramId } }
+                ]
+              }
             ]
           } : undefined,
           include: {
             group: { select: { id: true, name: true } },
+            program: { select: { id: true, name: true } },
           },
           orderBy: [
             { date: "asc" },
@@ -97,6 +107,8 @@ export async function getScheduleEventsDataAction(scheduleId: string, programId?
       events: schedule.events.map((e) => ({
         id: e.id,
         academicScheduleId: e.academicScheduleId,
+        programId: e.programId,
+        program: e.program ? { id: e.program.id, name: e.program.name } : null,
         title: e.title,
         description: e.description,
         date: e.date.toISOString().split("T")[0],
@@ -171,9 +183,22 @@ export async function createScheduleEventAction(
     }
 
     const isGroupAudience = payload.targetAudience === "GROUP";
+
+    let targetProgramId = (payload.programId && payload.programId !== "all") ? payload.programId : schedule.programId || null;
+    if (!targetProgramId && isGroupAudience && payload.groupId) {
+      const groupData = await prisma.group.findUnique({
+        where: { id: payload.groupId },
+        select: { programId: true }
+      });
+      if (groupData?.programId) {
+        targetProgramId = groupData.programId;
+      }
+    }
+
     const created = await prisma.scheduleEvent.create({
       data: {
         academicScheduleId: payload.academicScheduleId,
+        programId: targetProgramId,
         title: payload.title.trim(),
         description: payload.description?.trim() || null,
         date: eventDate,
@@ -188,17 +213,22 @@ export async function createScheduleEventAction(
       },
       include: {
         group: { select: { id: true, name: true } },
+        program: { select: { id: true, name: true } },
       },
     });
 
     revalidatePath("/dashboard/admin/schedules");
     revalidatePath(`/dashboard/admin/schedules/${payload.academicScheduleId}/events`);
+    revalidatePath("/dashboard/gestor/schedules");
+    revalidatePath(`/dashboard/gestor/schedules/${payload.academicScheduleId}/events`);
 
     return {
       success: true,
       data: {
         id: created.id,
         academicScheduleId: created.academicScheduleId,
+        programId: created.programId,
+        program: created.program ? { id: created.program.id, name: created.program.name } : null,
         title: created.title,
         description: created.description,
         date: created.date.toISOString().split("T")[0],
@@ -275,6 +305,18 @@ export async function updateScheduleEventAction(
     }
 
     const isGroupAudience = payload.targetAudience === "GROUP";
+
+    let targetProgramId = (payload.programId && payload.programId !== "all") ? payload.programId : undefined;
+    if (!targetProgramId && isGroupAudience && payload.groupId) {
+      const groupData = await prisma.group.findUnique({
+        where: { id: payload.groupId },
+        select: { programId: true }
+      });
+      if (groupData?.programId) {
+        targetProgramId = groupData.programId;
+      }
+    }
+
     const updated = await prisma.scheduleEvent.update({
       where: { id: payload.id },
       data: {
@@ -286,23 +328,29 @@ export async function updateScheduleEventAction(
         targetAudience: payload.targetAudience || "PUBLIC",
         isGeneral: !isGroupAudience,
         groupId: isGroupAudience ? payload.groupId || null : null,
+        ...(targetProgramId ? { programId: targetProgramId } : {}),
         location: payload.location?.trim() || null,
         linkUrl: payload.linkUrl?.trim() || null,
         color: payload.color || "blue",
       },
       include: {
         group: { select: { id: true, name: true } },
+        program: { select: { id: true, name: true } },
       },
     });
 
     revalidatePath("/dashboard/admin/schedules");
     revalidatePath(`/dashboard/admin/schedules/${payload.academicScheduleId}/events`);
+    revalidatePath("/dashboard/gestor/schedules");
+    revalidatePath(`/dashboard/gestor/schedules/${payload.academicScheduleId}/events`);
 
     return {
       success: true,
       data: {
         id: updated.id,
         academicScheduleId: updated.academicScheduleId,
+        programId: updated.programId,
+        program: updated.program ? { id: updated.program.id, name: updated.program.name } : null,
         title: updated.title,
         description: updated.description,
         date: updated.date.toISOString().split("T")[0],
@@ -341,6 +389,8 @@ export async function deleteScheduleEventAction(
 
     revalidatePath("/dashboard/admin/schedules");
     revalidatePath(`/dashboard/admin/schedules/${scheduleId}/events`);
+    revalidatePath("/dashboard/gestor/schedules");
+    revalidatePath(`/dashboard/gestor/schedules/${scheduleId}/events`);
 
     return { success: true };
   } catch (error: any) {

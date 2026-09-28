@@ -77,9 +77,11 @@ interface ScheduleEventsManagerViewProps {
     endDate: string;   // ISO
     isActive: boolean;
     isPublished: boolean;
+    programId?: string | null;
   };
   groups?: Array<{ id: string; name: string }>;
   initialEvents: ScheduleEventItem[];
+  programId?: string;
 }
 
 const AUDIENCE_CONFIG: Record<
@@ -129,6 +131,7 @@ export function ScheduleEventsManagerView({
   schedule,
   groups = [],
   initialEvents,
+  programId,
 }: ScheduleEventsManagerViewProps) {
   const pathname = usePathname();
   const schedulesBaseUrl = pathname?.startsWith("/dashboard/gestor")
@@ -248,7 +251,7 @@ export function ScheduleEventsManagerView({
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <Link
-              href={schedulesBaseUrl}
+              href={programId ? `${schedulesBaseUrl}?programId=${programId}` : schedulesBaseUrl}
               className="hover:text-primary transition-colors flex items-center gap-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Volver a Horarios y Eventos
@@ -775,6 +778,7 @@ export function ScheduleEventsManagerView({
         groupsList={groups}
         eventToEdit={eventToEdit}
         defaultDate={selectedDayForNewEvent}
+        programId={programId}
         onSuccess={handleEventSaved}
       />
 

@@ -36,15 +36,22 @@ if (process.env.NODE_ENV === "production") {
   const adapter = new PrismaPg(pool);
   prisma = new PrismaClient({ adapter });
 } else {
-  // If prisma was cached in globalThis before running prisma generate, recreate it
-  if (!globalForPrisma.prisma || !(globalForPrisma.prisma as any).groupElection) {
+  // Check if cached prisma instance has the latest schema with programId on AcademicSchedule
+  const isPrismaClientUpToDate = 
+    globalForPrisma.prisma && 
+    (globalForPrisma.prisma as any)._runtimeDataModel?.models?.AcademicSchedule?.fields?.some((f: any) => f.name === "programId");
+
+  if (!globalForPrisma.prisma || !isPrismaClientUpToDate) {
+    if (globalForPrisma.pgPool) {
+      globalForPrisma.pgPool.end().catch(() => {});
+    }
     const pool = createPool();
     globalForPrisma.pgPool = pool;
     
     const adapter = new PrismaPg(pool);
     globalForPrisma.prisma = new PrismaClient({ adapter });
     
-    console.log("🐘 Prisma Client & Connection Pool initialized with error recovery (Singleton)");
+    console.log("🐘 Prisma Client & Connection Pool refreshed with updated schema (Singleton)");
   }
   prisma = globalForPrisma.prisma;
 }

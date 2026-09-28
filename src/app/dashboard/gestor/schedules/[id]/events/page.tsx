@@ -44,6 +44,7 @@ export default async function GestorScheduleEventsPage({ params, searchParams }:
       schedule={data.schedule}
       groups={data.groups || []}
       initialEvents={data.events}
+      programId={effectiveProgramId}
     />
   );
 }

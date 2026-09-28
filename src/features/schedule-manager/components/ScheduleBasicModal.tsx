@@ -73,7 +73,7 @@ export function ScheduleBasicModal({
     }
   }, [open, editingSchedule]);
 
-  // Validar conflicto de fechas en tiempo real contra los horarios existentes
+  // Validar conflicto de fechas en tiempo real contra los horarios existentes del área
   const dateConflict = useMemo(() => {
     if (!startDate || !endDate || !existingSchedules || existingSchedules.length === 0) {
       return null;
@@ -86,10 +86,12 @@ export function ScheduleBasicModal({
       return null;
     }
 
+    const effectiveProgram = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
     const formatDate = (d: Date | string) => formatCalendarDate(d, "dd MMM yyyy");
 
     const conflict = existingSchedules.find((s) => {
       if (editingSchedule && s.id === editingSchedule.id) return false;
+      if (effectiveProgram && s.programId && s.programId !== effectiveProgram) return false;
       const sStart = new Date(s.startDate);
       const sEnd = new Date(s.endDate);
       // Dos rangos se traslapan si start <= sEnd && end >= sStart
@@ -102,7 +104,7 @@ export function ScheduleBasicModal({
       scheduleName: conflict.name,
       period: `${formatDate(conflict.startDate)} a ${formatDate(conflict.endDate)}`,
     };
-  }, [startDate, endDate, existingSchedules, editingSchedule]);
+  }, [startDate, endDate, existingSchedules, editingSchedule, programId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

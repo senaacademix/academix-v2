@@ -44,10 +44,12 @@ interface ScheduleEventModalProps {
     name: string;
     startDate: string; // YYYY-MM-DD or ISO
     endDate: string;   // YYYY-MM-DD or ISO
+    programId?: string | null;
   };
   groupsList?: Array<{ id: string; name: string }>;
   eventToEdit?: ScheduleEventItem | null;
   defaultDate?: string | null;
+  programId?: string;
   onSuccess: (event: ScheduleEventItem, isEdit: boolean) => void;
 }
 
@@ -91,6 +93,7 @@ export function ScheduleEventModal({
   groupsList = [],
   eventToEdit,
   defaultDate,
+  programId,
   onSuccess,
 }: ScheduleEventModalProps) {
   const minDate = schedule.startDate.split("T")[0];
@@ -179,6 +182,7 @@ export function ScheduleEventModal({
       const payload: SaveScheduleEventPayload = {
         id: eventToEdit?.id,
         academicScheduleId: schedule.id,
+        programId: programId || schedule.programId || null,
         title: title.trim(),
         description: description.trim() || null,
         date,

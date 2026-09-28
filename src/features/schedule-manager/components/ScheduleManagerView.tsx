@@ -131,6 +131,9 @@ export function ScheduleManagerView({
       }
     });
     schedules.forEach((s) => {
+      if (s.program?.id && s.program?.name) {
+        map.set(s.program.id, s.program.name);
+      }
       s.groupSlots.forEach((slot) => {
         if (slot.group.program?.id && slot.group.program?.name) {
           map.set(slot.group.program.id, slot.group.program.name);
@@ -280,7 +283,7 @@ export function ScheduleManagerView({
         const matchesProgram =
           !effectiveProgramId || effectiveProgramId === "all"
             ? true
-            : s.groupSlots.length === 0 || s.groupSlots.some((slot) => slot.group.program?.id === effectiveProgramId);
+            : (s.programId ? s.programId === effectiveProgramId : s.groupSlots.some((slot) => slot.group.program?.id === effectiveProgramId));
 
         return matchesSearch && matchesYear && matchesProgram;
       })
@@ -514,12 +517,19 @@ export function ScheduleManagerView({
               }
             });
 
+            if (schedule.program && !scheduleProgramsMap.has(schedule.program.id)) {
+              if (!effectiveProgramId || effectiveProgramId === "all" || schedule.program.id === effectiveProgramId) {
+                scheduleProgramsMap.set(schedule.program.id, schedule.program.name);
+              }
+            }
+
             const scheduleGroups = Array.from(scheduleGroupsMap.values());
             const schedulePrograms = Array.from(scheduleProgramsMap.entries()).map(([id, name]) => ({ id, name }));
 
             const todayInColombia = getTodayColombianDate();
             const schedStartStr = schedule.startDate ? schedule.startDate.slice(0, 10) : "";
             const isFuture = !schedule.isActive && schedStartStr > todayInColombia;
+            const programQuery = effectiveProgramId && effectiveProgramId !== "all" ? `?programId=${effectiveProgramId}` : "";
 
             return (
               <Card
@@ -583,7 +593,7 @@ export function ScheduleManagerView({
                             <Globe className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" /> Público
                           </Badge>
                         ) : (
-                          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[10px] gap-1 font-bold px-2 py-0.5 rounded-xl">
+                          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-10px gap-1 font-bold px-2 py-0.5 rounded-xl">
                             <FileEdit className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" /> Borrador
                           </Badge>
                         )}
@@ -683,7 +693,7 @@ export function ScheduleManagerView({
                           size="sm"
                           className="rounded-xl text-xs gap-1.5 font-bold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 bg-purple-500/10 shadow-2xs h-9 px-3.5 transition-all"
                         >
-                          <Link href={`${schedulesBaseUrl}/${schedule.id}/events`}>
+                          <Link href={`${schedulesBaseUrl}/${schedule.id}/events${programQuery}`}>
                             <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                             <span>Eventos</span>
                           </Link>
@@ -702,7 +712,7 @@ export function ScheduleManagerView({
                           size="sm"
                           className="rounded-xl text-xs gap-1.5 font-bold border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 bg-amber-500/10 shadow-2xs h-9 px-3.5 transition-all"
                         >
-                          <Link href={`${schedulesBaseUrl}/${schedule.id}/novelties`}>
+                          <Link href={`${schedulesBaseUrl}/${schedule.id}/novelties${programQuery}`}>
                             <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                             <span>Novedades</span>
                           </Link>
@@ -720,7 +730,7 @@ export function ScheduleManagerView({
                           size="sm"
                           className="rounded-xl text-xs gap-2 font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] h-9 px-4 transition-all"
                         >
-                          <Link href={`${schedulesBaseUrl}/${schedule.id}`}>
+                          <Link href={`${schedulesBaseUrl}/${schedule.id}${programQuery}`}>
                             <CalendarDays className="w-3.5 h-3.5" />
                             <span>Horario</span>
                           </Link>

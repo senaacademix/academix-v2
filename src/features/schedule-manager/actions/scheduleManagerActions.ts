@@ -119,9 +119,39 @@ export async function getSchedulesAction(programId?: string): Promise<AcademicSc
       };
     }
 
+    const scheduleWhere: any = {};
+    if (effectiveProgramId) {
+      scheduleWhere.OR = [
+        { programId: effectiveProgramId },
+        {
+          AND: [
+            { programId: null },
+            { groupSlots: { some: { group: { programId: effectiveProgramId } } } }
+          ]
+        }
+      ];
+    } else if (session.user.role === "gestor") {
+      scheduleWhere.OR = [
+        { program: { gestores: { some: { id: session.user.id } } } },
+        {
+          AND: [
+            { programId: null },
+            { groupSlots: { some: { group: { program: { gestores: { some: { id: session.user.id } } } } } } }
+          ]
+        }
+      ];
+    }
+
     const schedules = await prisma.academicSchedule.findMany({
+      where: Object.keys(scheduleWhere).length > 0 ? scheduleWhere : undefined,
       orderBy: { startDate: "desc" },
       include: {
+        program: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
         groupSlots: {
           where: Object.keys(groupSlotsWhere).length > 0 ? groupSlotsWhere : undefined,
           include: {
@@ -170,6 +200,11 @@ export async function getSchedulesAction(programId?: string): Promise<AcademicSc
         endDate: item.endDate.toISOString(),
         isActive: isCurrent,
         isPublished,
+        programId: item.programId,
+        program: item.program ? {
+          id: item.program.id,
+          name: item.program.name,
+        } : null,
         createdAt: item.createdAt.toISOString(),
         updatedAt: item.updatedAt.toISOString(),
         groupSlots: item.groupSlots.map((slot) => ({
@@ -209,6 +244,12 @@ export async function getScheduleByIdAction(id: string): Promise<AcademicSchedul
     const item = await prisma.academicSchedule.findUnique({
       where: { id },
       include: {
+        program: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
         groupSlots: {
           include: {
             period: {
@@ -253,6 +294,11 @@ export async function getScheduleByIdAction(id: string): Promise<AcademicSchedul
       endDate: item.endDate.toISOString(),
       isActive: isCurrent,
       isPublished,
+      programId: item.programId,
+      program: item.program ? {
+        id: item.program.id,
+        name: item.program.name,
+      } : null,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
       groupSlots: item.groupSlots.map((slot) => ({
@@ -370,14 +416,18 @@ export async function getAvailableGroupsAction(programId?: string): Promise<Avai
 }
 
 /**
- * Helper para validar unicidad de nombre de horario
+ * Helper para validar unicidad de nombre de horario (por área de formación)
  */
-async function checkScheduleNameUnique(name: string, excludeScheduleId?: string): Promise<string | null> {
+async function checkScheduleNameUnique(name: string, programId?: string, excludeScheduleId?: string): Promise<string | null> {
+  const where: any = {
+    name: { equals: name.trim(), mode: "insensitive" },
+    ...(excludeScheduleId ? { id: { not: excludeScheduleId } } : {}),
+  };
+  if (programId && programId !== "all") {
+    where.programId = programId;
+  }
   const existing = await prisma.academicSchedule.findFirst({
-    where: {
-      ...(excludeScheduleId ? { id: { not: excludeScheduleId } } : {}),
-      name: { equals: name.trim(), mode: "insensitive" },
-    },
+    where,
     select: {
       id: true,
       name: true,
@@ -385,23 +435,28 @@ async function checkScheduleNameUnique(name: string, excludeScheduleId?: string)
   });
 
   if (existing) {
-    return `Ya existe un horario con el nombre "${name.trim()}". Por favor utiliza un nombre diferente.`;
+    return `Ya existe un horario con el nombre "${name.trim()}" en esta área de formación. Por favor utiliza un nombre diferente.`;
   }
   return null;
 }
 
 /**
- * Helper para validar traslape de rangos de fechas de horarios
- * No permite crear ni actualizar horarios donde alguna parte de los rangos esté en ambos horarios.
+ * Helper para validar traslape de rangos de fechas de horarios (por área de formación)
+ * No permite crear ni actualizar horarios donde alguna parte de los rangos esté en ambos horarios de la misma área.
  */
-async function checkScheduleDateConflict(startDate: Date, endDate: Date, excludeScheduleId?: string): Promise<string | null> {
+async function checkScheduleDateConflict(startDate: Date, endDate: Date, programId?: string, excludeScheduleId?: string): Promise<string | null> {
   // Dos rangos [A_start, A_end] y [B_start, B_end] se traslapan si: A_start <= B_end AND A_end >= B_start
+  const where: any = {
+    ...(excludeScheduleId ? { id: { not: excludeScheduleId } } : {}),
+    startDate: { lte: endDate },
+    endDate: { gte: startDate },
+  };
+  if (programId && programId !== "all") {
+    where.programId = programId;
+  }
+
   const conflictingSchedule = await prisma.academicSchedule.findFirst({
-    where: {
-      ...(excludeScheduleId ? { id: { not: excludeScheduleId } } : {}),
-      startDate: { lte: endDate },
-      endDate: { gte: startDate },
-    },
+    where,
     select: {
       id: true,
       name: true,
@@ -418,7 +473,7 @@ async function checkScheduleDateConflict(startDate: Date, endDate: Date, exclude
     const confStartFmt = formatDate(conflictingSchedule.startDate);
     const confEndFmt = formatDate(conflictingSchedule.endDate);
 
-    return `Conflicto de Fechas: El rango propuesto (${startFmt} a ${endFmt}) se traslapa con el horario existente "${conflictingSchedule.name}" (${confStartFmt} a ${confEndFmt}). Ninguna fecha puede pertenecer a más de un horario.`;
+    return `Conflicto de Fechas: El rango propuesto (${startFmt} a ${endFmt}) se traslapa con el horario existente "${conflictingSchedule.name}" (${confStartFmt} a ${confEndFmt}) en esta área de formación. Ninguna fecha puede pertenecer a más de un horario en la misma área.`;
   }
   return null;
 }
@@ -448,14 +503,24 @@ export async function createBasicScheduleAction(data: BasicSchedulePayload): Pro
       return { success: false, error: "La fecha de inicio no puede ser posterior a la fecha de fin" };
     }
 
-    // Validar nombre único para evitar confusión de horarios duplicados
-    const nameConflict = await checkScheduleNameUnique(data.name);
+    // Determinar el área de formación (programId) del horario
+    let targetProgramId = data.programId && data.programId !== "all" ? data.programId : undefined;
+    if (!targetProgramId && session.user.role === "gestor") {
+      const { gestorService } = await import("@/features/gestor/services/gestorService");
+      const gestorProgs = await gestorService.getManagedPrograms(session.user.id);
+      if (gestorProgs.length > 0) {
+        targetProgramId = gestorProgs[0].id;
+      }
+    }
+
+    // Validar nombre único para evitar confusión de horarios duplicados en la misma área
+    const nameConflict = await checkScheduleNameUnique(data.name, targetProgramId);
     if (nameConflict) {
       return { success: false, error: nameConflict };
     }
 
-    // Validar que ninguna parte del rango de fechas se traslape con otros horarios existentes
-    const dateConflict = await checkScheduleDateConflict(startDate, endDate);
+    // Validar que ninguna parte del rango de fechas se traslape con otros horarios existentes en la misma área
+    const dateConflict = await checkScheduleDateConflict(startDate, endDate, targetProgramId);
     if (dateConflict) {
       return { success: false, error: dateConflict };
     }
@@ -468,7 +533,8 @@ export async function createBasicScheduleAction(data: BasicSchedulePayload): Pro
         description: data.description ? data.description.trim() : null,
         startDate,
         endDate,
-        isActive: shouldBeActive
+        isActive: shouldBeActive,
+        programId: targetProgramId || null,
       }
     });
 
@@ -485,7 +551,7 @@ export async function createBasicScheduleAction(data: BasicSchedulePayload): Pro
         scheduleId: newSchedule.id,
         name: newSchedule.name,
         isActive: shouldBeActive,
-        programId: data.programId,
+        programId: targetProgramId,
       },
       success: true
     });
@@ -516,7 +582,7 @@ export async function updateBasicScheduleAction(id: string, data: BasicScheduleP
 
     const currentSchedule = await prisma.academicSchedule.findUnique({
       where: { id },
-      select: { id: true, name: true, startDate: true, endDate: true }
+      select: { id: true, name: true, startDate: true, endDate: true, programId: true }
     });
 
     if (!currentSchedule) {
@@ -534,14 +600,16 @@ export async function updateBasicScheduleAction(id: string, data: BasicScheduleP
       return { success: false, error: "La fecha de inicio no puede ser posterior a la fecha de fin" };
     }
 
-    // Validar nombre único excluyendo el horario actual
-    const nameConflict = await checkScheduleNameUnique(data.name, id);
+    const targetProgramId = (data.programId && data.programId !== "all") ? data.programId : currentSchedule.programId || undefined;
+
+    // Validar nombre único excluyendo el horario actual en el área
+    const nameConflict = await checkScheduleNameUnique(data.name, targetProgramId, id);
     if (nameConflict) {
       return { success: false, error: nameConflict };
     }
 
-    // Validar que ninguna parte del rango de fechas se traslape con otros horarios existentes
-    const dateConflict = await checkScheduleDateConflict(startDate, endDate, id);
+    // Validar que ninguna parte del rango de fechas se traslape con otros horarios del área
+    const dateConflict = await checkScheduleDateConflict(startDate, endDate, targetProgramId, id);
     if (dateConflict) {
       return { success: false, error: dateConflict };
     }
@@ -555,7 +623,8 @@ export async function updateBasicScheduleAction(id: string, data: BasicScheduleP
         description: data.description ? data.description.trim() : null,
         startDate,
         endDate,
-        isActive: newIsActive
+        isActive: newIsActive,
+        ...(data.programId && data.programId !== "all" ? { programId: data.programId } : {})
       }
     });
 
@@ -568,7 +637,7 @@ export async function updateBasicScheduleAction(id: string, data: BasicScheduleP
       userName: session.user.name || "Admin",
       userRole: "admin",
       description: `Actualización de datos básicos de horario: "${data.name}"`,
-      metadata: { scheduleId: id, name: data.name },
+      metadata: { scheduleId: id, name: data.name, programId: targetProgramId },
       success: true
     });
 

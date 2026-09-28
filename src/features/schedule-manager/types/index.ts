@@ -19,6 +19,11 @@ export interface GroupScheduleConfig {
 export interface ScheduleEventItem {
   id: string;
   academicScheduleId: string;
+  programId?: string | null;
+  program?: {
+    id: string;
+    name: string;
+  } | null;
   title: string;
   description?: string | null;
   date: string; // ISO or "YYYY-MM-DD"
@@ -41,6 +46,7 @@ export interface ScheduleEventItem {
 export interface SaveScheduleEventPayload {
   id?: string;
   academicScheduleId: string;
+  programId?: string | null;
   title: string;
   description?: string | null;
   date: string; // "YYYY-MM-DD"
@@ -62,6 +68,11 @@ export interface AcademicScheduleItem {
   endDate: string;   // ISO string
   isActive: boolean;
   isPublished: boolean;
+  programId?: string | null;
+  program?: {
+    id: string;
+    name: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
   groupSlots: {
