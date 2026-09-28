@@ -128,6 +128,7 @@ import {
     importSinglePeriodAndCoursesAction,
     importSingleGroupAndStudentsAction,
     createOrGetGroupForImportAction,
+    getAllTrainingAreasListAction,
 } from "@/features/admin/actions/academicActions";
 import { createCourseAction, updateCourseAction } from "@/features/teacher/actions/courseActions";
 import { 
@@ -334,6 +335,7 @@ interface Teacher {
     email: string;
     availabilityLocked?: boolean;
     qualifiedCoursesLocked?: boolean;
+    programs?: { id: string; name: string }[];
     profile?: {
         identificacion: string;
         nombres: string;
@@ -772,8 +774,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     useEffect(() => {
         if (selectedProgram) {
-            const defaultTl = selectedProgram.timelines?.find((t: any) => t.isDefault) || selectedProgram.timelines?.[0];
-            setSelectedTimelineId(defaultTl?.id || "");
+            setSelectedTimelineId(prev => {
+                const stillExists = (selectedProgram.timelines || []).some((t: any) => t.id === prev);
+                if (stillExists && prev) return prev;
+                const defaultTl = selectedProgram.timelines?.find((t: any) => t.isDefault) || selectedProgram.timelines?.[0];
+                return defaultTl?.id || "";
+            });
         } else {
             setSelectedTimelineId("");
         }
@@ -995,12 +1001,26 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [editTeacherLastName, setEditTeacherLastName] = useState("");
     const [editTeacherEmail, setEditTeacherEmail] = useState("");
     const [editTeacherPhone, setEditTeacherPhone] = useState("");
-
-
-
-    // Teacher Qualifications States
+    const [manualTeacherSelectedProgramIds, setManualTeacherSelectedProgramIds] = useState<string[]>([]);
+    const [editTeacherProgramIds, setEditTeacherProgramIds] = useState<string[]>([]);
+    const [allTrainingAreas, setAllTrainingAreas] = useState<Array<{ id: string; name: string }>>([]);
     const [qualDialogOpen, setQualDialogOpen] = useState(false);
     const [qualTeacher, setQualTeacher] = useState<Teacher | null>(null);
+
+    const fetchAllTrainingAreas = async () => {
+        try {
+            const areas = await getAllTrainingAreasListAction();
+            if (areas && areas.length > 0) {
+                setAllTrainingAreas(areas);
+            }
+        } catch (e) {
+            console.error("Error al cargar todas las áreas de formación:", e);
+        }
+    };
+
+    const trainingAreasForTeachers = allTrainingAreas.length > 0
+        ? allTrainingAreas
+        : programs.map(p => ({ id: p.id, name: p.name }));
 
     // Admin availability view states
     const [adminTeacherAvailabilityOpen, setAdminTeacherAvailabilityOpen] = useState(false);
@@ -1053,6 +1073,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         refreshAll();
         fetchSystemStudents();
         fetchSystemTeachers();
+        fetchAllTrainingAreas();
     }, []);
 
     // Reset managingGroup on tab or program change
@@ -1076,6 +1097,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 id: user.id,
                 name: user.name,
                 email: user.email,
+                programs: user.programs || [],
+                profile: user.profile || null,
             }));
             setTeachersList(mapped);
         } catch (e) {
@@ -1870,13 +1893,24 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     const handleExportPeriodsJSON = () => {
         if (!selectedProgram) return;
+        const activeTl = (selectedProgram.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id));
+        const targetPeriods = selectedProgram.periods.filter(p => {
+            if (p.timelineId) return p.timelineId === activeTl?.id;
+            return activeTl?.isDefault ?? true;
+        });
+
+        if (targetPeriods.length === 0) {
+            toast.warning(`El programa de formación "${activeTl?.name || 'seleccionado'}" no contiene periodos registrados para exportar.`);
+            return;
+        }
+
         simulateExportProgress("Generando archivo del programa de formación...", () => {
             try {
-                const dataToExport = selectedProgram.periods.map(period => ({
+                const dataToExport = targetPeriods.map(period => ({
                     name: period.name,
                     description: period.description,
                     esEspecial: period.esEspecial,
-                    courses: period.courses.map(course => ({
+                    courses: (period.courses || []).filter(c => !c.groupId).map(course => ({
                         title: course.title,
                         description: course.description,
                         externalUrl: course.externalUrl,
@@ -1890,11 +1924,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 )}`;
                 const downloadAnchor = document.createElement("a");
                 downloadAnchor.setAttribute("href", jsonString);
-                downloadAnchor.setAttribute("download", `Programa_Formacion_${selectedProgram.name.replace(/\s+/g, "_")}.json`);
+                const safeName = (activeTl?.name || selectedProgram.name).replace(/[^a-zA-Z0-9_\-]/g, "_");
+                downloadAnchor.setAttribute("download", `Programa_Formacion_${safeName}.json`);
                 document.body.appendChild(downloadAnchor);
                 downloadAnchor.click();
                 downloadAnchor.remove();
-                toast.success("Estructura del programa exportada con éxito");
+                toast.success(`Estructura de "${activeTl?.name || selectedProgram.name}" exportada con éxito (${targetPeriods.length} periodos)`);
             } catch (err: any) {
                 toast.error("Error al exportar: " + err.message);
             }
@@ -1969,8 +2004,12 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const data = JSON.parse(evt.target?.result as string);
-                if (!Array.isArray(data)) {
+                const parsed = JSON.parse(evt.target?.result as string);
+                const data = Array.isArray(parsed)
+                    ? parsed
+                    : (parsed && Array.isArray(parsed.periods) ? parsed.periods : null);
+
+                if (!data || !Array.isArray(data)) {
                     toast.error("El archivo JSON debe contener un arreglo de periodos");
                     return;
                 }
@@ -1979,6 +2018,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     return;
                 }
 
+                const activeTl = (selectedProgram.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id));
+                const targetTimelineId = activeTl?.id || null;
+                const timelineName = activeTl?.name || selectedProgram.name;
+
                 cancelRef.current = false;
                 let successCount = 0;
                 let totalCoursesCount = 0;
@@ -1986,7 +2029,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                 setProgressModal({
                     isOpen: true,
-                    title: `Iniciando importación de ${data.length} periodos...`,
+                    title: `Iniciando importación en "${timelineName}" (${data.length} periodos)...`,
                     progress: 0,
                     currentCount: 0,
                     totalCount: data.length,
@@ -2006,7 +2049,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                     setProgressModal({
                         isOpen: true,
-                        title: `Guardando (${currentCount}/${data.length}): Periodo ${periodName}`,
+                        title: `Guardando (${currentCount}/${data.length}): Periodo ${periodName} en "${timelineName}"`,
                         progress: progress,
                         currentCount: currentCount,
                         totalCount: data.length,
@@ -2014,7 +2057,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     });
 
                     try {
-                        const result = await importSinglePeriodAndCoursesAction(selectedProgram.id, periodItem);
+                        const result = await importSinglePeriodAndCoursesAction(selectedProgram.id, periodItem, targetTimelineId);
                         if (result.success) {
                             successCount++;
                             totalCoursesCount += result.coursesCount;
@@ -2039,16 +2082,16 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 if (failedList.length > 0) {
                     setImportSummary({
                         isOpen: true,
-                        title: "Reporte de Importación de Programa de Formación",
-                        description: "Resumen del proceso de guardado del programa de formación en esta área.",
+                        title: `Reporte de Importación: ${timelineName}`,
+                        description: `Resumen del proceso de guardado para el programa de formación "${timelineName}".`,
                         entityName: "Periodos",
                         total: data.length,
                         successCount: successCount,
                         failedList: failedList,
                     });
-                    toast.warning(`Importación completada: ${successCount} periodos creados, ${failedList.length} con observaciones.`);
+                    toast.warning(`Importación completada: ${successCount} periodos creados en "${timelineName}", ${failedList.length} con observaciones.`);
                 } else {
-                    toast.success(`¡Todos los periodos (${successCount}) y ${totalCoursesCount} materias fueron guardados con éxito!`);
+                    toast.success(`¡Todos los periodos (${successCount}) y ${totalCoursesCount} materias fueron guardados con éxito en "${timelineName}"!`);
                 }
 
                 await refreshAll();
@@ -2627,10 +2670,16 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             return;
         }
 
+        if (manualTeacherSelectedProgramIds.length === 0) {
+            toast.error("Debes seleccionar al menos un área de formación");
+            return;
+        }
+
         setIsRegisteringTeacher(true);
         try {
             const res = await registerTeacherManualAction({
                 programId: selectedProgram.id,
+                programIds: manualTeacherSelectedProgramIds,
                 identificacion: manualTeacherIdentificacion.trim(),
                 nombres: manualTeacherNombres.trim(),
                 apellido: manualTeacherApellido.trim(),
@@ -2644,12 +2693,17 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             }
 
             const fullName = `${manualTeacherNombres.trim()} ${manualTeacherApellido.trim()}`;
+            const assignedPrograms = trainingAreasForTeachers
+                .filter(p => manualTeacherSelectedProgramIds.includes(p.id))
+                .map(p => ({ id: p.id, name: p.name }));
+
             const createdTeacher: Teacher = {
                 id: res.user.id,
                 name: res.user.name || fullName,
                 email: res.user.email,
                 availabilityLocked: false,
                 qualifiedCoursesLocked: false,
+                programs: assignedPrograms,
                 profile: {
                     identificacion: res.profile.identificacion,
                     nombres: res.profile.nombres,
@@ -2658,9 +2712,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 },
             };
 
-            // 1. Inmediatamente actualizar la lista de instructores del programa seleccionado
+            // 1. Inmediatamente actualizar la lista de instructores del programa seleccionado si aplica
             setSelectedProgram(prev => {
                 if (!prev) return null;
+                const isAssigned = manualTeacherSelectedProgramIds.includes(prev.id);
+                if (!isAssigned) return prev;
                 const existing = prev.teachers || [];
                 const exists = existing.some(t => t.id === createdTeacher.id);
                 return {
@@ -2671,7 +2727,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
             // 2. Inmediatamente actualizar el array global de programas en el estado
             setPrograms(prev => prev.map(p => {
-                if (p.id === selectedProgram.id) {
+                if (manualTeacherSelectedProgramIds.includes(p.id)) {
                     const existing = p.teachers || [];
                     const exists = existing.some(t => t.id === createdTeacher.id);
                     return {
@@ -2695,8 +2751,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             setManualTeacherApellido("");
             setManualTeacherEmail("");
             setManualTeacherTelefono("");
+            setManualTeacherSelectedProgramIds(selectedProgram ? [selectedProgram.id] : []);
 
-            toast.success("Instructor registrado exitosamente");
+            toast.success("Instructor registrado y asignado a las áreas exitosamente");
 
             // 5. Sincronizar en segundo plano con el servidor
             await refreshAll();
@@ -2922,6 +2979,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setEditTeacherLastName(lastName);
         setEditTeacherEmail(teacher.email || "");
         setEditTeacherPhone(teacher.profile?.telefono || "");
+
+        fetchAllTrainingAreas();
+        const assignedIds = (teacher.programs && teacher.programs.length > 0)
+            ? teacher.programs.map(p => p.id)
+            : programs.filter(p => (p.teachers || []).some(t => t.id === teacher.id)).map(p => p.id);
+        setEditTeacherProgramIds(assignedIds.length > 0 ? assignedIds : (selectedProgram ? [selectedProgram.id] : []));
+
         setEditTeacherDialogOpen(true);
     };
 
@@ -2930,6 +2994,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         if (!teacherToEdit) return;
         if (!editTeacherDoc || !editTeacherNames || !editTeacherLastName || !editTeacherEmail) {
             toast.error("Por favor completa todos los campos obligatorios");
+            return;
+        }
+        if (editTeacherProgramIds.length === 0) {
+            toast.error("Debes seleccionar al menos un área de formación");
             return;
         }
 
@@ -2942,11 +3010,58 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     apellido: editTeacherLastName,
                     email: editTeacherEmail,
                     telefono: editTeacherPhone || undefined,
+                    programIds: editTeacherProgramIds,
                 });
-                toast.success("Información del instructor actualizada");
+
+                const assignedPrograms = trainingAreasForTeachers
+                    .filter(p => editTeacherProgramIds.includes(p.id))
+                    .map(p => ({ id: p.id, name: p.name }));
+
+                const updatedTeacherObj: Teacher = {
+                    ...teacherToEdit,
+                    name: `${editTeacherNames.trim()} ${editTeacherLastName.trim()}`,
+                    email: editTeacherEmail.trim().toLowerCase(),
+                    programs: assignedPrograms,
+                    profile: {
+                        ...(teacherToEdit.profile || {
+                            identificacion: editTeacherDoc.trim(),
+                            nombres: editTeacherNames.trim(),
+                            apellido: editTeacherLastName.trim(),
+                            telefono: null
+                        }),
+                        identificacion: editTeacherDoc.trim(),
+                        nombres: editTeacherNames.trim(),
+                        apellido: editTeacherLastName.trim(),
+                        telefono: editTeacherPhone?.trim() || null
+                    }
+                };
+
+                // Actualizar programs en memoria
+                setPrograms(prev => prev.map(p => {
+                    const isAssigned = editTeacherProgramIds.includes(p.id);
+                    const filtered = (p.teachers || []).filter(t => t.id !== teacherToEdit.id);
+                    return {
+                        ...p,
+                        teachers: isAssigned ? [...filtered, updatedTeacherObj] : filtered
+                    };
+                }));
+
+                // Actualizar selectedProgram en memoria
+                setSelectedProgram(prev => {
+                    if (!prev) return null;
+                    const isAssigned = editTeacherProgramIds.includes(prev.id);
+                    const filtered = (prev.teachers || []).filter(t => t.id !== teacherToEdit.id);
+                    return {
+                        ...prev,
+                        teachers: isAssigned ? [...filtered, updatedTeacherObj] : filtered
+                    };
+                });
+
+                toast.success("Información del instructor y áreas de formación actualizadas");
                 setEditTeacherDialogOpen(false);
                 setTeacherToEdit(null);
                 await refreshAll();
+                await fetchSystemTeachers();
             } catch (error: any) {
                 toast.error(error.message || "Error al actualizar instructor");
             }
@@ -2975,7 +3090,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const handleDeleteConfirm = async () => {
         if (!deleteType || !deleteItemId) return;
 
-        if (deleteType === "program" && deleteConfirmText.trim().toLowerCase() !== deleteItemName.trim().toLowerCase()) {
+        if ((deleteType === "program" || deleteType === "group") && deleteConfirmText.trim().toLowerCase() !== deleteItemName.trim().toLowerCase()) {
             toast.error(`Debes escribir "${deleteItemName}" para confirmar la eliminación.`);
             return;
         }
@@ -4011,62 +4126,88 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 })()}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
-                                <h4 className="text-base font-semibold text-muted-foreground">Programas de Formación de {selectedProgram.name}</h4>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
+                            {(() => {
+                                const activeTl = (selectedProgram.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id));
+                                return (
+                                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-2">
+                                        <div>
+                                            <h4 className="text-base font-bold text-foreground">
+                                                Estructura de {activeTl?.name || selectedProgram.name}
+                                            </h4>
+                                            <p className="text-xs text-muted-foreground">
+                                                Área: <span className="font-semibold text-foreground/80">{selectedProgram.name}</span>
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => setIsTabsHelpOpen(true)}
+                                                        className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                                                    >
+                                                        <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Programas de Formación</TooltipContent>
+                                            </Tooltip>
                                             <Button
+                                                onClick={openPdfConfigModal}
+                                                disabled={isExportingCurriculumPDF}
                                                 variant="outline"
-                                                size="icon"
-                                                onClick={() => setIsTabsHelpOpen(true)}
-                                                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted text-foreground shadow-2xs hover:scale-105 transition-all"
+                                                size="sm"
+                                                className="shadow-sm border-rose-500/20 text-rose-600 hover:text-rose-700 hover:bg-rose-500/5 dark:text-rose-400 font-semibold"
                                             >
-                                                <HelpCircle className="w-3.5 h-3.5 text-primary" />
+                                                {isExportingCurriculumPDF ? (
+                                                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                                                ) : (
+                                                    <FileText className="h-4 w-4 mr-1.5 text-rose-500" />
+                                                )}
+                                                Programa de Formación PDF
                                             </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="bottom">¿Qué puedo hacer acá? Guía de Programas de Formación</TooltipContent>
-                                    </Tooltip>
-                                    <Button
-                                        onClick={openPdfConfigModal}
-                                        disabled={isExportingCurriculumPDF}
-                                        variant="outline"
-                                        size="sm"
-                                        className="shadow-sm border-rose-500/20 text-rose-600 hover:text-rose-700 hover:bg-rose-500/5 dark:text-rose-400 font-semibold"
-                                    >
-                                        {isExportingCurriculumPDF ? (
-                                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                                        ) : (
-                                            <FileText className="h-4 w-4 mr-1.5 text-rose-500" />
-                                        )}
-                                        Programa de Formación PDF
-                                    </Button>
-                                    <Button onClick={handleExportPeriodsJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
-                                        <Download className="h-4 w-4 mr-1.5" />
-                                        Exportar JSON
-                                    </Button>
-                                    {!isObserver && (
-                                        <>
-                                            <div className="relative">
-                                                <input
-                                                    type="file"
-                                                    accept=".json"
-                                                    onChange={handleImportPeriodsJSON}
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                />
-                                                <Button variant="outline" size="sm" className="shadow-sm border-amber-500/20 text-amber-600 hover:text-amber-700 hover:bg-amber-500/5 dark:text-amber-400">
-                                                    <Upload className="h-4 w-4 mr-1.5" />
-                                                    Importar JSON
-                                                </Button>
-                                            </div>
-                                            <Button onClick={openCreatePeriod} size="sm" className="shadow-sm">
-                                                <Plus className="h-4 w-4 mr-1.5" />
-                                                Agregar Periodo
-                                            </Button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button onClick={handleExportPeriodsJSON} variant="outline" size="sm" className="shadow-sm border-blue-500/20 text-blue-600 hover:text-blue-700 hover:bg-blue-500/5 dark:text-blue-400">
+                                                        <Download className="h-4 w-4 mr-1.5" />
+                                                        Exportar JSON
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="bottom">
+                                                    Exportar periodos y materias de &quot;{activeTl?.name || selectedProgram.name}&quot;
+                                                </TooltipContent>
+                                            </Tooltip>
+                                            {!isObserver && (
+                                                <>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="file"
+                                                                    accept=".json"
+                                                                    onChange={handleImportPeriodsJSON}
+                                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                                />
+                                                                <Button variant="outline" size="sm" className="shadow-sm border-amber-500/20 text-amber-600 hover:text-amber-700 hover:bg-amber-500/5 dark:text-amber-400">
+                                                                    <Upload className="h-4 w-4 mr-1.5" />
+                                                                    Importar JSON
+                                                                </Button>
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="bottom">
+                                                            Importar periodos y materias en &quot;{activeTl?.name || selectedProgram.name}&quot;
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                    <Button onClick={openCreatePeriod} size="sm" className="shadow-sm">
+                                                        <Plus className="h-4 w-4 mr-1.5" />
+                                                        Agregar Periodo
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {(() => {
                                 const activeTl = (selectedProgram.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id));
@@ -4365,7 +4506,14 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                     Importar JSON
                                                 </Button>
                                             </div>
-                                            <Button onClick={() => setAssignTeachersDialogOpen(true)} size="sm" className="shadow-sm">
+                                            <Button 
+                                                onClick={() => {
+                                                    if (selectedProgram) setManualTeacherSelectedProgramIds([selectedProgram.id]);
+                                                    setAssignTeachersDialogOpen(true);
+                                                }} 
+                                                size="sm" 
+                                                className="shadow-sm"
+                                            >
                                                 <Plus className="h-4 w-4 mr-1.5" />
                                                 Registrar Instructor
                                             </Button>
@@ -4382,7 +4530,14 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         Registra instructores en este programa de formación para que puedan ser asignados a impartir materias.
                                     </p>
                                     {!isObserver && (
-                                        <Button onClick={() => setAssignTeachersDialogOpen(true)} className="mt-4" size="sm">
+                                        <Button 
+                                            onClick={() => {
+                                                if (selectedProgram) setManualTeacherSelectedProgramIds([selectedProgram.id]);
+                                                setAssignTeachersDialogOpen(true);
+                                            }} 
+                                            className="mt-4" 
+                                            size="sm"
+                                        >
                                             <Plus className="mr-1.5 h-4 w-4" /> Registrar Instructor
                                         </Button>
                                     )}
@@ -4486,6 +4641,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                         )}
                                                         <TableHead className="py-3 text-xs font-semibold">Identificación</TableHead>
                                                         <TableHead className="py-3 text-xs font-semibold">Nombre Completo</TableHead>
+                                                        <TableHead className="py-3 text-xs font-semibold">Áreas Asignadas</TableHead>
                                                         <TableHead className="py-3 text-xs font-semibold">Correo Electrónico</TableHead>
                                                         <TableHead className="py-3 text-xs font-semibold">Teléfono</TableHead>
                                                         <TableHead className="py-3 text-xs font-semibold text-right">Acciones</TableHead>
@@ -4515,6 +4671,30 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                 </TableCell>
                                                                 <TableCell className="py-3 text-xs font-bold text-foreground">
                                                                     {teacher.name || "Sin nombre"}
+                                                                </TableCell>
+                                                                <TableCell className="py-3 text-xs">
+                                                                    {(() => {
+                                                                        const assigned = (teacher.programs && teacher.programs.length > 0)
+                                                                            ? teacher.programs
+                                                                            : programs.filter(p => (p.teachers || []).some(t => t.id === teacher.id));
+                                                                        return (
+                                                                            <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                                                                {assigned.map((pr: any) => (
+                                                                                    <Badge 
+                                                                                        key={pr.id} 
+                                                                                        variant={pr.id === selectedProgram.id ? "default" : "outline"} 
+                                                                                        className={`text-[9px] px-1.5 py-0 font-medium ${
+                                                                                            pr.id === selectedProgram.id 
+                                                                                                ? "bg-primary/10 text-primary border-primary/20 dark:bg-primary/20" 
+                                                                                                : "bg-muted/40 text-muted-foreground border-border/60"
+                                                                                        }`}
+                                                                                    >
+                                                                                        {pr.name}
+                                                                                    </Badge>
+                                                                                ))}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 </TableCell>
                                                                 <TableCell className="py-3 text-xs text-muted-foreground font-sans">
                                                                     {teacher.email}
@@ -5135,11 +5315,24 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             </Dialog>
 
             {/* ============ DIALOG: REGISTER TEACHER TO PROGRAM ============ */}
-            <Dialog open={assignTeachersDialogOpen} onOpenChange={setAssignTeachersDialogOpen}>
+            <Dialog 
+                open={assignTeachersDialogOpen} 
+                onOpenChange={(open) => {
+                    setAssignTeachersDialogOpen(open);
+                    if (open) {
+                        fetchAllTrainingAreas();
+                        if (selectedProgram) {
+                            setManualTeacherSelectedProgramIds(prev => prev.length > 0 ? prev : [selectedProgram.id]);
+                        }
+                    }
+                }}
+            >
                 <DialogContent className="max-w-[550px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Registrar Instructor en {selectedProgram?.name}</DialogTitle>
-                        <DialogDescription>Crea un instructor manualmente o impórtalo desde Excel. Quedará automáticamente asociado a este programa.</DialogDescription>
+                        <DialogTitle>Registrar Instructor</DialogTitle>
+                        <DialogDescription>
+                            Crea un instructor manualmente o impórtalo desde Excel. Selecciona las áreas de formación en las que estará activo y visible.
+                        </DialogDescription>
                     </DialogHeader>
                     
                     <Tabs defaultValue="manual" className="w-full mt-2">
@@ -5209,12 +5402,79 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             onChange={(e) => setManualTeacherTelefono(e.target.value)}
                                         />
                                     </div>
+
+                                    {/* Multi-select Áreas de Formación */}
+                                    <div className="space-y-2 col-span-2 pt-2 border-t border-muted/30">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-semibold text-foreground">
+                                                Áreas de Formación Asignadas * ({manualTeacherSelectedProgramIds.length})
+                                            </Label>
+                                            <div className="flex gap-2 text-[10px]">
+                                                <button
+                                                    type="button"
+                                                    className="text-primary hover:underline font-medium cursor-pointer"
+                                                    onClick={() => setManualTeacherSelectedProgramIds(trainingAreasForTeachers.map(p => p.id))}
+                                                >
+                                                    Seleccionar todas
+                                                </button>
+                                                <span>•</span>
+                                                <button
+                                                    type="button"
+                                                    className="text-muted-foreground hover:underline font-medium cursor-pointer"
+                                                    onClick={() => selectedProgram ? setManualTeacherSelectedProgramIds([selectedProgram.id]) : setManualTeacherSelectedProgramIds([])}
+                                                >
+                                                    Solo actual
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            El instructor estará activo y visible en las áreas seleccionadas para programación horaria, disponibilidad y materias.
+                                        </p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 rounded-lg border border-muted/40 bg-background">
+                                            {trainingAreasForTeachers.map((prog) => {
+                                                const isChecked = manualTeacherSelectedProgramIds.includes(prog.id);
+                                                return (
+                                                    <label
+                                                        key={prog.id}
+                                                        className={`flex items-start gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-colors ${
+                                                            isChecked 
+                                                                ? "bg-primary/5 border-primary/40 text-foreground font-medium" 
+                                                                : "bg-muted/10 border-transparent hover:bg-muted/30 text-muted-foreground"
+                                                        }`}
+                                                    >
+                                                        <Checkbox
+                                                            checked={isChecked}
+                                                            onCheckedChange={(checked) => {
+                                                                if (checked) {
+                                                                    setManualTeacherSelectedProgramIds(prev => [...prev, prog.id]);
+                                                                } else {
+                                                                    setManualTeacherSelectedProgramIds(prev => prev.filter(id => id !== prog.id));
+                                                                }
+                                                            }}
+                                                            className="mt-0.5"
+                                                        />
+                                                        <div className="min-w-0 flex-1 leading-snug">
+                                                            <span className="block truncate">{prog.name}</span>
+                                                            {prog.id === selectedProgram?.id && (
+                                                                <span className="text-[10px] text-primary font-bold">(Área actual)</span>
+                                                            )}
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                        {manualTeacherSelectedProgramIds.length === 0 && (
+                                            <p className="text-[11px] text-destructive font-semibold">
+                                                Debes seleccionar al menos una área de formación.
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <Button 
                                     onClick={handleRegisterTeacherManual} 
                                     className="w-full mt-2 h-9 text-xs"
-                                    disabled={isPending || isRegisteringTeacher}
+                                    disabled={isPending || isRegisteringTeacher || manualTeacherSelectedProgramIds.length === 0}
                                 >
                                     {isRegisteringTeacher ? "Registrando..." : "Registrar Instructor"}
                                 </Button>
@@ -5299,11 +5559,14 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             </Dialog>
 
             {/* ============ DIALOG: EDIT TEACHER ============ */}
-            <Dialog open={editTeacherDialogOpen} onOpenChange={setEditTeacherDialogOpen}>
-                <DialogContent className="max-w-[450px]">
+            <Dialog open={editTeacherDialogOpen} onOpenChange={(open) => {
+                setEditTeacherDialogOpen(open);
+                if (open) fetchAllTrainingAreas();
+            }}>
+                <DialogContent className="max-w-[480px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Editar Instructor</DialogTitle>
-                        <DialogDescription>Actualiza la información del instructor seleccionado.</DialogDescription>
+                        <DialogDescription>Actualiza la información del instructor y sus áreas de formación asignadas.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
                         <div className="space-y-2">
@@ -5326,10 +5589,77 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <Label htmlFor="edTTel">Teléfono</Label>
                             <Input id="edTTel" value={editTeacherPhone} onChange={(e) => setEditTeacherPhone(e.target.value)} />
                         </div>
+
+                        {/* Multi-select Áreas de Formación */}
+                        <div className="space-y-2 pt-2 border-t border-muted/30">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold text-foreground">
+                                    Áreas de Formación Asignadas * ({editTeacherProgramIds.length})
+                                </Label>
+                                <div className="flex gap-2 text-[10px]">
+                                    <button
+                                        type="button"
+                                        className="text-primary hover:underline font-medium cursor-pointer"
+                                        onClick={() => setEditTeacherProgramIds(trainingAreasForTeachers.map(p => p.id))}
+                                    >
+                                        Seleccionar todas
+                                    </button>
+                                    <span>•</span>
+                                    <button
+                                        type="button"
+                                        className="text-muted-foreground hover:underline font-medium cursor-pointer"
+                                        onClick={() => selectedProgram ? setEditTeacherProgramIds([selectedProgram.id]) : setEditTeacherProgramIds([])}
+                                    >
+                                        Solo actual
+                                    </button>
+                                </div>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                                El instructor estará activo y visible en las áreas seleccionadas para programación horaria, disponibilidad y materias.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 rounded-lg border border-muted/40 bg-background">
+                                {trainingAreasForTeachers.map((prog) => {
+                                    const isChecked = editTeacherProgramIds.includes(prog.id);
+                                    return (
+                                        <label
+                                            key={prog.id}
+                                            className={`flex items-start gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-colors ${
+                                                isChecked 
+                                                    ? "bg-primary/5 border-primary/40 text-foreground font-medium" 
+                                                    : "bg-muted/10 border-transparent hover:bg-muted/30 text-muted-foreground"
+                                            }`}
+                                        >
+                                            <Checkbox
+                                                checked={isChecked}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setEditTeacherProgramIds(prev => [...prev, prog.id]);
+                                                    } else {
+                                                        setEditTeacherProgramIds(prev => prev.filter(id => id !== prog.id));
+                                                    }
+                                                }}
+                                                className="mt-0.5"
+                                            />
+                                            <div className="min-w-0 flex-1 leading-snug">
+                                                <span className="block truncate">{prog.name}</span>
+                                                {prog.id === selectedProgram?.id && (
+                                                    <span className="text-[10px] text-primary font-bold">(Área actual)</span>
+                                                )}
+                                            </div>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {editTeacherProgramIds.length === 0 && (
+                                <p className="text-[11px] text-destructive font-semibold">
+                                    Debes seleccionar al menos una área de formación.
+                                </p>
+                            )}
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setEditTeacherDialogOpen(false)} disabled={isPending}>Cancelar</Button>
-                        <Button onClick={handleEditTeacherSave} disabled={isPending}>Guardar Cambios</Button>
+                        <Button onClick={handleEditTeacherSave} disabled={isPending || editTeacherProgramIds.length === 0}>Guardar Cambios</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -5904,13 +6234,17 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             {/* ============ DIALOG: DELETE CONFIRMATION ============ */}
             {(() => {
                 const programToDelete = deleteType === "program" ? programs.find(p => p.id === deleteItemId) : null;
+                const groupToDelete = deleteType === "group" 
+                    ? (selectedProgram?.groups?.find((g: any) => g.id === deleteItemId) || programs.flatMap(p => p.groups || []).find(g => g.id === deleteItemId))
+                    : null;
                 const periodsCount = programToDelete?.periods?.length || 0;
                 const groupsCount = programToDelete?.groups?.length || 0;
                 const coursesCount = programToDelete?.periods
                     ?.reduce((acc: number, p: any) => acc + (p.courses?.filter((c: any) => !c.groupId)?.length ?? 0), 0) || 0;
                 const studentsCount = programToDelete?.groups?.reduce((acc: number, g: any) => acc + (g.students?.length || 0), 0) || 0;
                 const teachersCount = programToDelete?.teachers?.length || 0;
-                const isProgramValid = deleteConfirmText.trim().toLowerCase() === deleteItemName.trim().toLowerCase();
+                const groupStudentsCount = groupToDelete?.students?.length || 0;
+                const isItemValid = deleteConfirmText.trim().toLowerCase() === deleteItemName.trim().toLowerCase();
 
                 return (
                     <AlertDialog 
@@ -5928,12 +6262,18 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     </div>
                                     <div>
                                         <AlertDialogTitle className="text-xl font-bold text-foreground">
-                                            {deleteType === "program" ? "Eliminar Área de Formación" : "¿Estás absolutamente seguro?"}
+                                            {deleteType === "program" 
+                                                ? "Eliminar Área de Formación" 
+                                                : deleteType === "group"
+                                                    ? "Eliminar Ficha / Grupo"
+                                                    : "¿Estás absolutamente seguro?"}
                                         </AlertDialogTitle>
                                         <p className="text-xs text-muted-foreground font-medium mt-0.5">
                                             {deleteType === "program" 
                                                 ? "Esta acción es irreversible y eliminará toda la jerarquía académica asociada." 
-                                                : "Esta acción no se puede deshacer."}
+                                                : deleteType === "group"
+                                                    ? "Esta acción es irreversible y desvinculará a los aprendices y registros asociados a esta ficha."
+                                                    : "Esta acción no se puede deshacer."}
                                         </p>
                                     </div>
                                 </div>
@@ -6000,7 +6340,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                                                 placeholder={`Escribe "${deleteItemName}" aquí...`}
                                                 className={`h-10 rounded-xl text-xs font-medium bg-background border transition-all ${
-                                                    isProgramValid 
+                                                    isItemValid 
                                                         ? "border-emerald-500 ring-2 ring-emerald-500/20" 
                                                         : "border-border/80 focus:border-destructive focus:ring-2 focus:ring-destructive/20"
                                                 }`}
@@ -6008,13 +6348,83 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             />
                                             {deleteConfirmText && (
                                                 <p className={`text-[11px] font-semibold ${
-                                                    isProgramValid
+                                                    isItemValid
                                                         ? "text-emerald-600 dark:text-emerald-400"
                                                         : "text-muted-foreground"
                                                 }`}>
-                                                    {isProgramValid
+                                                    {isItemValid
                                                         ? "✓ Texto de confirmación correcto. Ya puedes proceder a eliminar."
                                                         : "El texto ingresado no coincide con el nombre del programa."}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : deleteType === "group" ? (
+                                    <div className="space-y-4 pt-2">
+                                        {/* Banner de Ficha a Eliminar */}
+                                        <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-between">
+                                            <div className="flex items-center gap-2.5">
+                                                <Layers className="w-5 h-5 text-primary" />
+                                                <div>
+                                                    <span className="font-bold text-foreground text-sm block">Ficha: {deleteItemName}</span>
+                                                    {groupToDelete?.description && (
+                                                        <span className="text-[11px] text-muted-foreground block">{groupToDelete.description}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <Badge variant="destructive" className="rounded-xl text-[10px] font-bold uppercase tracking-wider">
+                                                {(groupToDelete as any)?.categoria === "PRODUCTIVA" ? "Etapa Productiva" : (groupToDelete as any)?.categoria === "EGRESADOS" ? "Egresados" : "Etapa Lectiva"}
+                                            </Badge>
+                                        </div>
+
+                                        {/* Cuadro de Consecuencias y Datos que se Borrarán */}
+                                        <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/30 space-y-2.5">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-destructive">
+                                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                                <span>Consecuencias: Registros que se verán afectados:</span>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">{groupStudentsCount}</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Aprendices Matriculados</span>
+                                                </div>
+                                                <div className="p-2.5 rounded-xl bg-background/90 border border-destructive/20 text-center shadow-2xs">
+                                                    <span className="text-sm font-black text-foreground block">Horarios y Notas</span>
+                                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">Registros Vinculados</span>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-[11px] text-destructive/90 font-medium leading-relaxed pt-1">
+                                                ⚠️ Se eliminará definitivamente la ficha y se desvincularán las matrículas de los aprendices, programaciones horarias y calificaciones asignadas a este grupo.
+                                            </p>
+                                        </div>
+
+                                        {/* Input de validación por escritura */}
+                                        <div className="space-y-2 pt-1 text-left">
+                                            <Label className="text-xs font-bold text-foreground block">
+                                                Para confirmar, escribe <span className="text-destructive font-mono underline select-all font-extrabold">&quot;{deleteItemName}&quot;</span>:
+                                            </Label>
+                                            <Input
+                                                value={deleteConfirmText}
+                                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                                placeholder={`Escribe "${deleteItemName}" aquí...`}
+                                                className={`h-10 rounded-xl text-xs font-medium bg-background border transition-all ${
+                                                    isItemValid 
+                                                        ? "border-emerald-500 ring-2 ring-emerald-500/20" 
+                                                        : "border-border/80 focus:border-destructive focus:ring-2 focus:ring-destructive/20"
+                                                }`}
+                                                autoFocus
+                                            />
+                                            {deleteConfirmText && (
+                                                <p className={`text-[11px] font-semibold ${
+                                                    isItemValid
+                                                        ? "text-emerald-600 dark:text-emerald-400"
+                                                        : "text-muted-foreground"
+                                                }`}>
+                                                    {isItemValid
+                                                        ? "✓ Nombre/código de la ficha confirmado. Ya puedes proceder a eliminar."
+                                                        : "El texto ingresado no coincide con el número o nombre de la ficha."}
                                                 </p>
                                             )}
                                         </div>
@@ -6044,13 +6454,15 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         handleDeleteConfirm();
                                     }}
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl text-xs font-bold h-10 px-5 shadow-md shadow-destructive/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={isPending || (deleteType === "program" && !isProgramValid)}
+                                    disabled={isPending || ((deleteType === "program" || deleteType === "group") && !isItemValid)}
                                 >
                                     {isPending 
                                         ? "Eliminando..." 
                                         : deleteType === "program" 
                                             ? "Eliminar Programa Definitivamente" 
-                                            : "Eliminar"}
+                                            : deleteType === "group"
+                                                ? "Eliminar Ficha Definitivamente"
+                                                : "Eliminar"}
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>

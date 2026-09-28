@@ -19,11 +19,8 @@ export async function getTeacherQualificationsAction(teacherId: string, academic
         throw new Error("Unauthorized");
     }
 
-    const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
     const programWhere: any = {};
-    if (effectiveProgramId) {
-        programWhere.id = effectiveProgramId;
-    } else if (session.user.role === "gestor") {
+    if (session.user.role === "gestor") {
         programWhere.gestores = { some: { id: session.user.id } };
     }
 

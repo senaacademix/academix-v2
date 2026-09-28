@@ -85,6 +85,12 @@ export async function getProgramsAction(programId?: string) {
                     qualifiedCoursesLocked: true,
                     availabilities: true,
                     profile: true,
+                    programs: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    },
                     qualifiedCourses: {
                         select: {
                             id: true,
@@ -177,6 +183,17 @@ export async function getGestoresAction() {
             id: true,
             name: true,
             email: true
+        },
+        orderBy: { name: "asc" }
+    });
+}
+
+export async function getAllTrainingAreasListAction(): Promise<Array<{ id: string; name: string }>> {
+    await requireAdmin();
+    return await prisma.program.findMany({
+        select: {
+            id: true,
+            name: true,
         },
         orderBy: { name: "asc" }
     });
@@ -1185,6 +1202,7 @@ export async function assignTeacherToProgramAction(programId: string, teacherId:
 
 export async function registerTeacherManualAction(data: {
     programId?: string;
+    programIds?: string[];
     identificacion: string;
     nombres: string;
     apellido: string;
@@ -1203,16 +1221,21 @@ export async function registerTeacherManualAction(data: {
         const emailNorm = data.email.trim().toLowerCase();
         const idenNorm = data.identificacion.trim();
 
-        // Validar programId si fue enviado
-        let validProgramId: string | undefined = undefined;
-        if (data.programId && data.programId !== "none" && data.programId !== "all") {
-            const prog = await prisma.program.findUnique({
-                where: { id: data.programId },
+        // Validar lista de programas/áreas de formación
+        const requestedProgramIds: string[] = [];
+        if (Array.isArray(data.programIds) && data.programIds.length > 0) {
+            requestedProgramIds.push(...data.programIds.filter(id => id && id !== "none" && id !== "all"));
+        } else if (data.programId && data.programId !== "none" && data.programId !== "all") {
+            requestedProgramIds.push(data.programId);
+        }
+
+        let validProgramIds: string[] = [];
+        if (requestedProgramIds.length > 0) {
+            const progs = await prisma.program.findMany({
+                where: { id: { in: requestedProgramIds } },
                 select: { id: true }
             });
-            if (prog) {
-                validProgramId = prog.id;
-            }
+            validProgramIds = progs.map(p => p.id);
         }
 
         // Validar duplicados en la base de datos
@@ -1225,17 +1248,17 @@ export async function registerTeacherManualAction(data: {
         });
         if (existingUser) {
             if (existingUser.role === "teacher") {
-                if (validProgramId) {
-                    const alreadyInProgram = existingUser.programs.some(p => p.id === validProgramId);
-                    if (alreadyInProgram) {
-                        return { success: false as const, error: "El instructor ya se encuentra vinculado a este programa." };
+                if (validProgramIds.length > 0) {
+                    const alreadyInAll = validProgramIds.every(id => existingUser.programs.some(p => p.id === id));
+                    if (alreadyInAll) {
+                        return { success: false as const, error: "El instructor ya se encuentra vinculado a todas las áreas de formación seleccionadas." };
                     }
 
                     const updatedUser = await prisma.user.update({
                         where: { id: existingUser.id },
                         data: {
                             programs: {
-                                connect: { id: validProgramId }
+                                connect: validProgramIds.map(id => ({ id }))
                             },
                             profile: existingUser.profile ? {
                                 update: {
@@ -1253,7 +1276,10 @@ export async function registerTeacherManualAction(data: {
                                 }
                             }
                         },
-                        include: { profile: true }
+                        include: { 
+                            profile: true,
+                            programs: { select: { id: true, name: true } }
+                        }
                     });
 
                     const { auditLogger } = await import("../services/auditLogger");
@@ -1264,8 +1290,8 @@ export async function registerTeacherManualAction(data: {
                         userId: session.user.id,
                         userName: session.user.name || "Admin",
                         userRole: (session.user.role as any) || "admin",
-                        description: `Instructor existente ${updatedUser.name} (${emailNorm}) vinculado al programa ID ${validProgramId}`,
-                        metadata: { email: emailNorm, programId: validProgramId, identificacion: idenNorm },
+                        description: `Instructor existente ${updatedUser.name} (${emailNorm}) vinculado a las áreas de formación: ${validProgramIds.join(", ")}`,
+                        metadata: { email: emailNorm, programIds: validProgramIds, identificacion: idenNorm },
                         success: true,
                     });
 
@@ -1273,9 +1299,11 @@ export async function registerTeacherManualAction(data: {
                     revalidatePath("/dashboard/gestor/courses");
                     revalidatePath("/dashboard/admin/users");
                     revalidatePath("/dashboard/gestor/users");
-                    revalidatePath(`/dashboard/admin/courses?programId=${validProgramId}`);
-                    revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
-                    revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
+                    validProgramIds.forEach(pid => {
+                        revalidatePath(`/dashboard/admin/courses?programId=${pid}`);
+                        revalidatePath(`/dashboard/gestor/courses?programId=${pid}`);
+                        revalidatePath(`/dashboard/gestor/users?programId=${pid}`);
+                    });
 
                     return { success: true as const, user: updatedUser, profile: updatedUser.profile! };
                 } else {
@@ -1299,17 +1327,17 @@ export async function registerTeacherManualAction(data: {
         });
         if (existingProfile) {
             if (existingProfile.user?.role === "teacher") {
-                if (validProgramId) {
-                    const alreadyInProgram = existingProfile.user.programs.some(p => p.id === validProgramId);
-                    if (alreadyInProgram) {
-                        return { success: false as const, error: `Ya existe un instructor con el documento ${idenNorm} vinculado a este programa.` };
+                if (validProgramIds.length > 0) {
+                    const alreadyInAll = validProgramIds.every(id => existingProfile.user.programs.some(p => p.id === id));
+                    if (alreadyInAll) {
+                        return { success: false as const, error: `El instructor con documento ${idenNorm} ya está vinculado a todas las áreas seleccionadas.` };
                     }
 
                     const updatedUser = await prisma.user.update({
                         where: { id: existingProfile.userId },
                         data: {
                             programs: {
-                                connect: { id: validProgramId }
+                                connect: validProgramIds.map(id => ({ id }))
                             },
                             profile: {
                                 update: {
@@ -1317,7 +1345,10 @@ export async function registerTeacherManualAction(data: {
                                 }
                             }
                         },
-                        include: { profile: true }
+                        include: { 
+                            profile: true,
+                            programs: { select: { id: true, name: true } }
+                        }
                     });
 
                     const { auditLogger } = await import("../services/auditLogger");
@@ -1328,8 +1359,8 @@ export async function registerTeacherManualAction(data: {
                         userId: session.user.id,
                         userName: session.user.name || "Admin",
                         userRole: (session.user.role as any) || "admin",
-                        description: `Instructor con documento ${idenNorm} vinculado al programa ID ${validProgramId}`,
-                        metadata: { email: emailNorm, programId: validProgramId, identificacion: idenNorm },
+                        description: `Instructor con documento ${idenNorm} vinculado a las áreas: ${validProgramIds.join(", ")}`,
+                        metadata: { email: emailNorm, programIds: validProgramIds, identificacion: idenNorm },
                         success: true,
                     });
 
@@ -1337,9 +1368,11 @@ export async function registerTeacherManualAction(data: {
                     revalidatePath("/dashboard/gestor/courses");
                     revalidatePath("/dashboard/admin/users");
                     revalidatePath("/dashboard/gestor/users");
-                    revalidatePath(`/dashboard/admin/courses?programId=${validProgramId}`);
-                    revalidatePath(`/dashboard/gestor/courses?programId=${validProgramId}`);
-                    revalidatePath(`/dashboard/gestor/users?programId=${validProgramId}`);
+                    validProgramIds.forEach(pid => {
+                        revalidatePath(`/dashboard/admin/courses?programId=${pid}`);
+                        revalidatePath(`/dashboard/gestor/courses?programId=${pid}`);
+                        revalidatePath(`/dashboard/gestor/users?programId=${pid}`);
+                    });
 
                     return { success: true as const, user: updatedUser, profile: updatedUser.profile! };
                 } else {
@@ -1363,9 +1396,9 @@ export async function registerTeacherManualAction(data: {
                     name: `${data.nombres.trim()} ${data.apellido.trim()}`,
                     role: "teacher",
                     emailVerified: true,
-                    ...(validProgramId ? {
+                    ...(validProgramIds.length > 0 ? {
                         programs: {
-                            connect: { id: validProgramId }
+                            connect: validProgramIds.map(id => ({ id }))
                         }
                     } : {}),
                     accounts: {
@@ -1376,6 +1409,9 @@ export async function registerTeacherManualAction(data: {
                             password: hashedPassword,
                         }
                     }
+                },
+                include: {
+                    programs: { select: { id: true, name: true } }
                 }
             });
 
@@ -1402,10 +1438,10 @@ export async function registerTeacherManualAction(data: {
             userId: session.user.id,
             userName: session.user.name || "Admin",
             userRole: (session.user.role as any) || "admin",
-            description: data.programId
-                ? `Profesor registrado manualmente en programa: ${data.nombres} ${data.apellido} (${emailNorm})`
+            description: validProgramIds.length > 0
+                ? `Profesor registrado manualmente en áreas [${validProgramIds.join(", ")}]: ${data.nombres} ${data.apellido} (${emailNorm})`
                 : `Profesor registrado manualmente en el banco global: ${data.nombres} ${data.apellido} (${emailNorm})`,
-            metadata: { email: emailNorm, programId: data.programId, identificacion: idenNorm },
+            metadata: { email: emailNorm, programIds: validProgramIds, identificacion: idenNorm },
             success: true,
         });
 
@@ -1413,11 +1449,11 @@ export async function registerTeacherManualAction(data: {
         revalidatePath("/dashboard/gestor/courses");
         revalidatePath("/dashboard/admin/users");
         revalidatePath("/dashboard/gestor/users");
-        if (data.programId) {
-            revalidatePath(`/dashboard/admin/courses?programId=${data.programId}`);
-            revalidatePath(`/dashboard/gestor/courses?programId=${data.programId}`);
-            revalidatePath(`/dashboard/gestor/users?programId=${data.programId}`);
-        }
+        validProgramIds.forEach(pid => {
+            revalidatePath(`/dashboard/admin/courses?programId=${pid}`);
+            revalidatePath(`/dashboard/gestor/courses?programId=${pid}`);
+            revalidatePath(`/dashboard/gestor/users?programId=${pid}`);
+        });
         return { success: true as const, ...result };
     } catch (error: any) {
         console.error("Error in registerTeacherManualAction:", error);
@@ -1807,6 +1843,7 @@ export async function updateTeacherAction(data: {
     apellido: string;
     email: string;
     telefono?: string;
+    programIds?: string[];
 }) {
     const session = await requireAdmin();
 
@@ -1842,12 +1879,25 @@ export async function updateTeacherAction(data: {
     }
 
     await prisma.$transaction(async (tx) => {
+        const updateUserData: any = {
+            email: emailNorm,
+            name: `${data.nombres.trim()} ${data.apellido.trim()}`,
+        };
+
+        if (Array.isArray(data.programIds)) {
+            const validPrograms = await tx.program.findMany({
+                where: { id: { in: data.programIds.filter(Boolean) } },
+                select: { id: true }
+            });
+            const validIds = validPrograms.map(p => p.id);
+            updateUserData.programs = {
+                set: validIds.map(id => ({ id }))
+            };
+        }
+
         await tx.user.update({
             where: { id: data.id },
-            data: {
-                email: emailNorm,
-                name: `${data.nombres.trim()} ${data.apellido.trim()}`,
-            }
+            data: updateUserData
         });
 
         await tx.profile.upsert({
@@ -1878,13 +1928,22 @@ export async function updateTeacherAction(data: {
         userId: session.user.id,
         userName: session.user.name || "Admin",
         userRole: "admin",
-        description: `Profesor actualizado: ${data.nombres} ${data.apellido} (${emailNorm})`,
-        metadata: { email: emailNorm, identificacion: idenNorm },
+        description: `Profesor actualizado: ${data.nombres} ${data.apellido} (${emailNorm}) - Áreas: ${data.programIds?.join(", ") || "sin cambios"}`,
+        metadata: { email: emailNorm, identificacion: idenNorm, programIds: data.programIds },
         success: true,
     });
 
     revalidatePath("/dashboard/admin/courses");
     revalidatePath("/dashboard/gestor/courses");
+    revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
+    if (data.programIds) {
+        data.programIds.forEach(pid => {
+            revalidatePath(`/dashboard/admin/courses?programId=${pid}`);
+            revalidatePath(`/dashboard/gestor/courses?programId=${pid}`);
+            revalidatePath(`/dashboard/gestor/users?programId=${pid}`);
+        });
+    }
     return { success: true };
 }
 
@@ -2454,10 +2513,20 @@ export async function updateGroupEnvironmentAction(groupId: string, environmentI
     return group;
 }
 
-export async function importPeriodsAndCoursesAction(programId: string, data: any[]) {
+export async function importPeriodsAndCoursesAction(programId: string, data: any[], timelineId?: string | null) {
     const session = await requireAdmin();
     if (!programId) throw new Error("El programa es obligatorio");
     if (!data || data.length === 0) throw new Error("Los datos de importación están vacíos");
+
+    let effectiveTimelineId = timelineId;
+    if (!effectiveTimelineId) {
+        const defaultTimeline = await prisma.curriculumTimeline.findFirst({
+            where: { programId, isDefault: true }
+        }) || await prisma.curriculumTimeline.findFirst({
+            where: { programId }
+        });
+        effectiveTimelineId = defaultTimeline?.id || null;
+    }
 
     let successPeriods = 0;
     let successCourses = 0;
@@ -2473,6 +2542,7 @@ export async function importPeriodsAndCoursesAction(programId: string, data: any
                     description: periodItem.description || null,
                     esEspecial: periodItem.esEspecial ?? false,
                     programId: programId,
+                    timelineId: effectiveTimelineId,
                 }
             });
             successPeriods++;
@@ -2566,7 +2636,7 @@ export async function importGroupsAndStudentsAction(programId: string, data: any
     return { success: true, successGroups, successStudents, errors };
 }
 
-export async function importSinglePeriodAndCoursesAction(programId: string, periodItem: any) {
+export async function importSinglePeriodAndCoursesAction(programId: string, periodItem: any, timelineId?: string | null) {
     await requireAdmin();
     if (!programId) {
         return { success: false, periodName: periodItem?.name || "Sin nombre", coursesCount: 0, error: "El programa es obligatorio" };
@@ -2576,11 +2646,26 @@ export async function importSinglePeriodAndCoursesAction(programId: string, peri
     }
 
     try {
+        let effectiveTimelineId = timelineId !== undefined ? timelineId : (periodItem.timelineId || null);
+        if (!effectiveTimelineId) {
+            const defaultTimeline = await prisma.curriculumTimeline.findFirst({
+                where: { programId, isDefault: true }
+            }) || await prisma.curriculumTimeline.findFirst({
+                where: { programId }
+            });
+            effectiveTimelineId = defaultTimeline?.id || null;
+        }
+
+        const periodWhere: any = {
+            programId,
+            name: { equals: periodItem.name.trim(), mode: "insensitive" }
+        };
+        if (effectiveTimelineId) {
+            periodWhere.timelineId = effectiveTimelineId;
+        }
+
         let period = await prisma.period.findFirst({
-            where: {
-                programId,
-                name: { equals: periodItem.name.trim(), mode: "insensitive" }
-            }
+            where: periodWhere
         });
 
         if (!period) {
@@ -2590,7 +2675,13 @@ export async function importSinglePeriodAndCoursesAction(programId: string, peri
                     description: periodItem.description || null,
                     esEspecial: periodItem.esEspecial ?? false,
                     programId: programId,
+                    timelineId: effectiveTimelineId,
                 }
+            });
+        } else if (effectiveTimelineId && !period.timelineId) {
+            period = await prisma.period.update({
+                where: { id: period.id },
+                data: { timelineId: effectiveTimelineId }
             });
         }
 

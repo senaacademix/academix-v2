@@ -252,8 +252,8 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
 
     return (
         <div className="space-y-6">
-            {/* Academic Schedule Scope Selector (Only in standalone teacher mode) */}
-            {!isAdminMode && (
+            {/* Academic Schedule & Area Scope Selector */}
+            {(!isAdminMode || qualPrograms.length > 1) && (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-card/80 backdrop-blur-md border border-border/80 rounded-2xl shadow-2xs">
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
