@@ -53,6 +53,9 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import MDEditor from "@uiw/react-md-editor";
+import { getEffectivePlanHistory, getCleanObservations } from "../utils/improvementPlanHistory";
+import { PlanEvidenceHistoryList } from "./PlanEvidenceHistoryList";
+import { RequestResubmissionModal } from "@/features/teacher/components/RequestResubmissionModal";
 
 import {
   Chart as ChartJS,
@@ -172,6 +175,14 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         open: boolean;
         planId: string;
         grade: string;
+    } | null>(null);
+    const [resubmitPlanModal, setResubmitPlanModal] = useState<{
+        open: boolean;
+        planId: string;
+        planNumber?: string;
+        studentName?: string;
+        currentEndDate?: string | Date;
+        currentEvidenceUrl?: string | null;
     } | null>(null);
     
     const [viewPlanDetail, setViewPlanDetail] = useState<any | null>(null);
@@ -2227,6 +2238,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                     const step4Done = !!plan.evidenceUrl;
                                                     const step5Done = plan.planScore !== null || plan.finalGrade !== null;
 
+                                                    const { cleanObservations, history, resubmission } = getEffectivePlanHistory(plan as any);
+                                                    const isResubmissionRequested = !!resubmission?.requested;
+
                                                     // ── Date progress bar ──
                                                     const nowMs = Date.now();
                                                     const startMs = fromUTC(plan.startDate).getTime();
@@ -2266,7 +2280,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                              done: step4Done, 
                                                              active: step3Done && !step4Done, 
                                                              locked: !step3Done,
-                                                             desc: "El aprendiz debe subir el enlace con los archivos o entregables que evidencien el cumplimiento de sus compromisos."
+                                                             desc: isResubmissionRequested
+                                                                 ? "Reentrega de evidencias solicitada por el instructor. El aprendiz debe cargar la nueva versión corregida."
+                                                                 : "El aprendiz debe subir el enlace con los archivos o entregables que evidencien el cumplimiento de sus compromisos."
                                                          },
                                                          { 
                                                              label: "Evaluación", 
@@ -2468,23 +2484,58 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                     </div>
 
                                                                     {/* Paso 4 — Evidencias */}
-                                                                    <div className="p-3 bg-background border rounded-xl flex flex-col gap-1 text-left">
-                                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Paso 4 — Evidencias</span>
+                                                                    <div className="p-3 bg-background border rounded-xl flex flex-col gap-2 text-left">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Paso 4 — Evidencias</span>
+                                                                            {isResubmissionRequested && (
+                                                                                <Badge variant="outline" className="text-[9px] font-bold bg-amber-500/10 text-amber-600 border-amber-300">
+                                                                                    Reentrega Solicitada
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {isResubmissionRequested && (
+                                                                            <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-300 text-xs space-y-1">
+                                                                                <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                                                                                    <RotateCcw className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                                                                    <span>El instructor ha solicitado una reentrega:</span>
+                                                                                </div>
+                                                                                <p className="text-amber-900 dark:text-amber-200 italic pl-1 text-[11px] leading-relaxed">
+                                                                                    &ldquo;{resubmission.feedback}&rdquo;
+                                                                                </p>
+                                                                                <div className="text-[10px] text-amber-800 dark:text-amber-300 font-semibold pt-0.5">
+                                                                                    Plazo extendido hasta: <span className="underline font-bold">{format(fromUTC(plan.endDate), "dd/MM/yyyy", { locale: es })}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
                                                                         {plan.evidenceUrl ? (
                                                                             <div className="flex items-center justify-between gap-2 mt-1">
                                                                                 <a href={plan.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-bold flex items-center gap-1 truncate">
-                                                                                    <ExternalLink className="w-3.5 h-3.5 shrink-0" /> Ver Evidencias
+                                                                                    <ExternalLink className="w-3.5 h-3.5 shrink-0" /> {isResubmissionRequested ? "Ver Evidencia Anterior" : "Ver Evidencias"}
                                                                                 </a>
                                                                                 {currentUserRole === "student" && (
-                                                                                    <Button 
-                                                                                        variant="ghost" 
-                                                                                        size="icon" 
-                                                                                        onClick={() => handleDeleteEvidence(plan.id)}
-                                                                                        className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md shrink-0 cursor-pointer"
-                                                                                        title="Eliminar evidencias"
-                                                                                    >
-                                                                                        <UserX className="w-3.5 h-3.5" />
-                                                                                    </Button>
+                                                                                    <div className="flex items-center gap-1.5">
+                                                                                        {isResubmissionRequested && (
+                                                                                            <Button 
+                                                                                                size="sm" 
+                                                                                                onClick={() => setEvidenceDialog({ open: true, planId: plan.id, evidenceUrl: "" })}
+                                                                                                className="h-7 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer gap-1"
+                                                                                            >
+                                                                                                <RotateCcw className="w-3 h-3" />
+                                                                                                Subir Reentrega
+                                                                                            </Button>
+                                                                                        )}
+                                                                                        <Button 
+                                                                                            variant="ghost" 
+                                                                                            size="icon" 
+                                                                                            onClick={() => handleDeleteEvidence(plan.id)}
+                                                                                            className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md shrink-0 cursor-pointer"
+                                                                                            title="Eliminar evidencias"
+                                                                                        >
+                                                                                            <UserX className="w-3.5 h-3.5" />
+                                                                                        </Button>
+                                                                                    </div>
                                                                                 )}
                                                                             </div>
                                                                         ) : (
@@ -2502,6 +2553,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                                 )}
                                                                             </div>
                                                                         )}
+
+                                                                        {/* Historial de entregas */}
+                                                                        <PlanEvidenceHistoryList history={history} resubmission={resubmission} />
                                                                     </div>
                                                                 </div>
 
@@ -2510,10 +2564,12 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                     plan.finalGrade !== null
                                                                         ? "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200"
                                                                         : step4Done
-                                                                            ? new Date() > fromUTC(plan.endDate)
+                                                                            ? isResubmissionRequested
                                                                                 ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200"
-                                                                                : "bg-blue-50/50 dark:bg-blue-950/10 border-blue-200"
-                                                                            : "bg-muted/50 border-muted"
+                                                                                : "bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-200/80"
+                                                                            : new Date() > fromUTC(plan.endDate)
+                                                                                ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200"
+                                                                                : "bg-muted/50 border-muted"
                                                                 }`}>
                                                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                                                         <div className="space-y-1">
@@ -2523,15 +2579,19 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                                     Plan Evaluado con éxito. Nota: <span className="text-lg font-black">{plan.finalGrade.toFixed(1)} / 5.0</span>
                                                                                 </p>
                                                                             ) : step4Done ? (
-                                                                                new Date() > fromUTC(plan.endDate) ? (
+                                                                                isResubmissionRequested ? (
                                                                                     <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                                                                                        Evidencias recibidas y fecha finalizada. Esperando asignación de calificación.
+                                                                                        Reentrega en proceso. Esperando carga de nueva evidencia por parte del aprendiz antes del {format(fromUTC(plan.endDate), "dd/MM/yyyy", { locale: es })}.
                                                                                     </p>
                                                                                 ) : (
-                                                                                    <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">
-                                                                                        Evidencias recibidas. La calificación estará disponible al vencer el plan ({format(fromUTC(plan.endDate), "dd/MM/yyyy", { locale: es })}).
+                                                                                    <p className="text-xs text-foreground font-medium">
+                                                                                        Evidencias recibidas. En espera de evaluación y calificación por parte del instructor.
                                                                                     </p>
                                                                                 )
+                                                                            ) : new Date() > fromUTC(plan.endDate) ? (
+                                                                                <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                                                                                    Fecha límite finalizada sin evidencias cargadas. Esperando asignación de calificación.
+                                                                                </p>
                                                                             ) : (
                                                                                 <p className="text-xs text-muted-foreground italic">
                                                                                     El aprendiz debe cargar el enlace de evidencias en el Paso 4 antes de proceder con la calificación.
@@ -2541,7 +2601,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                         
                                                                         {/* Action button for teacher/admin */}
                                                                         {(currentUserRole === "teacher" || currentUserRole === "admin") && step4Done && (
-                                                                            <div className="shrink-0">
+                                                                            <div className="shrink-0 flex items-center gap-2 flex-wrap">
                                                                                 {plan.finalGrade !== null ? (
                                                                                     <Button 
                                                                                         size="sm" 
@@ -2552,15 +2612,30 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                                         Cambiar Nota
                                                                                     </Button>
                                                                                 ) : (
-                                                                                    new Date() > fromUTC(plan.endDate) ? (
+                                                                                    <>
                                                                                         <Button 
                                                                                             size="sm"
                                                                                             onClick={() => setGradePlanDialog({ open: true, planId: plan.id, grade: "" })}
-                                                                                            className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+                                                                                            className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
                                                                                         >
                                                                                             Calificar Plan
                                                                                         </Button>
-                                                                                    ) : null
+                                                                                        <Button 
+                                                                                            size="sm"
+                                                                                            variant="outline"
+                                                                                            onClick={() => setResubmitPlanModal({
+                                                                                                open: true,
+                                                                                                planId: plan.id,
+                                                                                                planNumber: plan.planNumber,
+                                                                                                studentName: formatName((plan as any).student?.name, (plan as any).student?.profile),
+                                                                                                currentEndDate: plan.endDate,
+                                                                                                currentEvidenceUrl: plan.evidenceUrl,
+                                                                                            })}
+                                                                                            className="h-8 text-xs font-bold border-amber-400 text-amber-700 hover:bg-amber-50 cursor-pointer"
+                                                                                        >
+                                                                                            {isResubmissionRequested ? "Modificar Reentrega" : "Solicitar Reentrega"}
+                                                                                        </Button>
+                                                                                    </>
                                                                                 )}
                                                                             </div>
                                                                         )}
@@ -3069,6 +3144,22 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                 </DialogContent>
             </Dialog>
 
+            {/* Request Resubmission Modal */}
+            {resubmitPlanModal && (
+                <RequestResubmissionModal
+                    open={resubmitPlanModal.open}
+                    onClose={() => setResubmitPlanModal(null)}
+                    planId={resubmitPlanModal.planId}
+                    planNumber={resubmitPlanModal.planNumber}
+                    studentName={resubmitPlanModal.studentName}
+                    currentEndDate={resubmitPlanModal.currentEndDate}
+                    currentEvidenceUrl={resubmitPlanModal.currentEvidenceUrl}
+                    onSuccess={() => {
+                        loadImprovementPlans();
+                    }}
+                />
+            )}
+
             {/* Plan Detail Dialog (Read-only Detail Modal) */}
             <Dialog open={!!viewPlanDetail} onOpenChange={(open) => !open && setViewPlanDetail(null)}>
                 <DialogContent className="max-w-5xl sm:max-w-5xl max-h-[85vh] overflow-y-auto rounded-2xl">
@@ -3084,6 +3175,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                         const step3Done = !!(viewPlanDetail as any).teacherSignedDocUrl;
                         const step4Done = !!viewPlanDetail.evidenceUrl;
                         const step5Done = viewPlanDetail.finalGrade !== null;
+                        const planHistory = getEffectivePlanHistory(viewPlanDetail);
 
                         return (
                             <div className="space-y-5 py-2 text-left text-sm">
@@ -3114,11 +3206,11 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                     )}
                                 </div>
 
-                                {viewPlanDetail.observations && (
+                                {planHistory.cleanObservations && (
                                     <div className="space-y-1">
                                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Compromisos / Criterios de Evaluación</span>
                                         <div className="p-3.5 bg-muted/40 border border-muted/70 rounded-xl text-xs leading-relaxed text-foreground whitespace-pre-wrap">
-                                            {viewPlanDetail.observations}
+                                            {planHistory.cleanObservations}
                                         </div>
                                     </div>
                                 )}
@@ -3212,6 +3304,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground italic block mt-1">No cargada</span>
                                                 )}
+                                                <div className="mt-2">
+                                                    <PlanEvidenceHistoryList history={planHistory.history} resubmission={planHistory.resubmission} />
+                                                </div>
                                             </div>
                                         </div>
 

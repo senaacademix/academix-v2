@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { getCleanObservations, getEffectivePlanHistory } from "@/features/student/utils/improvementPlanHistory";
+import { PlanEvidenceHistoryList } from "@/features/student/components/PlanEvidenceHistoryList";
 
 interface AdminImprovementPlansProps {
     plans: any[];
@@ -396,6 +398,7 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
                         const step3Done = !!viewPlanDetail.teacherSignedDocUrl;
                         const step4Done = !!viewPlanDetail.evidenceUrl;
                         const step5Done = viewPlanDetail.finalGrade !== null;
+                        const planHistory = getEffectivePlanHistory(viewPlanDetail);
 
                         return (
                             <div className="space-y-5 py-2 text-left text-sm">
@@ -440,11 +443,11 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
                                     </div>
                                 </div>
 
-                                {viewPlanDetail.observations && (
+                                {planHistory.cleanObservations && (
                                     <div className="space-y-1">
                                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Compromisos / Criterios de Evaluación</span>
                                         <div className="p-3.5 bg-muted/40 border border-muted/70 rounded-xl text-xs leading-relaxed text-foreground whitespace-pre-wrap">
-                                            {viewPlanDetail.observations}
+                                            {planHistory.cleanObservations}
                                         </div>
                                     </div>
                                 )}
@@ -579,6 +582,9 @@ export function AdminImprovementPlans({ plans, hideMainHeader = false }: AdminIm
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground italic block mt-1">No cargada</span>
                                                 )}
+                                                <div className="mt-2">
+                                                    <PlanEvidenceHistoryList history={planHistory.history} resubmission={planHistory.resubmission} />
+                                                </div>
                                             </div>
                                         </div>
 

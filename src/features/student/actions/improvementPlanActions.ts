@@ -3,6 +3,12 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import {
+    parsePlanObservationsAndHistory,
+    encodePlanObservationsWithHistory,
+    EvidenceHistoryItem,
+    ResubmissionState,
+} from "@/features/student/utils/improvementPlanHistory";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
@@ -184,11 +190,20 @@ export async function upsertImprovementPlan(data: {
             // Update
             const existing = await prisma.improvementPlan.findUnique({
                 where: { id },
-                select: { teacherId: true }
+                select: { teacherId: true, observations: true }
             });
             if (!existing || existing.teacherId !== session.user.id) {
                 throw new Error("No autorizado a modificar este plan");
             }
+
+            // Preserve existing evidence history and resubmission metadata
+            const existingParsed = parsePlanObservationsAndHistory(existing.observations);
+            const incomingParsed = parsePlanObservationsAndHistory(observations);
+            const historyToKeep = incomingParsed.history.length > 0 ? incomingParsed.history : existingParsed.history;
+            const resubmissionToKeep = incomingParsed.resubmission || existingParsed.resubmission;
+            const finalObservations = (historyToKeep.length > 0 || resubmissionToKeep)
+                ? encodePlanObservationsWithHistory(incomingParsed.cleanObservations, historyToKeep, resubmissionToKeep)
+                : (incomingParsed.cleanObservations || null);
 
             const updated = await prisma.improvementPlan.update({
                 where: { id },
@@ -200,7 +215,7 @@ export async function upsertImprovementPlan(data: {
                     teacherSignedDocUrl: data.teacherSignedDocUrl || null,
                     startDate: new Date(startDate),
                     endDate: new Date(endDate),
-                    observations: observations || null,
+                    observations: finalObservations,
                     planScore: planScore !== undefined ? planScore : null,
                     finalGrade: finalGrade !== undefined ? finalGrade : null,
                     evidenceUrl: evidenceUrl || null,
@@ -420,12 +435,43 @@ export async function submitEvidenceUrl(planId: string, evidenceUrl: string) {
             throw new Error("No autorizado");
         }
 
+        const trimmedUrl = evidenceUrl.trim();
+        const { cleanObservations, history } = parsePlanObservationsAndHistory(plan.observations);
+
+        // Build effective history if it was empty but had a legacy URL
+        const effectiveHistory: EvidenceHistoryItem[] = [...history];
+        if (effectiveHistory.length === 0 && plan.evidenceUrl && plan.evidenceUrl !== trimmedUrl) {
+            effectiveHistory.push({
+                id: `delivery-legacy-${Date.now() - 1000}`,
+                version: 1,
+                evidenceUrl: plan.evidenceUrl,
+                submittedAt: plan.updatedAt ? new Date(plan.updatedAt).toISOString() : new Date().toISOString(),
+                status: "resubmission_requested",
+            });
+        }
+
+        const nextVersion = effectiveHistory.length > 0
+            ? Math.max(...effectiveHistory.map(h => h.version)) + 1
+            : 1;
+
+        const newHistoryItem: EvidenceHistoryItem = {
+            id: `delivery-${Date.now()}`,
+            version: nextVersion,
+            evidenceUrl: trimmedUrl,
+            submittedAt: new Date().toISOString(),
+            status: "pending_review",
+        };
+
+        const updatedHistory = [...effectiveHistory, newHistoryItem];
+        const newObservations = encodePlanObservationsWithHistory(cleanObservations, updatedHistory, null);
+
         const updated = await prisma.improvementPlan.update({
             where: { id: planId },
-            data: { evidenceUrl }
+            data: {
+                evidenceUrl: trimmedUrl,
+                observations: newObservations,
+            }
         });
-
-
 
         return { success: true, data: updated };
     } catch (error: any) {
@@ -527,6 +573,107 @@ export async function resetPlanToStep(planId: string, stepNumber: number, reason
     }
 }
 
+export async function requestEvidenceResubmission(
+    planId: string,
+    feedback: string,
+    newEndDate: Date | string
+) {
+    const session = await getSession();
+    if (!session?.user || (session.user.role !== "teacher" && session.user.role !== "admin")) {
+        throw new Error("No autorizado");
+    }
+
+    if (!feedback || !feedback.trim()) {
+        throw new Error("Debe ingresar las observaciones o motivo de la reentrega");
+    }
+
+    try {
+        const plan = await prisma.improvementPlan.findUnique({
+            where: { id: planId },
+            include: {
+                student: { select: { id: true, name: true } },
+                teacher: { select: { id: true, name: true } }
+            }
+        });
+
+        if (!plan) {
+            throw new Error("Plan de mejoramiento no encontrado");
+        }
+
+        if (session.user.role === "teacher" && plan.teacherId !== session.user.id) {
+            throw new Error("No autorizado a modificar este plan");
+        }
+
+        if (!plan.evidenceUrl) {
+            throw new Error("No se puede solicitar reentrega si aún no hay evidencias cargadas");
+        }
+
+        const parsedEndDate = new Date(newEndDate);
+        if (isNaN(parsedEndDate.getTime())) {
+            throw new Error("Fecha extendida de entrega inválida");
+        }
+
+        const { cleanObservations, history } = parsePlanObservationsAndHistory(plan.observations);
+
+        // Build effective history if it was empty
+        const effectiveHistory: EvidenceHistoryItem[] = [...history];
+        if (effectiveHistory.length === 0 && plan.evidenceUrl) {
+            effectiveHistory.push({
+                id: `delivery-init-${Date.now() - 1000}`,
+                version: 1,
+                evidenceUrl: plan.evidenceUrl,
+                submittedAt: plan.updatedAt ? new Date(plan.updatedAt).toISOString() : new Date().toISOString(),
+                status: "pending_review",
+            });
+        }
+
+        // The latest submission is marked with resubmission_requested and teacher feedback
+        const currentVersion = effectiveHistory.length > 0
+            ? Math.max(...effectiveHistory.map(h => h.version))
+            : 1;
+
+        const updatedHistory = effectiveHistory.map(item => {
+            if (item.version === currentVersion) {
+                return {
+                    ...item,
+                    status: "resubmission_requested" as const,
+                    feedback: feedback.trim(),
+                    requestedAt: new Date().toISOString(),
+                    previousEndDate: plan.endDate.toISOString(),
+                    extendedEndDate: parsedEndDate.toISOString(),
+                    teacherName: session.user.name || "Instructor",
+                };
+            }
+            return item;
+        });
+
+        const resubmissionState: ResubmissionState = {
+            requested: true,
+            feedback: feedback.trim(),
+            requestedAt: new Date().toISOString(),
+            extendedEndDate: parsedEndDate.toISOString(),
+            previousEvidenceUrl: plan.evidenceUrl,
+        };
+
+        const newObservations = encodePlanObservationsWithHistory(cleanObservations, updatedHistory, resubmissionState);
+
+        const updated = await prisma.improvementPlan.update({
+            where: { id: planId },
+            data: {
+                endDate: parsedEndDate,
+                observations: newObservations,
+                planScore: null,
+                finalGrade: null,
+            }
+        });
+
+        return { success: true, data: updated };
+    } catch (error: any) {
+        console.error("Error al solicitar reentrega:", error);
+        return { success: false, error: error.message || "Error al solicitar reentrega" };
+    }
+}
+
 export async function gradeImprovementPlan(planId: string, grade: number) {
     const session = await getSession();
     if (!session?.user || (session.user.role !== "teacher" && session.user.role !== "admin")) {
@@ -550,20 +697,41 @@ export async function gradeImprovementPlan(planId: string, grade: number) {
             throw new Error("No autorizado a calificar este plan");
         }
 
+        // Calificación disponible inmediatamente si ya hay evidencias cargadas, o si la fecha del plan venció
         const isPastEnd = new Date() > new Date(plan.endDate);
-        if (!isPastEnd) {
-            throw new Error("No se puede calificar el plan hasta que finalice la fecha de entrega");
+        if (!isPastEnd && !plan.evidenceUrl) {
+            throw new Error("No se puede calificar el plan antes de la fecha límite sin evidencias cargadas");
         }
+
+        // Update history item to "evaluated" and clear resubmission state
+        const { cleanObservations, history } = parsePlanObservationsAndHistory(plan.observations);
+        const effectiveHistory: EvidenceHistoryItem[] = [...history];
+        if (effectiveHistory.length === 0 && plan.evidenceUrl) {
+            effectiveHistory.push({
+                id: `delivery-init-${Date.now()}`,
+                version: 1,
+                evidenceUrl: plan.evidenceUrl,
+                submittedAt: plan.updatedAt ? new Date(plan.updatedAt).toISOString() : new Date().toISOString(),
+                status: "evaluated",
+            });
+        } else if (effectiveHistory.length > 0) {
+            const currentVersion = Math.max(...effectiveHistory.map(h => h.version));
+            const idx = effectiveHistory.findIndex(h => h.version === currentVersion);
+            if (idx >= 0) {
+                effectiveHistory[idx] = { ...effectiveHistory[idx], status: "evaluated" };
+            }
+        }
+
+        const newObservations = encodePlanObservationsWithHistory(cleanObservations, effectiveHistory, null);
 
         const updated = await prisma.improvementPlan.update({
             where: { id: planId },
             data: {
                 finalGrade: grade,
-                planScore: grade
+                planScore: grade,
+                observations: newObservations,
             }
         });
-
-
 
         return { success: true, data: updated };
     } catch (error: any) {

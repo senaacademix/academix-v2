@@ -121,6 +121,9 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, Di
 import { GradeManagerPanel } from "./GradeManagerPanel";
 import { getLostHoursForAttendance, extractTimeHHmm, calculateTotalScheduledHours, calculateStudentAttendanceLoss, getSessionScheduleForDay, getSessionTimeOptions } from "@/lib/gradePenaltyUtils";
 import { TeacherHelpModal } from "./TeacherHelpModal";
+import { getEffectivePlanHistory, getCleanObservations } from "@/features/student/utils/improvementPlanHistory";
+import { PlanEvidenceHistoryList } from "@/features/student/components/PlanEvidenceHistoryList";
+import { RequestResubmissionModal } from "./RequestResubmissionModal";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -467,6 +470,14 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     const [impTeacherSignDialog, setImpTeacherSignDialog] = useState<{ planId: string; url: string } | null>(null);
     const [resetPlanDialog, setResetPlanDialog] = useState<{ open: boolean; planId: string; stepNumber: number; reason: string } | null>(null);
     const [gradePlanDialog, setGradePlanDialog] = useState<{ open: boolean; planId: string; grade: string } | null>(null);
+    const [resubmitPlanModal, setResubmitPlanModal] = useState<{
+        open: boolean;
+        planId: string;
+        planNumber?: string;
+        studentName?: string;
+        currentEndDate?: string | Date;
+        currentEvidenceUrl?: string | null;
+    } | null>(null);
     const [viewJustificationDialog, setViewJustificationDialog] = useState<{
         open: boolean;
         studentName: string;
@@ -4880,6 +4891,9 @@ const handleOpenAnalytics = async () => {
                                                             const step4Done = !!plan.evidenceUrl;
                                                             const step5Done = plan.planScore !== null || plan.finalGrade !== null;
 
+                                                            const { cleanObservations, history, resubmission } = getEffectivePlanHistory(plan);
+                                                            const isResubmissionRequested = !!resubmission?.requested;
+
                                                             // ── Date progress bar ──
                                                             const nowMs = Date.now();
                                                             const startMs = new Date(plan.startDate).getTime();
@@ -4919,7 +4933,9 @@ const handleOpenAnalytics = async () => {
                                                                     done: step4Done, 
                                                                     active: step3Done && !step4Done, 
                                                                     locked: !step3Done,
-                                                                    desc: "El aprendiz debe subir el enlace con los archivos o entregables que evidencien el cumplimiento de sus compromisos."
+                                                                    desc: isResubmissionRequested
+                                                                        ? "Reentrega de evidencias solicitada por el instructor. El aprendiz debe cargar la nueva versión corregida."
+                                                                        : "El aprendiz debe subir el enlace con los archivos o entregables que evidencien el cumplimiento de sus compromisos."
                                                                 },
                                                                 { 
                                                                     label: "Evaluación", 
@@ -4938,7 +4954,19 @@ const handleOpenAnalytics = async () => {
                                                                         <div className="space-y-0.5">
                                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                                 <span className="font-extrabold text-sm text-foreground">Plan N° {plan.planNumber}</span>
-                                                                                {!plan.viewedAt ? (
+                                                                                {step5Done ? (
+                                                                                    <Badge variant="outline" className={`text-[9px] font-bold py-0.5 border-none ${
+                                                                                        plan.finalGrade === 0
+                                                                                            ? "bg-red-500/10 text-red-600"
+                                                                                            : "bg-emerald-500/10 text-emerald-600"
+                                                                                    }`}>
+                                                                                        {plan.finalGrade === 0 ? "0.0" : `Calificado: ${plan.finalGrade?.toFixed(1)}`}
+                                                                                    </Badge>
+                                                                                ) : isResubmissionRequested ? (
+                                                                                    <Badge variant="outline" className="text-[9px] font-bold py-0.5 bg-amber-500/10 text-amber-600 border-amber-300">
+                                                                                        Reentrega
+                                                                                    </Badge>
+                                                                                ) : !plan.viewedAt ? (
                                                                                     <Badge variant="outline" className="text-[9px] font-bold bg-amber-500/10 text-amber-600 border-none">Nuevo</Badge>
                                                                                 ) : (
                                                                                     <Badge variant="outline" className="text-[9px] font-bold bg-emerald-500/10 text-emerald-600 border-none">Visto</Badge>
@@ -4952,7 +4980,7 @@ const handleOpenAnalytics = async () => {
                                                                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary" title="Enviar correo" onClick={() => handleImpEmail(plan)}><Mail className="w-3.5 h-3.5" /></Button>
                                                                             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 border border-border/50 bg-background sm:border-none" onClick={() => setViewGroupPlanDetail(plan)}><Eye className="w-3 h-3" />Ver</Button>
                                                                             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 border border-border/50 bg-background sm:border-none text-amber-600 hover:text-amber-700" onClick={() => setResetPlanDialog({ open: true, planId: plan.id, stepNumber: 1, reason: "" })}><RotateCcw className="w-3.5 h-3.5" />Devolver Paso</Button>
-                                                                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 border border-border/50 bg-background sm:border-none" onClick={() => setImpPlanFormDialog({ open: true, id: plan.id, studentId: plan.studentId, planNumber: plan.planNumber, teacherDocUrl: plan.teacherDocUrl || "", startDate: formatCalendarDate(plan.startDate, "yyyy-MM-dd"), endDate: formatCalendarDate(plan.endDate, "yyyy-MM-dd"), observations: plan.observations || "", planScore: plan.planScore !== null && plan.planScore !== undefined ? plan.planScore : "", finalGrade: plan.finalGrade !== null && plan.finalGrade !== undefined ? plan.finalGrade : "", evidenceUrl: plan.evidenceUrl || "" })}><FileText className="w-3 h-3" />Editar</Button>
+                                                                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 border border-border/50 bg-background sm:border-none" onClick={() => setImpPlanFormDialog({ open: true, id: plan.id, studentId: plan.studentId, planNumber: plan.planNumber, teacherDocUrl: plan.teacherDocUrl || "", startDate: formatCalendarDate(plan.startDate, "yyyy-MM-dd"), endDate: formatCalendarDate(plan.endDate, "yyyy-MM-dd"), observations: getCleanObservations(plan.observations), planScore: plan.planScore !== null && plan.planScore !== undefined ? plan.planScore : "", finalGrade: plan.finalGrade !== null && plan.finalGrade !== undefined ? plan.finalGrade : "", evidenceUrl: plan.evidenceUrl || "" })}><FileText className="w-3 h-3" />Editar</Button>
                                                                             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive border border-destructive/20 bg-background sm:border-none" onClick={() => setImpDeleteConfirm(plan.id)}><Trash2 className="w-3 h-3" />Eliminar</Button>
                                                                         </div>
                                                                     </div>
@@ -5044,43 +5072,68 @@ const handleOpenAnalytics = async () => {
                                                                         </div>
                                                                     )}
 
+                                                                    {/* ── Resubmission notice banner ── */}
+                                                                    {isResubmissionRequested && (
+                                                                        <div className="p-3 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-300 rounded-xl space-y-1 text-left">
+                                                                            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                                                                                <RotateCcw className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                                                                <span>Reentrega de Evidencia Solicitada</span>
+                                                                                <span className="text-[11px] font-normal text-amber-700/80 dark:text-amber-400">
+                                                                                    · Plazo extendido al <strong>{formatCalendarDate(plan.endDate, "dd/MM/yyyy")}</strong>
+                                                                                </span>
+                                                                            </div>
+                                                                            <p className="text-xs text-amber-900 dark:text-amber-200 italic pl-1 leading-relaxed">
+                                                                                &ldquo;{resubmission.feedback}&rdquo;
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+
                                                                     {/* ── Student evidence link ── */}
                                                                     {plan.evidenceUrl && (
                                                                         <div className="flex items-center gap-2 p-2.5 bg-sky-50/50 dark:bg-sky-950/10 border border-sky-200 rounded-xl">
                                                                             <FileText className="w-4 h-4 text-sky-600 shrink-0" />
                                                                             <a href={plan.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-700 hover:underline font-semibold flex-1 truncate">
-                                                                                Evidencias cargadas por aprendiz — ver enlace
+                                                                                {isResubmissionRequested ? "Evidencia anterior enviada por aprendiz — ver enlace" : "Evidencias cargadas por aprendiz — ver enlace"}
                                                                             </a>
                                                                         </div>
                                                                     )}
+
+                                                                    {/* ── Evidence submission history ── */}
+                                                                    <PlanEvidenceHistoryList history={history} resubmission={resubmission} />
 
                                                                     {/* Paso 5 — Calificación y Evaluación */}
                                                                     <div className={`mt-4 p-4 rounded-xl border text-left ${
                                                                         plan.finalGrade !== null
                                                                             ? "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200"
                                                                             : step4Done
-                                                                                ? new Date() > new Date(plan.endDate)
+                                                                                ? isResubmissionRequested
                                                                                     ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200"
-                                                                                    : "bg-blue-50/50 dark:bg-blue-950/10 border-blue-200"
-                                                                                : "bg-muted/50 border-muted"
+                                                                                    : "bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-200/80"
+                                                                                : new Date() > new Date(plan.endDate)
+                                                                                    ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200"
+                                                                                    : "bg-muted/50 border-muted"
                                                                     }`}>
                                                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                                                             <div className="space-y-1">
                                                                                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Paso 5 — Calificación Final (0-5.0)</span>
                                                                                 {plan.finalGrade !== null ? (
                                                                                     <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-400">
-                                                                                        Plan Evaluado con éxito. Nota: <span className="text-lg font-black">{plan.finalGrade.toFixed(1)} / 5.0</span>
+                                                                                        Plan Evaluado y Finalizado. Nota: <span className="text-lg font-black">{plan.finalGrade.toFixed(1)} / 5.0</span>
                                                                                     </p>
                                                                                 ) : step4Done ? (
-                                                                                    new Date() > new Date(plan.endDate) ? (
+                                                                                    isResubmissionRequested ? (
                                                                                         <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                                                                                            Evidencias recibidas y fecha finalizada. Esperando asignación de calificación.
+                                                                                            Reentrega en proceso. Esperando que el aprendiz cargue la nueva evidencia antes del {formatCalendarDate(plan.endDate, "dd/MM/yyyy")}. Puedes calificar de forma anticipada si lo requieres.
                                                                                         </p>
                                                                                     ) : (
-                                                                                        <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">
-                                                                                            Evidencias recibidas. La calificación estará disponible al vencer el plan ({format(new Date(plan.endDate), "dd/MM/yyyy")}).
+                                                                                        <p className="text-xs text-foreground font-medium">
+                                                                                            Evidencias recibidas. Puedes evaluar y dar por finalizado el plan de mejoramiento o solicitar una reentrega si la evidencia requiere ajustes.
                                                                                         </p>
                                                                                     )
+                                                                                ) : new Date() > new Date(plan.endDate) ? (
+                                                                                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                                                                                        Fecha límite finalizada sin evidencias cargadas. Esperando asignación de calificación.
+                                                                                    </p>
                                                                                 ) : (
                                                                                     <p className="text-xs text-muted-foreground italic">
                                                                                         El aprendiz debe cargar el enlace de evidencias en el Paso 4 antes de proceder con la calificación.
@@ -5088,31 +5141,54 @@ const handleOpenAnalytics = async () => {
                                                                                 )}
                                                                             </div>
                                                                             
-                                                                            {/* Action button for teacher */}
-                                                                            {step4Done && (
-                                                                                <div className="shrink-0">
-                                                                                    {plan.finalGrade !== null ? (
+                                                                            {/* Action buttons for teacher */}
+                                                                            <div className="shrink-0 flex items-center gap-2 flex-wrap">
+                                                                                {plan.finalGrade !== null ? (
+                                                                                    <Button 
+                                                                                        size="sm" 
+                                                                                        variant="outline"
+                                                                                        onClick={() => setGradePlanDialog({ open: true, planId: plan.id, grade: String(plan.finalGrade) })}
+                                                                                        className="h-8 text-xs font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-100/50 cursor-pointer"
+                                                                                    >
+                                                                                        Cambiar Nota
+                                                                                    </Button>
+                                                                                ) : step4Done ? (
+                                                                                    <>
                                                                                         <Button 
-                                                                                            size="sm" 
-                                                                                            variant="outline"
-                                                                                            onClick={() => setGradePlanDialog({ open: true, planId: plan.id, grade: String(plan.finalGrade) })}
-                                                                                            className="h-8 text-xs font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-100/50 cursor-pointer"
+                                                                                            size="sm"
+                                                                                            onClick={() => setGradePlanDialog({ open: true, planId: plan.id, grade: "" })}
+                                                                                            className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1"
                                                                                         >
-                                                                                            Cambiar Nota
+                                                                                            <CheckSquare className="w-3.5 h-3.5" />
+                                                                                            Calificar y Finalizar
                                                                                         </Button>
-                                                                                    ) : (
-                                                                                        new Date() > new Date(plan.endDate) ? (
-                                                                                            <Button 
-                                                                                                size="sm"
-                                                                                                onClick={() => setGradePlanDialog({ open: true, planId: plan.id, grade: "" })}
-                                                                                                className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
-                                                                                            >
-                                                                                                Calificar Plan
-                                                                                            </Button>
-                                                                                        ) : null
-                                                                                    )}
-                                                                                </div>
-                                                                            )}
+                                                                                        <Button 
+                                                                                            size="sm"
+                                                                                            variant="outline"
+                                                                                            onClick={() => setResubmitPlanModal({
+                                                                                                open: true,
+                                                                                                planId: plan.id,
+                                                                                                planNumber: plan.planNumber,
+                                                                                                studentName: formatName(student?.name, student?.profile),
+                                                                                                currentEndDate: plan.endDate,
+                                                                                                currentEvidenceUrl: plan.evidenceUrl,
+                                                                                            })}
+                                                                                            className="h-8 text-xs font-bold border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 cursor-pointer gap-1"
+                                                                                        >
+                                                                                            <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                                                                                            {isResubmissionRequested ? "Modificar Reentrega" : "Solicitar Reentrega"}
+                                                                                        </Button>
+                                                                                    </>
+                                                                                ) : new Date() > new Date(plan.endDate) ? (
+                                                                                    <Button 
+                                                                                        size="sm"
+                                                                                        onClick={() => setGradePlanDialog({ open: true, planId: plan.id, grade: "" })}
+                                                                                        className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+                                                                                    >
+                                                                                        Calificar Plan
+                                                                                    </Button>
+                                                                                ) : null}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -5206,6 +5282,8 @@ const handleOpenAnalytics = async () => {
                                             const step4Done = !!viewGroupPlanDetail.evidenceUrl;
                                             const step5Done = viewGroupPlanDetail.finalGrade !== null;
 
+                                            const viewPlanHistory = getEffectivePlanHistory(viewGroupPlanDetail);
+
                                             return (
                                                 <div className="space-y-5 text-sm text-left">
                                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-b pb-4">
@@ -5235,10 +5313,16 @@ const handleOpenAnalytics = async () => {
                                                         )}
                                                     </div>
 
-                                                    {viewGroupPlanDetail.observations && (
+                                                    {viewPlanHistory.cleanObservations && (
                                                         <div className="space-y-1">
                                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Observaciones</p>
-                                                            <p className="text-xs whitespace-pre-line bg-muted/40 rounded-xl p-3.5 border border-muted/70 leading-relaxed text-foreground">{viewGroupPlanDetail.observations}</p>
+                                                            <p className="text-xs whitespace-pre-line bg-muted/40 rounded-xl p-3.5 border border-muted/70 leading-relaxed text-foreground">{viewPlanHistory.cleanObservations}</p>
+                                                        </div>
+                                                    )}
+
+                                                    {viewPlanHistory.history.length > 0 && (
+                                                        <div className="space-y-1.5">
+                                                            <PlanEvidenceHistoryList history={viewPlanHistory.history} resubmission={viewPlanHistory.resubmission} defaultExpanded={true} />
                                                         </div>
                                                     )}
 
@@ -5481,6 +5565,20 @@ const handleOpenAnalytics = async () => {
                                         )}
                                     </DialogContent>
                                 </Dialog>
+
+                                {/* ── Teacher Request Evidence Resubmission Modal ── */}
+                                <RequestResubmissionModal
+                                    open={!!resubmitPlanModal?.open}
+                                    planId={resubmitPlanModal?.planId || null}
+                                    planNumber={resubmitPlanModal?.planNumber}
+                                    studentName={resubmitPlanModal?.studentName}
+                                    currentEndDate={resubmitPlanModal?.currentEndDate}
+                                    currentEvidenceUrl={resubmitPlanModal?.currentEvidenceUrl}
+                                    onClose={() => setResubmitPlanModal(null)}
+                                    onSuccess={() => {
+                                        loadGroupPlans();
+                                    }}
+                                />
 
                                 {/* ── Delete Confirm ── */}
                                 <AlertDialog open={!!impDeleteConfirm} onOpenChange={(o) => { if (!o) setImpDeleteConfirm(null); }}>
