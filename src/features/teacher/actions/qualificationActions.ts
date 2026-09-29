@@ -27,14 +27,33 @@ export async function getTeacherQualificationsAction(teacherId: string, academic
     const teacher = await prisma.user.findUnique({
         where: { id: teacherId },
         include: {
+            timelines: {
+                select: { id: true, name: true, programId: true }
+            },
             programs: {
                 where: Object.keys(programWhere).length > 0 ? programWhere : undefined,
                 include: {
+                    timelines: {
+                        orderBy: [
+                            { isDefault: "desc" },
+                            { createdAt: "asc" }
+                        ],
+                        select: {
+                            id: true,
+                            name: true,
+                            code: true,
+                            isDefault: true,
+                            description: true
+                        }
+                    },
                     periods: {
                         where: {
                             esEspecial: false
                         },
                         include: {
+                            timeline: {
+                                select: { id: true, name: true, isDefault: true }
+                            },
                             courses: {
                                 where: {
                                     groupId: null
@@ -176,6 +195,7 @@ export async function getTeacherQualificationsAction(teacherId: string, academic
         teacherId,
         teacherName: teacher.name || "Profesor",
         programs: teacher.programs || [],
+        assignedTimelineIds: (teacher.timelines || []).map(t => t.id),
         qualifiedCourses: normalQualifiedCourses,
         qualificationsCreatedBy,
         locked: isLocked,
@@ -224,8 +244,8 @@ export async function updateTeacherQualificationsAction(teacherId: string, cours
         isLocked = teacher?.qualifiedCoursesLocked ?? false;
     }
 
-    if (isLocked && session.user.role !== "admin" && session.user.role !== "gestor") {
-        throw new Error("La configuración de materias está bloqueada para este horario y no se puede modificar.");
+    if (isLocked) {
+        throw new Error("La configuración de materias está bloqueada para este horario. Desbloquea para poder realizar cambios.");
     }
 
     let hasChanges = false;
@@ -693,4 +713,48 @@ export async function adminLockBothAllTeachersScheduleAction({
         count: targetTeacherIds.length,
         message: `${targetTeacherIds.length} instructores ${lock ? "bloqueados" : "desbloqueados"} exitosamente.` 
     };
+}
+
+// Asignar o desasignar líneas de tiempo de un programa a un instructor
+export async function assignTeacherTimelinesAction(teacherId: string, programId: string, timelineIds: string[]) {
+    const session = await getSession();
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
+        throw new Error("No autorizado: Se requiere rol de Administrador o Gestor");
+    }
+
+    const programTimelines = await prisma.curriculumTimeline.findMany({
+        where: { programId },
+        select: { id: true }
+    });
+    const allProgramTimelineIds = programTimelines.map(t => t.id);
+
+    const toDisconnect = allProgramTimelineIds.filter(id => !timelineIds.includes(id));
+    const toConnect = timelineIds.filter(id => allProgramTimelineIds.includes(id));
+
+    await prisma.user.update({
+        where: { id: teacherId },
+        data: {
+            timelines: {
+                disconnect: toDisconnect.map(id => ({ id })),
+                connect: toConnect.map(id => ({ id }))
+            }
+        }
+    });
+
+    // Audit log
+    const { auditLogger } = await import("@/features/admin/services/auditLogger");
+    await auditLogger.log({
+        action: "UPDATE",
+        entity: "USER",
+        entityId: teacherId,
+        userId: session.user.id,
+        userName: session.user.name || "Gestor",
+        userRole: session.user.role,
+        description: `Líneas de tiempo asignadas al instructor (${toConnect.length} asignadas) en programa ${programId}`,
+        success: true,
+    });
+
+    revalidatePath("/dashboard/gestor/schedules");
+    revalidatePath("/dashboard/teacher/schedule");
+    return { success: true };
 }

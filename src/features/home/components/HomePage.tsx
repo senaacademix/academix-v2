@@ -127,10 +127,10 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
     } else if (activeRole === "gestor") {
       return [
         {
-          title: "Gestión de Usuarios",
-          description: "Matrícula de aprendices, carga masiva e instructores vinculados.",
+          title: "Gestión de Aprendices",
+          description: "Matrícula de aprendices, carga masiva y planes de mejoramiento.",
           url: "/dashboard/gestor/users",
-          icon: Users,
+          icon: GraduationCap,
           color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
         },
         {
@@ -158,10 +158,10 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
     } else if (activeRole === "observer") {
       return [
         {
-          title: "Gestión de Usuarios",
-          description: "Consulta de aprendices, instructores y planes de mejoramiento.",
+          title: "Gestión de Aprendices",
+          description: "Consulta de aprendices y planes de mejoramiento.",
           url: "/dashboard/admin/users",
-          icon: Users,
+          icon: GraduationCap,
           color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
         },
         {

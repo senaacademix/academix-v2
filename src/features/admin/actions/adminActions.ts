@@ -930,6 +930,9 @@ export async function updateStudentAction(userId: string, data: {
     });
 
     revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
+    revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
     return updatedUser;
 }
 

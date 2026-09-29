@@ -158,9 +158,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               isActive: false,
             },
             {
-              title: "Gestión de Usuarios",
+              title: "Gestión de Aprendices",
               url: effectiveGestorProgramId ? `/dashboard/gestor/users?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/users",
-              icon: Users,
+              icon: GraduationCap,
               isActive: false,
             },
             {
@@ -197,9 +197,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 isActive: false,
               },
               {
-                title: "Gestión de Usuarios",
+                title: "Gestión de Aprendices",
                 url: effectiveGestorProgramId ? `/dashboard/admin/users?programId=${effectiveGestorProgramId}` : "/dashboard/admin/users",
-                icon: Users,
+                icon: GraduationCap,
                 isActive: false,
               },
             ]

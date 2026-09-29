@@ -531,7 +531,7 @@ export function TeacherUsersManagement({
 
       {/* Edit Teacher Modal */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-2xl rounded-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-indigo-600" />
@@ -542,24 +542,22 @@ export function TeacherUsersManagement({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Nombres *</Label>
-                <Input
-                  placeholder="Ej: Carlos"
-                  value={editNombres}
-                  onChange={(e) => setEditNombres(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Apellidos *</Label>
-                <Input
-                  placeholder="Ej: Gómez"
-                  value={editApellido}
-                  onChange={(e) => setEditApellido(e.target.value)}
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Nombres *</Label>
+              <Input
+                placeholder="Ej: Carlos"
+                value={editNombres}
+                onChange={(e) => setEditNombres(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Apellidos *</Label>
+              <Input
+                placeholder="Ej: Gómez"
+                value={editApellido}
+                onChange={(e) => setEditApellido(e.target.value)}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -581,24 +579,22 @@ export function TeacherUsersManagement({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Teléfono</Label>
-                <Input
-                  placeholder="Ej: 3001234567"
-                  value={editTelefono}
-                  onChange={(e) => setEditTelefono(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Nueva Contraseña</Label>
-                <Input
-                  type="password"
-                  placeholder="(Dejar en blanco para mantener)"
-                  value={editPassword}
-                  onChange={(e) => setEditPassword(e.target.value)}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Teléfono</Label>
+              <Input
+                placeholder="Ej: 3001234567"
+                value={editTelefono}
+                onChange={(e) => setEditTelefono(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Nueva Contraseña</Label>
+              <Input
+                type="password"
+                placeholder="(Dejar en blanco para mantener)"
+                value={editPassword}
+                onChange={(e) => setEditPassword(e.target.value)}
+              />
             </div>
           </div>
 
@@ -619,7 +615,7 @@ export function TeacherUsersManagement({
 
       {/* Create Teacher Modal */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="sm:max-w-2xl rounded-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-indigo-600" />

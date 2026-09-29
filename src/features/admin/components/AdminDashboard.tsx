@@ -217,10 +217,10 @@ export function AdminDashboard({
     // Operational modules for the selected program or system-wide
     const operationalModules = isGestor && currentProgram ? [
         {
-            title: "Gestión de Usuarios",
-            description: "Administración de aprendices, instructores, fichas e importación masiva.",
+            title: "Gestión de Aprendices",
+            description: "Directorio de aprendices, control de fichas, planes de mejoramiento y matrícula.",
             link: `/dashboard/admin/users?programId=${currentProgram.id}`,
-            icon: Users,
+            icon: GraduationCap,
             color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
         },
         {
@@ -493,7 +493,7 @@ export function AdminDashboard({
                             {isObserver
                                 ? "Auditoría en tiempo real, consulta curricular, supervisión de mallas y métricas analíticas del centro."
                                 : isGestor && currentProgram 
-                                    ? `Métricas en tiempo real, gestión de usuarios, estructura curricular y programación horaria para ${currentProgram.name}.`
+                                    ? `Métricas en tiempo real, gestión de aprendices, estructura curricular y programación horaria para ${currentProgram.name}.`
                                     : "Métricas consolidadas, estructura académica, programación horaria y gestión global de la plataforma AcademiX."
                             }
                         </p>
@@ -535,8 +535,8 @@ export function AdminDashboard({
 
                                 <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
                                     <Link href={currentProgram ? `/dashboard/admin/users?programId=${currentProgram.id}` : "/dashboard/admin/users"}>
-                                        <UserPlus className="h-4 w-4 mr-2" />
-                                        Gestión de Usuarios
+                                        <GraduationCap className="h-4 w-4 mr-2" />
+                                        Gestión de Aprendices
                                     </Link>
                                 </Button>
                             </>

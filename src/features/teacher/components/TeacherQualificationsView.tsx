@@ -6,11 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { BookOpen, CheckCircle2, AlertCircle, Lock, User, Calendar, GraduationCap } from "lucide-react";
+import { BookOpen, CheckCircle2, AlertCircle, Lock, User, Calendar, GraduationCap, GitBranch, Layers, Check, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
     Select,
     SelectContent,
@@ -23,7 +24,8 @@ import {
     updateTeacherQualificationsAction,
     publishTeacherQualificationsAction,
     adminLockTeacherQualificationsAction,
-    unlockTeacherQualificationsAction
+    unlockTeacherQualificationsAction,
+    assignTeacherTimelinesAction
 } from "../actions/qualificationActions";
 import { getScheduleCalendarYear } from "@/lib/dateUtils";
 import {
@@ -73,6 +75,8 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
     const [qualPrograms, setQualPrograms] = useState<any[]>([]);
     const [selectedProgramId, setSelectedProgramId] = useState<string>(programId || "");
     const [selectedQualCourses, setSelectedQualCourses] = useState<string[]>([]);
+    const [assignedTimelineIds, setAssignedTimelineIds] = useState<string[]>([]);
+    const [selectedTimelineFilter, setSelectedTimelineFilter] = useState<string>("ALL");
     const [qualificationsCreatedBy, setQualificationsCreatedBy] = useState<Record<string, { id: string; name: string | null; role: string }>>({});
     const [schedules, setSchedules] = useState<{ id: string; name: string; isActive: boolean; startDate?: string | Date; endDate?: string | Date }[]>([]);
     const [selectedScheduleId, setSelectedScheduleId] = useState<string>(scheduleId || "");
@@ -140,6 +144,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                     setSelectedProgramId(prev => (prev && progs.some((p: any) => p.id === prev)) ? prev : progs[0].id);
                 }
                 setSelectedQualCourses(((data as any).qualifiedCourses || []).map((c: any) => c.id));
+                setAssignedTimelineIds((data as any).assignedTimelineIds || []);
                 setQualificationsCreatedBy((data as any).qualificationsCreatedBy || {});
                 setLocked((data as any).locked || false);
                 if ((data as any).schedules) {
@@ -166,8 +171,72 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         }
     };
 
+    const handleToggleTimelineAssignment = (progId: string, tlId: string) => {
+        if (!targetTeacherId) return;
+        if (locked) {
+            toast.error("Las materias están bloqueadas para este horario. Desbloquea para modificar las líneas de tiempo asignadas.");
+            return;
+        }
+        const prog = qualPrograms.find(p => p.id === progId);
+        const progTlIds = (prog?.timelines || []).map((t: any) => t.id);
+        const isCurrentlyAssigned = assignedTimelineIds.includes(tlId);
+        
+        const newAssignedInProg = isCurrentlyAssigned
+            ? assignedTimelineIds.filter(id => id !== tlId && progTlIds.includes(id))
+            : [...assignedTimelineIds.filter(id => progTlIds.includes(id)), tlId];
+
+        const prevAssigned = [...assignedTimelineIds];
+        const nextAssigned = isCurrentlyAssigned
+            ? assignedTimelineIds.filter(id => id !== tlId)
+            : [...assignedTimelineIds, tlId];
+
+        setAssignedTimelineIds(nextAssigned);
+
+        startTransition(async () => {
+            try {
+                await assignTeacherTimelinesAction(targetTeacherId, progId, newAssignedInProg);
+                toast.success(isCurrentlyAssigned ? "Línea de formación desasignada" : "Línea de formación asignada al instructor");
+            } catch (e: any) {
+                setAssignedTimelineIds(prevAssigned);
+                toast.error(e.message || "Error al actualizar asignación de línea de tiempo");
+            }
+        });
+    };
+
+    const handleAssignAllTimelines = (progId: string, assignAll: boolean) => {
+        if (!targetTeacherId) return;
+        if (locked) {
+            toast.error("Las materias están bloqueadas para este horario. Desbloquea para modificar las líneas de tiempo asignadas.");
+            return;
+        }
+        const prog = qualPrograms.find(p => p.id === progId);
+        if (!prog) return;
+        const progTlIds = (prog.timelines || []).map((t: any) => t.id);
+
+        const newAssignedInProg = assignAll ? progTlIds : [];
+        const otherProgTlIds = assignedTimelineIds.filter(id => !progTlIds.includes(id));
+        const prevAssigned = [...assignedTimelineIds];
+        const nextAssigned = [...otherProgTlIds, ...newAssignedInProg];
+
+        setAssignedTimelineIds(nextAssigned);
+
+        startTransition(async () => {
+            try {
+                await assignTeacherTimelinesAction(targetTeacherId, progId, newAssignedInProg);
+                toast.success(assignAll ? "Todas las líneas de formación fueron asignadas" : "Líneas de formación desasignadas");
+            } catch (e: any) {
+                setAssignedTimelineIds(prevAssigned);
+                toast.error(e.message || "Error al actualizar asignación de líneas de formación");
+            }
+        });
+    };
+
     const handleSaveChanges = () => {
         if (!targetTeacherId) return;
+        if (locked) {
+            toast.error("Las materias están bloqueadas para este horario. Desbloquea para poder realizar cambios.");
+            return;
+        }
         startTransition(async () => {
             try {
                 await updateTeacherQualificationsAction(targetTeacherId, selectedQualCourses, selectedScheduleId);
@@ -183,9 +252,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         if (!targetTeacherId) return;
         startTransition(async () => {
             try {
-                // First save the current state
                 await updateTeacherQualificationsAction(targetTeacherId, selectedQualCourses, selectedScheduleId);
-                // Then publish/lock
                 await publishTeacherQualificationsAction(targetTeacherId, selectedScheduleId);
                 toast.success("Materias publicadas y bloqueadas con éxito");
                 setPublishDialogOpen(false);
@@ -240,12 +307,29 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         ? qualPrograms.filter(p => p.id === effectiveProgramId) 
         : (qualPrograms.length > 0 ? [qualPrograms[0]] : []);
 
-    // Calculate global stats (only normal periods and master courses without group)
-    const allCourses = filteredQualPrograms.flatMap(p => 
-        (p.periods || [])
-            .filter((per: any) => !per.esEspecial)
-            .flatMap((per: any) => (per.courses || []).filter((c: any) => !c.groupId))
-    );
+    // Calculate global stats (filtered to normal periods and master courses belonging to assigned timelines)
+    const allCourses = filteredQualPrograms.flatMap(p => {
+        const progTimelines = p.timelines || [];
+        const normalPeriods = (p.periods || []).filter((per: any) => !per.esEspecial);
+        
+        if (progTimelines.length === 0) {
+            return normalPeriods.flatMap((per: any) => (per.courses || []).filter((c: any) => !c.groupId));
+        }
+
+        const assignedIds = progTimelines
+            .map((t: any) => t.id)
+            .filter((id: string) => assignedTimelineIds.includes(id));
+
+        return normalPeriods
+            .filter((per: any) => {
+                if (per.timelineId) {
+                    return assignedIds.includes(per.timelineId);
+                }
+                const defaultTl = progTimelines.find((t: any) => t.isDefault);
+                return defaultTl ? assignedIds.includes(defaultTl.id) : false;
+            })
+            .flatMap((per: any) => (per.courses || []).filter((c: any) => !c.groupId));
+    });
     const totalCoursesCount = allCourses.length;
     const selectedCoursesCount = allCourses.filter((c: any) => selectedQualCourses.includes(c.id)).length;
     const globalPercentage = totalCoursesCount > 0 ? Math.round((selectedCoursesCount / totalCoursesCount) * 100) : 0;
@@ -364,7 +448,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                 size="sm" 
                                 onClick={handleAdminUnlock} 
                                 disabled={isPending}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 cursor-pointer"
                             >
                                 Desbloquear
                             </Button>
@@ -461,7 +545,9 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                 Asignaturas Disponibles en tus Programas
                             </CardTitle>
                             <CardDescription>
-                                Selecciona de la lista a continuación las materias que estás en capacidad de ejecutar.
+                                {isAdminMode 
+                                    ? "Asigna las líneas de tiempo correspondientes y selecciona las materias que este instructor está en capacidad de ejecutar."
+                                    : "Selecciona de la lista a continuación las materias que estás en capacidad de ejecutar en tus líneas asignadas."}
                             </CardDescription>
                         </div>
                         {totalCoursesCount > 0 && (
@@ -483,119 +569,498 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                     ) : (
                         <div className="space-y-6">
                             {filteredQualPrograms.map(program => {
+                                const progTimelines = program.timelines || [];
+                                const hasTimelines = progTimelines.length > 0;
+                                const assignedInProg = progTimelines.filter((tl: any) => assignedTimelineIds.includes(tl.id));
                                 const normalPeriods = (program.periods || []).filter((p: any) => !p.esEspecial);
-                                const programCourses = normalPeriods.flatMap((p: any) => (p.courses || []).filter((c: any) => !c.groupId));
-                                const totalProgramCourses = programCourses.length;
-                                const selectedProgramCourses = programCourses.filter((c: any) => selectedQualCourses.includes(c.id)).length;
-                                const programPercentage = totalProgramCourses > 0 ? Math.round((selectedProgramCourses / totalProgramCourses) * 100) : 0;
 
                                 return (
-                                    <div key={program.id} className="space-y-4 p-4 bg-muted/5 rounded-xl border border-border/30">
-                                        <div className="space-y-2 border-b border-border/30 pb-3">
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                                <h4 className="font-bold text-sm text-primary uppercase tracking-wider">{program.name}</h4>
+                                    <div key={program.id} className="space-y-5 p-4 sm:p-5 bg-muted/5 rounded-2xl border border-border/40">
+                                        {/* Program Header */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border/30 pb-3">
+                                            <div>
+                                                <h4 className="font-black text-sm text-primary uppercase tracking-wider">{program.name}</h4>
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    {hasTimelines 
+                                                        ? (isAdminMode 
+                                                            ? `${progTimelines.length} líneas de formación registradas` 
+                                                            : `${assignedInProg.length} ${assignedInProg.length === 1 ? "línea de formación asignada" : "líneas de formación asignadas"}`)
+                                                        : `${normalPeriods.length} trimestres registrados`}
+                                                </p>
+                                            </div>
+                                            {hasTimelines && (
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-muted-foreground font-semibold">
-                                                        {selectedProgramCourses} de {totalProgramCourses} materias
-                                                    </span>
-                                                    <Badge variant={programPercentage === 100 ? "success" : "secondary"} className="font-bold">
-                                                        {programPercentage}%
+                                                    <Badge variant="outline" className="text-xs font-bold bg-background">
+                                                        {isAdminMode
+                                                            ? `${assignedInProg.length} de ${progTimelines.length} líneas asignadas`
+                                                            : `${assignedInProg.length} ${assignedInProg.length === 1 ? "línea asignada" : "líneas asignadas"}`}
                                                     </Badge>
                                                 </div>
-                                            </div>
-                                            {totalProgramCourses > 0 && (
-                                                <Progress value={programPercentage} className="h-1.5 bg-muted" />
                                             )}
                                         </div>
-                                        <div className="space-y-4">
-                                            {normalPeriods.map((period: any) => {
-                                                const periodCourses = (period.courses || []).filter((c: any) => !c.groupId);
-                                                return (
-                                                    <div key={period.id} className="space-y-2">
-                                                        <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-muted/50 p-1.5 rounded">{period.name}</h5>
-                                                        {periodCourses.length === 0 ? (
-                                                            <div className="text-[10px] text-muted-foreground/60 italic pl-2">No hay materias registradas en este periodo.</div>
-                                                        ) : (
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2">
-                                                                {periodCourses.map((course: any) => {
-                                                                    const isChecked = selectedQualCourses.includes(course.id);
-                                                                    const creator = qualificationsCreatedBy[course.id] || (targetTeacherId ? { id: targetTeacherId, name: loadedTeacherName || "Instructor", role: "teacher" } : null);
-                                                                    const authorRoleLabel = getAuthorRoleLabel(creator, targetTeacherId);
-                                                                    const isProf = authorRoleLabel === "Instructor";
-                                                                    const authorName = creator?.name || "Usuario registrado";
 
-                                                                    return (
-                                                                        <div 
-                                                                            key={course.id} 
-                                                                            className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${
-                                                                                isChecked 
-                                                                                    ? "bg-primary/5 border-primary/20" 
-                                                                                    : "bg-background border-border hover:bg-muted/30"
-                                                                            }`}
-                                                                        >
-                                                                            <div className="flex items-center space-x-2.5 min-w-0 flex-1">
-                                                                                <Checkbox
-                                                                                    id={`qual-course-${course.id}`}
-                                                                                    checked={isChecked}
-                                                                                    disabled={locked && !isAdminMode}
-                                                                                    onCheckedChange={(checked) => {
-                                                                                        if (checked) {
-                                                                                            setSelectedQualCourses(prev => [...prev, course.id]);
-                                                                                            const currentRole = session?.user?.role || (isAdminMode ? "gestor" : "teacher");
-                                                                                            const currentName = session?.user?.name || (isAdminMode ? "Gestor" : (loadedTeacherName || "Instructor"));
-                                                                                            setQualificationsCreatedBy(prev => ({
-                                                                                                ...prev,
-                                                                                                [course.id]: {
-                                                                                                    id: session?.user?.id || targetTeacherId || "",
-                                                                                                    name: currentName,
-                                                                                                    role: currentRole
-                                                                                                }
-                                                                                            }));
-                                                                                        } else {
-                                                                                            setSelectedQualCourses(prev => prev.filter(id => id !== course.id));
-                                                                                        }
-                                                                                    }}
-                                                                                    className="h-4 w-4 rounded-sm border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0"
-                                                                                />
-                                                                                <Label 
-                                                                                    htmlFor={`qual-course-${course.id}`} 
-                                                                                    className={`text-xs font-semibold cursor-pointer select-none transition-colors truncate ${locked && !isAdminMode ? "opacity-70 cursor-not-allowed" : "hover:text-foreground"}`}
-                                                                                >
-                                                                                    {course.title}
-                                                                                </Label>
-                                                                            </div>
+                                        {/* Section: Timeline Assignment (Gestores can assign/unassign; Instructor only views assigned) */}
+                                        {hasTimelines && (isAdminMode || assignedInProg.length > 0) && (
+                                            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-primary/15">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                                                            <GitBranch className="w-4 h-4" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-xs font-black uppercase tracking-wider text-foreground">
+                                                                    {isAdminMode ? "Líneas de Tiempo de Formación Asignadas" : "Líneas de Tiempo Asignadas"}
+                                                                </span>
+                                                                <Badge 
+                                                                    variant={assignedInProg.length > 0 ? "default" : "destructive"} 
+                                                                    className="text-[10px] font-extrabold h-4.5 px-2 py-0"
+                                                                >
+                                                                    {isAdminMode
+                                                                        ? `${assignedInProg.length} de ${progTimelines.length} asignadas`
+                                                                        : `${assignedInProg.length} ${assignedInProg.length === 1 ? "línea asignada" : "líneas asignadas"}`}
+                                                                </Badge>
+                                                            </div>
+                                                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                                {isAdminMode
+                                                                    ? "Elige en cuáles líneas de tiempo gestiona materias este instructor."
+                                                                    : "Líneas de tiempo asignadas a tu perfil por el gestor académico."}
+                                                            </p>
+                                                        </div>
+                                                    </div>
 
-                                                                            {isChecked && (
-                                                                                <Tooltip>
-                                                                                    <TooltipTrigger asChild>
-                                                                                        <Badge 
-                                                                                            variant="outline" 
-                                                                                            className={`ml-2 text-[9px] font-bold px-1.5 py-0 rounded shrink-0 cursor-help ${
-                                                                                                isProf 
-                                                                                                    ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
-                                                                                                    : authorRoleLabel === "Gestor"
-                                                                                                    ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
-                                                                                                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-                                                                                            }`}
-                                                                                        >
-                                                                                            <User className="w-2.5 h-2.5 mr-0.5 inline" />
-                                                                                            {authorRoleLabel}
-                                                                                        </Badge>
-                                                                                    </TooltipTrigger>
-                                                                                    <TooltipContent className="text-xs font-semibold">
-                                                                                        <p>Habilitado por: <strong>{authorName}</strong> ({authorRoleLabel})</p>
-                                                                                    </TooltipContent>
-                                                                                </Tooltip>
+                                                    {isAdminMode && progTimelines.length > 1 && (
+                                                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                disabled={locked || isPending || assignedInProg.length === progTimelines.length}
+                                                                onClick={() => handleAssignAllTimelines(program.id, true)}
+                                                                className="h-7 text-[11px] font-bold text-primary hover:bg-primary/10 cursor-pointer"
+                                                            >
+                                                                <CheckCheck className="w-3.5 h-3.5 mr-1" />
+                                                                Asignar Todas
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                disabled={locked || isPending || assignedInProg.length === 0}
+                                                                onClick={() => handleAssignAllTimelines(program.id, false)}
+                                                                className="h-7 text-[11px] font-bold text-muted-foreground hover:bg-muted cursor-pointer"
+                                                            >
+                                                                Desasignar Todas
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Timeline items: In instructor mode (!isAdminMode), show ONLY the timelines assigned by gestor */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                                    {(isAdminMode ? progTimelines : assignedInProg).map((tl: any) => {
+                                                            const isAssigned = assignedTimelineIds.includes(tl.id);
+                                                            const tlPeriods = normalPeriods.filter((p: any) => 
+                                                                p.timelineId === tl.id || (!p.timelineId && tl.isDefault)
+                                                            );
+                                                            const tlCourses = tlPeriods.flatMap((p: any) => (p.courses || []).filter((c: any) => !c.groupId));
+                                                            const tlSelectedCount = tlCourses.filter((c: any) => selectedQualCourses.includes(c.id)).length;
+                                                            const tlPct = tlCourses.length > 0 ? Math.round((tlSelectedCount / tlCourses.length) * 100) : 0;
+
+                                                            return (
+                                                                <div
+                                                                    key={tl.id}
+                                                                    onClick={() => {
+                                                                        if (!isAdminMode || locked || isPending) return;
+                                                                        handleToggleTimelineAssignment(program.id, tl.id);
+                                                                    }}
+                                                                    className={cn(
+                                                                        "group relative flex items-start gap-3 p-3 rounded-xl border transition-all text-left",
+                                                                        isAdminMode && !locked ? "cursor-pointer hover:shadow-xs" : "cursor-default",
+                                                                        isAssigned
+                                                                            ? "bg-card border-primary/40 shadow-xs ring-1 ring-primary/20"
+                                                                            : "bg-card/40 border-border/70 opacity-60 hover:opacity-100"
+                                                                    )}
+                                                                >
+                                                                    {isAdminMode ? (
+                                                                        <Checkbox
+                                                                            id={`assign-tl-${tl.id}`}
+                                                                            checked={isAssigned}
+                                                                            disabled={locked || isPending}
+                                                                            onCheckedChange={() => handleToggleTimelineAssignment(program.id, tl.id)}
+                                                                            className="mt-0.5 shrink-0 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 bg-primary/10 text-primary border border-primary/30">
+                                                                            <Check className="w-3 h-3 stroke-[2.5]" />
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div className="min-w-0 flex-1 space-y-1">
+                                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                                            <Label 
+                                                                                htmlFor={`assign-tl-${tl.id}`}
+                                                                                className={cn(
+                                                                                    "text-xs font-bold truncate",
+                                                                                    isAdminMode && !locked ? "cursor-pointer" : "cursor-default",
+                                                                                    isAssigned ? "text-foreground" : "text-muted-foreground"
+                                                                                )}
+                                                                            >
+                                                                                {tl.name}
+                                                                            </Label>
+                                                                            {tl.isDefault && (
+                                                                                <Badge variant="outline" className="text-[9px] font-black uppercase px-1.5 py-0 h-4 bg-primary/10 border-primary/20 text-primary">
+                                                                                    Principal
+                                                                                </Badge>
                                                                             )}
                                                                         </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
+
+                                                                        {tl.description && (
+                                                                            <p className="text-[10px] text-muted-foreground/80 line-clamp-1">
+                                                                                {tl.description}
+                                                                            </p>
+                                                                        )}
+
+                                                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium pt-0.5">
+                                                                            <span>{tlPeriods.length} trimestres</span>
+                                                                            <span>•</span>
+                                                                            <span>{tlCourses.length} materias</span>
+                                                                            {isAssigned && tlCourses.length > 0 && (
+                                                                                <>
+                                                                                    <span>•</span>
+                                                                                    <span className="font-bold text-primary">
+                                                                                        {tlSelectedCount} ({tlPct}%)
+                                                                                    </span>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
+                                            </div>
+                                        )}
+
+                                        {/* Display Periods and Courses */}
+                                        {hasTimelines ? (
+                                            assignedInProg.length === 0 ? (
+                                                <div className="py-10 px-4 text-center rounded-xl border-2 border-dashed border-border bg-card/40 space-y-3">
+                                                    <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+                                                        <GitBranch className="w-6 h-6" />
+                                                    </div>
+                                                    <div className="max-w-md mx-auto space-y-1">
+                                                        <h5 className="text-sm font-bold text-foreground">Sin líneas de tiempo asignadas</h5>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {isAdminMode
+                                                                ? "Este instructor aún no tiene líneas de tiempo asignadas en este programa. Marca una o más líneas arriba para habilitar la visualización y selección de sus asignaturas."
+                                                                : "Tu gestor académico aún no te ha asignado ninguna línea de tiempo en este programa. Comunícate con tu gestor para que active tu malla curricular."}
+                                                        </p>
+                                                    </div>
+                                                    {isAdminMode && !locked && (
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                const defaultTl = progTimelines.find((t: any) => t.isDefault) || progTimelines[0];
+                                                                if (defaultTl) {
+                                                                    handleToggleTimelineAssignment(program.id, defaultTl.id);
+                                                                }
+                                                            }}
+                                                            className="font-bold text-xs"
+                                                        >
+                                                            <Check className="w-3.5 h-3.5 mr-1.5" />
+                                                            Asignar Línea Principal ({progTimelines.find((t: any) => t.isDefault)?.name || progTimelines[0]?.name})
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-6">
+                                                    {/* Filter tab selector when more than 1 timeline is assigned */}
+                                                    {assignedInProg.length > 1 && (
+                                                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                                                            <Button
+                                                                type="button"
+                                                                variant={selectedTimelineFilter === "ALL" ? "default" : "outline"}
+                                                                size="sm"
+                                                                onClick={() => setSelectedTimelineFilter("ALL")}
+                                                                className="h-7 text-xs font-bold rounded-lg px-2.5"
+                                                            >
+                                                                Todas las Líneas ({assignedInProg.length})
+                                                            </Button>
+                                                            {assignedInProg.map((tl: any) => (
+                                                                <Button
+                                                                    key={tl.id}
+                                                                    type="button"
+                                                                    variant={selectedTimelineFilter === tl.id ? "default" : "outline"}
+                                                                    size="sm"
+                                                                    onClick={() => setSelectedTimelineFilter(tl.id)}
+                                                                    className="h-7 text-xs font-bold rounded-lg px-2.5 truncate max-w-[220px]"
+                                                                >
+                                                                    {tl.name}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {assignedInProg
+                                                        .filter((tl: any) => selectedTimelineFilter === "ALL" || selectedTimelineFilter === tl.id)
+                                                        .map((tl: any) => {
+                                                            const tlPeriods = normalPeriods.filter((p: any) => 
+                                                                p.timelineId === tl.id || (!p.timelineId && tl.isDefault)
+                                                            );
+                                                            const tlCourses = tlPeriods.flatMap((p: any) => (p.courses || []).filter((c: any) => !c.groupId));
+                                                            const tlSelectedCount = tlCourses.filter((c: any) => selectedQualCourses.includes(c.id)).length;
+                                                            const tlPercentage = tlCourses.length > 0 ? Math.round((tlSelectedCount / tlCourses.length) * 100) : 0;
+
+                                                            return (
+                                                                <div key={tl.id} className="space-y-4 p-4 rounded-xl border border-border/60 bg-card/60 backdrop-blur-xs">
+                                                                    {/* Timeline Header */}
+                                                                    <div className="space-y-2 border-b border-border/40 pb-3">
+                                                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Layers className="w-4 h-4 text-primary shrink-0" />
+                                                                                <h5 className="font-bold text-sm text-foreground uppercase tracking-wider">
+                                                                                    {tl.name}
+                                                                                </h5>
+                                                                                {tl.isDefault && (
+                                                                                    <Badge variant="outline" className="text-[9px] font-black uppercase text-primary border-primary/20 bg-primary/10">
+                                                                                        Principal
+                                                                                    </Badge>
+                                                                                )}
+                                                                                {tl.code && (
+                                                                                    <span className="text-[10px] font-mono text-muted-foreground font-semibold">
+                                                                                        ({tl.code})
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-xs text-muted-foreground font-semibold">
+                                                                                    {tlSelectedCount} de {tlCourses.length} materias
+                                                                                </span>
+                                                                                <Badge variant={tlPercentage === 100 ? "success" : "secondary"} className="font-bold">
+                                                                                    {tlPercentage}%
+                                                                                </Badge>
+                                                                            </div>
+                                                                        </div>
+                                                                        {tlCourses.length > 0 && (
+                                                                            <Progress value={tlPercentage} className="h-1.5 bg-muted" />
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Periods inside this timeline */}
+                                                                    <div className="space-y-4">
+                                                                        {tlPeriods.length === 0 ? (
+                                                                            <div className="text-xs text-muted-foreground italic py-2">
+                                                                                No hay trimestres configurados en esta línea de tiempo.
+                                                                            </div>
+                                                                        ) : (
+                                                                            tlPeriods.map((period: any) => {
+                                                                                const periodCourses = (period.courses || []).filter((c: any) => !c.groupId);
+                                                                                return (
+                                                                                    <div key={period.id} className="space-y-2">
+                                                                                        <div className="flex items-center justify-between bg-muted/40 px-2.5 py-1.5 rounded-lg border border-border/30">
+                                                                                            <span className="text-xs font-black text-muted-foreground uppercase tracking-wider">
+                                                                                                {period.name}
+                                                                                            </span>
+                                                                                            <span className="text-[10px] text-muted-foreground font-semibold">
+                                                                                                {periodCourses.filter((c: any) => selectedQualCourses.includes(c.id)).length} de {periodCourses.length}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        {periodCourses.length === 0 ? (
+                                                                                            <div className="text-[10px] text-muted-foreground/60 italic pl-2">
+                                                                                                No hay materias registradas en este trimestre.
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-1">
+                                                                                                {periodCourses.map((course: any) => {
+                                                                                                    const isChecked = selectedQualCourses.includes(course.id);
+                                                                                                    const creator = qualificationsCreatedBy[course.id] || (targetTeacherId ? { id: targetTeacherId, name: loadedTeacherName || "Instructor", role: "teacher" } : null);
+                                                                                                    const authorRoleLabel = getAuthorRoleLabel(creator, targetTeacherId);
+                                                                                                    const isProf = authorRoleLabel === "Instructor";
+                                                                                                    const authorName = creator?.name || "Usuario registrado";
+
+                                                                                                    return (
+                                                                                                        <div 
+                                                                                                            key={course.id} 
+                                                                                                            className={cn(
+                                                                                                                "flex items-center justify-between p-2.5 rounded-lg border transition-colors",
+                                                                                                                isChecked 
+                                                                                                                    ? "bg-primary/5 border-primary/30" 
+                                                                                                                    : "bg-background border-border hover:bg-muted/30"
+                                                                                                            )}
+                                                                                                        >
+                                                                                                            <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                                                                                                                <Checkbox
+                                                                                                                    id={`qual-course-${course.id}`}
+                                                                                                                    checked={isChecked}
+                                                                                                                    disabled={locked}
+                                                                                                                    onCheckedChange={(checked) => {
+                                                                                                                        if (locked) return;
+                                                                                                                        if (checked) {
+                                                                                                                            setSelectedQualCourses(prev => [...prev, course.id]);
+                                                                                                                            const currentRole = session?.user?.role || (isAdminMode ? "gestor" : "teacher");
+                                                                                                                            const currentName = session?.user?.name || (isAdminMode ? "Gestor" : (loadedTeacherName || "Instructor"));
+                                                                                                                            setQualificationsCreatedBy(prev => ({
+                                                                                                                                ...prev,
+                                                                                                                                [course.id]: {
+                                                                                                                                    id: session?.user?.id || targetTeacherId || "",
+                                                                                                                                    name: currentName,
+                                                                                                                                    role: currentRole
+                                                                                                                                }
+                                                                                                                            }));
+                                                                                                                        } else {
+                                                                                                                            setSelectedQualCourses(prev => prev.filter(id => id !== course.id));
+                                                                                                                        }
+                                                                                                                    }}
+                                                                                                                    className="h-4 w-4 rounded-sm border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0"
+                                                                                                                />
+                                                                                                                <Label 
+                                                                                                                    htmlFor={`qual-course-${course.id}`} 
+                                                                                                                    className={cn(
+                                                                                                                        "text-xs font-semibold select-none transition-colors truncate",
+                                                                                                                        locked ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:text-foreground"
+                                                                                                                    )}
+                                                                                                                >
+                                                                                                                    {course.title}
+                                                                                                                </Label>
+                                                                                                            </div>
+
+                                                                                                            {isChecked && (
+                                                                                                                <Tooltip>
+                                                                                                                    <TooltipTrigger asChild>
+                                                                                                                        <Badge 
+                                                                                                                            variant="outline" 
+                                                                                                                            className={cn(
+                                                                                                                                "ml-2 text-[9px] font-bold px-1.5 py-0 rounded shrink-0 cursor-help",
+                                                                                                                                isProf 
+                                                                                                                                    ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
+                                                                                                                                    : authorRoleLabel === "Gestor"
+                                                                                                                                    ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                                                                                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                                                                                                                            )}
+                                                                                                                        >
+                                                                                                                            <User className="w-2.5 h-2.5 mr-0.5 inline" />
+                                                                                                                            {authorRoleLabel}
+                                                                                                                        </Badge>
+                                                                                                                    </TooltipTrigger>
+                                                                                                                    <TooltipContent className="text-xs font-semibold">
+                                                                                                                        <p>Habilitado por: <strong>{authorName}</strong> ({authorRoleLabel})</p>
+                                                                                                                    </TooltipContent>
+                                                                                                                </Tooltip>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                })}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                </div>
+                                            )
+                                        ) : (
+                                            /* Fallback for programs without explicit timelines */
+                                            <div className="space-y-4">
+                                                {normalPeriods.map((period: any) => {
+                                                    const periodCourses = (period.courses || []).filter((c: any) => !c.groupId);
+                                                    return (
+                                                        <div key={period.id} className="space-y-2">
+                                                            <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-muted/50 p-1.5 rounded">{period.name}</h5>
+                                                            {periodCourses.length === 0 ? (
+                                                                <div className="text-[10px] text-muted-foreground/60 italic pl-2">No hay materias registradas en este periodo.</div>
+                                                            ) : (
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-2">
+                                                                    {periodCourses.map((course: any) => {
+                                                                        const isChecked = selectedQualCourses.includes(course.id);
+                                                                        const creator = qualificationsCreatedBy[course.id] || (targetTeacherId ? { id: targetTeacherId, name: loadedTeacherName || "Instructor", role: "teacher" } : null);
+                                                                        const authorRoleLabel = getAuthorRoleLabel(creator, targetTeacherId);
+                                                                        const isProf = authorRoleLabel === "Instructor";
+                                                                        const authorName = creator?.name || "Usuario registrado";
+
+                                                                        return (
+                                                                            <div 
+                                                                                key={course.id} 
+                                                                                className={cn(
+                                                                                    "flex items-center justify-between p-2.5 rounded-lg border transition-colors",
+                                                                                    isChecked 
+                                                                                        ? "bg-primary/5 border-primary/20" 
+                                                                                        : "bg-background border-border hover:bg-muted/30"
+                                                                                )}
+                                                                            >
+                                                                                <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                                                                                    <Checkbox
+                                                                                        id={`qual-course-${course.id}`}
+                                                                                        checked={isChecked}
+                                                                                        disabled={locked}
+                                                                                        onCheckedChange={(checked) => {
+                                                                                            if (locked) return;
+                                                                                            if (checked) {
+                                                                                                setSelectedQualCourses(prev => [...prev, course.id]);
+                                                                                                const currentRole = session?.user?.role || (isAdminMode ? "gestor" : "teacher");
+                                                                                                const currentName = session?.user?.name || (isAdminMode ? "Gestor" : (loadedTeacherName || "Instructor"));
+                                                                                                setQualificationsCreatedBy(prev => ({
+                                                                                                    ...prev,
+                                                                                                    [course.id]: {
+                                                                                                        id: session?.user?.id || targetTeacherId || "",
+                                                                                                        name: currentName,
+                                                                                                        role: currentRole
+                                                                                                    }
+                                                                                                }));
+                                                                                            } else {
+                                                                                                setSelectedQualCourses(prev => prev.filter(id => id !== course.id));
+                                                                                            }
+                                                                                        }}
+                                                                                        className="h-4 w-4 rounded-sm border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0"
+                                                                                    />
+                                                                                    <Label 
+                                                                                        htmlFor={`qual-course-${course.id}`} 
+                                                                                        className={cn(
+                                                                                            "text-xs font-semibold select-none transition-colors truncate",
+                                                                                            locked ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:text-foreground"
+                                                                                        )}
+                                                                                    >
+                                                                                        {course.title}
+                                                                                    </Label>
+                                                                                </div>
+
+                                                                                {isChecked && (
+                                                                                    <Tooltip>
+                                                                                        <TooltipTrigger asChild>
+                                                                                            <Badge 
+                                                                                                variant="outline" 
+                                                                                                className={cn(
+                                                                                                    "ml-2 text-[9px] font-bold px-1.5 py-0 rounded shrink-0 cursor-help",
+                                                                                                    isProf 
+                                                                                                        ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
+                                                                                                        : authorRoleLabel === "Gestor"
+                                                                                                        ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                                                        : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                                                                                                )}
+                                                                                            >
+                                                                                                <User className="w-2.5 h-2.5 mr-0.5 inline" />
+                                                                                                {authorRoleLabel}
+                                                                                            </Badge>
+                                                                                        </TooltipTrigger>
+                                                                                        <TooltipContent className="text-xs font-semibold">
+                                                                                            <p>Habilitado por: <strong>{authorName}</strong> ({authorRoleLabel})</p>
+                                                                                        </TooltipContent>
+                                                                                    </Tooltip>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

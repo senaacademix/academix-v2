@@ -910,7 +910,7 @@ export async function generateAndDownloadCurriculumPdf(
   const link = document.createElement("a");
   link.href = url;
   const safeProgramName = (resolvedOptions?.programName || program.name || "Programa").replace(/[^a-zA-Z0-9]/g, "_");
-  link.download = `Malla_Curricular_${safeProgramName}.pdf`;
+  link.download = `Programa_Formacion_${safeProgramName}.pdf`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

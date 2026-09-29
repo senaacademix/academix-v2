@@ -147,10 +147,10 @@ export function GestorDashboardView({
     // Operational modules for the selected program
     const operationalModules = currentProgram ? [
         {
-            title: "Gestión de Usuarios",
-            description: "Administración de aprendices, instructores, fichas e importación masiva.",
+            title: "Gestión de Aprendices",
+            description: "Directorio de aprendices, control de fichas, planes de mejoramiento y matrícula.",
             link: `/dashboard/gestor/users?programId=${currentProgram.id}`,
-            icon: Users,
+            icon: GraduationCap,
             color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
         },
         {
@@ -218,7 +218,7 @@ export function GestorDashboardView({
                             </span>
                         </h1>
                         <p className="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed font-medium">
-                            Métricas en tiempo real, gestión de usuarios, estructura curricular y programación horaria para {currentProgram?.name}.
+                            Métricas en tiempo real, gestión de aprendices, estructura curricular y programación horaria para {currentProgram?.name}.
                         </p>
                     </div>
 
@@ -237,8 +237,8 @@ export function GestorDashboardView({
                         </Button>
                         <Button asChild className="rounded-2xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md shadow-primary/20">
                             <Link href={`/dashboard/gestor/users?programId=${currentProgram?.id}`}>
-                                <UserPlus className="h-4 w-4 mr-2" />
-                                Gestión de Usuarios
+                                <GraduationCap className="h-4 w-4 mr-2" />
+                                Gestión de Aprendices
                             </Link>
                         </Button>
                     </div>

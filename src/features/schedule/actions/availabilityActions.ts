@@ -604,6 +604,28 @@ export async function adminSaveTeacherAvailabilityAction(
 
     const targetScheduleId = academicScheduleId && academicScheduleId !== "all" ? academicScheduleId : null;
 
+    if (targetScheduleId) {
+        const existingLock = await prisma.teacherScheduleLock.findUnique({
+            where: {
+                teacherId_academicScheduleId: {
+                    teacherId,
+                    academicScheduleId: targetScheduleId
+                }
+            }
+        });
+        if (existingLock?.availabilityLocked) {
+            throw new Error("La disponibilidad está bloqueada para este horario. Desbloquea para poder realizar cambios.");
+        }
+    } else {
+        const teacherUser = await prisma.user.findUnique({
+            where: { id: teacherId },
+            select: { availabilityLocked: true }
+        });
+        if (teacherUser?.availabilityLocked) {
+            throw new Error("La disponibilidad está bloqueada. Desbloquea para poder realizar cambios.");
+        }
+    }
+
     // Save in transaction with granular diff
     await prisma.$transaction(async (tx) => {
         const hasChanges = await syncTeacherAvailabilitySlots(tx, teacherId, session.user.id, slots, targetScheduleId);

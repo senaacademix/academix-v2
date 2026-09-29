@@ -214,6 +214,7 @@ interface UsersHelpModalProps {
   activeTab?: UsersTabKey;
   programName?: string;
   showAdminsTab?: boolean;
+  showTeachersTab?: boolean;
 }
 
 export function UsersHelpModal({
@@ -222,6 +223,7 @@ export function UsersHelpModal({
   activeTab = "students",
   programName,
   showAdminsTab = false,
+  showTeachersTab = false,
 }: UsersHelpModalProps) {
   const [selectedTab, setSelectedTab] = useState<UsersTabKey>(activeTab);
 
@@ -234,7 +236,11 @@ export function UsersHelpModal({
   const currentConfig = USERS_TABS_HELP_CONFIG[selectedTab] || USERS_TABS_HELP_CONFIG.students;
 
   const availableTabKeys = (Object.keys(USERS_TABS_HELP_CONFIG) as UsersTabKey[]).filter(
-    (key) => key !== "admins" || showAdminsTab
+    (key) => {
+      if (key === "admins" && !showAdminsTab) return false;
+      if (key === "teachers" && !showTeachersTab) return false;
+      return true;
+    }
   );
 
   return (

@@ -299,6 +299,11 @@ export function TeacherAvailabilityView({
     };
 
     const handleAddSlot = (day: DayOfWeek) => {
+        if (locked) {
+            toast.error("La disponibilidad está bloqueada para este horario. Desbloquea para poder realizar cambios.");
+            return;
+        }
+
         const start = inputStartTimes[day] || "06:00";
         const end = inputEndTimes[day] || "12:00";
 
@@ -354,12 +359,20 @@ export function TeacherAvailabilityView({
     };
 
     const handleRemoveSlot = (indexToRemove: number) => {
+        if (locked) {
+            toast.error("La disponibilidad está bloqueada para este horario. Desbloquea para poder realizar cambios.");
+            return;
+        }
         setEditingIndex(null);
         setSlots((prev) => prev.filter((_, idx) => idx !== indexToRemove));
         toast.success("Hora removida de la lista temporal");
     };
 
     const handleStartEdit = (index: number, slot: TimeSlot) => {
+        if (locked) {
+            toast.error("La disponibilidad está bloqueada para este horario. Desbloquea para poder realizar cambios.");
+            return;
+        }
         setEditingIndex(index);
         setEditStartTime(slot.startTime);
         setEditEndTime(slot.endTime);
@@ -372,6 +385,10 @@ export function TeacherAvailabilityView({
     };
 
     const handleSaveEdit = (indexToUpdate: number) => {
+        if (locked) {
+            toast.error("La disponibilidad está bloqueada para este horario. Desbloquea para poder realizar cambios.");
+            return;
+        }
         if (!editStartTime || !editEndTime) {
             toast.error("Debes especificar la hora de inicio y fin");
             return;
@@ -448,6 +465,10 @@ export function TeacherAvailabilityView({
     };
 
     const handleSaveChanges = () => {
+        if (locked) {
+            toast.error("La disponibilidad está bloqueada para este horario. Desbloquea para poder realizar cambios.");
+            return;
+        }
         startTransition(async () => {
             try {
                 if (isAdminMode && teacherId) {
@@ -865,24 +886,51 @@ export function TeacherAvailabilityView({
                                                             </Tooltip>
                                                         </div>
 
-                                                        {(!locked || isAdminMode) && (
-                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                                                <Tooltip><TooltipTrigger asChild><Button 
-                                                                                                    variant="ghost" size="icon"
-                                                                                                    onClick={() => handleStartEdit(index, slot)}
-                                                                                                    className={`h-6 w-6 hover:bg-black/5 dark:hover:bg-white/10 rounded transition-colors ${styles.text}`}
-                                                                                                >
-                                                                                                    <Edit2 className="w-3 h-3" />
-                                                                                                </Button></TooltipTrigger><TooltipContent><p>Editar ranura</p></TooltipContent></Tooltip>
-                                                                <Tooltip><TooltipTrigger asChild><Button 
-                                                                                                    variant="ghost" size="icon"
-                                                                                                    onClick={() => handleRemoveSlot(index)}
-                                                                                                    className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive rounded transition-colors"
-                                                                                                >
-                                                                                                    <Trash2 className="w-3 h-3" />
-                                                                                                </Button></TooltipTrigger><TooltipContent><p>Eliminar ranura</p></TooltipContent></Tooltip>
-                                                            </div>
-                                                        )}
+                                                        <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon"
+                                                                        disabled={locked}
+                                                                        onClick={() => handleStartEdit(index, slot)}
+                                                                        className={cn(
+                                                                            "h-6 w-6 rounded-md transition-colors",
+                                                                            locked 
+                                                                                ? "opacity-35 cursor-not-allowed text-muted-foreground" 
+                                                                                : `cursor-pointer hover:bg-black/10 dark:hover:bg-white/15 ${styles.text}`
+                                                                        )}
+                                                                    >
+                                                                        <Edit2 className="w-3 h-3" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top">
+                                                                    <p>{locked ? "Disponibilidad bloqueada. Desbloquea para editar." : "Editar ranura"}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon"
+                                                                        disabled={locked}
+                                                                        onClick={() => handleRemoveSlot(index)}
+                                                                        className={cn(
+                                                                            "h-6 w-6 rounded-md transition-colors",
+                                                                            locked 
+                                                                                ? "opacity-35 cursor-not-allowed text-muted-foreground" 
+                                                                                : "cursor-pointer text-destructive/80 hover:text-destructive hover:bg-destructive/15"
+                                                                        )}
+                                                                    >
+                                                                        <Trash2 className="w-3 h-3" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top">
+                                                                    <p>{locked ? "Disponibilidad bloqueada. Desbloquea para eliminar." : "Eliminar ranura"}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
@@ -891,7 +939,7 @@ export function TeacherAvailabilityView({
                                 </div>
 
                                 {/* Form to add slots */}
-                                {(!locked || isAdminMode) && (
+                                {!locked ? (
                                     <div className="border-t border-muted/40 pt-3 space-y-2 mt-2">
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="space-y-1">
@@ -936,11 +984,16 @@ export function TeacherAvailabilityView({
                                         <Button 
                                             size="sm"
                                             variant="outline" 
-                                            className="w-full h-8 text-[11px] font-semibold border-dashed border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50"
+                                            className="w-full h-8 text-[11px] font-semibold border-dashed border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 cursor-pointer"
                                             onClick={() => handleAddSlot(day)}
                                         >
                                             <Plus className="w-3.5 h-3.5 mr-1" /> Añadir Horario
                                         </Button>
+                                    </div>
+                                ) : (
+                                    <div className="border-t border-muted/30 pt-2.5 mt-2 flex items-center justify-center gap-1.5 text-muted-foreground/60 text-[11px] font-medium py-1 select-none">
+                                        <Lock className="w-3 h-3" />
+                                        <span>Disponibilidad bloqueada</span>
                                     </div>
                                 )}
                             </CardContent>

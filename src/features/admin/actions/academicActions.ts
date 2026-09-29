@@ -370,6 +370,7 @@ export async function createPeriodAction(data: { name: string; description?: str
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
     return period;
 }
 
@@ -407,6 +408,7 @@ export async function updatePeriodAction(id: string, data: { name: string; descr
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
     return period;
 }
 
@@ -436,6 +438,7 @@ export async function deletePeriodAction(id: string) {
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
     return result;
 }
 
@@ -729,14 +732,22 @@ export async function registerStudentManualAction(data: {
         where: { email: emailNorm }
     });
     if (existingUser) {
-        throw new Error(`Ya existe un usuario registrado con el correo: ${emailNorm}`);
+        return {
+            success: false,
+            alreadyExists: true,
+            message: `El usuario ya se encuentra registrado con el correo: ${emailNorm}`
+        };
     }
 
     const existingProfile = await prisma.profile.findFirst({
         where: { identificacion: idenNorm }
     });
     if (existingProfile) {
-        throw new Error(`Ya existe un perfil registrado con el número de documento: ${idenNorm}`);
+        return {
+            success: false,
+            alreadyExists: true,
+            message: `El usuario ya se encuentra registrado con el número de documento: ${idenNorm}`
+        };
     }
 
     // Hash de la contraseña (contraseña inicial es el número de documento)
@@ -744,59 +755,74 @@ export async function registerStudentManualAction(data: {
     const hashedPassword = await hashPassword(idenNorm);
     const studentId = crypto.randomUUID();
 
-    const result = await prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-            data: {
-                id: studentId,
-                email: emailNorm,
-                name: `${data.nombres.trim()} ${data.apellido.trim()}`,
-                role: "student",
-                emailVerified: true,
-                groupId: data.groupId,
-                accounts: {
-                    create: {
-                        id: crypto.randomUUID(),
-                        accountId: crypto.randomUUID(),
-                        providerId: "credential",
-                        password: hashedPassword,
+    try {
+        const result = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.create({
+                data: {
+                    id: studentId,
+                    email: emailNorm,
+                    name: `${data.nombres.trim()} ${data.apellido.trim()}`,
+                    role: "student",
+                    emailVerified: true,
+                    groupId: data.groupId,
+                    accounts: {
+                        create: {
+                            id: crypto.randomUUID(),
+                            accountId: crypto.randomUUID(),
+                            providerId: "credential",
+                            password: hashedPassword,
+                        }
                     }
                 }
-            }
+            });
+
+            const profile = await tx.profile.create({
+                data: {
+                    userId: studentId,
+                    identificacion: idenNorm,
+                    nombres: data.nombres.trim(),
+                    apellido: data.apellido.trim(),
+                    telefono: data.telefono?.trim() || null,
+                    dataProcessingConsent: false,
+                    dataProcessingConsentDate: null,
+                }
+            });
+
+            return { user, profile };
         });
 
-        const profile = await tx.profile.create({
-            data: {
-                userId: studentId,
-                identificacion: idenNorm,
-                nombres: data.nombres.trim(),
-                apellido: data.apellido.trim(),
-                telefono: data.telefono?.trim() || null,
-                dataProcessingConsent: false,
-                dataProcessingConsentDate: null,
-            }
+        const { auditLogger } = await import("../services/auditLogger");
+        await auditLogger.log({
+            action: "CREATE",
+            entity: "USER",
+            entityId: studentId,
+            userId: session.user.id,
+            userName: session.user.name || "Admin",
+            userRole: "admin",
+            description: `Estudiante registrado manualmente en grupo: ${data.nombres} ${data.apellido} (${emailNorm})`,
+            metadata: { email: emailNorm, groupId: data.groupId, identificacion: idenNorm },
+            success: true,
         });
 
-        return { user, profile };
-    });
-
-    const { auditLogger } = await import("../services/auditLogger");
-    await auditLogger.log({
-        action: "CREATE",
-        entity: "USER",
-        entityId: studentId,
-        userId: session.user.id,
-        userName: session.user.name || "Admin",
-        userRole: "admin",
-        description: `Estudiante registrado manualmente en grupo: ${data.nombres} ${data.apellido} (${emailNorm})`,
-        metadata: { email: emailNorm, groupId: data.groupId, identificacion: idenNorm },
-        success: true,
-    });
-
-    revalidatePath("/dashboard/admin/courses");
-    revalidatePath("/dashboard/gestor/courses");
-    revalidatePath("/dashboard/admin/users");
-    revalidatePath("/dashboard/gestor/users");
-    return result;
+        revalidatePath("/dashboard/admin/courses");
+        revalidatePath("/dashboard/gestor/courses");
+        revalidatePath("/dashboard/admin/users");
+        revalidatePath("/dashboard/gestor/users");
+        return {
+            success: true,
+            user: result.user,
+            profile: result.profile
+        };
+    } catch (dbErr: any) {
+        if (dbErr.code === "P2002" || dbErr.message?.includes("Unique constraint")) {
+            return {
+                success: false,
+                alreadyExists: true,
+                message: "El usuario ya se encuentra registrado con este correo o número de identificación"
+            };
+        }
+        throw dbErr;
+    }
 }
 
 export interface StudentImportRow {

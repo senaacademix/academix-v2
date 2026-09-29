@@ -46,6 +46,7 @@ model User {
   remarksCreated        Remark[]               @relation("TeacherRemarks")
   sharedContentCreated  SharedContent[]        @relation("TeacherSharedContent")
   programs              Program[]              @relation("ProgramTeachers")
+  timelines             CurriculumTimeline[]   @relation("TimelineTeachers")
   availabilityLocked     Boolean                @default(false)
   qualifiedCoursesLocked Boolean                @default(false)
   availabilities         TeacherAvailability[]
@@ -451,6 +452,7 @@ model CurriculumTimeline {
   programId   String
   program     Program    @relation(fields: [programId], references: [id], onDelete: Cascade)
   periods     Period[]
+  teachers    User[]     @relation("TimelineTeachers")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

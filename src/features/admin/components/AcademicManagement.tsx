@@ -84,7 +84,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { cn } from "@/lib/utils";
 
 // Server Actions
-import { deleteCourseAction, getAllUsersAction, deleteUserAction } from "@/app/admin-actions";
+import { deleteCourseAction, getAllUsersAction, deleteUserAction, updateStudentAction } from "@/app/admin-actions";
 import {
     getProgramTimelinesAction,
     createTimelineAction,
@@ -771,16 +771,22 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
     // Period timeline association
     const [periodTimelineId, setPeriodTimelineId] = useState<string>("");
+    const prevProgramIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (selectedProgram) {
+            const isDifferentProgram = prevProgramIdRef.current !== selectedProgram.id;
+            prevProgramIdRef.current = selectedProgram.id;
+
             setSelectedTimelineId(prev => {
                 const stillExists = (selectedProgram.timelines || []).some((t: any) => t.id === prev);
+                if (!isDifferentProgram && stillExists && prev) return prev;
                 if (stillExists && prev) return prev;
                 const defaultTl = selectedProgram.timelines?.find((t: any) => t.isDefault) || selectedProgram.timelines?.[0];
                 return defaultTl?.id || "";
             });
         } else {
+            prevProgramIdRef.current = null;
             setSelectedTimelineId("");
         }
     }, [selectedProgram]);
@@ -814,6 +820,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [deleteType, setDeleteType] = useState<"program" | "period" | "group" | "course" | "teacher" | "student" | null>(null);
     const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
     const [deleteItemName, setDeleteItemName] = useState("");
+    const [deleteStudentDoc, setDeleteStudentDoc] = useState("");
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
     const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
 
@@ -931,6 +938,13 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     // Assignment states
     const [assignStudentsDialogOpen, setAssignStudentsDialogOpen] = useState(false);
     const [selectedGroupForStudents, setSelectedGroupForStudents] = useState<Group | null>(null);
+    const [editStudentDialogOpen, setEditStudentDialogOpen] = useState(false);
+    const [studentToEdit, setStudentToEdit] = useState<any | null>(null);
+    const [editStudentIdentificacion, setEditStudentIdentificacion] = useState("");
+    const [editStudentNombres, setEditStudentNombres] = useState("");
+    const [editStudentApellido, setEditStudentApellido] = useState("");
+    const [editStudentEmail, setEditStudentEmail] = useState("");
+    const [editStudentTelefono, setEditStudentTelefono] = useState("");
     const [assignTeachersDialogOpen, setAssignTeachersDialogOpen] = useState(false);
     const [isRegisteringTeacher, setIsRegisteringTeacher] = useState(false);
 
@@ -1076,10 +1090,20 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         fetchAllTrainingAreas();
     }, []);
 
-    // Reset managingGroup on tab or program change
+    const prevSubTabRef = useRef(subTab);
+    const prevProgIdForGroupRef = useRef(selectedProgram?.id);
+
+    // Reset managingGroup only on actual tab change or program ID change
     useEffect(() => {
-        setManagingGroup(null);
-    }, [subTab, selectedProgram]);
+        const tabChanged = prevSubTabRef.current !== subTab;
+        const progChanged = prevProgIdForGroupRef.current !== selectedProgram?.id;
+        prevSubTabRef.current = subTab;
+        prevProgIdForGroupRef.current = selectedProgram?.id;
+
+        if (tabChanged || progChanged) {
+            setManagingGroup(null);
+        }
+    }, [subTab, selectedProgram?.id]);
 
     const fetchSystemStudents = async () => {
         try {
@@ -1499,8 +1523,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setPeriodToEdit(null);
         setPeriodName("");
         setPeriodDescription("");
-        const defaultTl = selectedProgram.timelines?.find((t: any) => t.isDefault) || selectedProgram.timelines?.[0];
-        setPeriodTimelineId(selectedTimelineId || defaultTl?.id || "");
+        const activeTl = (selectedProgram.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram.timelines || [])[0]?.id));
+        const currentActiveTlId = activeTl?.id || (selectedProgram.timelines || []).find((t: any) => t.isDefault)?.id || (selectedProgram.timelines || [])[0]?.id || "";
+        setPeriodTimelineId(currentActiveTlId);
         setPeriodDialogOpen(true);
     };
 
@@ -1508,8 +1533,17 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setPeriodToEdit(period);
         setPeriodName(period.name);
         setPeriodDescription(period.description || "");
-        setPeriodTimelineId(period.timelineId || selectedTimelineId || "");
+        const activeTl = (selectedProgram?.timelines || []).find((t: any) => t.id === (selectedTimelineId || (selectedProgram?.timelines || [])[0]?.id));
+        const currentActiveTlId = activeTl?.id || (selectedProgram?.timelines || []).find((t: any) => t.isDefault)?.id || (selectedProgram?.timelines || [])[0]?.id || "";
+        setPeriodTimelineId(period.timelineId || currentActiveTlId);
         setPeriodDialogOpen(true);
+    };
+
+    const handleClosePeriodDialog = () => {
+        if (periodTimelineId) {
+            setSelectedTimelineId(periodTimelineId);
+        }
+        setPeriodDialogOpen(false);
     };
 
     const handleSavePeriod = async () => {
@@ -1518,6 +1552,8 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             toast.error("El nombre del periodo debe tener al menos 2 caracteres");
             return;
         }
+
+        const targetTlId = periodTimelineId || selectedTimelineId;
 
         startTransition(async () => {
             try {
@@ -1539,8 +1575,14 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     });
                     toast.success("Periodo académico agregado");
                 }
+                if (targetTlId) {
+                    setSelectedTimelineId(targetTlId);
+                }
                 setPeriodDialogOpen(false);
                 await refreshAll();
+                if (targetTlId) {
+                    setSelectedTimelineId(targetTlId);
+                }
             } catch (error: any) {
                 toast.error(error.message || "Error al guardar el periodo");
             }
@@ -1780,7 +1822,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
         startTransition(async () => {
             try {
-                const res = await registerStudentManualAction({
+                const res: any = await registerStudentManualAction({
                     groupId: selectedGroupForStudents.id,
                     identificacion: manualIdentificacion,
                     nombres: manualNombres,
@@ -1788,6 +1830,15 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     email: manualEmail,
                     telefono: manualTelefono || undefined
                 });
+
+                if (!res || !res.success) {
+                    if (res?.alreadyExists) {
+                        toast.warning(res.message || "El usuario ya se encuentra registrado");
+                    } else {
+                        toast.error(res?.message || res?.error || "Error al registrar aprendiz");
+                    }
+                    return;
+                }
 
                 const newStudentItem = {
                     id: res.user.id,
@@ -1860,9 +1911,138 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 
                 await refreshAll();
                 await fetchSystemStudents();
-                router.refresh();
             } catch (error: any) {
-                toast.error(error.message || "Error al registrar aprendiz");
+                const errorMsg = error?.message || "";
+                if (
+                    errorMsg.toLowerCase().includes("ya existe") ||
+                    errorMsg.toLowerCase().includes("registrado") ||
+                    errorMsg.toLowerCase().includes("unique constraint") ||
+                    errorMsg.toLowerCase().includes("p2002")
+                ) {
+                    toast.warning("El usuario ya se encuentra registrado en el sistema");
+                } else {
+                    toast.error(errorMsg || "Error al registrar aprendiz");
+                }
+            }
+        });
+    };
+
+    const openEditStudent = (student: any) => {
+        setStudentToEdit(student);
+        setEditStudentIdentificacion(student.profile?.identificacion || "");
+
+        const profileNombres = student.profile?.nombres;
+        const profileApellido = student.profile?.apellido;
+        if (profileNombres || profileApellido) {
+            setEditStudentNombres(profileNombres || "");
+            setEditStudentApellido(profileApellido || "");
+        } else {
+            const parts = (student.name || "").trim().split(" ");
+            if (parts.length > 1) {
+                setEditStudentNombres(parts.slice(0, Math.ceil(parts.length / 2)).join(" "));
+                setEditStudentApellido(parts.slice(Math.ceil(parts.length / 2)).join(" "));
+            } else {
+                setEditStudentNombres(student.name || "");
+                setEditStudentApellido("");
+            }
+        }
+
+        setEditStudentEmail(student.email || "");
+        setEditStudentTelefono(student.profile?.telefono || "");
+        setEditStudentDialogOpen(true);
+    };
+
+    const handleSaveEditStudent = async () => {
+        if (!studentToEdit) return;
+        if (!editStudentIdentificacion.trim()) {
+            toast.error("La identificación es obligatoria");
+            return;
+        }
+        if (!editStudentNombres.trim()) {
+            toast.error("El nombre es obligatorio");
+            return;
+        }
+        if (!editStudentApellido.trim()) {
+            toast.error("El apellido es obligatorio");
+            return;
+        }
+        if (!editStudentEmail.trim()) {
+            toast.error("El correo electrónico es obligatorio");
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                await updateStudentAction(studentToEdit.id, {
+                    identificacion: editStudentIdentificacion.trim(),
+                    nombres: editStudentNombres.trim(),
+                    apellido: editStudentApellido.trim(),
+                    email: editStudentEmail.trim().toLowerCase(),
+                    telefono: editStudentTelefono.trim() || undefined,
+                    groupId: studentToEdit.groupId || managingGroup?.id,
+                });
+
+                const updatedStudentItem = {
+                    ...studentToEdit,
+                    name: `${editStudentNombres.trim()} ${editStudentApellido.trim()}`,
+                    email: editStudentEmail.trim().toLowerCase(),
+                    profile: {
+                        ...(studentToEdit.profile || {}),
+                        identificacion: editStudentIdentificacion.trim(),
+                        nombres: editStudentNombres.trim(),
+                        apellido: editStudentApellido.trim(),
+                        telefono: editStudentTelefono.trim() || null,
+                    }
+                };
+
+                // Inmediatamente actualizar managingGroup para reflejar los cambios
+                setManagingGroup(prev => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        students: (prev.students || []).map((s: any) => s.id === studentToEdit.id ? updatedStudentItem : s)
+                    };
+                });
+
+                // Inmediatamente actualizar selectedGroupForStudents
+                setSelectedGroupForStudents(prev => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        students: (prev.students || []).map((s: any) => s.id === studentToEdit.id ? updatedStudentItem : s)
+                    };
+                });
+
+                // Inmediatamente actualizar selectedProgram
+                setSelectedProgram(prev => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        groups: prev.groups.map(g => ({
+                            ...g,
+                            students: (g.students || []).map((s: any) => s.id === studentToEdit.id ? updatedStudentItem : s)
+                        }))
+                    };
+                });
+
+                toast.success("Aprendiz actualizado correctamente");
+                setEditStudentDialogOpen(false);
+                setStudentToEdit(null);
+
+                await refreshAll();
+                await fetchSystemStudents();
+            } catch (err: any) {
+                const errorMsg = err?.message || "";
+                if (
+                    errorMsg.toLowerCase().includes("ya existe") ||
+                    errorMsg.toLowerCase().includes("registrado") ||
+                    errorMsg.toLowerCase().includes("unique constraint") ||
+                    errorMsg.toLowerCase().includes("p2002")
+                ) {
+                    toast.warning("Ya existe un usuario con este correo o número de identificación");
+                } else {
+                    toast.error(errorMsg || "Error al actualizar aprendiz");
+                }
             }
         });
     };
@@ -1956,18 +2136,17 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             return;
         }
         const allTimelines = selectedProgram.timelines || [];
-        const defaultSelectedIds = selectedTimelineId && allTimelines.some((t: any) => t.id === selectedTimelineId)
-            ? [selectedTimelineId]
-            : allTimelines.map((t: any) => t.id);
+        const activeTl = allTimelines.find((t: any) => t.id === (selectedTimelineId || allTimelines[0]?.id));
+        const defaultSelectedIds = activeTl ? [activeTl.id] : (allTimelines[0] ? [allTimelines[0].id] : []);
 
-        const activeTl = allTimelines.find((t: any) => t.id === selectedTimelineId);
-        const titleSuffix = (defaultSelectedIds.length === 1 && activeTl) ? ` (${activeTl.name.toUpperCase()})` : "";
+        const programDisplayName = activeTl ? activeTl.name : selectedProgram.name;
+        const programDisplayDesc = activeTl?.description || selectedProgram.description || "";
 
         setPdfConfig(prev => ({
             institutionTag: prev.institutionTag || "AcademiX • Sistema Institucional de Gestión y Programación Académica",
-            mainTitle: `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}${titleSuffix}`,
-            programName: selectedProgram.name,
-            programDescription: selectedProgram.description || "",
+            mainTitle: `PROGRAMA DE FORMACIÓN: ${programDisplayName.toUpperCase()}`,
+            programName: programDisplayName,
+            programDescription: programDisplayDesc,
             badgeText: prev.badgeText || "Plan de Estudios Oficial",
             issueDate: formatCalendarDate(new Date(), "dd 'de' MMMM, yyyy"),
             includeDetailedCatalogue: true,
@@ -3077,10 +3256,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
 
 
-    const triggerDelete = (type: "program" | "period" | "group" | "course" | "teacher" | "student", id: string, name: string) => {
+    const triggerDelete = (type: "program" | "period" | "group" | "course" | "teacher" | "student", id: string, name: string, studentDoc?: string) => {
         setDeleteType(type);
         setDeleteItemId(id);
         setDeleteItemName(name);
+        setDeleteStudentDoc(studentDoc || "");
         setDeleteConfirmText("");
         setDeleteConfirmationOpen(true);
     };
@@ -3092,6 +3272,16 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
         if ((deleteType === "program" || deleteType === "group") && deleteConfirmText.trim().toLowerCase() !== deleteItemName.trim().toLowerCase()) {
             toast.error(`Debes escribir "${deleteItemName}" para confirmar la eliminación.`);
+            return;
+        }
+
+        const expectedStudentDoc = (deleteStudentDoc || "").trim();
+        const isStudentDocValid = expectedStudentDoc 
+            ? deleteConfirmText.trim() === expectedStudentDoc 
+            : deleteConfirmText.trim().toLowerCase() === deleteItemName.trim().toLowerCase();
+
+        if (deleteType === "student" && !isStudentDocValid) {
+            toast.error(`Debes ingresar el número de identificación "${expectedStudentDoc || deleteItemName}" para confirmar la eliminación.`);
             return;
         }
 
@@ -3126,6 +3316,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 }
                 setDeleteConfirmationOpen(false);
                 setDeleteConfirmText("");
+                setDeleteStudentDoc("");
                 await refreshAll();
                 await fetchSystemStudents();
             } catch (error: any) {
@@ -3447,20 +3638,6 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={openPdfConfigModal}
-                                disabled={isExportingCurriculumPDF}
-                                className="h-8 text-xs font-bold rounded-xl border-rose-500/20 text-rose-600 hover:text-rose-700 hover:bg-rose-500/5 dark:text-rose-400 shadow-2xs hover:scale-105 transition-all"
-                            >
-                                {isExportingCurriculumPDF ? (
-                                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                                ) : (
-                                    <FileText className="h-3.5 w-3.5 mr-1.5" />
-                                )}
-                                Programa PDF
-                            </Button>
                             {currentUserRole === "admin" && (
                                 <>
                                     <Button size="sm" variant="outline" className="h-8 text-xs font-bold rounded-xl" onClick={() => openEditProgram(selectedProgram)}>
@@ -4329,11 +4506,24 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                         <TableCell className="py-3 text-xs text-muted-foreground font-sans">{student.profile?.telefono || "—"}</TableCell>
                                                                         <TableCell className="py-3 text-right">
                                                                             <div className="flex items-center justify-end gap-1.5">
+                                                                                <Tooltip>
+                                                                                    <TooltipTrigger asChild>
+                                                                                        <Button
+                                                                                            size="icon"
+                                                                                            variant="ghost"
+                                                                                            className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                                                            onClick={() => openEditStudent(student)}
+                                                                                        >
+                                                                                            <Edit className="h-4 w-4" />
+                                                                                        </Button>
+                                                                                    </TooltipTrigger>
+                                                                                    <TooltipContent><p>Editar datos del aprendiz</p></TooltipContent>
+                                                                                </Tooltip>
                                                                                 <Tooltip><TooltipTrigger asChild><Button
                                                                                     size="icon"
                                                                                     variant="ghost"
                                                                                     className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                                                                                    onClick={() => triggerDelete("student", student.id, student.name)}
+                                                                                    onClick={() => triggerDelete("student", student.id, student.name, student.profile?.identificacion)}
                                                                                 >
                                                                                     <Trash2 className="h-4 w-4" />
                                                                                 </Button></TooltipTrigger><TooltipContent><p>Eliminar aprendiz del sistema</p></TooltipContent></Tooltip>
@@ -5028,7 +5218,15 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
             })()}
 
             {/* ============ DIALOG: PERIOD CRUD ============ */}
-            <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
+            <Dialog 
+                open={periodDialogOpen} 
+                onOpenChange={(open) => {
+                    if (!open && periodTimelineId) {
+                        setSelectedTimelineId(periodTimelineId);
+                    }
+                    setPeriodDialogOpen(open);
+                }}
+            >
                 <DialogContent className="max-w-[450px]">
                     <DialogHeader>
                         <DialogTitle>{periodToEdit ? "Editar Periodo Académico" : "Agregar Periodo Académico"}</DialogTitle>
@@ -5072,7 +5270,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setPeriodDialogOpen(false)} disabled={isPending}>
+                        <Button variant="ghost" onClick={handleClosePeriodDialog} disabled={isPending}>
                             Cancelar
                         </Button>
                         <Button onClick={handleSavePeriod} disabled={isPending}>
@@ -5314,6 +5512,84 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 </DialogContent>
             </Dialog>
 
+            {/* ============ DIALOG: EDIT STUDENT / APPRENTICE ============ */}
+            <Dialog open={editStudentDialogOpen} onOpenChange={setEditStudentDialogOpen}>
+                <DialogContent className="max-w-[450px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Edit className="h-5 w-5 text-primary" />
+                            Editar Aprendiz
+                        </DialogTitle>
+                        <DialogDescription>
+                            Modifica los datos personales y de acceso del aprendiz.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-3">
+                        <div className="space-y-1">
+                            <Label htmlFor="editDoc" className="text-xs font-semibold">Identificación / Documento *</Label>
+                            <Input
+                                id="editDoc"
+                                placeholder="Número de documento"
+                                className="h-9 text-xs"
+                                value={editStudentIdentificacion}
+                                onChange={(e) => setEditStudentIdentificacion(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="editNombres" className="text-xs font-semibold">Nombres *</Label>
+                                <Input
+                                    id="editNombres"
+                                    placeholder="Nombres"
+                                    className="h-9 text-xs"
+                                    value={editStudentNombres}
+                                    onChange={(e) => setEditStudentNombres(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="editApellidos" className="text-xs font-semibold">Apellidos *</Label>
+                                <Input
+                                    id="editApellidos"
+                                    placeholder="Apellidos"
+                                    className="h-9 text-xs"
+                                    value={editStudentApellido}
+                                    onChange={(e) => setEditStudentApellido(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="editEmail" className="text-xs font-semibold">Correo Electrónico *</Label>
+                            <Input
+                                id="editEmail"
+                                type="email"
+                                placeholder="correo@ejemplo.com"
+                                className="h-9 text-xs"
+                                value={editStudentEmail}
+                                onChange={(e) => setEditStudentEmail(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="editTel" className="text-xs font-semibold">Teléfono (opcional)</Label>
+                            <Input
+                                id="editTel"
+                                placeholder="Ej: 3123456789"
+                                className="h-9 text-xs"
+                                value={editStudentTelefono}
+                                onChange={(e) => setEditStudentTelefono(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setEditStudentDialogOpen(false)} disabled={isPending}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleSaveEditStudent} disabled={isPending}>
+                            {isPending ? "Guardando..." : "Guardar Cambios"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* ============ DIALOG: REGISTER TEACHER TO PROGRAM ============ */}
             <Dialog 
                 open={assignTeachersDialogOpen} 
@@ -5327,7 +5603,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     }
                 }}
             >
-                <DialogContent className="max-w-[550px] max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Registrar Instructor</DialogTitle>
                         <DialogDescription>
@@ -5343,11 +5619,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                         {/* TAB: MANUAL TEACHER REGISTRATION */}
                         <TabsContent value="manual" className="space-y-4 mt-0">
-                            <div className="space-y-3 border border-muted/40 p-4 rounded-xl bg-muted/5">
+                            <div className="space-y-4 border border-muted/40 p-5 rounded-2xl bg-muted/5">
                                 <span className="text-xs font-semibold text-muted-foreground uppercase">Formulario de Registro</span>
                                 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1 col-span-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5 col-span-1 sm:col-span-2">
                                         <Label htmlFor="mtNumDoc" className="text-xs">Número de Documento *</Label>
                                         <Input
                                             id="mtNumDoc"
@@ -5358,7 +5634,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         />
                                     </div>
 
-                                    <div className="space-y-1">
+                                    <div className="space-y-1.5 col-span-1">
                                         <Label htmlFor="mtNombres" className="text-xs">Nombres *</Label>
                                         <Input
                                             id="mtNombres"
@@ -5369,7 +5645,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         />
                                     </div>
 
-                                    <div className="space-y-1">
+                                    <div className="space-y-1.5 col-span-1">
                                         <Label htmlFor="mtApellidos" className="text-xs">Apellidos *</Label>
                                         <Input
                                             id="mtApellidos"
@@ -5380,7 +5656,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         />
                                     </div>
 
-                                    <div className="space-y-1 col-span-2">
+                                    <div className="space-y-1.5 col-span-1">
                                         <Label htmlFor="mtEmail" className="text-xs">Correo Electrónico *</Label>
                                         <Input
                                             id="mtEmail"
@@ -5392,7 +5668,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         />
                                     </div>
 
-                                    <div className="space-y-1 col-span-2">
+                                    <div className="space-y-1.5 col-span-1">
                                         <Label htmlFor="mtTel" className="text-xs">Teléfono / Celular</Label>
                                         <Input
                                             id="mtTel"
@@ -5404,7 +5680,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                     </div>
 
                                     {/* Multi-select Áreas de Formación */}
-                                    <div className="space-y-2 col-span-2 pt-2 border-t border-muted/30">
+                                    <div className="space-y-2 col-span-1 sm:col-span-2 pt-2 border-t border-muted/30">
                                         <div className="flex items-center justify-between">
                                             <Label className="text-xs font-semibold text-foreground">
                                                 Áreas de Formación Asignadas * ({manualTeacherSelectedProgramIds.length})
@@ -5430,7 +5706,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         <p className="text-[11px] text-muted-foreground">
                                             El instructor estará activo y visible en las áreas seleccionadas para programación horaria, disponibilidad y materias.
                                         </p>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 rounded-lg border border-muted/40 bg-background">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-52 overflow-y-auto p-2.5 rounded-xl border border-muted/40 bg-background">
                                             {trainingAreasForTeachers.map((prog) => {
                                                 const isChecked = manualTeacherSelectedProgramIds.includes(prog.id);
                                                 return (
@@ -5563,61 +5839,62 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 setEditTeacherDialogOpen(open);
                 if (open) fetchAllTrainingAreas();
             }}>
-                <DialogContent className="max-w-[480px] max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Editar Instructor</DialogTitle>
                         <DialogDescription>Actualiza la información del instructor y sus áreas de formación asignadas.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-3">
-                        <div className="space-y-2">
-                            <Label htmlFor="edTDoc">Número de Documento *</Label>
-                            <Input id="edTDoc" value={editTeacherDoc} onChange={(e) => setEditTeacherDoc(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edTName">Nombres *</Label>
-                            <Input id="edTName" value={editTeacherNames} onChange={(e) => setEditTeacherNames(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edTLast">Apellidos *</Label>
-                            <Input id="edTLast" value={editTeacherLastName} onChange={(e) => setEditTeacherLastName(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edTEmail">Correo Electrónico *</Label>
-                            <Input id="edTEmail" type="email" value={editTeacherEmail} onChange={(e) => setEditTeacherEmail(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="edTTel">Teléfono</Label>
-                            <Input id="edTTel" value={editTeacherPhone} onChange={(e) => setEditTeacherPhone(e.target.value)} />
-                        </div>
-
-                        {/* Multi-select Áreas de Formación */}
-                        <div className="space-y-2 pt-2 border-t border-muted/30">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-xs font-semibold text-foreground">
-                                    Áreas de Formación Asignadas * ({editTeacherProgramIds.length})
-                                </Label>
-                                <div className="flex gap-2 text-[10px]">
-                                    <button
-                                        type="button"
-                                        className="text-primary hover:underline font-medium cursor-pointer"
-                                        onClick={() => setEditTeacherProgramIds(trainingAreasForTeachers.map(p => p.id))}
-                                    >
-                                        Seleccionar todas
-                                    </button>
-                                    <span>•</span>
-                                    <button
-                                        type="button"
-                                        className="text-muted-foreground hover:underline font-medium cursor-pointer"
-                                        onClick={() => selectedProgram ? setEditTeacherProgramIds([selectedProgram.id]) : setEditTeacherProgramIds([])}
-                                    >
-                                        Solo actual
-                                    </button>
-                                </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5 col-span-1 sm:col-span-2">
+                                <Label htmlFor="edTDoc" className="text-xs">Número de Documento *</Label>
+                                <Input id="edTDoc" className="h-9 text-xs" value={editTeacherDoc} onChange={(e) => setEditTeacherDoc(e.target.value)} />
                             </div>
-                            <p className="text-[11px] text-muted-foreground">
-                                El instructor estará activo y visible en las áreas seleccionadas para programación horaria, disponibilidad y materias.
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 rounded-lg border border-muted/40 bg-background">
+                            <div className="space-y-1.5 col-span-1">
+                                <Label htmlFor="edTName" className="text-xs">Nombres *</Label>
+                                <Input id="edTName" className="h-9 text-xs" value={editTeacherNames} onChange={(e) => setEditTeacherNames(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                                <Label htmlFor="edTLast" className="text-xs">Apellidos *</Label>
+                                <Input id="edTLast" className="h-9 text-xs" value={editTeacherLastName} onChange={(e) => setEditTeacherLastName(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                                <Label htmlFor="edTEmail" className="text-xs">Correo Electrónico *</Label>
+                                <Input id="edTEmail" type="email" className="h-9 text-xs" value={editTeacherEmail} onChange={(e) => setEditTeacherEmail(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                                <Label htmlFor="edTTel" className="text-xs">Teléfono</Label>
+                                <Input id="edTTel" className="h-9 text-xs" value={editTeacherPhone} onChange={(e) => setEditTeacherPhone(e.target.value)} />
+                            </div>
+
+                            {/* Multi-select Áreas de Formación */}
+                            <div className="space-y-2 col-span-1 sm:col-span-2 pt-2 border-t border-muted/30">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-semibold text-foreground">
+                                        Áreas de Formación Asignadas * ({editTeacherProgramIds.length})
+                                    </Label>
+                                    <div className="flex gap-2 text-[10px]">
+                                        <button
+                                            type="button"
+                                            className="text-primary hover:underline font-medium cursor-pointer"
+                                            onClick={() => setEditTeacherProgramIds(trainingAreasForTeachers.map(p => p.id))}
+                                        >
+                                            Seleccionar todas
+                                        </button>
+                                        <span>•</span>
+                                        <button
+                                            type="button"
+                                            className="text-muted-foreground hover:underline font-medium cursor-pointer"
+                                            onClick={() => selectedProgram ? setEditTeacherProgramIds([selectedProgram.id]) : setEditTeacherProgramIds([])}
+                                        >
+                                            Solo actual
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">
+                                    El instructor estará activo y visible en las áreas seleccionadas para programación horaria, disponibilidad y materias.
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-52 overflow-y-auto p-2.5 rounded-xl border border-muted/40 bg-background">
                                 {trainingAreasForTeachers.map((prog) => {
                                     const isChecked = editTeacherProgramIds.includes(prog.id);
                                     return (
@@ -5656,6 +5933,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 </p>
                             )}
                         </div>
+                    </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setEditTeacherDialogOpen(false)} disabled={isPending}>Cancelar</Button>
@@ -6066,7 +6344,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                     setPdfConfig(prev => ({
                                                         ...prev,
                                                         selectedTimelineIds: allIds,
-                                                        mainTitle: `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`
+                                                        mainTitle: `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`,
+                                                        programName: selectedProgram.name,
+                                                        programDescription: selectedProgram.description || "",
                                                     }));
                                                 }}
                                                 className="text-primary hover:underline font-bold px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
@@ -6105,17 +6385,25 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                             : [...current, tl.id];
                                                         
                                                         let newTitle = pdfConfig.mainTitle;
+                                                        let newName = pdfConfig.programName;
+                                                        let newDesc = pdfConfig.programDescription;
                                                         if (next.length === 1) {
                                                             const singleTl = (selectedProgram.timelines || []).find((t: any) => t.id === next[0]);
-                                                            newTitle = `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()} (${singleTl?.name.toUpperCase() || ""})`;
+                                                            newTitle = `PROGRAMA DE FORMACIÓN: ${singleTl?.name.toUpperCase() || selectedProgram.name.toUpperCase()}`;
+                                                            newName = singleTl ? singleTl.name : selectedProgram.name;
+                                                            newDesc = singleTl?.description || selectedProgram.description || "";
                                                         } else if (next.length > 1) {
                                                             newTitle = `PROGRAMA DE FORMACIÓN: ${selectedProgram.name.toUpperCase()}`;
+                                                            newName = selectedProgram.name;
+                                                            newDesc = selectedProgram.description || "";
                                                         }
 
                                                         setPdfConfig(prev => ({
                                                             ...prev,
                                                             selectedTimelineIds: next,
-                                                            mainTitle: newTitle
+                                                            mainTitle: newTitle,
+                                                            programName: newName,
+                                                            programDescription: newDesc,
                                                         }));
                                                     }}
                                                     className={cn(
@@ -6200,7 +6488,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             ) : (
                                 <FileText className="h-4 w-4 mr-1.5" />
                             )}
-                            Descargar Malla en PDF
+                            Descargar Programa en PDF
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -6245,13 +6533,20 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 const teachersCount = programToDelete?.teachers?.length || 0;
                 const groupStudentsCount = groupToDelete?.students?.length || 0;
                 const isItemValid = deleteConfirmText.trim().toLowerCase() === deleteItemName.trim().toLowerCase();
+                const expectedStudentDoc = (deleteStudentDoc || "").trim();
+                const isStudentDocValid = expectedStudentDoc 
+                    ? deleteConfirmText.trim() === expectedStudentDoc 
+                    : deleteConfirmText.trim().toLowerCase() === deleteItemName.trim().toLowerCase();
 
                 return (
                     <AlertDialog 
                         open={deleteConfirmationOpen} 
                         onOpenChange={(open) => {
                             setDeleteConfirmationOpen(open);
-                            if (!open) setDeleteConfirmText("");
+                            if (!open) {
+                                setDeleteConfirmText("");
+                                setDeleteStudentDoc("");
+                            }
                         }}
                     >
                         <AlertDialogContent className="max-w-xl rounded-3xl p-6 sm:p-7 border-border/80 bg-background shadow-2xl">
@@ -6266,14 +6561,18 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 ? "Eliminar Área de Formación" 
                                                 : deleteType === "group"
                                                     ? "Eliminar Ficha / Grupo"
-                                                    : "¿Estás absolutamente seguro?"}
+                                                    : deleteType === "student"
+                                                        ? "Eliminar Aprendiz del Sistema"
+                                                        : "¿Estás absolutamente seguro?"}
                                         </AlertDialogTitle>
                                         <p className="text-xs text-muted-foreground font-medium mt-0.5">
                                             {deleteType === "program" 
                                                 ? "Esta acción es irreversible y eliminará toda la jerarquía académica asociada." 
                                                 : deleteType === "group"
                                                     ? "Esta acción es irreversible y desvinculará a los aprendices y registros asociados a esta ficha."
-                                                    : "Esta acción no se puede deshacer."}
+                                                    : deleteType === "student"
+                                                        ? "Esta acción es irreversible y eliminará la cuenta y registros del aprendiz."
+                                                        : "Esta acción no se puede deshacer."}
                                         </p>
                                     </div>
                                 </div>
@@ -6429,6 +6728,73 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             )}
                                         </div>
                                     </div>
+                                ) : deleteType === "student" ? (
+                                    <div className="space-y-4 pt-2">
+                                        {/* Banner de Aprendiz a Eliminar */}
+                                        <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-between">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-9 h-9 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center font-bold">
+                                                    <GraduationCap className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold text-foreground text-sm block">{deleteItemName}</span>
+                                                    {expectedStudentDoc && (
+                                                        <span className="text-xs text-muted-foreground font-mono block">
+                                                            Documento: {expectedStudentDoc}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <Badge variant="destructive" className="rounded-xl text-[10px] font-bold uppercase tracking-wider">
+                                                Aprendiz
+                                            </Badge>
+                                        </div>
+
+                                        {/* Cuadro de advertencia */}
+                                        <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/30 space-y-1.5">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-destructive">
+                                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                                <span>Consecuencias de la eliminación:</span>
+                                            </div>
+                                            <p className="text-[11px] text-destructive/90 font-medium leading-relaxed">
+                                                ⚠️ Se eliminará permanentemente al aprendiz del sistema junto con todas sus matrículas, asistencias, notas, observaciones y planes de mejoramiento asociados.
+                                            </p>
+                                        </div>
+
+                                        {/* Input de validación por identificación */}
+                                        <div className="space-y-2 pt-1 text-left">
+                                            <Label className="text-xs font-bold text-foreground block">
+                                                Para confirmar la eliminación, ingresa el número de identificación del aprendiz:{" "}
+                                                {expectedStudentDoc ? (
+                                                    <span className="text-destructive font-mono underline select-all font-extrabold">{expectedStudentDoc}</span>
+                                                ) : (
+                                                    <span className="text-destructive font-bold">&quot;{deleteItemName}&quot;</span>
+                                                )}
+                                            </Label>
+                                            <Input
+                                                value={deleteConfirmText}
+                                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                                placeholder={expectedStudentDoc ? `Escribe "${expectedStudentDoc}" aquí...` : `Escribe "${deleteItemName}" aquí...`}
+                                                className={`h-10 rounded-xl text-xs font-mono font-medium bg-background border transition-all ${
+                                                    isStudentDocValid 
+                                                        ? "border-emerald-500 ring-2 ring-emerald-500/20" 
+                                                        : "border-border/80 focus:border-destructive focus:ring-2 focus:ring-destructive/20"
+                                                }`}
+                                                autoFocus
+                                            />
+                                            {deleteConfirmText && (
+                                                <p className={`text-[11px] font-semibold ${
+                                                    isStudentDocValid
+                                                        ? "text-emerald-600 dark:text-emerald-400"
+                                                        : "text-muted-foreground"
+                                                }`}>
+                                                    {isStudentDocValid
+                                                        ? "✓ Identificación del aprendiz confirmada. Ya puedes proceder a eliminar."
+                                                        : "El número de documento ingresado no coincide con la identificación del aprendiz."}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
                                 ) : deleteType === "teacher" ? (
                                     <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
                                         Desvincularás al instructor <strong>{deleteItemName}</strong> de <strong>{selectedProgram?.name}</strong>. El instructor mantendrá su cuenta en el sistema pero ya no estará asociado a esta área de formación.
@@ -6443,7 +6809,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             <AlertDialogFooter className="mt-6 pt-4 border-t border-border/60 flex items-center justify-end gap-2">
                                 <AlertDialogCancel 
                                     disabled={isPending}
-                                    onClick={() => setDeleteConfirmText("")}
+                                    onClick={() => {
+                                        setDeleteConfirmText("");
+                                        setDeleteStudentDoc("");
+                                    }}
                                     className="rounded-xl text-xs font-bold h-10 px-4"
                                 >
                                     Cancelar
@@ -6454,7 +6823,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                         handleDeleteConfirm();
                                     }}
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl text-xs font-bold h-10 px-5 shadow-md shadow-destructive/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={isPending || ((deleteType === "program" || deleteType === "group") && !isItemValid)}
+                                    disabled={
+                                        isPending || 
+                                        ((deleteType === "program" || deleteType === "group") && !isItemValid) ||
+                                        (deleteType === "student" && !isStudentDocValid)
+                                    }
                                 >
                                     {isPending 
                                         ? "Eliminando..." 
@@ -6462,7 +6835,9 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                             ? "Eliminar Programa Definitivamente" 
                                             : deleteType === "group"
                                                 ? "Eliminar Ficha Definitivamente"
-                                                : "Eliminar"}
+                                                : deleteType === "student"
+                                                    ? "Eliminar Aprendiz Definitivamente"
+                                                    : "Eliminar"}
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>

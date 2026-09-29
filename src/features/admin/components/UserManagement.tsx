@@ -57,7 +57,7 @@ import {
 
 import {
     Search, Trash2, Eye, UserCog, Users as UsersIcon, UserPlus, ChevronLeft, ChevronRight,
-    BookOpen, Calendar, MessageSquare, FileText, CheckCircle2, AlertCircle, X, GraduationCap,
+    BookOpen, Calendar, MessageSquare, FileText, CheckCircle2, AlertCircle, AlertTriangle, X, GraduationCap,
     Key, RefreshCw, Bookmark, MoreVertical, Pencil, ArrowRightLeft, ShieldAlert, Loader2, History,
     HelpCircle
 } from "lucide-react";
@@ -67,7 +67,7 @@ import { StudentGroupHistoryModal } from "@/features/student/components/StudentG
 import { format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { formatName } from "@/lib/utils";
+import { formatName, cn } from "@/lib/utils";
 import { StudentRecords } from "@/features/student/components/StudentRecords";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
 import { GroupAnalyticsPanel } from "@/components/analytics/GroupAnalyticsPanel";
@@ -159,6 +159,7 @@ export function UserManagement({
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteConfirmDoc, setDeleteConfirmDoc] = useState("");
     const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null);
     const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
     const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
@@ -455,21 +456,32 @@ export function UserManagement({
     const handleDeleteUser = async () => {
         if (!userToDelete) return;
 
+        const expectedDoc = (userToDelete.profile?.identificacion || (userToDelete as any).identificacion || "").trim();
+        const isDocValid = expectedDoc
+            ? deleteConfirmDoc.trim() === expectedDoc
+            : deleteConfirmDoc.trim().toLowerCase() === (userToDelete.name || userToDelete.email || "").trim().toLowerCase();
+
+        if (!isDocValid) {
+            toast.error("Debes ingresar el número de identificación correcto del aprendiz para confirmar la eliminación");
+            return;
+        }
+
         startTransition(async () => {
             try {
                 await deleteUserAction(userToDelete.id);
 
                 setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
 
-                toast.success("Usuario eliminado", {
-                    description: "El usuario ha sido eliminado del sistema"
+                toast.success("Aprendiz eliminado", {
+                    description: "El aprendiz ha sido eliminado del sistema"
                 });
 
                 setDeleteDialogOpen(false);
                 setUserToDelete(null);
+                setDeleteConfirmDoc("");
             } catch (error: any) {
                 toast.error("Error", {
-                    description: error.message || "No se pudo eliminar el usuario"
+                    description: error.message || "No se pudo eliminar el aprendiz"
                 });
             }
         });
@@ -1080,6 +1092,7 @@ export function UserManagement({
                                                                         className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                                                         onClick={() => {
                                                                             setUserToDelete(user);
+                                                                            setDeleteConfirmDoc("");
                                                                             setDeleteDialogOpen(true);
                                                                         }}
                                                                     >
@@ -1159,28 +1172,133 @@ export function UserManagement({
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar aprendiz?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta acción no se puede deshacer. Se eliminará permanentemente el aprendiz
-                            {userToDelete && ` "${userToDelete.name || userToDelete.email}"`} y todos sus datos asociados.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDeleteUser}
-                            disabled={isPending}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            {isPending ? "Eliminando..." : "Eliminar"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {/* Delete Confirmation Dialog with Apprentice ID validation */}
+            {(() => {
+                const expectedDoc = (userToDelete?.profile?.identificacion || (userToDelete as any)?.identificacion || "").trim();
+                const isDocValid = expectedDoc
+                    ? deleteConfirmDoc.trim() === expectedDoc
+                    : deleteConfirmDoc.trim().toLowerCase() === (userToDelete?.name || userToDelete?.email || "").trim().toLowerCase();
+
+                return (
+                    <AlertDialog 
+                        open={deleteDialogOpen} 
+                        onOpenChange={(open) => {
+                            setDeleteDialogOpen(open);
+                            if (!open) {
+                                setDeleteConfirmDoc("");
+                                setUserToDelete(null);
+                            }
+                        }}
+                    >
+                        <AlertDialogContent className="max-w-lg rounded-3xl p-6 sm:p-7 border-border/80 bg-background shadow-2xl">
+                            <AlertDialogHeader className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 flex items-center justify-center shrink-0 shadow-inner">
+                                        <AlertTriangle className="w-6 h-6 animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <AlertDialogTitle className="text-xl font-bold text-foreground">
+                                            Eliminar Aprendiz del Sistema
+                                        </AlertDialogTitle>
+                                        <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                            Esta acción es irreversible y eliminará todos los registros del aprendiz.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 pt-2">
+                                    {/* Banner del aprendiz */}
+                                    <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-between">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-9 h-9 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center font-bold">
+                                                <GraduationCap className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-foreground text-sm block">
+                                                    {userToDelete ? formatName(userToDelete.name, userToDelete.profile) : ""}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground font-mono block">
+                                                    {expectedDoc ? `Identificación: ${expectedDoc}` : userToDelete?.email}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <Badge variant="destructive" className="rounded-xl text-[10px] font-bold uppercase tracking-wider">
+                                            Aprendiz
+                                        </Badge>
+                                    </div>
+
+                                    {/* Advertencia de consecuencias */}
+                                    <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/30 space-y-1.5">
+                                        <div className="flex items-center gap-2 text-xs font-bold text-destructive">
+                                            <AlertCircle className="w-4 h-4 shrink-0" />
+                                            <span>Consecuencias de la eliminación:</span>
+                                        </div>
+                                        <p className="text-[11px] text-destructive/90 font-medium leading-relaxed">
+                                            ⚠️ Se eliminará definitivamente la cuenta del aprendiz y se borrarán permanentemente sus matrículas, asistencias, notas, observaciones y planes de mejoramiento asociados.
+                                        </p>
+                                    </div>
+
+                                    {/* Input de confirmación con identificación */}
+                                    <div className="space-y-2 pt-1 text-left">
+                                        <Label className="text-xs font-bold text-foreground block">
+                                            Para confirmar la eliminación, ingresa el número de identificación del aprendiz:{" "}
+                                            {expectedDoc ? (
+                                                <span className="text-destructive font-mono underline select-all font-extrabold">{expectedDoc}</span>
+                                            ) : (
+                                                <span className="text-destructive font-bold">&quot;{userToDelete?.name || userToDelete?.email}&quot;</span>
+                                            )}
+                                        </Label>
+                                        <Input
+                                            value={deleteConfirmDoc}
+                                            onChange={(e) => setDeleteConfirmDoc(e.target.value)}
+                                            placeholder={expectedDoc ? `Escribe "${expectedDoc}" aquí...` : `Escribe "${userToDelete?.name || userToDelete?.email}" aquí...`}
+                                            className={`h-10 rounded-xl text-xs font-mono font-medium bg-background border transition-all ${
+                                                isDocValid 
+                                                    ? "border-emerald-500 ring-2 ring-emerald-500/20" 
+                                                    : "border-border/80 focus:border-destructive focus:ring-2 focus:ring-destructive/20"
+                                            }`}
+                                            autoFocus
+                                        />
+                                        {deleteConfirmDoc && (
+                                            <p className={`text-[11px] font-semibold ${
+                                                isDocValid
+                                                    ? "text-emerald-600 dark:text-emerald-400"
+                                                    : "text-muted-foreground"
+                                            }`}>
+                                                {isDocValid
+                                                    ? "✓ Identificación confirmada. Ya puedes proceder a eliminar."
+                                                    : "El documento ingresado no coincide con la identificación del aprendiz."}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="mt-4 pt-3 border-t border-border/60 flex items-center justify-end gap-2">
+                                <AlertDialogCancel 
+                                    disabled={isPending}
+                                    onClick={() => {
+                                        setDeleteConfirmDoc("");
+                                        setUserToDelete(null);
+                                    }}
+                                    className="rounded-xl text-xs font-bold h-10 px-4"
+                                >
+                                    Cancelar
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        handleDeleteUser();
+                                    }}
+                                    disabled={isPending || !isDocValid}
+                                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl text-xs font-bold h-10 px-5 shadow-md shadow-destructive/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isPending ? "Eliminando..." : "Eliminar Aprendiz Definitivamente"}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                );
+            })()}
 
             {/* Role Change Confirmation Dialog */}
             <Dialog open={roleChangeDialogOpen} onOpenChange={(open) => {

@@ -7,8 +7,8 @@ import { getGroupsAction, getProgramsAction } from "@/features/admin/actions/aca
 import { getAllImprovementPlansAdmin } from "@/features/student/actions/improvementPlanActions";
 
 export const metadata = {
-    title: "Gestión y Matrícula | AcademiX",
-    description: "Matrícula de aprendices y planes de mejoramiento.",
+    title: "Gestión de Aprendices | AcademiX",
+    description: "Directorio de matrícula de aprendices y planes de mejoramiento.",
 };
 
 export default async function GestorUsersPage({
@@ -23,7 +23,6 @@ export default async function GestorUsersPage({
     }
 
     const resolvedSearchParams = searchParams ? await searchParams : undefined;
-    const tabParam = resolvedSearchParams?.tab;
     const programIdParam = resolvedSearchParams?.programId;
     
     const cookieStore = await cookies();
@@ -43,15 +42,12 @@ export default async function GestorUsersPage({
         }
     }
 
-    const [groups, admins, teachersResult, improvementPlansRes] = await Promise.all([
+    const [groups, admins, improvementPlansRes] = await Promise.all([
         getGroupsAction(effectiveProgramId),
         getAdminsAndObserversAction(),
-        getAllUsersAction({ role: "teacher", limit: 500, programId: effectiveProgramId }),
         getAllImprovementPlansAdmin(effectiveProgramId),
     ]);
 
-    const initialTab =
-        tabParam === "teachers" ? "teachers" : "students";
     const initialSubTab = resolvedSearchParams?.subtab === "plans" ? "plans" : "directory";
 
     const plans = improvementPlansRes.success && improvementPlansRes.data ? improvementPlansRes.data : [];
@@ -99,18 +95,12 @@ export default async function GestorUsersPage({
                     isObserver: false,
                     plans,
                 }}
-                teacherData={{
-                    initialTeachers: teachersResult.users as any,
-                    programId: effectiveProgramId,
-                    programs: mappedPrograms,
-                }}
                 adminData={{
                     initialUsers: admins as any,
                     programs: mappedPrograms,
                     currentUserId: session.user.id,
                 }}
                 currentUserRole={session.user.role}
-                defaultTab={initialTab}
                 defaultSubTab={initialSubTab}
             />
         </div>

@@ -46,8 +46,14 @@ import {
   getTeacherScheduleLockStatusAction, 
   adminLockBothTeacherScheduleAction,
   toggleTeacherSchedulePastAttendanceAction,
-  adminLockBothAllTeachersScheduleAction
+  adminLockBothAllTeachersScheduleAction,
+  adminLockTeacherQualificationsAction,
+  unlockTeacherQualificationsAction
 } from "@/features/teacher/actions/qualificationActions";
+import {
+  adminLockTeacherAvailabilityAction,
+  unlockTeacherAvailabilityAction
+} from "@/features/schedule/actions/availabilityActions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -126,6 +132,46 @@ export function ScheduleTeacherConfigModal({
       setRefreshKey(prev => prev + 1);
     } catch (err: any) {
       toast.error(err.message || "Error al actualizar bloqueo");
+    } finally {
+      setLockLoading(false);
+    }
+  };
+
+  const handleToggleAvailabilityLock = async (lock: boolean) => {
+    if (!selectedTeacherId || !selectedScheduleId) return;
+    setLockLoading(true);
+    try {
+      if (lock) {
+        await adminLockTeacherAvailabilityAction(selectedTeacherId, selectedScheduleId);
+        toast.success("Disponibilidad horaria bloqueada para este horario");
+      } else {
+        await unlockTeacherAvailabilityAction(selectedTeacherId, selectedScheduleId);
+        toast.success("Disponibilidad horaria desbloqueada para este horario");
+      }
+      setRefreshKey(prev => prev + 1);
+      await fetchLockStatus();
+    } catch (err: any) {
+      toast.error(err.message || "Error al actualizar bloqueo de horario");
+    } finally {
+      setLockLoading(false);
+    }
+  };
+
+  const handleToggleQualificationsLock = async (lock: boolean) => {
+    if (!selectedTeacherId || !selectedScheduleId) return;
+    setLockLoading(true);
+    try {
+      if (lock) {
+        await adminLockTeacherQualificationsAction(selectedTeacherId, selectedScheduleId);
+        toast.success("Materias bloqueadas para este horario");
+      } else {
+        await unlockTeacherQualificationsAction(selectedTeacherId, selectedScheduleId);
+        toast.success("Materias desbloqueadas para este horario");
+      }
+      setRefreshKey(prev => prev + 1);
+      await fetchLockStatus();
+    } catch (err: any) {
+      toast.error(err.message || "Error al actualizar bloqueo de materias");
     } finally {
       setLockLoading(false);
     }
@@ -388,39 +434,62 @@ export function ScheduleTeacherConfigModal({
 
                   {lockStatus && (
                     <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                      <Badge 
-                        variant="outline" 
-                        className={cn(
-                          "text-[10px] font-bold px-2 py-0.5 h-7 rounded-md shrink-0 flex items-center gap-1",
-                          lockStatus.availabilityLocked 
-                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-                            : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300"
-                        )}
-                      >
-                        {lockStatus.availabilityLocked ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
-                        <span>Horario: {lockStatus.availabilityLocked ? "Bloqueado" : "Borrador"}</span>
-                      </Badge>
+                      {/* Botón / Badge Horario */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={lockLoading}
+                            onClick={() => handleToggleAvailabilityLock(!lockStatus.availabilityLocked)}
+                            className={cn(
+                              "text-[10px] font-bold px-2 py-0.5 h-7 rounded-md shrink-0 flex items-center gap-1 cursor-pointer transition-all",
+                              lockStatus.availabilityLocked 
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20"
+                                : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
+                            )}
+                          >
+                            {lockStatus.availabilityLocked ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                            <span>Horario: {lockStatus.availabilityLocked ? "Bloqueado" : "Borrador"}</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          {lockStatus.availabilityLocked ? "Clic para desbloquear disponibilidad horaria" : "Clic para bloquear disponibilidad horaria"}
+                        </TooltipContent>
+                      </Tooltip>
 
-                      <Badge 
-                        variant="outline" 
-                        className={cn(
-                          "text-[10px] font-bold px-2 py-0.5 h-7 rounded-md shrink-0 flex items-center gap-1",
-                          lockStatus.qualificationsLocked 
-                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-                            : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300"
-                        )}
-                      >
-                        {lockStatus.qualificationsLocked ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
-                        <span>Materias: {lockStatus.qualificationsLocked ? "Bloqueadas" : "Borrador"}</span>
-                      </Badge>
+                      {/* Botón / Badge Materias */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={lockLoading}
+                            onClick={() => handleToggleQualificationsLock(!lockStatus.qualificationsLocked)}
+                            className={cn(
+                              "text-[10px] font-bold px-2 py-0.5 h-7 rounded-md shrink-0 flex items-center gap-1 cursor-pointer transition-all",
+                              lockStatus.qualificationsLocked 
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20"
+                                : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
+                            )}
+                          >
+                            {lockStatus.qualificationsLocked ? <Lock className="w-2.5 h-2.5" /> : <Unlock className="w-2.5 h-2.5" />}
+                            <span>Materias: {lockStatus.qualificationsLocked ? "Bloqueadas" : "Borrador"}</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs">
+                          {lockStatus.qualificationsLocked ? "Clic para desbloquear materias habilitadas" : "Clic para bloquear materias habilitadas"}
+                        </TooltipContent>
+                      </Tooltip>
 
+                      {/* Botón Acción conjunta Ambos */}
                       {lockStatus.availabilityLocked && lockStatus.qualificationsLocked ? (
                         <Button
                           size="sm"
                           variant="outline"
                           disabled={lockLoading}
                           onClick={() => handleToggleBothLocks(false)}
-                          className="h-7 px-2 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 rounded-md"
+                          className="h-7 px-2 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 rounded-md cursor-pointer"
                         >
                           <Unlock className="w-3 h-3" />
                           <span>Desbloquear Ambos</span>
@@ -430,7 +499,7 @@ export function ScheduleTeacherConfigModal({
                           size="sm"
                           disabled={lockLoading}
                           onClick={() => handleToggleBothLocks(true)}
-                          className="h-7 px-2 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white gap-1 rounded-md"
+                          className="h-7 px-2 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white gap-1 rounded-md cursor-pointer"
                         >
                           <Lock className="w-3 h-3" />
                           <span>Bloquear Horario y Materias</span>
