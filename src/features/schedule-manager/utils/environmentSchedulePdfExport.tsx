@@ -415,18 +415,19 @@ export function extractEnvironmentsExportData(
     let weeklyHours = 0;
 
     groups.forEach((g) => {
-      if (g.environment?.id === env.id) {
-        g.scheduledClasses.forEach((c) => {
-          distinctCourses.add(c.title);
-          c.schedules.forEach((s) => {
+      g.scheduledClasses.forEach((c) => {
+        c.schedules.forEach((s) => {
+          const effectiveEnvId = s.environment?.id || g.environment?.id;
+          if (effectiveEnvId === env.id) {
             const [sh, sm] = s.startTime.split(":").map(Number);
             const [eh, em] = s.endTime.split(":").map(Number);
             const dur = (eh * 60 + em - (sh * 60 + sm)) / 60;
             weeklyHours += dur;
             distinctGroups.add(g.name);
+            distinctCourses.add(c.title);
 
             const dayObj = DAYS_ES.find((d) => d.key === s.dayOfWeek);
-            const tName = getCleanTeacherName(c.teacher?.name) || "Sin instructor";
+            const tName = getCleanTeacherName(s.teacher?.name || c.teacher?.name) || "Sin instructor";
 
             classesByDay[s.dayOfWeek]?.push({
               groupName: g.name,
@@ -446,9 +447,9 @@ export function extractEnvironmentsExportData(
               endTime: s.endTime,
               durationHours: dur,
             });
-          });
+          }
         });
-      }
+      });
     });
 
     // Sort classes by startTime

@@ -80,6 +80,7 @@ interface ScheduleClassModalProps {
   group: ScheduleBuilderData["groups"][0] | null;
   teachers: ScheduleBuilderData["teachers"];
   environments: ScheduleBuilderData["environments"];
+  allGroups?: ScheduleBuilderData["groups"];
   editingCourseScheduleId?: string;
   initialCourseTitle?: string;
   initialTeacherId?: string;
@@ -98,6 +99,7 @@ export function ScheduleClassModal({
   group,
   teachers,
   environments,
+  allGroups,
   editingCourseScheduleId,
   initialCourseTitle,
   initialTeacherId,
@@ -217,6 +219,45 @@ export function ScheduleClassModal({
     );
 
     return { isDayAvail, hasCollision };
+  };
+
+  // Check environment availability for selected day and hours
+  const checkEnvironmentAvailable = (env: typeof environments[0]) => {
+    if (!allGroups) return { isAvailable: true, collision: null };
+
+    let collision: { groupName: string; courseTitle: string; startTime: string; endTime: string } | null = null;
+
+    for (const g of allGroups) {
+      for (const c of g.scheduledClasses) {
+        for (const s of c.schedules) {
+          if (editingCourseScheduleId && s.id === editingCourseScheduleId) continue;
+          if (s.dayOfWeek !== dayOfWeek) continue;
+
+          // Check if this class is assigned to this environment
+          const classEnvId = s.environment?.id || g.environment?.id;
+          if (classEnvId !== env.id) continue;
+
+          // Check time overlap
+          const hasOverlap = s.startTime < endTime && s.endTime > startTime;
+          if (hasOverlap) {
+            collision = {
+              groupName: g.name,
+              courseTitle: c.title,
+              startTime: s.startTime,
+              endTime: s.endTime,
+            };
+            break;
+          }
+        }
+        if (collision) break;
+      }
+      if (collision) break;
+    }
+
+    return {
+      isAvailable: !collision,
+      collision,
+    };
   };
 
   const [teacherFilter, setTeacherFilter] = useState<"all" | "qualified" | "available" | "perfect">("all");
@@ -581,32 +622,61 @@ export function ScheduleClassModal({
 
             {/* 4. Selección de Ambiente de Formación */}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold flex items-center gap-1.5">
-                <Building className="w-4 h-4 text-primary" />
-                Ambiente de Formación (Aula / Laboratorio)
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold flex items-center gap-1.5">
+                  <Building className="w-4 h-4 text-primary" />
+                  Ambiente de Formación (Aula / Laboratorio)
+                </Label>
+                {selectedEnvironmentId !== "NONE" && (
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    Asignado a esta sesión del {DAYS_ES.find((d) => d.value === dayOfWeek)?.label}
+                  </span>
+                )}
+              </div>
               <Select value={selectedEnvironmentId} onValueChange={setSelectedEnvironmentId}>
                 <SelectTrigger className="rounded-xl text-xs bg-card">
                   <SelectValue placeholder="Seleccionar ambiente..." />
                 </SelectTrigger>
-                <SelectContent className="rounded-2xl text-xs">
+                <SelectContent className="rounded-2xl text-xs max-h-64">
                   <SelectItem value="NONE" className="cursor-pointer text-muted-foreground">
                     Sin ambiente específico
                   </SelectItem>
-                  {environments.map((env) => (
-                    <SelectItem key={env.id} value={env.id} className="cursor-pointer">
-                      <div className="flex items-center justify-between gap-2 w-full">
-                        <span className="font-medium">{env.name}</span>
-                        {env.location && (
-                          <span className="text-muted-foreground text-[11px]">
-                            ({env.location})
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {environments.map((env) => {
+                    const { isAvailable, collision } = checkEnvironmentAvailable(env);
+                    return (
+                      <SelectItem key={env.id} value={env.id} className="cursor-pointer">
+                        <div className="flex items-center justify-between gap-3 w-full">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{env.name}</span>
+                            {env.location && (
+                              <span className="text-muted-foreground text-[11px]">
+                                ({env.location})
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            {collision ? (
+                              <Badge variant="destructive" className="text-[10px] py-0 px-1.5 font-normal">
+                                Ocupado: {collision.groupName}
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 text-[10px] py-0 px-1.5 font-normal">
+                                Disponible
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-0.5">
+                <Sparkles className="w-3 h-3 text-primary shrink-0" />
+                <span>
+                  Asignación por día: cada clase puede tener su propio ambiente según el día o requerimiento de la materia.
+                </span>
+              </p>
             </div>
           </div>
 

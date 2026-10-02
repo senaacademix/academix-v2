@@ -37,6 +37,7 @@ import {
   AlertTriangle,
   Lock,
   GitBranch,
+  Building,
 } from "lucide-react";
 import {
   Tooltip,
@@ -146,6 +147,7 @@ interface InteractiveWeeklyCalendarGridProps {
       courseScheduleId: string;
       courseTitle: string;
       teacherId?: string;
+      environmentId?: string;
       dayOfWeek: DayOfWeek;
       startTime: string;
       endTime: string;
@@ -259,6 +261,8 @@ export function InteractiveWeeklyCalendarGrid({
       description: string | null;
       teacherId?: string;
       teacherName: string | null;
+      environmentId?: string;
+      environmentName?: string | null;
       dayOfWeek: DayOfWeek;
       startTime: string;
       endTime: string;
@@ -275,6 +279,8 @@ export function InteractiveWeeklyCalendarGrid({
             description: c.description,
             teacherId: s.teacher?.id || c.teacher?.id || undefined,
             teacherName: s.teacher?.name || c.teacher?.name || null,
+            environmentId: s.environment?.id || group.environment?.id || undefined,
+            environmentName: s.environment?.name || group.environment?.name || null,
             dayOfWeek: s.dayOfWeek,
             startTime: s.startTime,
             endTime: s.endTime,
@@ -702,6 +708,7 @@ export function InteractiveWeeklyCalendarGrid({
                                       courseScheduleId: evt.courseScheduleId,
                                       courseTitle: evt.courseTitle,
                                       teacherId: evt.teacherId,
+                                      environmentId: evt.environmentId,
                                       dayOfWeek: evt.dayOfWeek,
                                       startTime: evt.startTime,
                                       endTime: evt.endTime,
@@ -747,6 +754,12 @@ export function InteractiveWeeklyCalendarGrid({
                                       <span className="truncate">{getCompactTeacherName(evt.teacherName)}</span>
                                     </div>
                                   )}
+                                  {evt.environmentName && (
+                                    <div className="flex items-center gap-0.5 text-[9px] text-emerald-700 dark:text-emerald-300 font-semibold truncate">
+                                      <Building className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                      <span className="truncate">{evt.environmentName}</span>
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="flex items-center justify-between gap-1">
@@ -776,8 +789,11 @@ export function InteractiveWeeklyCalendarGrid({
                               {evt.teacherName && (
                                 <p className="text-[11px] text-primary font-medium">Instructor: {getCleanTeacherName(evt.teacherName)}</p>
                               )}
-                              {group.environment && (
-                                <p className="text-[11px] text-muted-foreground">Ambiente: {group.environment.name}</p>
+                              {evt.environmentName && (
+                                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-1">
+                                  <Building className="w-3 h-3 text-emerald-600 shrink-0" />
+                                  Ambiente: {evt.environmentName}
+                                </p>
                               )}
                               <p className="text-[10px] text-primary/80 font-bold pt-1 border-t border-border/40">
                                 Haz clic para editar esta clase

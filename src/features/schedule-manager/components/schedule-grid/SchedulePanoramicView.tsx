@@ -165,6 +165,7 @@ export function SchedulePanoramicView({
                       classesByDay[s.dayOfWeek].push({
                         courseTitle: c.title,
                         teacherName: s.teacher?.name || c.teacher?.name || "Sin instructor",
+                        environmentName: s.environment?.name || g.environment?.name || null,
                         startTime: s.startTime,
                         endTime: s.endTime,
                       });
@@ -271,6 +272,12 @@ export function SchedulePanoramicView({
                                       <GraduationCap className="w-2.5 h-2.5 text-primary shrink-0" />
                                       <span className="truncate">{getCompactTeacherName(cls.teacherName)}</span>
                                     </div>
+                                    {cls.environmentName && (
+                                      <div className="text-[9px] text-emerald-700 dark:text-emerald-300 truncate font-semibold flex items-center gap-1">
+                                        <Building className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                        <span className="truncate">{cls.environmentName}</span>
+                                      </div>
+                                    )}
                                     <div className="text-[9px] font-mono text-primary font-semibold flex items-center gap-1">
                                       <Clock className="w-2.5 h-2.5 shrink-0" />
                                       <span>{toFormat12h(cls.startTime)} - {toFormat12h(cls.endTime)}</span>
@@ -302,10 +309,10 @@ export function SchedulePanoramicView({
                                       </p>
                                     )}
 
-                                    {g.environment && (
-                                      <p className="flex items-center gap-1.5">
-                                        <Building className="w-3 h-3 text-indigo-500 shrink-0" />
-                                        <span>Ambiente: {g.environment.name}</span>
+                                    {cls.environmentName && (
+                                      <p className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 font-semibold">
+                                        <Building className="w-3 h-3 text-emerald-600 shrink-0" />
+                                        <span>Ambiente: {cls.environmentName}</span>
                                       </p>
                                     )}
 

@@ -185,13 +185,14 @@ export function EnvironmentOccupancyModal({
     });
 
     groups.forEach((g) => {
-      if (g.environment) {
-        const entry = map.get(g.environment.id);
-        if (entry) {
-          entry.distinctGroups.add(g.name);
-          g.scheduledClasses.forEach((c) => {
-            entry.distinctCourses.add(c.title);
-            c.schedules.forEach((s) => {
+      g.scheduledClasses.forEach((c) => {
+        c.schedules.forEach((s) => {
+          const effectiveEnvId = s.environment?.id || g.environment?.id;
+          if (effectiveEnvId) {
+            const entry = map.get(effectiveEnvId);
+            if (entry) {
+              entry.distinctGroups.add(g.name);
+              entry.distinctCourses.add(c.title);
               const [sh, sm] = s.startTime.split(":").map(Number);
               const [eh, em] = s.endTime.split(":").map(Number);
               const dur = (eh * 60 + em - (sh * 60 + sm)) / 60;
@@ -214,16 +215,16 @@ export function EnvironmentOccupancyModal({
                 groupName: g.name,
                 programName: g.program.name,
                 courseTitle: c.title,
-                teacherName: getCleanTeacherName(c.teacher?.name),
+                teacherName: getCleanTeacherName(s.teacher?.name || c.teacher?.name),
                 startTime: s.startTime,
                 endTime: s.endTime,
                 durationHours: dur,
                 hasCollision,
               });
-            });
-          });
-        }
-      }
+            }
+          }
+        });
+      });
     });
 
     // Sort classes by startTime for each day
@@ -356,9 +357,10 @@ export function EnvironmentOccupancyModal({
     if (!currentEnv) return map;
 
     groups.forEach((g) => {
-      if (g.environment?.id === currentEnv.id) {
-        g.scheduledClasses.forEach((c) => {
-          c.schedules.forEach((s) => {
+      g.scheduledClasses.forEach((c) => {
+        c.schedules.forEach((s) => {
+          const effectiveEnvId = s.environment?.id || g.environment?.id;
+          if (effectiveEnvId === currentEnv.id) {
             const [sh, sm] = s.startTime.split(":").map(Number);
             const [eh, em] = s.endTime.split(":").map(Number);
             const dur = (eh * 60 + em - (sh * 60 + sm)) / 60;
@@ -380,15 +382,15 @@ export function EnvironmentOccupancyModal({
               groupName: g.name,
               programName: g.program.name,
               courseTitle: c.title,
-              teacherName: getCleanTeacherName(c.teacher?.name),
+              teacherName: getCleanTeacherName(s.teacher?.name || c.teacher?.name),
               startTime: s.startTime,
               endTime: s.endTime,
               durationHours: dur,
               hasCollision,
             });
-          });
+          }
         });
-      }
+      });
     });
 
     // Sort by startTime

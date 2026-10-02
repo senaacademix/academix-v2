@@ -96,6 +96,7 @@ export function ScheduleGeneralBuilderView({
   const [modalEditingCourseScheduleId, setModalEditingCourseScheduleId] = useState<string | undefined>();
   const [modalInitialCourseTitle, setModalInitialCourseTitle] = useState<string | undefined>();
   const [modalInitialTeacherId, setModalInitialTeacherId] = useState<string | undefined>();
+  const [modalInitialEnvironmentId, setModalInitialEnvironmentId] = useState<string | undefined>();
   const [modalInitialDay, setModalInitialDay] = useState<DayOfWeek | undefined>();
   const [modalInitialStartTime, setModalInitialStartTime] = useState<string | undefined>();
   const [modalInitialEndTime, setModalInitialEndTime] = useState<string | undefined>();
@@ -204,6 +205,7 @@ export function ScheduleGeneralBuilderView({
       courseScheduleId: string;
       courseTitle: string;
       teacherId?: string;
+      environmentId?: string;
       dayOfWeek: DayOfWeek;
       startTime: string;
       endTime: string;
@@ -213,6 +215,7 @@ export function ScheduleGeneralBuilderView({
       setModalEditingCourseScheduleId(editingSlot.courseScheduleId);
       setModalInitialCourseTitle(editingSlot.courseTitle);
       setModalInitialTeacherId(editingSlot.teacherId);
+      setModalInitialEnvironmentId(editingSlot.environmentId);
       setModalInitialDay(editingSlot.dayOfWeek);
       setModalInitialStartTime(editingSlot.startTime);
       setModalInitialEndTime(editingSlot.endTime);
@@ -220,6 +223,7 @@ export function ScheduleGeneralBuilderView({
       setModalEditingCourseScheduleId(undefined);
       setModalInitialCourseTitle(courseTitle);
       setModalInitialTeacherId(undefined);
+      setModalInitialEnvironmentId(undefined);
       setModalInitialDay(day);
       setModalInitialStartTime(startTime);
       setModalInitialEndTime(endTime);
@@ -799,9 +803,11 @@ export function ScheduleGeneralBuilderView({
           group={selectedGroup}
           teachers={data.teachers}
           environments={data.environments}
+          allGroups={data.groups}
           editingCourseScheduleId={modalEditingCourseScheduleId}
           initialCourseTitle={modalInitialCourseTitle}
           initialTeacherId={modalInitialTeacherId}
+          initialEnvironmentId={modalInitialEnvironmentId}
           initialDay={modalInitialDay}
           initialStartTime={modalInitialStartTime}
           initialEndTime={modalInitialEndTime}

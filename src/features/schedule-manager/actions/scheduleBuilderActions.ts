@@ -81,6 +81,11 @@ export interface ScheduleBuilderData {
           name: string;
           email: string;
         } | null;
+        environment?: {
+          id: string;
+          name: string;
+          location?: string | null;
+        } | null;
       }>;
     }>;
   }>;
@@ -176,7 +181,8 @@ export async function getScheduleBuilderDataAction(scheduleId: string, programId
                     teacher: { select: { id: true, name: true, email: true } },
                     schedules: {
                       include: {
-                        teacher: { select: { id: true, name: true, email: true } }
+                        teacher: { select: { id: true, name: true, email: true } },
+                        environment: { select: { id: true, name: true, location: true } }
                       }
                     }
                   }
@@ -306,6 +312,15 @@ export async function getScheduleBuilderDataAction(scheduleId: string, programId
           dayOfWeek: s.dayOfWeek,
           startTime: s.startTime,
           endTime: s.endTime,
+          environment: s.environment ? {
+            id: s.environment.id,
+            name: s.environment.name,
+            location: s.environment.location,
+          } : (g.environment ? {
+            id: g.environment.id,
+            name: g.environment.name,
+            location: g.environment.location,
+          } : null),
           teacher: s.teacher ? {
             id: s.teacher.id,
             name: s.teacher.name || "Sin nombre",
@@ -561,12 +576,82 @@ export async function assignGroupClassScheduleAction(data: {
       }
     }
 
-    // 2. Si se asignó un ambiente, actualizar el ambiente del grupo si corresponde
-    if (data.environmentId && data.environmentId !== "NONE") {
-      await prisma.group.update({
-        where: { id: data.groupId },
-        data: { environmentId: data.environmentId },
+    // 2. Validar si el ambiente tiene colisión con otra ficha en este horario a esa misma hora y día
+    const resolvedEnvironmentId = data.environmentId && data.environmentId !== "NONE" ? data.environmentId : null;
+
+    if (resolvedEnvironmentId) {
+      const environmentCollision = await prisma.courseSchedule.findFirst({
+        where: {
+          id: data.editingCourseScheduleId ? { not: data.editingCourseScheduleId } : undefined,
+          dayOfWeek: data.dayOfWeek,
+          OR: [
+            { environmentId: resolvedEnvironmentId },
+            {
+              AND: [
+                { environmentId: null },
+                { course: { group: { environmentId: resolvedEnvironmentId } } },
+              ],
+            },
+          ],
+          course: {
+            academicScheduleId: data.scheduleId,
+            groupId: { not: data.groupId },
+          },
+          AND: [
+            {
+              OR: [
+                {
+                  AND: [
+                    { startTime: { lte: data.startTime } },
+                    { endTime: { gt: data.startTime } },
+                  ],
+                },
+                {
+                  AND: [
+                    { startTime: { lt: data.endTime } },
+                    { endTime: { gte: data.endTime } },
+                  ],
+                },
+                {
+                  AND: [
+                    { startTime: { gte: data.startTime } },
+                    { endTime: { lte: data.endTime } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        include: {
+          course: {
+            include: {
+              group: { select: { name: true } },
+            },
+          },
+          environment: { select: { name: true } },
+        },
       });
+
+      if (environmentCollision) {
+        const envName = environmentCollision.environment?.name || "seleccionado";
+        const groupName = environmentCollision.course.group?.name || "otra ficha";
+        return {
+          success: false,
+          error: `Colisión de ambiente: El ambiente "${envName}" ya está ocupado por la ficha ${groupName} (${environmentCollision.course.title}) el ${data.dayOfWeek} de ${environmentCollision.startTime} a ${environmentCollision.endTime}`,
+        };
+      }
+
+      // Si la ficha no tiene ambiente por defecto, establecer este como su ambiente base
+      const currentGroup = await prisma.group.findUnique({
+        where: { id: data.groupId },
+        select: { environmentId: true },
+      });
+      if (!currentGroup?.environmentId) {
+        await prisma.group.update({
+          where: { id: data.groupId },
+          data: { environmentId: resolvedEnvironmentId },
+        });
+      }
     }
 
     // 3. Buscar o crear el curso asignado al grupo en este horario específico
@@ -631,6 +716,7 @@ export async function assignGroupClassScheduleAction(data: {
         data: {
           courseId: groupCourse.id,
           teacherId: resolvedTeacherId,
+          environmentId: resolvedEnvironmentId,
           dayOfWeek: data.dayOfWeek,
           startTime: data.startTime,
           endTime: data.endTime,
@@ -642,6 +728,7 @@ export async function assignGroupClassScheduleAction(data: {
         data: {
           courseId: groupCourse.id,
           teacherId: resolvedTeacherId,
+          environmentId: resolvedEnvironmentId,
           dayOfWeek: data.dayOfWeek,
           startTime: data.startTime,
           endTime: data.endTime,

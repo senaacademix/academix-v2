@@ -284,16 +284,18 @@ enum DayOfWeek {
 }
 
 model CourseSchedule {
-  id        String    @id @default(cuid())
-  courseId  String
-  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  teacherId String?
-  teacher   User?     @relation("CourseScheduleTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
-  dayOfWeek DayOfWeek
-  startTime String // Format: "HH:mm" (e.g., "08:00")
-  endTime   String // Format: "HH:mm" (e.g., "10:00")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String               @id @default(cuid())
+  courseId      String
+  course        Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacherId     String?
+  teacher       User?                @relation("CourseScheduleTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
+  environmentId String?
+  environment   TrainingEnvironment? @relation("CourseScheduleEnvironment", fields: [environmentId], references: [id], onDelete: SetNull)
+  dayOfWeek     DayOfWeek
+  startTime     String // Format: "HH:mm" (e.g., "08:00")
+  endTime       String // Format: "HH:mm" (e.g., "10:00")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   @@map("course_schedule")
 }
@@ -584,11 +586,12 @@ model TrainingEnvironment {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  groups      Group[]
+  groups          Group[]
   scheduleNovelties ScheduleNovelty[]
+  courseSchedules CourseSchedule[]     @relation("CourseScheduleEnvironment")
 
-  programId   String?
-  program     Program?  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  programId       String?
+  program         Program?             @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@map("training_environment")
 }
