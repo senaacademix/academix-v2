@@ -21,7 +21,7 @@ if (typeof setInterval !== "undefined") {
 }
 
 /**
- * Obtiene la dirección IP real del cliente considerando proxies y balanceadores de carga.
+ * Obtiene la dirección IP real del cliente considerando proxies y balanceadores de carga (desde NextRequest).
  */
 export function getClientIp(request: NextRequest): string {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -36,6 +36,37 @@ export function getClientIp(request: NextRequest): string {
   if (cfConnectingIp) return cfConnectingIp.trim();
 
   return "127.0.0.1";
+}
+
+/**
+ * Obtiene la dirección IP real del cliente desde headers de Next.js (Headers o ReadonlyHeaders en Server Actions).
+ */
+export function getClientIpFromHeaders(headersList: { get(name: string): string | null }): string {
+  const forwardedFor = headersList.get("x-forwarded-for");
+  if (forwardedFor) {
+    const ip = forwardedFor.split(",")[0].trim();
+    if (ip) return ip;
+  }
+  const realIp = headersList.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  const cfConnectingIp = headersList.get("cf-connecting-ip");
+  if (cfConnectingIp) return cfConnectingIp.trim();
+
+  return "127.0.0.1";
+}
+
+/**
+ * Genera una clave combinada estricta de Cuenta + IP para evitar bloqueos colectivos
+ * en redes con IP pública compartida (NAT, aulas de clase, WiFi institucional SENA).
+ * @param prefix Prefijo para clasificar el contexto (ej: 'auth_attempt', 'user')
+ * @param account Correo o identificador de cuenta
+ * @param ip Dirección IP del cliente
+ */
+export function getAccountIpKey(prefix: string, account: string, ip: string): string {
+  const normAccount = account.trim().toLowerCase();
+  const normIp = ip.trim();
+  return `${prefix}:${normAccount}:${normIp}`;
 }
 
 export interface RateLimitResult {
@@ -98,6 +129,18 @@ export function checkRateLimit(
  */
 export function resetRateLimitKey(key: string): void {
   rateLimitStore.delete(key);
+}
+
+/**
+ * Reinicia todas las claves que comiencen con un prefijo específico
+ * (ej: al desbloquear una cuenta, limpia todos los registros de esa cuenta independientemente de la IP).
+ */
+export function resetRateLimitPrefix(prefix: string): void {
+  for (const key of rateLimitStore.keys()) {
+    if (key.startsWith(prefix)) {
+      rateLimitStore.delete(key);
+    }
+  }
 }
 
 /**

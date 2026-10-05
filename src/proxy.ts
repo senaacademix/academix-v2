@@ -1,41 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getSessionCookie } from "better-auth/cookies";
-import { getClientIp, checkRateLimit } from "@/lib/rate-limiter";
+import { getClientIp, checkRateLimit, getAccountIpKey } from "@/lib/rate-limiter";
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const clientIp = getClientIp(request);
 
-    // 1. Rate Limiting Perimetral por IP
-    const isAuthRoute = pathname.startsWith("/api/auth");
-    const limit = isAuthRoute ? 15 : 120; // 15 req/min para auth, 120 req/min general
-    const rateKey = `${isAuthRoute ? "auth" : "gen"}:${clientIp}`;
-
-    const rateResult = checkRateLimit(rateKey, limit, 60);
-    if (!rateResult.allowed) {
-        return new NextResponse(
-            JSON.stringify({
-                error: "Demasiadas peticiones. Por motivos de seguridad su IP ha alcanzado el límite de solicitudes temporales.",
-                retryAfter: rateResult.resetSeconds,
-            }),
-            {
-                status: 429,
-                headers: {
-                    "Content-Type": "application/json",
-                    "Retry-After": rateResult.resetSeconds.toString(),
-                    "X-RateLimit-Limit": rateResult.limit.toString(),
-                    "X-RateLimit-Remaining": "0",
-                    "X-RateLimit-Reset": rateResult.resetSeconds.toString(),
-                },
-            }
-        );
-    }
-
-    const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
-    const hasSessionCookie = !!getSessionCookie(request);
-
-    // 2. Bloqueo estricto perimetral de autoregistro de aprendices
+    // 1. Bloqueo estricto perimetral de autoregistro de aprendices
     if (pathname.startsWith("/api/auth/sign-up")) {
         return NextResponse.json(
             { 
@@ -48,6 +20,9 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/signup") {
         return NextResponse.redirect(new URL("/signin", request.url));
     }
+
+    const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+    const hasSessionCookie = !!getSessionCookie(request);
 
     // Fast-path: Si no hay cookie de sesión y se intenta acceder a dashboard, redirigir inmediatamente
     if (isDashboard && !hasSessionCookie) {
@@ -69,6 +44,49 @@ export async function proxy(request: NextRequest) {
     // Si la cookie es inválida o expiró y está en ruta protegida
     if (isDashboard && !session) {
         return NextResponse.redirect(new URL("/signin", request.url));
+    }
+
+    // 2. Rate Limiting Inteligente (Cuenta + IP para usuarios autenticados / Protección de aula para anónimos)
+    // Evita bloquear a grupos enteros de estudiantes que comparten la misma red WiFi/NAT institucional.
+    let rateKey: string;
+    let rateLimit = 120; // 120 req/min por usuario por defecto
+
+    if (session?.user?.email) {
+        // Usuario identificado: Límite individual estricto por Cuenta + IP
+        rateKey = getAccountIpKey("user", session.user.email, clientIp);
+        rateLimit = 150;
+    } else if (pathname.startsWith("/api/auth")) {
+        // Endpoints de autenticación sin sesión: Se permite un umbral amplio por IP (300 req/min)
+        // para dar cabida a grupos de 30-50 estudiantes ingresando al tiempo desde el mismo aula,
+        // mientras que la seguridad estricta anti-fuerza bruta se evalúa por (Cuenta + IP) en la acción de login.
+        rateKey = `auth_perimeter:${clientIp}`;
+        rateLimit = 300;
+    } else {
+        // Navegación anónima pública general (carga inicial de recursos en el aula)
+        rateKey = `gen_perimeter:${clientIp}`;
+        rateLimit = 600;
+    }
+
+    const rateResult = checkRateLimit(rateKey, rateLimit, 60);
+    if (!rateResult.allowed) {
+        return new NextResponse(
+            JSON.stringify({
+                error: session?.user?.email 
+                    ? "Demasiadas peticiones para su cuenta desde esta conexión. Por motivos de seguridad espere un momento."
+                    : "Demasiadas peticiones concurrentes desde esta red. Por motivos de seguridad espere un momento.",
+                retryAfter: rateResult.resetSeconds,
+            }),
+            {
+                status: 429,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Retry-After": rateResult.resetSeconds.toString(),
+                    "X-RateLimit-Limit": rateResult.limit.toString(),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": rateResult.resetSeconds.toString(),
+                },
+            }
+        );
     }
 
     const role = session?.user?.role || "student";

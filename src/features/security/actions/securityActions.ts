@@ -66,17 +66,37 @@ export async function unlockUserAccountAction(userId: string): Promise<{ success
   }
 }
 
+import { getClientIpFromHeaders, getAccountIpKey, checkRateLimit } from "@/lib/rate-limiter";
+
 // Server action invocable por el cliente de login para verificar bloqueo de cuenta antes de intentar autenticación
+// Valida estrictamente la combinación (Cuenta + IP) para evitar bloqueos compartidos en redes de aula/NAT
 export async function verifyAccountLockoutAction(email: string) {
-  return checkAccountLockout(email);
+  const reqHeaders = await headers();
+  const clientIp = getClientIpFromHeaders(reqHeaders);
+
+  // Rate limit de intentos por cuenta e IP (máx 10 peticiones de intento por minuto por combinación)
+  const rateResult = checkRateLimit(getAccountIpKey("auth_attempt", email, clientIp), 10, 60);
+  if (!rateResult.allowed) {
+    return {
+      locked: true,
+      remainingMinutes: 1,
+      message: `Demasiados intentos continuos para esta cuenta desde su dirección IP (${clientIp}). Por favor espere ${rateResult.resetSeconds} segundos antes de reintentar.`,
+    };
+  }
+
+  return checkAccountLockout(email, clientIp);
 }
 
-// Server action para notificar intento fallido
+// Server action para notificar intento fallido vinculado estrictamente a (Cuenta + IP)
 export async function reportFailedLoginAction(email: string) {
-  return recordFailedLogin(email);
+  const reqHeaders = await headers();
+  const clientIp = getClientIpFromHeaders(reqHeaders);
+  return recordFailedLogin(email, clientIp);
 }
 
-// Server action para notificar login exitoso
+// Server action para notificar login exitoso y restablecer bloqueos de (Cuenta + IP)
 export async function reportSuccessfulLoginAction(email: string) {
-  return resetFailedLogin(email);
+  const reqHeaders = await headers();
+  const clientIp = getClientIpFromHeaders(reqHeaders);
+  return resetFailedLogin(email, clientIp);
 }
