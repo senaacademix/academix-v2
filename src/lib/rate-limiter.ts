@@ -20,6 +20,26 @@ if (typeof setInterval !== "undefined") {
   }, 60000);
 }
 
+export interface RateLimitConfig {
+  enabled: boolean;
+  userRequestsPerMinute: number;
+  authRequestsPerMinute: number;
+}
+
+let activeRateLimitConfig: RateLimitConfig = {
+  enabled: true,
+  userRequestsPerMinute: 60,
+  authRequestsPerMinute: 10,
+};
+
+export function setRateLimitConfig(config: Partial<RateLimitConfig>): void {
+  activeRateLimitConfig = { ...activeRateLimitConfig, ...config };
+}
+
+export function getRateLimitConfig(): RateLimitConfig {
+  return activeRateLimitConfig;
+}
+
 /**
  * Obtiene la dirección IP real del cliente considerando proxies y balanceadores de carga (desde NextRequest).
  */

@@ -27,6 +27,8 @@ import {
   Ban,
   Activity,
   UserX,
+  Globe,
+  Network,
 } from "lucide-react";
 import {
   SecuritySettingsData,
@@ -44,6 +46,7 @@ interface BlockedUser {
   failedLoginAttempts: number;
   lockedUntil: Date | null;
   lastFailedLogin: Date | null;
+  lockedIp?: string | null;
   profile?: {
     identificacion: string | null;
   } | null;
@@ -70,7 +73,7 @@ export function AdminSecurityPanel({
         if (res.success && res.data) {
           setSettings(res.data);
           toast.success("Seguridad actualizada", {
-            description: "Las reglas de Rate Limiting y Anti-Fuerza Bruta se han guardado exitosamente.",
+            description: "Las reglas de Rate Limiting y Anti-Fuerza Bruta (Cuenta + IP) se han guardado exitosamente.",
           });
         } else {
           toast.error("Error al guardar", {
@@ -93,7 +96,7 @@ export function AdminSecurityPanel({
         if (res.success) {
           setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
           toast.success("Cuenta desbloqueada", {
-            description: `Se han restablecido los intentos fallidos de ${userName}.`,
+            description: `Se han restablecido los intentos fallidos y bloqueos de red para ${userName}.`,
           });
         } else {
           toast.error("No se pudo desbloquear", {
@@ -115,10 +118,14 @@ export function AdminSecurityPanel({
       {/* Header Banner */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-6">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Perímetro Blindado
+              Aislamiento Cuenta + IP Activo
+            </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20">
+              <Network className="w-3.5 h-3.5" />
+              Protección de Aulas (NAT)
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
               <Activity className="w-3.5 h-3.5" />
@@ -127,10 +134,10 @@ export function AdminSecurityPanel({
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
             <ShieldCheck className="w-8 h-8 text-primary" />
-            Seguridad & Rate Limiting
+            Seguridad & Rate Limiting (Cuenta + IP)
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Control de peticiones por IP, mitigación de ataques de fuerza bruta y gestión de cuentas bloqueadas.
+            Control de cuotas individuales por Cuenta + IP, mitigación de fuerza bruta y blindaje contra bloqueos colectivos en aulas de clase.
           </p>
         </div>
 
@@ -146,7 +153,7 @@ export function AdminSecurityPanel({
 
       {/* Grid de Configuración Principal */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Tarjeta 1: Rate Limiting por IP */}
+        {/* Tarjeta 1: Rate Limiting por Cuenta + IP */}
         <Card className="rounded-3xl border border-border/70 shadow-sm bg-card overflow-hidden">
           <CardHeader className="border-b border-border/50 bg-muted/20 p-6">
             <div className="flex items-center justify-between">
@@ -156,10 +163,10 @@ export function AdminSecurityPanel({
                 </div>
                 <div>
                   <CardTitle className="text-lg font-bold text-foreground">
-                    Rate Limiting Perimetral (IP)
+                    Control de Cuotas & Rate Limiting (Cuenta + IP)
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground">
-                    Mitiga ráfagas masivas y denegación de servicio (DoS L7).
+                    Cuotas individuales por usuario e IP con margen anti-saturación en redes compartidas.
                   </CardDescription>
                 </div>
               </div>
@@ -175,10 +182,10 @@ export function AdminSecurityPanel({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="rateLimitGeneral" className="text-sm font-semibold text-foreground">
-                  Peticiones generales por minuto por IP
+                  Cuota de navegación por usuario (Cuenta + IP)
                 </Label>
                 <span className="text-xs font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                  {settings.rateLimitRequestsPerMinute} req/min
+                  {settings.rateLimitRequestsPerMinute} req/min por alumno
                 </span>
               </div>
               <Input
@@ -196,14 +203,14 @@ export function AdminSecurityPanel({
                 className="rounded-xl h-11 bg-background border-border"
               />
               <p className="text-xs text-muted-foreground">
-                Umbral para rutas de navegación general antes de responder con código 429 Too Many Requests.
+                Límite por minuto para cada cuenta autenticada. Cada estudiante dispone de su propia cuota independiente aunque compartan la misma IP pública en el aula.
               </p>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="rateLimitAuth" className="text-sm font-semibold text-foreground">
-                  Límite estricto de autenticación (/api/auth/*)
+                  Límite de solicitudes de login (Cuenta + IP)
                 </Label>
                 <span className="text-xs font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md">
                   {settings.rateLimitAuthPerMinute} req/min
@@ -224,13 +231,24 @@ export function AdminSecurityPanel({
                 className="rounded-xl h-11 bg-background border-border"
               />
               <p className="text-xs text-muted-foreground">
-                Límite de solicitudes simultáneas a los endpoints de login por dirección IP.
+                Máximo de solicitudes de autenticación permitidas por minuto para una cuenta específica desde una IP antes de exigir enfriamiento temporal.
               </p>
+            </div>
+
+            {/* Banner de regla activa de aula */}
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
+              <Users className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <p className="font-bold text-foreground">Aislamiento Concurrente de Aulas (NAT)</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Si un grupo de 30 o más estudiantes ingresa a la plataforma simultáneamente desde la misma red institucional, el sistema los evalúa por la clave combinada <strong className="text-foreground font-mono">user:correo:IP</strong>. Ningún estudiante será bloqueado por la actividad o errores de otro.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Tarjeta 2: Anti-Fuerza Bruta por Cuenta */}
+        {/* Tarjeta 2: Anti-Fuerza Bruta por Cuenta + IP */}
         <Card className="rounded-3xl border border-border/70 shadow-sm bg-card overflow-hidden">
           <CardHeader className="border-b border-border/50 bg-muted/20 p-6">
             <div className="flex items-center gap-3">
@@ -239,10 +257,10 @@ export function AdminSecurityPanel({
               </div>
               <div>
                 <CardTitle className="text-lg font-bold text-foreground">
-                  Anti-Fuerza Bruta & Bloqueo de Cuentas
+                  Anti-Fuerza Bruta & Bloqueo Selectivo
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Protege contra ataques de diccionario dirigidos a usuarios específicos.
+                  Protege contra ataques de contraseñas con aislamiento estricto por cuenta y red.
                 </CardDescription>
               </div>
             </div>
@@ -251,7 +269,7 @@ export function AdminSecurityPanel({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="maxFailed" className="text-sm font-semibold text-foreground">
-                  Intentos fallidos máximos
+                  Intentos fallidos máximos (Cuenta + IP)
                 </Label>
                 <Input
                   id="maxFailed"
@@ -268,7 +286,7 @@ export function AdminSecurityPanel({
                   className="rounded-xl h-11 bg-background border-border"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Número de contraseñas incorrectas antes de congelar la cuenta.
+                  Número de contraseñas incorrectas consecutivas permitidas para una cuenta desde una IP antes de congelar el acceso en esa conexión.
                 </p>
               </div>
 
@@ -291,7 +309,7 @@ export function AdminSecurityPanel({
                   className="rounded-xl h-11 bg-background border-border"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Tiempo de enfriamiento obligatorio tras superar los fallos.
+                  Tiempo durante el cual la combinación cuenta + IP permanece suspendida tras superar los intentos permitidos.
                 </p>
               </div>
             </div>
@@ -348,7 +366,7 @@ export function AdminSecurityPanel({
                   Cuentas Bloqueadas por Fuerza Bruta ({blockedUsers.length})
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Usuarios que han superado el umbral de intentos fallidos de inicio de sesión.
+                  Usuarios que han superado el umbral de intentos fallidos. Al desbloquear, se restablece el acceso para esa cuenta y sus redes asociadas.
                 </CardDescription>
               </div>
             </div>
@@ -365,7 +383,7 @@ export function AdminSecurityPanel({
                 No hay cuentas bloqueadas en este momento
               </h3>
               <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                El sistema no registra usuarios con intentos fallidos excesivos. Todas las cuentas están operando normalmente.
+                El sistema no registra usuarios con intentos fallidos excesivos. Todas las combinaciones de cuenta e IP están operando con normalidad.
               </p>
             </div>
           ) : (
@@ -394,11 +412,17 @@ export function AdminSecurityPanel({
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">{user.email}</p>
-                        {user.profile?.identificacion && (
-                          <p className="text-[11px] text-muted-foreground">
-                            Doc: {user.profile.identificacion}
-                          </p>
-                        )}
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          {user.profile?.identificacion && (
+                            <span className="text-[11px] text-muted-foreground">
+                              Doc: {user.profile.identificacion}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                            <Globe className="w-3 h-3" />
+                            {user.lockedIp ? `IP Aislada: ${user.lockedIp}` : "Aislamiento: Cuenta + IP"}
+                          </span>
+                        </div>
                       </div>
                     </div>
 

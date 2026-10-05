@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { resetRateLimitPrefix } from "@/lib/rate-limiter";
+import { resetRateLimitPrefix, setRateLimitConfig } from "@/lib/rate-limiter";
 
 export interface SecuritySettingsData {
   rateLimitEnabled: boolean;
@@ -39,6 +39,7 @@ if (typeof setInterval !== "undefined") {
  * Obtiene la configuración de seguridad actual del sistema
  */
 export async function getSecuritySettings(): Promise<SecuritySettingsData> {
+  let result: SecuritySettingsData;
   try {
     const settings = await prisma.systemSettings.findUnique({
       where: { id: "settings" },
@@ -53,7 +54,7 @@ export async function getSecuritySettings(): Promise<SecuritySettingsData> {
       },
     });
 
-    return {
+    result = {
       rateLimitEnabled: settings?.rateLimitEnabled ?? true,
       rateLimitRequestsPerMinute: settings?.rateLimitRequestsPerMinute ?? 60,
       rateLimitAuthPerMinute: settings?.rateLimitAuthPerMinute ?? 10,
@@ -64,7 +65,7 @@ export async function getSecuritySettings(): Promise<SecuritySettingsData> {
     };
   } catch (error) {
     console.warn("[SecurityService] Error leyendo configuración de seguridad en BD, usando valores por defecto:", error);
-    return {
+    result = {
       rateLimitEnabled: true,
       rateLimitRequestsPerMinute: 60,
       rateLimitAuthPerMinute: 10,
@@ -74,6 +75,15 @@ export async function getSecuritySettings(): Promise<SecuritySettingsData> {
       allowPublicRegistration: false,
     };
   }
+
+  // Sincronizar en memoria para el proxy y rate limiter
+  setRateLimitConfig({
+    enabled: result.rateLimitEnabled,
+    userRequestsPerMinute: result.rateLimitRequestsPerMinute,
+    authRequestsPerMinute: result.rateLimitAuthPerMinute,
+  });
+
+  return result;
 }
 
 /**
@@ -110,6 +120,13 @@ export async function updateSecuritySettings(data: Partial<SecuritySettingsData>
       enableProgressiveDelay: true,
       allowPublicRegistration: true,
     },
+  });
+
+  // Sincronizar dinámicamente con el motor de Rate Limiting
+  setRateLimitConfig({
+    enabled: updated.rateLimitEnabled,
+    userRequestsPerMinute: updated.rateLimitRequestsPerMinute,
+    authRequestsPerMinute: updated.rateLimitAuthPerMinute,
   });
 
   return updated;
@@ -294,35 +311,70 @@ export async function resetFailedLogin(
   }
 }
 
+export interface BlockedUserItem {
+  id: string;
+  name: string;
+  email: string;
+  role: string | null;
+  failedLoginAttempts: number;
+  lockedUntil: Date | null;
+  lastFailedLogin: Date | null;
+  lockedIp?: string | null;
+  profile?: {
+    identificacion: string | null;
+  } | null;
+}
+
 /**
- * Obtiene la lista de usuarios que tienen sus cuentas bloqueadas en este momento
+ * Obtiene la lista de usuarios que tienen sus cuentas bloqueadas en este momento,
+ * enriqueciendo cada registro con la dirección IP asociada al bloqueo (Cuenta + IP).
  */
-export async function getBlockedUsers() {
+export async function getBlockedUsers(): Promise<BlockedUserItem[]> {
   const now = new Date();
-  return prisma.user.findMany({
-    where: {
-      lockedUntil: {
-        gt: now,
-      },
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      failedLoginAttempts: true,
-      lockedUntil: true,
-      lastFailedLogin: true,
-      profile: {
-        select: {
-          identificacion: true,
+  try {
+    const dbUsers = await prisma.user.findMany({
+      where: {
+        lockedUntil: {
+          gt: now,
         },
       },
-    },
-    orderBy: {
-      lockedUntil: "desc",
-    },
-  });
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        failedLoginAttempts: true,
+        lockedUntil: true,
+        lastFailedLogin: true,
+        profile: {
+          select: {
+            identificacion: true,
+          },
+        },
+      },
+      orderBy: {
+        lockedUntil: "desc",
+      },
+    });
+
+    return dbUsers.map((user) => {
+      const emailNorm = user.email.toLowerCase();
+      let lockedIp: string | null = null;
+      for (const [, record] of accountIpLockStore.entries()) {
+        if (record.email === emailNorm && record.lockedUntil && record.lockedUntil > Date.now()) {
+          lockedIp = record.ip;
+          break;
+        }
+      }
+      return {
+        ...user,
+        lockedIp,
+      };
+    });
+  } catch (error) {
+    console.warn("[SecurityService] Error al obtener usuarios bloqueados:", error);
+    return [];
+  }
 }
 
 /**
