@@ -81,9 +81,7 @@ export function ProgramScheduleTab({ program }: ProgramScheduleTabProps) {
         };
     }, [program.id]);
 
-    // Consolidate all schedule slots:
-    // 1. From group courses schedules (direct CourseSchedule)
-    // 2. From academicSchedules groupSlots
+    // Consolidar únicamente las materias programadas (CourseSchedule de las fichas del programa)
     const allScheduleEntries = useMemo(() => {
         const entries: Array<{
             id: string;
@@ -96,17 +94,26 @@ export function ProgramScheduleTab({ program }: ProgramScheduleTabProps) {
             groupId: string;
             teacherName?: string;
             environmentName?: string;
-            source: "course" | "academic";
+            source: "course";
         }> = [];
 
-        // 1. Group courses
+        const seenKeys = new Set<string>();
+
+        // Solo materias con sesiones de clase programadas (CourseSchedule)
         groups.forEach((group: any) => {
             const courses = group.courses || [];
             courses.forEach((course: any) => {
                 const schedules = course.schedules || [];
                 schedules.forEach((sch: any) => {
+                    const uniqueKey = sch.id || `${course.id}-${sch.dayOfWeek}-${sch.startTime}-${sch.endTime}`;
+                    if (seenKeys.has(uniqueKey)) return;
+                    seenKeys.add(uniqueKey);
+
+                    const resolvedTeacherName = sch.teacher?.name || course.teacher?.name;
+                    const resolvedEnvName = sch.environment?.name || group.environment?.name;
+
                     entries.push({
-                        id: `course-slot-${sch.id || Math.random()}`,
+                        id: `course-slot-${uniqueKey}`,
                         dayOfWeek: sch.dayOfWeek || "MONDAY",
                         startTime: sch.startTime || "07:00",
                         endTime: sch.endTime || "10:00",
@@ -114,36 +121,16 @@ export function ProgramScheduleTab({ program }: ProgramScheduleTabProps) {
                         groupName: group.name || "Ficha",
                         groupCode: group.code,
                         groupId: group.id,
-                        teacherName: course.teacher?.name ? formatName(course.teacher.name) : undefined,
-                        environmentName: sch.environment?.name || group.environment?.name || undefined,
+                        teacherName: resolvedTeacherName ? formatName(resolvedTeacherName) : undefined,
+                        environmentName: resolvedEnvName || undefined,
                         source: "course"
                     });
                 });
             });
         });
 
-        // 2. Academic schedule groupSlots
-        academicSchedules.forEach((as) => {
-            (as.groupSlots || []).forEach((slot: any) => {
-                const g = slot.group || groups.find((grp: any) => grp.id === slot.groupId);
-                entries.push({
-                    id: `academic-slot-${slot.id}`,
-                    dayOfWeek: slot.dayOfWeek,
-                    startTime: slot.startTime,
-                    endTime: slot.endTime,
-                    title: slot.period?.name || as.name || "Clase Programada",
-                    groupName: g?.name || "Ficha",
-                    groupCode: g?.code,
-                    groupId: slot.groupId,
-                    environmentName: g?.environment?.name || undefined,
-                    source: "academic"
-                });
-            });
-        });
-
-        // Deduplicate similar slots if any
         return entries;
-    }, [groups, academicSchedules]);
+    }, [groups]);
 
     // Filter schedule entries by ficha, day and search query
     const filteredEntries = useMemo(() => {
@@ -285,7 +272,7 @@ export function ProgramScheduleTab({ program }: ProgramScheduleTabProps) {
                     </div>
                     <div className="p-2.5 rounded-2xl bg-muted/30 border border-border/50">
                         <span className="text-[10.5px] text-muted-foreground font-semibold block">Fichas en Horario</span>
-                        <span className="text-lg font-black text-foreground">{groups.length}</span>
+                        <span className="text-lg font-black text-foreground">{new Set(allScheduleEntries.map(e => e.groupId)).size}</span>
                     </div>
                 </div>
 
