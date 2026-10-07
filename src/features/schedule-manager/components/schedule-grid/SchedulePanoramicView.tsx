@@ -19,7 +19,20 @@ import {
   Lock,
   FileSpreadsheet,
   Download,
+  Sun,
+  Cloud,
+  Moon,
+  RotateCcw,
+  X,
+  Filter,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScheduleBuilderData } from "../../actions/scheduleBuilderActions";
 import { DayOfWeek } from "@/generated/prisma/client";
 import {
@@ -33,6 +46,10 @@ import {
   getCleanTeacherName,
 } from "../../utils/teacherNameFormatter";
 import { generateAndDownloadScheduleExcel } from "../../utils/scheduleExcelExport";
+import {
+  getGroupShiftData,
+  ShiftFilter,
+} from "../../utils/shiftUtils";
 
 const toFormat12h = (time24: string) => {
   if (!time24) return "";
@@ -62,6 +79,7 @@ const DAYS: Array<{ key: DayOfWeek; label: string; short: string }> = [
 interface ClassSlotItem {
   courseTitle: string;
   description: string | null;
+  teacherId?: string | null;
   teacherName: string;
   environmentName: string | null;
   startTime: string;
@@ -321,100 +339,390 @@ export function SchedulePanoramicView({
 }: SchedulePanoramicViewProps) {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"cards" | "excel">("cards");
+  const [shiftFilter, setShiftFilter] = useState<ShiftFilter>("all");
+  const [selectedFichaId, setSelectedFichaId] = useState<string>("all");
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("all");
 
-  const filteredGroups = data.groups.filter((g) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      g.name.toLowerCase().includes(q) ||
-      g.program.name.toLowerCase().includes(q) ||
-      (g.period?.name && g.period.name.toLowerCase().includes(q))
+  // Sorted list of available Fichas for the dropdown
+  const availableFichas = React.useMemo(() => {
+    return [...data.groups].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true })
     );
-  });
+  }, [data.groups]);
+
+  // Unified list of unique instructors for the dropdown
+  const availableTeachers = React.useMemo(() => {
+    const teacherMap = new Map<string, { id: string; name: string }>();
+
+    if (data.teachers && data.teachers.length > 0) {
+      data.teachers.forEach((t) => {
+        if (t.id && t.name) {
+          teacherMap.set(t.id, {
+            id: t.id,
+            name: getCleanTeacherName(t.name),
+          });
+        }
+      });
+    }
+
+    data.groups.forEach((g) => {
+      (g.scheduledClasses || []).forEach((c) => {
+        if (c.teacher?.id && c.teacher?.name) {
+          teacherMap.set(c.teacher.id, {
+            id: c.teacher.id,
+            name: getCleanTeacherName(c.teacher.name),
+          });
+        }
+        (c.schedules || []).forEach((s) => {
+          if (s.teacher?.id && s.teacher?.name) {
+            teacherMap.set(s.teacher.id, {
+              id: s.teacher.id,
+              name: getCleanTeacherName(s.teacher.name),
+            });
+          }
+        });
+      });
+    });
+
+    return Array.from(teacherMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }, [data.teachers, data.groups]);
+
+  const shiftCounts = React.useMemo(() => {
+    let morning = 0;
+    let afternoon = 0;
+    let night = 0;
+
+    data.groups.forEach((g) => {
+      const info = getGroupShiftData(g);
+      if (info.shifts.includes("morning")) morning++;
+      if (info.shifts.includes("afternoon")) afternoon++;
+      if (info.shifts.includes("night")) night++;
+    });
+
+    return {
+      all: data.groups.length,
+      morning,
+      afternoon,
+      night,
+    };
+  }, [data.groups]);
+
+  const hasActiveFilters =
+    selectedFichaId !== "all" ||
+    selectedTeacherId !== "all" ||
+    shiftFilter !== "all" ||
+    search.trim().length > 0;
+
+  const handleResetFilters = () => {
+    setSelectedFichaId("all");
+    setSelectedTeacherId("all");
+    setShiftFilter("all");
+    setSearch("");
+  };
+
+  const filteredGroups = React.useMemo(() => {
+    return data.groups
+      .filter((g) => {
+        // 1. Filtro por Ficha específica
+        if (selectedFichaId !== "all" && g.id !== selectedFichaId) {
+          return false;
+        }
+
+        // 2. Filtro por Instructor
+        if (selectedTeacherId !== "all") {
+          const hasTeacher = (g.scheduledClasses || []).some((c) => {
+            if (c.teacher?.id === selectedTeacherId) return true;
+            return (c.schedules || []).some((s) => s.teacher?.id === selectedTeacherId);
+          });
+          if (!hasTeacher) return false;
+        }
+
+        // 3. Filtro por Jornada (Turno)
+        if (shiftFilter !== "all") {
+          const shiftInfo = getGroupShiftData(g);
+          if (!shiftInfo.shifts.includes(shiftFilter)) {
+            return false;
+          }
+        }
+
+        // 4. Búsqueda por texto libre
+        if (search.trim()) {
+          const q = search.toLowerCase().trim();
+          const matches =
+            g.name.toLowerCase().includes(q) ||
+            g.program.name.toLowerCase().includes(q) ||
+            (g.period?.name && g.period.name.toLowerCase().includes(q)) ||
+            (g.scheduledClasses || []).some((c) =>
+              c.title.toLowerCase().includes(q) ||
+              (c.teacher?.name && c.teacher.name.toLowerCase().includes(q))
+            );
+          if (!matches) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const shiftA = getGroupShiftData(a);
+        const shiftB = getGroupShiftData(b);
+
+        if (shiftA.earliestMinutes !== shiftB.earliestMinutes) {
+          return shiftA.earliestMinutes - shiftB.earliestMinutes;
+        }
+
+        return a.name.localeCompare(b.name, undefined, { numeric: true });
+      });
+  }, [data.groups, selectedFichaId, selectedTeacherId, shiftFilter, search]);
 
   return (
     <div className="flex-1 min-h-[500px] md:min-h-0 flex flex-col rounded-2xl bg-card border border-border/80 p-3 space-y-3 shadow-xs md:overflow-hidden">
       {/* Top Controls Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 pb-2 border-b border-border/70">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
-            {viewMode === "excel" ? (
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            ) : (
-              <LayoutGrid className="w-4 h-4 text-primary" />
-            )}
-          </div>
-          <div>
-            <h2 className="font-extrabold text-sm text-foreground flex items-center gap-2">
-              <span>Vista Panorámica del Horario</span>
-              {viewMode === "excel" && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-                >
-                  Matriz Curricular Excel
-                </Badge>
+      <div className="flex flex-col gap-2.5 shrink-0 pb-2 border-b border-border/70">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
+              {viewMode === "excel" ? (
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <LayoutGrid className="w-4 h-4 text-primary" />
               )}
-            </h2>
-            <p className="text-[11px] text-muted-foreground font-medium">
-              Matriz completa de ocupación de {data.groups.length} fichas/grupos
-            </p>
+            </div>
+            <div>
+              <h2 className="font-extrabold text-sm text-foreground flex items-center gap-2">
+                <span>Vista Panorámica del Horario</span>
+                {viewMode === "excel" && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                  >
+                    Matriz Curricular Excel
+                  </Badge>
+                )}
+              </h2>
+              <p className="text-[11px] text-muted-foreground font-medium">
+                Matriz completa de ocupación · Mostrando{" "}
+                <span className="font-bold text-foreground">
+                  {filteredGroups.length}
+                </span>{" "}
+                de {data.groups.length} fichas/grupos
+                {shiftFilter !== "all" && (
+                  <span className="ml-1 text-primary font-semibold">
+                    (Jornada {shiftFilter === "morning" ? "Mañana" : shiftFilter === "afternoon" ? "Tarde" : "Noche"})
+                  </span>
+                )}
+                {selectedFichaId !== "all" && (
+                  <span className="ml-1 text-primary font-semibold">
+                    · Ficha: {availableFichas.find((f) => f.id === selectedFichaId)?.name}
+                  </span>
+                )}
+                {selectedTeacherId !== "all" && (
+                  <span className="ml-1 text-primary font-semibold">
+                    · Instructor: {availableTeachers.find((t) => t.id === selectedTeacherId)?.name}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* View Mode Toggle Switch & Excel Export */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Segmented Switch: Cards View vs Excel Matrix View */}
+            <div className="flex items-center bg-muted/80 p-0.5 rounded-xl border border-border/70 text-xs font-semibold shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode("cards")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                  viewMode === "cards"
+                    ? "bg-background text-primary shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Vista de bloques temporales con alturas proporcionales"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Vista Tarjetas</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("excel")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                  viewMode === "excel"
+                    ? "bg-emerald-600 text-white shadow-xs font-bold dark:bg-emerald-600"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Vista matriz curricular estructurada estilo Excel SENA"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Matriz Excel</span>
+              </button>
+            </div>
+
+            {/* Quick Export Excel Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generateAndDownloadScheduleExcel(data.schedule, filteredGroups)}
+              className="h-8 px-2.5 rounded-xl text-xs gap-1.5 font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/10 shrink-0"
+              title="Descargar libro Excel institucional oficial"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Exportar Excel</span>
+            </Button>
           </div>
         </div>
 
-        {/* View Mode Toggle Switch, Excel Export & Search Input */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Segmented Switch: Cards View vs Excel Matrix View */}
-          <div className="flex items-center bg-muted/80 p-0.5 rounded-xl border border-border/70 text-xs font-semibold shrink-0">
+        {/* Shift Filter Toolbar: Todos, Mañana, Tarde, Noche + Ficha Select + Teacher Select + Search */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 pt-0.5">
+          {/* Segmented Shift Filters */}
+          <div className="flex items-center bg-muted/70 p-0.5 rounded-xl border border-border/70 text-xs font-semibold shrink-0 overflow-x-auto scrollbar-none">
+            {/* TODOS */}
             <button
               type="button"
-              onClick={() => setViewMode("cards")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                viewMode === "cards"
-                  ? "bg-background text-primary shadow-xs font-bold"
+              onClick={() => setShiftFilter("all")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer shrink-0 ${
+                shiftFilter === "all"
+                  ? "bg-background text-foreground shadow-xs font-bold border border-border/60"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Vista de bloques temporales con alturas proporcionales"
+              title="Mostrar todas las fichas organizadas de mañana a noche"
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Vista Tarjetas</span>
+              <span>Todos</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-muted font-bold">
+                {shiftCounts.all}
+              </span>
             </button>
+
+            {/* MAÑANA */}
             <button
               type="button"
-              onClick={() => setViewMode("excel")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                viewMode === "excel"
-                  ? "bg-emerald-600 text-white shadow-xs font-bold dark:bg-emerald-600"
+              onClick={() => setShiftFilter("morning")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer shrink-0 ${
+                shiftFilter === "morning"
+                  ? "bg-sky-500/15 text-sky-700 dark:text-sky-300 shadow-xs font-bold border border-sky-500/30"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Vista matriz curricular estructurada estilo Excel SENA"
+              title="Filtrar fichas en horario de la Mañana"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Matriz Excel</span>
+              <Cloud className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+              <span>Mañana</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-300 font-bold">
+                {shiftCounts.morning}
+              </span>
+            </button>
+
+            {/* TARDE */}
+            <button
+              type="button"
+              onClick={() => setShiftFilter("afternoon")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer shrink-0 ${
+                shiftFilter === "afternoon"
+                  ? "bg-orange-500/15 text-orange-700 dark:text-orange-300 shadow-xs font-bold border border-orange-500/30"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Filtrar fichas en horario de la Tarde"
+            >
+              <Sun className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+              <span>Tarde</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-orange-500/10 text-orange-700 dark:text-orange-300 font-bold">
+                {shiftCounts.afternoon}
+              </span>
+            </button>
+
+            {/* NOCHE */}
+            <button
+              type="button"
+              onClick={() => setShiftFilter("night")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer shrink-0 ${
+                shiftFilter === "night"
+                  ? "bg-purple-500/15 text-purple-700 dark:text-purple-300 shadow-xs font-bold border border-purple-500/30"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Filtrar fichas en horario de la Noche"
+            >
+              <Moon className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+              <span>Noche</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 font-bold">
+                {shiftCounts.night}
+              </span>
             </button>
           </div>
 
-          {/* Quick Export Excel Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => generateAndDownloadScheduleExcel(data.schedule, data.groups)}
-            className="h-8 px-2.5 rounded-xl text-xs gap-1.5 font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/10 shrink-0"
-            title="Descargar libro Excel institucional oficial"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Exportar Excel</span>
-          </Button>
+          {/* Right Filters Cluster: Ficha + Instructor + Search Input + Clear */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Filter by Ficha */}
+            <div className="w-[160px] sm:w-[185px]">
+              <Select value={selectedFichaId} onValueChange={setSelectedFichaId}>
+                <SelectTrigger className="h-8 text-xs font-medium rounded-xl border-border/80 bg-background shadow-2xs px-2.5">
+                  <Users className="w-3.5 h-3.5 text-primary shrink-0 mr-1.5" />
+                  <SelectValue placeholder="Todas las fichas" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px] rounded-xl">
+                  <SelectItem value="all" className="text-xs font-bold text-primary">
+                    Todas las fichas ({data.groups.length})
+                  </SelectItem>
+                  {availableFichas.map((g) => (
+                    <SelectItem key={g.id} value={g.id} className="text-xs">
+                      Ficha {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Search Input */}
-          <div className="relative w-full sm:w-56">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar ficha o programa..."
-              className="pl-8 text-xs h-8 rounded-xl bg-background border-border/80 font-medium"
-            />
+            {/* Filter by Instructor */}
+            <div className="w-[170px] sm:w-[200px]">
+              <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                <SelectTrigger className="h-8 text-xs font-medium rounded-xl border-border/80 bg-background shadow-2xs px-2.5">
+                  <GraduationCap className="w-3.5 h-3.5 text-primary shrink-0 mr-1.5" />
+                  <SelectValue placeholder="Todos los instructores" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px] rounded-xl">
+                  <SelectItem value="all" className="text-xs font-bold text-primary">
+                    Todos los instructores ({availableTeachers.length})
+                  </SelectItem>
+                  {availableTeachers.map((t) => (
+                    <SelectItem key={t.id} value={t.id} className="text-xs">
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-48">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar..."
+                className="pl-8 pr-7 text-xs h-8 rounded-xl bg-background border-border/80 font-medium"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="Borrar búsqueda"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Clear All Filters Button */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground rounded-xl gap-1 shrink-0"
+                title="Restablecer todos los filtros"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Limpiar</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -473,6 +781,7 @@ export function SchedulePanoramicView({
                         classesByDay[s.dayOfWeek].push({
                           courseTitle: c.title,
                           description: c.description || null,
+                          teacherId: s.teacher?.id || c.teacher?.id || null,
                           teacherName: s.teacher?.name || c.teacher?.name || "Sin instructor",
                           environmentName: s.environment?.name || g.environment?.name || null,
                           startTime: s.startTime,
@@ -482,8 +791,9 @@ export function SchedulePanoramicView({
                     });
                   });
 
-                  // Calculate sub-slots for this group
+                  // Calculate sub-slots and shift info for this group
                   const subSlots = getGroupSubSlots(g, classesByDay);
+                  const groupShift = getGroupShiftData(g);
 
                   return subSlots.map((subSlot, slotIdx) => (
                     <tr
@@ -498,10 +808,34 @@ export function SchedulePanoramicView({
                             FICHA_ACCENT_COLORS[gIdx % FICHA_ACCENT_COLORS.length]
                           }`}
                         >
-                          <div className="space-y-1 text-center">
+                          <div className="space-y-1.5 text-center">
                             <div className="font-black text-xs text-slate-900 dark:text-slate-100">
                               {g.name}
                             </div>
+
+                            {/* Jornada / Shift Badges con Iconos */}
+                            <div className="flex flex-wrap items-center justify-center gap-1">
+                              {groupShift.shifts.map((shift) => (
+                                <Badge
+                                  key={shift}
+                                  variant="outline"
+                                  className={`text-[9px] px-1.5 py-0 h-4 font-bold inline-flex items-center gap-1 shadow-2xs ${
+                                    shift === "morning"
+                                      ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30"
+                                      : shift === "afternoon"
+                                      ? "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/30"
+                                      : "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                                  }`}
+                                  title={`Jornada ${shift === "morning" ? "Mañana" : shift === "afternoon" ? "Tarde" : "Noche"}`}
+                                >
+                                  {shift === "morning" && <Cloud className="w-2.5 h-2.5 text-sky-500 shrink-0" />}
+                                  {shift === "afternoon" && <Sun className="w-2.5 h-2.5 text-orange-500 shrink-0" />}
+                                  {shift === "night" && <Moon className="w-2.5 h-2.5 text-purple-600 dark:text-purple-400 shrink-0" />}
+                                  <span>{shift === "morning" ? "Mañana" : shift === "afternoon" ? "Tarde" : "Noche"}</span>
+                                </Badge>
+                              ))}
+                            </div>
+
                             <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate">
                               {g.program.name}
                             </div>
@@ -597,14 +931,20 @@ export function SchedulePanoramicView({
                         }
 
                         const teacherColor = getTeacherColor(cls.teacherName);
+                        const isSelectedTeacher = selectedTeacherId !== "all" && cls.teacherId === selectedTeacherId;
+                        const isOtherTeacherWhenFilterActive = selectedTeacherId !== "all" && cls.teacherId !== selectedTeacherId;
 
                         return (
                           <td
                             key={day.key}
                             rowSpan={spanCount}
-                            className="border border-slate-300 dark:border-slate-700 p-0 align-top bg-white dark:bg-slate-900"
+                            className={`border border-slate-300 dark:border-slate-700 p-0 align-top bg-white dark:bg-slate-900 transition-opacity ${
+                              isOtherTeacherWhenFilterActive ? "opacity-35 hover:opacity-100" : ""
+                            }`}
                           >
-                            <div className="h-full flex flex-col justify-start overflow-hidden">
+                            <div className={`h-full flex flex-col justify-start overflow-hidden ${
+                              isSelectedTeacher ? "ring-2 ring-primary ring-inset shadow-inner bg-primary/5" : ""
+                            }`}>
                               {/* 1. Header: Course Title */}
                               <div
                                 onClick={() => onSelectGroupAndEdit(g.id)}
@@ -710,6 +1050,7 @@ export function SchedulePanoramicView({
                         classesByDay[s.dayOfWeek].push({
                           courseTitle: c.title,
                           description: c.description || null,
+                          teacherId: s.teacher?.id || c.teacher?.id || null,
                           teacherName: s.teacher?.name || c.teacher?.name || "Sin instructor",
                           environmentName: s.environment?.name || g.environment?.name || null,
                           startTime: s.startTime,
@@ -728,6 +1069,7 @@ export function SchedulePanoramicView({
                     });
                   }
                   const rowMinHeight = getCardHeight(maxGroupFranjaHours);
+                  const groupShift = getGroupShiftData(g);
 
                   return (
                     <div
@@ -739,33 +1081,57 @@ export function SchedulePanoramicView({
                         style={{ minHeight: `${rowMinHeight}px` }}
                         className="p-2.5 flex flex-col justify-between gap-2 bg-card/60"
                       >
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1.5">
-                            <span className="font-extrabold text-xs text-foreground group-hover:text-primary transition-colors truncate">
-                              Ficha {g.name}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onSelectGroupAndEdit(g.id)}
-                              className="h-5 px-1.5 rounded-md text-[10px] gap-1 font-bold text-primary hover:bg-primary/10"
-                              title="Abrir malla de esta ficha"
-                            >
-                              <span>Editar</span>
-                              <ChevronRight className="w-3 h-3" />
-                            </Button>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground font-medium truncate">
-                            {g.program.name}
-                          </div>
-                          {g.period && (
-                            <div className="text-[10px] font-semibold text-primary/90 truncate">
-                              {g.period.name}
-                            </div>
-                          )}
-                        </div>
+                            <div className="space-y-1.5 min-w-0">
+                              <div className="flex items-center justify-between gap-1.5">
+                                <span className="font-extrabold text-xs text-foreground group-hover:text-primary transition-colors truncate">
+                                  Ficha {g.name}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onSelectGroupAndEdit(g.id)}
+                                  className="h-5 px-1.5 rounded-md text-[10px] gap-1 font-bold text-primary hover:bg-primary/10 shrink-0"
+                                  title="Abrir malla de esta ficha"
+                                >
+                                  <span>Editar</span>
+                                  <ChevronRight className="w-3 h-3" />
+                                </Button>
+                              </div>
 
-                        {/* Hours & Progress Bar */}
+                              {/* Jornada / Shift Badges con Iconos */}
+                              <div className="flex flex-wrap items-center gap-1">
+                                {groupShift.shifts.map((shift) => (
+                                  <Badge
+                                    key={shift}
+                                    variant="outline"
+                                    className={`text-[9px] px-1.5 py-0 h-4 font-bold inline-flex items-center gap-1 shadow-2xs ${
+                                      shift === "morning"
+                                        ? "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30"
+                                        : shift === "afternoon"
+                                        ? "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/30"
+                                        : "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                                    }`}
+                                    title={`Jornada ${shift === "morning" ? "Mañana" : shift === "afternoon" ? "Tarde" : "Noche"}`}
+                                  >
+                                    {shift === "morning" && <Cloud className="w-2.5 h-2.5 text-sky-500 shrink-0" />}
+                                    {shift === "afternoon" && <Sun className="w-2.5 h-2.5 text-orange-500 shrink-0" />}
+                                    {shift === "night" && <Moon className="w-2.5 h-2.5 text-purple-600 dark:text-purple-400 shrink-0" />}
+                                    <span>{shift === "morning" ? "Mañana" : shift === "afternoon" ? "Tarde" : "Noche"}</span>
+                                  </Badge>
+                                ))}
+                              </div>
+
+                              <div className="text-[10px] text-muted-foreground font-medium truncate">
+                                {g.program.name}
+                              </div>
+                              {g.period && (
+                                <div className="text-[10px] font-semibold text-primary/90 truncate">
+                                  {g.period.name}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Hours & Progress Bar */}
                         {totalRequiredHours > 0 && (
                           <div className="space-y-1 pt-1 border-t border-border/40">
                             <div className="flex justify-between text-[10px] font-mono">
@@ -851,6 +1217,9 @@ export function SchedulePanoramicView({
                                 }
 
                                 const cls = item.classData!;
+                                const isSelectedTeacher = selectedTeacherId !== "all" && cls.teacherId === selectedTeacherId;
+                                const isOtherTeacherWhenFilterActive = selectedTeacherId !== "all" && cls.teacherId !== selectedTeacherId;
+
                                 return (
                                   <Tooltip key={`class-${idx}`}>
                                     <TooltipTrigger asChild>
@@ -860,7 +1229,13 @@ export function SchedulePanoramicView({
                                           minHeight: `${getCardHeight(item.durationHours)}px`,
                                           flexGrow: item.durationHours,
                                         }}
-                                        className="p-2 rounded-lg border border-primary/25 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-all text-[10px] shadow-2xs group/card touch-manipulation active:scale-[0.99] flex flex-col justify-between overflow-hidden relative"
+                                        className={`p-2 rounded-lg border cursor-pointer transition-all text-[10px] shadow-2xs group/card touch-manipulation active:scale-[0.99] flex flex-col justify-between overflow-hidden relative ${
+                                          isSelectedTeacher
+                                            ? "border-2 border-primary bg-primary/15 ring-2 ring-primary/40 shadow-sm"
+                                            : isOtherTeacherWhenFilterActive
+                                            ? "border-border/40 bg-muted/20 opacity-35 hover:opacity-100"
+                                            : "border-primary/25 bg-primary/5 hover:bg-primary/10"
+                                        }`}
                                       >
                                         {/* Top: Course Title and Duration Badge */}
                                         <div className="space-y-1 min-w-0">

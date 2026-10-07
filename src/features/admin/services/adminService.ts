@@ -201,7 +201,9 @@ export const adminService = {
                     group: {
                         select: {
                             id: true,
-                            name: true
+                            name: true,
+                            voceroPrincipalId: true,
+                            voceroSuplenteId: true
                         }
                     },
                     programs: {
@@ -391,9 +393,185 @@ export const adminService = {
     },
 
     async deleteUser(userId: string) {
-        // This will cascade delete related records based on schema
-        return await prisma.user.delete({
-            where: { id: userId }
+        return await prisma.$transaction(async (tx) => {
+            // 1. Verificar si el usuario existe
+            const user = await tx.user.findUnique({
+                where: { id: userId },
+                select: { id: true, role: true }
+            });
+
+            if (!user) {
+                return null;
+            }
+
+            // 2. Limpiar vocerías en grupos (Group.voceroPrincipalId y Group.voceroSuplenteId son campos escalares)
+            await tx.group.updateMany({
+                where: { voceroPrincipalId: userId },
+                data: { voceroPrincipalId: null }
+            });
+            await tx.group.updateMany({
+                where: { voceroSuplenteId: userId },
+                data: { voceroSuplenteId: null }
+            });
+
+            // 3. Desvincular de grupos de trabajo colaborativo (CourseWorkGroup m:n) y de relaciones m:n
+            try {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: {
+                        groupId: null,
+                        workGroups: { set: [] },
+                        groupsTaught: { set: [] },
+                        qualifiedCourses: { set: [] },
+                        observedGroups: { set: [] },
+                        programs: { set: [] },
+                        timelines: { set: [] },
+                        managedPrograms: { set: [] },
+                        observedPrograms: { set: [] }
+                    }
+                });
+            } catch (err) {
+                console.warn("[deleteUser] Non-critical warning resetting user relation sets:", err);
+            }
+
+            // 4. Eliminar todas las matrículas e historial de grupos (GroupEnrollment)
+            await tx.groupEnrollment.deleteMany({
+                where: { studentId: userId }
+            });
+
+            // 5. Limpieza de elecciones (candidaturas y votos)
+            const candidacies = await tx.electionCandidate.findMany({
+                where: { studentId: userId },
+                select: { id: true }
+            });
+            if (candidacies.length > 0) {
+                const candidacyIds = candidacies.map(c => c.id);
+                // Eliminar votos dirigidos a estas candidaturas
+                await tx.electionVote.deleteMany({
+                    where: { candidateId: { in: candidacyIds } }
+                });
+                // Eliminar las candidaturas
+                await tx.electionCandidate.deleteMany({
+                    where: { id: { in: candidacyIds } }
+                });
+            }
+            // Eliminar votos emitidos por este usuario
+            await tx.electionVote.deleteMany({
+                where: { studentId: userId }
+            });
+
+            // 6. Eliminar planes de mejoramiento (como estudiante o profesor)
+            await tx.improvementPlan.deleteMany({
+                where: {
+                    OR: [
+                        { studentId: userId },
+                        { teacherId: userId }
+                    ]
+                }
+            });
+
+            // 7. Eliminar calificaciones de actividades del estudiante
+            await tx.studentGrade.deleteMany({
+                where: { userId }
+            });
+
+            // 8. Eliminar observaciones (como estudiante receptor o creador)
+            await tx.remark.deleteMany({
+                where: {
+                    OR: [
+                        { userId },
+                        { teacherId: userId }
+                    ]
+                }
+            });
+
+            // 9. Eliminar asistencias
+            await tx.attendance.deleteMany({
+                where: { userId }
+            });
+
+            // 10. Eliminar matrículas en asignaturas
+            await tx.enrollment.deleteMany({
+                where: { userId }
+            });
+
+            // 11. Eliminar registros de accesos
+            await tx.studentAccessLog.deleteMany({
+                where: { userId }
+            });
+
+            // 12. Si el usuario tenía asignaciones docentes o administrativas
+            await tx.course.updateMany({
+                where: { teacherId: userId },
+                data: { teacherId: null }
+            });
+            await tx.courseSchedule.updateMany({
+                where: { teacherId: userId },
+                data: { teacherId: null }
+            });
+            await tx.courseWorkGroup.deleteMany({
+                where: { teacherId: userId }
+            });
+            await tx.teacherAvailability.deleteMany({
+                where: { teacherId: userId }
+            });
+            await tx.teacherScheduleQualification.deleteMany({
+                where: { teacherId: userId }
+            });
+            await tx.teacherScheduleLock.deleteMany({
+                where: { teacherId: userId }
+            });
+            await tx.sharedContent.deleteMany({
+                where: { teacherId: userId }
+            });
+            await tx.groupElection.deleteMany({
+                where: { createdByTeacherId: userId }
+            });
+            await tx.announcement.deleteMany({
+                where: { authorId: userId }
+            });
+
+            // 13. Limpiar referencias de auditoría o modificaciones secundarias
+            await tx.scheduleNovelty.updateMany({
+                where: { reportedById: userId },
+                data: { reportedById: null }
+            });
+            await tx.user.updateMany({
+                where: { availabilityLastModifiedById: userId },
+                data: { availabilityLastModifiedById: null }
+            });
+            await tx.user.updateMany({
+                where: { qualificationsLastModifiedById: userId },
+                data: { qualificationsLastModifiedById: null }
+            });
+            await tx.teacherAvailability.updateMany({
+                where: { createdById: userId },
+                data: { createdById: null }
+            });
+            await tx.teacherScheduleQualification.updateMany({
+                where: { createdById: userId },
+                data: { createdById: null }
+            });
+            await tx.teacherScheduleLock.updateMany({
+                where: { lockedById: userId },
+                data: { lockedById: null }
+            });
+
+            // 14. Eliminar perfil, sesiones y cuentas de autenticación
+            await tx.profile.deleteMany({
+                where: { userId }
+            });
+            await tx.session.deleteMany({
+                where: { userId }
+            });
+            await tx.account.deleteMany({
+                where: { userId }
+            });
+
+            // 15. Finalmente, eliminar el registro de usuario
+            return await tx.user.delete({
+                where: { id: userId }
+            });
         });
     },
 

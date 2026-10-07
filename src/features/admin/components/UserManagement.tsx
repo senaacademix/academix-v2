@@ -70,6 +70,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { formatName, cn } from "@/lib/utils";
 import { StudentRecords } from "@/features/student/components/StudentRecords";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
+import { StudentVoceroBadge } from "@/components/StudentVoceroBadge";
 import { GroupAnalyticsPanel } from "@/components/analytics/GroupAnalyticsPanel";
 import { getGroupAttendanceHistory, getGroupRemarksHistory, resetStudentDailyAttempts } from "@/features/teacher/actions/groupActions";
 
@@ -94,6 +95,8 @@ interface User {
     group?: {
         id: string;
         name: string;
+        voceroPrincipalId?: string | null;
+        voceroSuplenteId?: string | null;
     } | null;
     _count?: {
         enrollments: number;
@@ -466,19 +469,28 @@ export function UserManagement({
             return;
         }
 
+        const deletedId = userToDelete.id;
+
         startTransition(async () => {
             try {
-                await deleteUserAction(userToDelete.id);
+                await deleteUserAction(deletedId);
 
-                setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+                // Actualizar estado local inmediatamente
+                setUsers(prev => prev.filter(u => u.id !== deletedId));
+                setSelectedUserIds(prev => prev.filter(id => id !== deletedId));
+                setCurrentTotal(prev => Math.max(0, prev - 1));
 
                 toast.success("Aprendiz eliminado", {
-                    description: "El aprendiz ha sido eliminado del sistema"
+                    description: "El aprendiz ha sido eliminado por completo del sistema"
                 });
 
                 setDeleteDialogOpen(false);
                 setUserToDelete(null);
                 setDeleteConfirmDoc("");
+
+                // Sincronizar paginación y listado con la base de datos
+                const targetPage = users.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+                await refreshUsers(targetPage);
             } catch (error: any) {
                 toast.error("Error", {
                     description: error.message || "No se pudo eliminar el aprendiz"
@@ -969,9 +981,13 @@ export function UserManagement({
                                                         size="sm"
                                                     />
                                                     <div>
-                                                        <div className="font-medium flex items-center gap-2">
+                                                        <div className="font-medium flex items-center gap-2 flex-wrap">
                                                             <span>{formatName(user.name, user.profile)}</span>
                                                             <StudentNovedadBadge novedad={user.profile?.novedad} color={user.profile?.novedadColor} />
+                                                            <StudentVoceroBadge 
+                                                                role={user.group?.voceroPrincipalId === user.id ? "PRINCIPAL" : user.group?.voceroSuplenteId === user.id ? "SUPLENTE" : null} 
+                                                                size="sm" 
+                                                            />
                                                         </div>
                                                         {user.profile && (
                                                             <div className="text-xs text-muted-foreground">

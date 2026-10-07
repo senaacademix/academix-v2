@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { DayOfWeek } from "@/generated/prisma/client";
 import { ScheduleBuilderData } from "../actions/scheduleBuilderActions";
 import { formatCalendarDate } from "@/lib/dateUtils";
+import { sortGroupsMorningToNight } from "./shiftUtils";
 
 const DAYS_ES: { key: DayOfWeek; label: string; short: string }[] = [
   { key: "MONDAY", label: "LUNES", short: "LUN" },
@@ -184,6 +185,7 @@ export async function generateAndDownloadScheduleExcel(
   schedule: ScheduleBuilderData["schedule"],
   groups: ScheduleBuilderData["groups"]
 ) {
+  const sortedGroups = sortGroupsMorningToNight(groups);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "AcademiX";
   workbook.lastModifiedBy = "AcademiX";
@@ -211,7 +213,7 @@ export async function generateAndDownloadScheduleExcel(
   const cardsSub = cardsSheet.getCell("A2");
   cardsSub.value = `Período: ${formatDate(schedule.startDate)} al ${formatDate(
     schedule.endDate
-  )} | Fichas: ${groups.length} | Matriz General de Ocupación Semanal (Vista de Tarjetas)`;
+  )} | Fichas: ${sortedGroups.length} | Matriz General de Ocupación Semanal (Vista de Tarjetas)`;
   cardsSub.font = { name: "Segoe UI", size: 9.5, italic: true, color: { argb: "FF475569" } };
   cardsSub.alignment = { vertical: "middle", horizontal: "center" };
   cardsSub.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
@@ -238,7 +240,7 @@ export async function generateAndDownloadScheduleExcel(
   });
 
   // Render each group row in Cards Sheet
-  groups.forEach((g) => {
+  sortedGroups.forEach((g) => {
     const scheduledHoursByCourseTitle = new Map<string, number>();
     g.scheduledClasses.forEach((c) => {
       let hours = 0;
@@ -415,7 +417,7 @@ export async function generateAndDownloadScheduleExcel(
 
   let matrixCurrentRow = 4;
 
-  groups.forEach((g, gIdx) => {
+  sortedGroups.forEach((g, gIdx) => {
     // Classes by day
     const dayClassesMap: Record<DayOfWeek, Array<any>> = {
       MONDAY: [],

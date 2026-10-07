@@ -1115,20 +1115,32 @@ export async function deleteUserAction(userId: string) {
     const result = await adminService.deleteUser(userId);
 
     // 🎯 AUDIT LOG
-    const { auditLogger } = await import("@/features/admin/services/auditLogger");
-    await auditLogger.log({
-        action: "DELETE",
-        entity: "USER",
-        entityId: userId,
-        userId: session.user.id,
-        userName: session.user.name || "Admin",
-        userRole: "admin",
-        description: `Usuario eliminado: ${user?.name || "Usuario"} (${user?.email || "Email desconocido"}) - Rol: ${user?.role}`,
-        metadata: { email: user?.email, role: user?.role },
-        success: true,
-    });
+    try {
+        const { auditLogger } = await import("@/features/admin/services/auditLogger");
+        await auditLogger.log({
+            action: "DELETE",
+            entity: "USER",
+            entityId: userId,
+            userId: session.user.id,
+            userName: session.user.name || "Admin",
+            userRole: session.user.role || "admin",
+            description: `Usuario eliminado: ${user?.name || "Usuario"} (${user?.email || "Email desconocido"}) - Rol: ${user?.role || "Desconocido"}`,
+            metadata: { email: user?.email, role: user?.role },
+            success: true,
+        });
+    } catch (auditErr) {
+        console.error("Error logging deletion audit:", auditErr);
+    }
 
     revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
+    revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
+    revalidatePath("/dashboard/admin/groups");
+    revalidatePath("/dashboard/gestor/groups");
+    revalidatePath("/dashboard/admin");
+    revalidatePath("/dashboard/gestor");
+    revalidatePath("/dashboard/teacher");
     return result;
 }
 
@@ -1216,6 +1228,14 @@ export async function bulkDeleteUsersAction(userIds: string[]) {
     );
 
     revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
+    revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
+    revalidatePath("/dashboard/admin/groups");
+    revalidatePath("/dashboard/gestor/groups");
+    revalidatePath("/dashboard/admin");
+    revalidatePath("/dashboard/gestor");
+    revalidatePath("/dashboard/teacher");
     return results;
 }
 

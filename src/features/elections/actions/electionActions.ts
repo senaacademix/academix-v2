@@ -131,6 +131,8 @@ export async function closeElectionAction(electionId: string) {
     revalidatePath("/dashboard/teacher/tools");
     revalidatePath("/dashboard/teacher/elections");
     revalidatePath("/dashboard/student/elections");
+    revalidatePath("/dashboard/gestor/users");
+    revalidatePath("/dashboard/admin/users");
 
     return { success: true };
 }
@@ -147,6 +149,8 @@ export async function cancelElectionAction(electionId: string) {
     revalidatePath("/dashboard/teacher/tools");
     revalidatePath("/dashboard/teacher/elections");
     revalidatePath("/dashboard/student/elections");
+    revalidatePath("/dashboard/gestor/users");
+    revalidatePath("/dashboard/admin/users");
 
     return { success: true };
 }
