@@ -92,6 +92,8 @@ model User {
   announcementsCreated         Announcement[]    @relation("AdminAnnouncements")
 
   @@unique([email])
+  @@index([groupId])
+  @@index([role])
   @@map("user")
 }
 
@@ -198,6 +200,10 @@ model Course {
   workGroups         CourseWorkGroup[]
   scheduleNovelties  ScheduleNovelty[]
 
+  @@index([teacherId])
+  @@index([groupId])
+  @@index([periodId])
+  @@index([groupId, teacherId])
   @@map("course")
 }
 
@@ -243,6 +249,8 @@ model Attendance {
   updatedAt        DateTime         @updatedAt
 
   @@unique([courseId, userId, date])
+  @@index([userId])
+  @@index([date])
   @@map("attendance")
 }
 
@@ -269,6 +277,10 @@ model Remark {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  @@index([courseId])
+  @@index([userId])
+  @@index([teacherId])
+  @@index([date])
   @@map("remark")
 }
 
@@ -297,6 +309,9 @@ model CourseSchedule {
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
+  @@index([courseId])
+  @@index([teacherId])
+  @@index([environmentId])
   @@map("course_schedule")
 }
 
@@ -507,6 +522,8 @@ model Group {
   voceroPrincipalId String?
   voceroSuplenteId  String?
 
+  @@index([programId])
+  @@index([categoria])
   @@map("group")
 }
 

@@ -39,9 +39,6 @@ export async function populateCoursesFallbackDescriptions(courses: any[]) {
     });
 
     if (templates.length === 0) return courses;
-
-    const updatesToPersist: { id: string; description: string }[] = [];
-
     courses.forEach(c => {
         if (c && (!c.description || !c.description.trim()) && c.title) {
             const cTitle = c.title.trim().toLowerCase();
@@ -68,32 +65,10 @@ export async function populateCoursesFallbackDescriptions(courses: any[]) {
 
                 if (bestMatch?.description) {
                     c.description = bestMatch.description;
-                    if (c.id) {
-                        updatesToPersist.push({ id: c.id, description: bestMatch.description });
-                    }
                 }
             }
         }
     });
-
-    // Auto-heal: persist resolved descriptions back to the database for group courses
-    if (updatesToPersist.length > 0) {
-        (async () => {
-            try {
-                for (const item of updatesToPersist) {
-                    await prisma.course.updateMany({
-                        where: {
-                            id: item.id,
-                            OR: [{ description: null }, { description: "" }]
-                        },
-                        data: { description: item.description }
-                    });
-                }
-            } catch (err) {
-                console.error("Error auto-healing course descriptions in database:", err);
-            }
-        })();
-    }
 
     return courses;
 }

@@ -20,8 +20,7 @@ export default async function Page() {
     redirect("/signin");
   }
 
-  const [courses, groups, academicSchedules, settings] = await Promise.all([
-    courseService.getTeacherCourses(session.user.id),
+  const [groups, academicSchedules, settings] = await Promise.all([
     courseService.getTeacherGroups(session.user.id),
     prisma.academicSchedule.findMany({
       orderBy: { startDate: "desc" },
@@ -70,7 +69,6 @@ export default async function Page() {
 
   return (
     <TeacherDashboard 
-      courses={courses} 
       groups={groups}
       currentDate={currentDate} 
       teacherName={session.user.name}

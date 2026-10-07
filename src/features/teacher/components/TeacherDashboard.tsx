@@ -22,7 +22,7 @@ const GroupManager = dynamic(
 );
 
 interface TeacherDashboardProps {
-  courses: any[];
+  courses?: any[];
   groups: any[];
   currentDate?: string;
   teacherName: string;
@@ -32,7 +32,7 @@ interface TeacherDashboardProps {
 }
 
 export function TeacherDashboard({
-  courses,
+  courses: _courses,
   groups,
   currentDate,
   teacherName,

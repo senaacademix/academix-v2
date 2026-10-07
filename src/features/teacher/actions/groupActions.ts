@@ -312,20 +312,19 @@ export async function saveRemarkBatch(
 export async function getGroupAttendanceHistory(groupId: string) {
     try {
         const user = await requireTeacherOrObserver();
-        const group = await prisma.group.findUnique({
-            where: { id: groupId },
-            include: { courses: true }
+        const isPrivileged = user.role === "admin" || user.role === "gestor" || user.role === "observer";
+
+        // Query course IDs directly without fetching the entire group object
+        const courses = await prisma.course.findMany({
+            where: {
+                groupId,
+                ...(isPrivileged ? {} : { teacherId: user.id })
+            },
+            select: { id: true }
         });
 
-        if (!group) return [];
-
-        // Filter courses: teachers only see their own courses, admins/gestores/observers see all
-        const isPrivileged = user.role === "admin" || user.role === "gestor" || user.role === "observer";
-        const coursesTaught = isPrivileged
-            ? group.courses
-            : group.courses.filter(c => c.teacherId === user.id);
-
-        const courseIds = coursesTaught.map(c => c.id);
+        if (courses.length === 0) return [];
+        const courseIds = courses.map(c => c.id);
 
         const attendances = await prisma.attendance.findMany({
             where: {
@@ -354,20 +353,19 @@ export async function getGroupAttendanceHistory(groupId: string) {
 export async function getGroupRemarksHistory(groupId: string) {
     try {
         const user = await requireTeacherOrObserver();
-        const group = await prisma.group.findUnique({
-            where: { id: groupId },
-            include: { courses: true }
+        const isPrivileged = user.role === "admin" || user.role === "gestor" || user.role === "observer";
+
+        // Query course IDs directly without fetching the entire group object
+        const courses = await prisma.course.findMany({
+            where: {
+                groupId,
+                ...(isPrivileged ? {} : { teacherId: user.id })
+            },
+            select: { id: true }
         });
 
-        if (!group) return [];
-
-        // Filter courses: teachers only see their own courses, admins/gestores/observers see all
-        const isPrivileged = user.role === "admin" || user.role === "gestor" || user.role === "observer";
-        const coursesTaught = isPrivileged
-            ? group.courses
-            : group.courses.filter(c => c.teacherId === user.id);
-
-        const courseIds = coursesTaught.map(c => c.id);
+        if (courses.length === 0) return [];
+        const courseIds = courses.map(c => c.id);
 
         const remarks = await prisma.remark.findMany({
             where: {
