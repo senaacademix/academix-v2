@@ -169,9 +169,21 @@ export async function exportEnvironmentsToExcel(
   }
 
   // 2. INDIVIDUAL SHEETS PER ENVIRONMENT
+  const usedSheetNames = new Set<string>();
+  if (exportMode !== "single") {
+    usedSheetNames.add(exportMode === "chart" ? "Reporte Ocupación" : "Matriz General Ambientes");
+  }
+
   environmentsData.forEach((envData) => {
-    const rawSheetName = envData.environment.name.replace(/[*?:\\/[\]]/g, "_").slice(0, 30);
-    const sheet = workbook.addWorksheet(rawSheetName, {
+    let baseSheetName = (envData.environment.name || "Ambiente").replace(/[*?:\\/[\]]/g, "_").slice(0, 27);
+    let sheetName = baseSheetName;
+    let count = 1;
+    while (usedSheetNames.has(sheetName)) {
+      sheetName = `${baseSheetName}_${count++}`.slice(0, 31);
+    }
+    usedSheetNames.add(sheetName);
+
+    const sheet = workbook.addWorksheet(sheetName, {
       views: [{ showGridLines: true }],
     });
 

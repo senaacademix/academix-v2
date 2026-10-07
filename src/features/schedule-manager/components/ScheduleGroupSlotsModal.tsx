@@ -852,7 +852,7 @@ export function ScheduleGroupSlotsModal({
 
                                 {dayConfig.enabled ? (
                                   <div className="flex items-center gap-2 text-xs font-mono shrink-0 flex-wrap sm:flex-nowrap justify-end">
-                                    {/* Hora Inicio (24 Horas, intervalos de 15 min) */}
+                                    {/* Hora Inicio (24 Horas, intervalos de 1 hora) */}
                                     <div className="flex items-center gap-1.5 bg-background dark:bg-muted/30 px-2 py-1 rounded-xl border border-input shadow-2xs hover:border-primary/50 transition-colors">
                                       <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
                                       <select
@@ -877,7 +877,7 @@ export function ScheduleGroupSlotsModal({
 
                                     <span className="text-muted-foreground font-sans font-medium text-xs">a</span>
 
-                                    {/* Hora Fin (24 Horas, intervalos de 15 min) */}
+                                    {/* Hora Fin (24 Horas, intervalos de 1 hora) */}
                                     <div className="flex items-center gap-1.5 bg-background dark:bg-muted/30 px-2 py-1 rounded-xl border border-input shadow-2xs hover:border-primary/50 transition-colors">
                                       <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
                                       <select

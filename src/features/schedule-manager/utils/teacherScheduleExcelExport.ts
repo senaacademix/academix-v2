@@ -142,8 +142,20 @@ export async function generateAndDownloadTeacherScheduleExcel(
   // =========================================================================
   // 2. INDIVIDUAL SHEETS PER TEACHER (Weekly Matrix)
   // =========================================================================
+  const usedSheetNames = new Set<string>();
+  if (exportMode !== "single") {
+    usedSheetNames.add("Consolidado Carga");
+  }
+
   teachersData.forEach((t) => {
-    const sheetName = t.name.replace(/[\\/*?:[\]]/g, "_").slice(0, 31);
+    let baseSheetName = (t.name || "Instructor").replace(/[\\/*?:[\]]/g, "_").slice(0, 27);
+    let sheetName = baseSheetName;
+    let count = 1;
+    while (usedSheetNames.has(sheetName)) {
+      sheetName = `${baseSheetName}_${count++}`.slice(0, 31);
+    }
+    usedSheetNames.add(sheetName);
+
     const sheet = workbook.addWorksheet(sheetName, {
       views: [{ showGridLines: true }],
     });

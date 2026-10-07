@@ -174,11 +174,19 @@ export function ScheduleExportModal({
       try {
         if (formatType === "pdf") {
           toast.info("Generando PDF por instructor con @react-pdf/renderer...");
-          await generateAndDownloadTeacherSchedulePdf(schedule, teachersToExport);
+          await generateAndDownloadTeacherSchedulePdf(
+            schedule,
+            teachersToExport,
+            teachersToExport.length === 1 ? "single" : "all"
+          );
           toast.success("PDF por instructor descargado exitosamente");
         } else {
           toast.info("Generando Excel por instructor con ExcelJS...");
-          await generateAndDownloadTeacherScheduleExcel(schedule, teachersToExport);
+          await generateAndDownloadTeacherScheduleExcel(
+            schedule,
+            teachersToExport,
+            teachersToExport.length === 1 ? "single" : "all"
+          );
           toast.success("Excel por instructor descargado exitosamente");
         }
         onOpenChange(false);
@@ -202,11 +210,19 @@ export function ScheduleExportModal({
       try {
         if (formatType === "pdf") {
           toast.info("Generando PDF de ambientes con @react-pdf/renderer...");
-          await exportEnvironmentsToPdf(schedule, envsToExport);
+          await exportEnvironmentsToPdf(
+            schedule,
+            envsToExport,
+            envsToExport.length === 1 ? "single" : "all"
+          );
           toast.success("PDF de ambientes descargado exitosamente");
         } else {
           toast.info("Generando Excel de ambientes con ExcelJS...");
-          await exportEnvironmentsToExcel(schedule, envsToExport);
+          await exportEnvironmentsToExcel(
+            schedule,
+            envsToExport,
+            envsToExport.length === 1 ? "single" : "all"
+          );
           toast.success("Excel de ambientes descargado exitosamente");
         }
         onOpenChange(false);
@@ -228,10 +244,10 @@ export function ScheduleExportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl p-0 overflow-hidden rounded-3xl border-border bg-background shadow-2xl">
-        <div className="flex flex-col">
+      <DialogContent className="sm:max-w-xl p-0 rounded-3xl border-border bg-background shadow-2xl max-h-[88vh] flex flex-col overflow-hidden">
+        <div className="flex flex-col h-full max-h-[88vh] overflow-hidden">
           {/* Header */}
-          <DialogHeader className="p-6 pb-4 border-b border-border/80 bg-muted/20">
+          <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/80 bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                 {formatType === "pdf" ? (
@@ -252,7 +268,7 @@ export function ScheduleExportModal({
           </DialogHeader>
 
           {/* Body Content */}
-          <div className="p-6 space-y-4">
+          <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 scrollbar-thin">
             {/* Target Mode Tabs (Por Ficha vs Por Instructor vs Por Ambiente) */}
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-foreground uppercase tracking-wider">
@@ -555,7 +571,7 @@ export function ScheduleExportModal({
           </div>
 
           {/* Footer */}
-          <DialogFooter className="p-4 border-t border-border/80 bg-muted/20 flex flex-row items-center justify-between">
+          <DialogFooter className="p-4 border-t border-border/80 bg-muted/20 flex flex-row items-center justify-between shrink-0">
             <Button
               type="button"
               variant="outline"

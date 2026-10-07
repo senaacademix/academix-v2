@@ -17,11 +17,19 @@ async function requireAdmin() {
     return session;
 }
 
+async function requireAdminOrObserver() {
+    const session = await getSession();
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+        throw new Error("Unauthorized: Admin or Gestor access required");
+    }
+    return session;
+}
+
 /**
  * Obtener todas las líneas de tiempo de un programa con sus periodos y cursos plantilla
  */
 export async function getProgramTimelinesAction(programId: string) {
-    await requireAdmin();
+    await requireAdminOrObserver();
     if (!programId) throw new Error("ID de programa requerido");
 
     return await prisma.curriculumTimeline.findMany({

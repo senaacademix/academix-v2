@@ -95,14 +95,14 @@ export async function generateAndDownloadScheduleExcel(
   groups.forEach((g) => {
     let hasClasses = false;
 
-    g.scheduledClasses.forEach((c) => {
-      c.schedules.forEach((s) => {
+    (g.scheduledClasses || []).forEach((c) => {
+      (c.schedules || []).forEach((s) => {
         hasClasses = true;
         rowIdx++;
         const dayLabel = DAYS_ES.find((d) => d.key === s.dayOfWeek)?.label || s.dayOfWeek;
         const row = summarySheet.addRow([
           g.name,
-          g.program.name,
+          g.program?.name || "Sin programa",
           g.period?.name || "N/A",
           g.environment?.name || "Sin ambiente",
           c.title,
@@ -167,8 +167,16 @@ export async function generateAndDownloadScheduleExcel(
   // =========================================================================
   // 2. INDIVIDUAL SHEETS PER GROUP / FICHA (Weekly Matrix)
   // =========================================================================
+  const usedSheetNames = new Set<string>(["Consolidado General"]);
   groups.forEach((g) => {
-    const sheetName = g.name.replace(/[\\/*?:[\]]/g, "_").slice(0, 31);
+    let baseSheetName = (g.name || "Ficha").replace(/[\\/*?:[\]]/g, "_").slice(0, 27);
+    let sheetName = baseSheetName;
+    let count = 1;
+    while (usedSheetNames.has(sheetName)) {
+      sheetName = `${baseSheetName}_${count++}`.slice(0, 31);
+    }
+    usedSheetNames.add(sheetName);
+
     const sheet = workbook.addWorksheet(sheetName, {
       views: [{ showGridLines: true }],
     });
@@ -184,7 +192,7 @@ export async function generateAndDownloadScheduleExcel(
 
     sheet.mergeCells("A2:G2");
     const gMeta = sheet.getCell("A2");
-    gMeta.value = `Programa: ${g.program.name} | Trimestre: ${g.period?.name || "N/A"} | Ambiente: ${
+    gMeta.value = `Programa: ${g.program?.name || "Sin programa"} | Trimestre: ${g.period?.name || "N/A"} | Ambiente: ${
       g.environment ? `${g.environment.name} (${g.environment.location || ""})` : "No asignado"
     }`;
     gMeta.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: "FF1E293B" } };
@@ -197,7 +205,7 @@ export async function generateAndDownloadScheduleExcel(
 
     // Week Grid Headers (Lunes a Domingo)
     const dayHeaders = DAYS_ES.map((d) => {
-      const slot = g.daySlotsConfig.find((ds) => ds.dayOfWeek === d.key);
+      const slot = (g.daySlotsConfig || []).find((ds: any) => ds.dayOfWeek === d.key);
       return slot ? `${d.label}\n(${slot.startTime}-${slot.endTime})` : d.label;
     });
 

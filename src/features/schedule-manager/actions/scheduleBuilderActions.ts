@@ -9,8 +9,16 @@ import { isScheduleCurrent } from "@/lib/dateUtils";
 
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
     throw new Error("No autorizado. Se requieren permisos de coordinador o gestor.");
+  }
+  return session;
+}
+
+async function requireAdminOrObserver() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+    throw new Error("No autorizado.");
   }
   return session;
 }
@@ -124,7 +132,7 @@ export interface ScheduleBuilderData {
  */
 export async function getScheduleBuilderDataAction(scheduleId: string, programId?: string): Promise<ScheduleBuilderData | null> {
   try {
-    const session = await requireAdmin();
+    const session = await requireAdminOrObserver();
 
     if (!scheduleId) return null;
 
@@ -137,6 +145,14 @@ export async function getScheduleBuilderDataAction(scheduleId: string, programId
       groupSlotsWhere.group = {
         program: {
           gestores: {
+            some: { id: session.user.id }
+          }
+        }
+      };
+    } else if (session.user.role === "observer") {
+      groupSlotsWhere.group = {
+        program: {
+          observers: {
             some: { id: session.user.id }
           }
         }
@@ -219,6 +235,15 @@ export async function getScheduleBuilderDataAction(scheduleId: string, programId
         { coursesTaught: { some: { OR: [
           { group: { program: { gestores: { some: { id: session.user.id } } } } },
           { period: { program: { gestores: { some: { id: session.user.id } } } } }
+        ] } } }
+      ];
+    } else if (session.user.role === "observer") {
+      teacherWhere.OR = [
+        { programs: { some: { observers: { some: { id: session.user.id } } } } },
+        { groupsTaught: { some: { program: { observers: { some: { id: session.user.id } } } } } },
+        { coursesTaught: { some: { OR: [
+          { group: { program: { observers: { some: { id: session.user.id } } } } },
+          { period: { program: { observers: { some: { id: session.user.id } } } } }
         ] } } }
       ];
     }

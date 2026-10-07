@@ -173,7 +173,7 @@ export function AdminDashboard({
             icon: GraduationCap,
             color: "text-blue-500",
             bg: "bg-blue-500/10",
-            link: "/dashboard/admin/users"
+            link: isObserver ? "/dashboard/admin/courses" : "/dashboard/admin/users"
         },
         {
             title: "Instructores Activos",
@@ -182,7 +182,7 @@ export function AdminDashboard({
             icon: UserCheck,
             color: "text-indigo-500",
             bg: "bg-indigo-500/10",
-            link: "/dashboard/admin/users"
+            link: isObserver ? "/dashboard/admin/courses" : "/dashboard/admin/users"
         },
         {
             title: "Fichas / Grupos Activos",
@@ -194,9 +194,9 @@ export function AdminDashboard({
             link: "/dashboard/admin/courses"
         },
         {
-            title: "Áreas de Formación",
+            title: isObserver ? "Programas de Formación" : "Áreas de Formación",
             value: (stats as any).programs?.total ?? 0,
-            description: "Áreas curriculares activas",
+            description: isObserver ? "Programas supervisados" : "Áreas curriculares activas",
             icon: FolderKanban,
             color: "text-purple-500",
             bg: "bg-purple-500/10",
@@ -244,30 +244,46 @@ export function AdminDashboard({
             icon: BarChart3,
             color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
         }
-    ] : [
+    ] : isObserver ? [
         {
-            title: "Gestión de Usuarios",
-            description: isObserver 
-                ? "Consulta de aprendices, instructores, gestores y directivos del centro."
-                : "Administración integral de aprendices, instructores, gestores, directivos y roles.",
-            link: "/dashboard/admin/users",
-            icon: Users,
-            color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
-        },
-        {
-            title: "Estructura Curricular y Sedes",
-            description: isObserver
-                ? "Auditoría de áreas de formación, fichas, competencias, sedes y ambientes."
-                : "Áreas de formación, fichas vigentes, competencias y parametrización de sedes y ambientes.",
+            title: "Programas y Fichas",
+            description: "Consulta y supervisión de programas de formación asignados, fichas y expedientes de aprendices.",
             link: "/dashboard/admin/courses",
             icon: BookOpen,
             color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
         },
         {
             title: "Programación y Mallas Horarias",
-            description: isObserver
-                ? "Supervisión de mallas horarias, jornadas, eventos y disponibilidad docente."
-                : "Diseño, publicación, control de cruces de mallas y bloqueo trimestral de disponibilidad.",
+            description: "Supervisión y consulta de mallas horarias, jornadas de formación y disponibilidad docente.",
+            link: "/dashboard/admin/schedules",
+            icon: CalendarClock,
+            color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20"
+        },
+        {
+            title: "Reportes y Analítica Global",
+            description: "Analítica institucional, matrices de asistencia, juicios evaluativos y trazabilidad.",
+            link: "/dashboard/admin/analytics",
+            icon: BarChart3,
+            color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
+        }
+    ] : [
+        {
+            title: "Gestión de Usuarios",
+            description: "Administración integral de aprendices, instructores, gestores, directivos y roles.",
+            link: "/dashboard/admin/users",
+            icon: Users,
+            color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20"
+        },
+        {
+            title: "Estructura Curricular y Sedes",
+            description: "Áreas de formación, fichas vigentes, competencias y parametrización de sedes y ambientes.",
+            link: "/dashboard/admin/courses",
+            icon: BookOpen,
+            color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+        },
+        {
+            title: "Programación y Mallas Horarias",
+            description: "Diseño, publicación, control de cruces de mallas y bloqueo trimestral de disponibilidad.",
             link: "/dashboard/admin/schedules",
             icon: CalendarClock,
             color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20"
@@ -432,6 +448,7 @@ export function AdminDashboard({
                     open={helpModalOpen}
                     onOpenChange={setHelpModalOpen}
                     initialTab={helpInitialTab}
+                    isObserver={isObserver}
                 />
             </div>
         );
@@ -599,7 +616,7 @@ export function AdminDashboard({
                                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 font-medium">
                                     <span>{kpi.description}</span>
                                     <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-primary font-bold flex items-center gap-0.5">
-                                        Gestionar <ArrowUpRight className="h-3 w-3" />
+                                        {isObserver ? "Consultar" : "Gestionar"} <ArrowUpRight className="h-3 w-3" />
                                     </span>
                                 </p>
                             </CardContent>
@@ -646,7 +663,7 @@ export function AdminDashboard({
                                         </div>
                                     </div>
                                     <div className="pt-4 border-t border-border/40 mt-4 text-[11px] font-bold text-primary flex items-center gap-1">
-                                        Ingresar al módulo <ChevronRight className="w-3 h-3" />
+                                        {isObserver ? "Consultar módulo" : "Ingresar al módulo"} <ChevronRight className="w-3 h-3" />
                                     </div>
                                 </Card>
                             </Link>
@@ -773,6 +790,7 @@ export function AdminDashboard({
                 open={helpModalOpen}
                 onOpenChange={setHelpModalOpen}
                 initialTab={helpInitialTab}
+                isObserver={isObserver}
             />
         </div>
     );

@@ -48,21 +48,31 @@ const DAYS_ES: { value: DayOfWeek; label: string }[] = [
   { value: "SUNDAY", label: "Domingo" },
 ];
 
-function generate15MinIntervals(minTime: string, maxTime: string): string[] {
-  const [minH, minM] = minTime.split(":").map(Number);
+function generate1HourIntervals(
+  minTime: string,
+  maxTime: string,
+  extraTimes: (string | undefined)[] = []
+): string[] {
+  const [minH] = minTime.split(":").map(Number);
   const [maxH, maxM] = maxTime.split(":").map(Number);
-  const startTotalMinutes = minH * 60 + minM;
-  const endTotalMinutes = maxH * 60 + maxM;
-
-  const intervals: string[] = [];
-  for (let m = startTotalMinutes; m <= endTotalMinutes; m += 15) {
-    const hours = Math.floor(m / 60);
-    const mins = m % 60;
-    intervals.push(
-      `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`
-    );
+  const startH = isNaN(minH) ? 6 : minH;
+  let endH = isNaN(maxH) ? 22 : maxH;
+  if (maxM > 0 && endH < 23) {
+    endH += 1;
   }
-  return intervals;
+
+  const timesSet = new Set<string>();
+  for (let h = startH; h <= endH; h++) {
+    timesSet.add(`${String(h).padStart(2, "0")}:00`);
+  }
+
+  for (const t of extraTimes) {
+    if (t) {
+      timesSet.add(t);
+    }
+  }
+
+  return Array.from(timesSet).sort();
 }
 
 const toFormat12h = (t24: string) => {
@@ -170,7 +180,7 @@ export function ScheduleClassModal({
   const allowedMinTime = currentDayConfig?.startTime || "06:00";
   const allowedMaxTime = currentDayConfig?.endTime || "22:00";
 
-  const allDayIntervals = generate15MinIntervals(allowedMinTime, allowedMaxTime);
+  const allDayIntervals = generate1HourIntervals(allowedMinTime, allowedMaxTime, [startTime, endTime]);
   const startTimeOptions = allDayIntervals.slice(0, -1);
   const endTimeOptions = allDayIntervals.filter((t) => t > startTime);
 
@@ -187,14 +197,10 @@ export function ScheduleClassModal({
       newStart = newMin;
     }
     if (newEnd > newMax || newEnd <= newStart) {
-      const [sh, sm] = newStart.split(":").map(Number);
-      const totalStartMin = sh * 60 + sm;
-      const [maxH, maxM] = newMax.split(":").map(Number);
-      const totalMaxMin = maxH * 60 + maxM;
-      const targetEndMin = Math.min(totalStartMin + 120, totalMaxMin);
-      const endH = Math.floor(targetEndMin / 60);
-      const endM = targetEndMin % 60;
-      newEnd = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+      const [sh] = newStart.split(":").map(Number);
+      const [maxH] = newMax.split(":").map(Number);
+      const targetEndH = Math.min(sh + 2, maxH || 22);
+      newEnd = `${String(targetEndH).padStart(2, "0")}:00`;
     }
 
     setStartTime(newStart);
@@ -398,7 +404,7 @@ export function ScheduleClassModal({
               )}
             </div>
 
-            {/* 2. Día y Horario (Intervalos de 15 min acotados a la jornada del grupo) */}
+            {/* 2. Día y Horario (Intervalos de 1 hora acotados a la jornada del grupo) */}
             <div className="space-y-2">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
@@ -480,7 +486,7 @@ export function ScheduleClassModal({
                 <p className="text-[11px] text-muted-foreground font-mono flex items-center gap-1.5 bg-muted/30 px-3 py-1.5 rounded-xl border border-border/50">
                   <Clock className="w-3 h-3 text-primary shrink-0" />
                   <span>
-                    Jornada permitida del grupo: <strong className="text-foreground">{toFormat12h(currentDayConfig.startTime)} a {toFormat12h(currentDayConfig.endTime)}</strong> (pasos de 15 min)
+                    Jornada permitida del grupo: <strong className="text-foreground">{toFormat12h(currentDayConfig.startTime)} a {toFormat12h(currentDayConfig.endTime)}</strong> (intervalos de 1 hora)
                   </span>
                 </p>
               ) : (

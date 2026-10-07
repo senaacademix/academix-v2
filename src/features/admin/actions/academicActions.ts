@@ -130,11 +130,6 @@ export async function getProgramsAction(programId?: string) {
                 }
             },
             groups: {
-                where: session.user.role === "observer" ? {
-                    observers: {
-                        some: { id: session.user.id }
-                    }
-                } : undefined,
                 orderBy: { createdAt: "asc" },
                 include: {
                     environment: true,
@@ -155,13 +150,38 @@ export async function getProgramsAction(programId?: string) {
                     courses: {
                         include: {
                             group: true,
-                            schedules: true,
+                            period: {
+                                include: {
+                                    timeline: true
+                                }
+                            },
+                            schedules: {
+                                include: {
+                                    environment: true,
+                                    teacher: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            email: true
+                                        }
+                                    }
+                                }
+                            },
                             teacher: {
                                 select: {
                                     id: true,
                                     name: true,
                                     email: true,
                                     icon: true
+                                }
+                            }
+                        }
+                    },
+                    scheduleSlots: {
+                        include: {
+                            period: {
+                                include: {
+                                    timeline: true
                                 }
                             }
                         }
@@ -176,7 +196,7 @@ export async function getProgramsAction(programId?: string) {
 }
 
 export async function getGestoresAction() {
-    const session = await requireAdmin();
+    const session = await requireAdminOrObserver();
     return await prisma.user.findMany({
         where: { role: "gestor" },
         select: {
@@ -189,7 +209,7 @@ export async function getGestoresAction() {
 }
 
 export async function getAllTrainingAreasListAction(): Promise<Array<{ id: string; name: string }>> {
-    await requireAdmin();
+    await requireAdminOrObserver();
     return await prisma.program.findMany({
         select: {
             id: true,
@@ -459,11 +479,24 @@ export async function getGroupsAction(programId?: string) {
         };
     } else if (session.user.role === "observer") {
         whereClause = {
-            observers: {
-                some: {
-                    id: session.user.id
+            OR: [
+                {
+                    program: {
+                        observers: {
+                            some: {
+                                id: session.user.id
+                            }
+                        }
+                    }
+                },
+                {
+                    observers: {
+                        some: {
+                            id: session.user.id
+                        }
+                    }
                 }
-            }
+            ]
         };
     }
 

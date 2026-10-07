@@ -13,8 +13,16 @@ async function getSession() {
 
 async function requireAdmin() {
   const session = await getSession();
-  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
     throw new Error("No autorizado: Se requiere rol de coordinador o gestor");
+  }
+  return session;
+}
+
+async function requireAdminOrObserver() {
+  const session = await getSession();
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+    throw new Error("No autorizado");
   }
   return session;
 }
@@ -38,7 +46,7 @@ export interface ScheduleEventsPageData {
  */
 export async function getScheduleEventsDataAction(scheduleId: string, programId?: string): Promise<ScheduleEventsPageData | null> {
   try {
-    const session = await requireAdmin();
+    const session = await requireAdminOrObserver();
 
     const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
 

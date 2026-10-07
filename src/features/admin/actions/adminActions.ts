@@ -1939,6 +1939,18 @@ export async function createAdminOrObserverAction(data: {
     const passwordToUse = data.password || data.identificacion;
     const hashedPassword = await hashPassword(passwordToUse);
 
+    // Calculate groups for observer from assigned programs
+    let observerGroupIds: string[] = [];
+    if (data.role === "observer" && data.programIds && data.programIds.length > 0) {
+        const groupsInProgs = await prisma.group.findMany({
+            where: { programId: { in: data.programIds } },
+            select: { id: true }
+        });
+        observerGroupIds = groupsInProgs.map(g => g.id);
+    } else if (data.role === "observer" && data.groupIds && data.groupIds.length > 0) {
+        observerGroupIds = data.groupIds;
+    }
+
     // Create user with account, profile and assigned programs/groups
     const user = await prisma.user.create({
         data: {
@@ -1971,8 +1983,8 @@ export async function createAdminOrObserverAction(data: {
             observedPrograms: data.role === "observer" && data.programIds && data.programIds.length > 0 ? {
                 connect: data.programIds.map(pid => ({ id: pid }))
             } : undefined,
-            observedGroups: data.role === "observer" && data.groupIds && data.groupIds.length > 0 ? {
-                connect: data.groupIds.map(gid => ({ id: gid }))
+            observedGroups: data.role === "observer" && observerGroupIds.length > 0 ? {
+                connect: observerGroupIds.map(gid => ({ id: gid }))
             } : undefined,
         },
         include: {
@@ -2033,6 +2045,18 @@ export async function updateAdminOrObserverAction(id: string, data: {
         throw new Error("Ya existe otro perfil con esta identificación");
     }
 
+    // Calculate groups for observer from assigned programs
+    let observerGroupIds: string[] = [];
+    if (data.role === "observer" && data.programIds && data.programIds.length > 0) {
+        const groupsInProgs = await prisma.group.findMany({
+            where: { programId: { in: data.programIds } },
+            select: { id: true }
+        });
+        observerGroupIds = groupsInProgs.map(g => g.id);
+    } else if (data.role === "observer" && data.groupIds && data.groupIds.length > 0) {
+        observerGroupIds = data.groupIds;
+    }
+
     const user = await prisma.user.update({
         where: { id },
         data: {
@@ -2054,7 +2078,7 @@ export async function updateAdminOrObserverAction(id: string, data: {
                 set: data.role === "observer" && data.programIds ? data.programIds.map(pid => ({ id: pid })) : []
             },
             observedGroups: {
-                set: data.role === "observer" && data.groupIds ? data.groupIds.map(gid => ({ id: gid })) : []
+                set: data.role === "observer" ? observerGroupIds.map(gid => ({ id: gid })) : []
             }
         },
         include: {

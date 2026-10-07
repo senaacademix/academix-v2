@@ -36,7 +36,7 @@ export async function getStudentGroupHistoryAction(studentId?: string) {
   const targetId = studentId && studentId !== "me" ? studentId : session.user.id;
   const requester = session.user;
   const isSelf = requester.id === targetId;
-  const isStaff = ["admin", "gestor", "coordinador", "manager", "teacher"].includes(requester.role || "");
+  const isStaff = ["admin", "gestor", "coordinador", "manager", "teacher", "observer"].includes(requester.role || "");
 
   if (!isSelf && !isStaff) {
     return { success: false, error: "No tienes permisos para ver este historial" };

@@ -41,6 +41,7 @@ const toFormat12h = (time24: string) => {
 
 interface SchedulePanoramicViewProps {
   data: ScheduleBuilderData;
+  isReadOnly?: boolean;
   onSelectGroupAndEdit: (groupId: string) => void;
   onOpenScheduleModal: (groupId: string, courseTitle?: string) => void;
 }
@@ -57,6 +58,7 @@ const DAYS: Array<{ key: DayOfWeek; label: string; short: string }> = [
 
 export function SchedulePanoramicView({
   data,
+  isReadOnly = false,
   onSelectGroupAndEdit,
   onOpenScheduleModal,
 }: SchedulePanoramicViewProps) {
@@ -325,7 +327,7 @@ export function SchedulePanoramicView({
                                   </div>
 
                                   <p className="text-[10px] text-primary font-bold pt-1.5 border-t border-border/40 flex items-center justify-between">
-                                    <span>Editar en la malla de la ficha</span>
+                                    <span>{isReadOnly ? "Ver en la malla de la ficha" : "Editar en la malla de la ficha"}</span>
                                     <ChevronRight className="w-3 h-3" />
                                   </p>
                                 </TooltipContent>

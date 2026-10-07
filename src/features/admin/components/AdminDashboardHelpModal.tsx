@@ -211,12 +211,14 @@ interface AdminDashboardHelpModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialTab?: AdminDashboardTabKey;
+  isObserver?: boolean;
 }
 
 export function AdminDashboardHelpModal({
   open,
   onOpenChange,
   initialTab = "overview",
+  isObserver = false,
 }: AdminDashboardHelpModalProps) {
   const [selectedTab, setSelectedTab] = useState<AdminDashboardTabKey>(initialTab);
 
@@ -227,6 +229,11 @@ export function AdminDashboardHelpModal({
   }, [open, initialTab]);
 
   const currentConfig = ADMIN_DASHBOARD_HELP_CONFIG[selectedTab] || ADMIN_DASHBOARD_HELP_CONFIG.overview;
+
+  const availableTabKeys = (Object.keys(ADMIN_DASHBOARD_HELP_CONFIG) as AdminDashboardTabKey[]).filter((tabKey) => {
+    if (isObserver && (tabKey === "users" || tabKey === "settings")) return false;
+    return true;
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -246,7 +253,10 @@ export function AdminDashboardHelpModal({
                   </Badge>
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Guía de administración, monitoreo de indicadores y gestión para Coordinadores y Gestores.
+                  {isObserver
+                    ? "Guía de supervisión institucional, auditoría curricular y consulta de mallas horarias."
+                    : "Guía de administración, monitoreo de indicadores y gestión para Coordinadores y Gestores."
+                  }
                 </DialogDescription>
               </div>
             </div>
@@ -259,7 +269,7 @@ export function AdminDashboardHelpModal({
             className="w-full mt-3"
           >
             <TabsList className="w-full flex overflow-x-auto bg-muted/50 p-1 rounded-2xl scrollbar-none justify-start sm:justify-center gap-1 h-auto">
-              {(Object.keys(ADMIN_DASHBOARD_HELP_CONFIG) as AdminDashboardTabKey[]).map((tabKey) => {
+              {availableTabKeys.map((tabKey) => {
                 const cfg = ADMIN_DASHBOARD_HELP_CONFIG[tabKey];
                 return (
                   <TabsTrigger

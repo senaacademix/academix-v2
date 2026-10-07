@@ -62,20 +62,18 @@ const COLOR_OPTIONS = [
   { id: "indigo", label: "Índigo", bg: "bg-indigo-500", border: "border-indigo-500", text: "text-indigo-600 dark:text-indigo-400" },
 ];
 
-const TIME_OPTIONS_24H_15M: string[] = (() => {
+// 24-hour format options in 1-hour intervals (00:00 to 23:00)
+const TIME_OPTIONS_24H_1H: string[] = (() => {
   const list: string[] = [];
   for (let h = 0; h < 24; h++) {
     const hh = String(h).padStart(2, "0");
-    for (let m = 0; m < 60; m += 15) {
-      const mm = String(m).padStart(2, "0");
-      list.push(`${hh}:${mm}`);
-    }
+    list.push(`${hh}:00`);
   }
   return list;
 })();
 
 function getTimeOptions(currentVal?: string, isEndTime?: boolean): string[] {
-  const base = [...TIME_OPTIONS_24H_15M];
+  const base = [...TIME_OPTIONS_24H_1H];
   if (isEndTime && !base.includes("23:59")) {
     base.push("23:59");
   }
@@ -374,7 +372,7 @@ export function ScheduleEventModal({
               </span>
             </div>
 
-            {/* Hora Inicio (24 Horas, intervalos de 15 min) */}
+            {/* Hora Inicio (24 Horas, intervalos de 1 hora) */}
             <div className="space-y-1.5">
               <Label htmlFor="start-time" className="text-xs font-bold flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-primary" /> Hora Inicio <span className="text-rose-500">*</span>
@@ -387,11 +385,9 @@ export function ScheduleEventModal({
                     const val = e.target.value;
                     setStartTime(val);
                     if (val >= endTime) {
-                      const [sh, sm] = val.split(":").map(Number);
-                      const newEndMin = Math.min(sh * 60 + sm + 120, 23 * 60 + 45);
-                      const ehNew = Math.floor(newEndMin / 60);
-                      const emNew = newEndMin % 60;
-                      setEndTime(`${String(ehNew).padStart(2, "0")}:${String(emNew).padStart(2, "0")}`);
+                      const [sh] = val.split(":").map(Number);
+                      const ehNew = Math.min(sh + 2, 23);
+                      setEndTime(`${String(ehNew).padStart(2, "0")}:00`);
                     }
                   }}
                   className="w-full bg-transparent font-mono text-sm font-bold text-foreground focus:outline-none cursor-pointer"
@@ -404,10 +400,10 @@ export function ScheduleEventModal({
                   ))}
                 </select>
               </div>
-              <span className="text-[10px] text-muted-foreground block">Inicio (pasos de 15 min)</span>
+              <span className="text-[10px] text-muted-foreground block">Inicio (intervalos de 1 hora)</span>
             </div>
 
-            {/* Hora Fin (24 Horas, intervalos de 15 min) */}
+            {/* Hora Fin (24 Horas, intervalos de 1 hora) */}
             <div className="space-y-1.5">
               <Label htmlFor="end-time" className="text-xs font-bold flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-primary" /> Hora Fin <span className="text-rose-500">*</span>
@@ -431,7 +427,7 @@ export function ScheduleEventModal({
                   ))}
                 </select>
               </div>
-              <span className="text-[10px] text-muted-foreground block">Culminación (pasos de 15 min)</span>
+              <span className="text-[10px] text-muted-foreground block">Culminación (intervalos de 1 hora)</span>
             </div>
           </div>
 

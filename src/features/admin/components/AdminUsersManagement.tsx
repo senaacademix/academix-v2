@@ -93,136 +93,105 @@ interface AdminUsersManagementProps {
     hideMainHeader?: boolean;
 }
 
-function ObserverProgramGroupsSelector({
+function ObserverProgramsSelector({
     programs,
     selectedProgramIds,
-    selectedGroupIds,
     onToggleProgram,
-    onToggleGroup,
-    onToggleAllProgramGroups,
+    onToggleAllPrograms,
 }: {
     programs: Program[];
     selectedProgramIds: string[];
-    selectedGroupIds: string[];
     onToggleProgram: (programId: string) => void;
-    onToggleGroup: (groupId: string, programId: string) => void;
-    onToggleAllProgramGroups: (programId: string) => void;
+    onToggleAllPrograms?: () => void;
 }) {
-    const [expandedPrograms, setExpandedPrograms] = useState<Record<string, boolean>>({});
+    const totalGroupsInSelected = programs
+        .filter(p => selectedProgramIds.includes(p.id))
+        .reduce((acc, p) => acc + (p.groups?.length || 0), 0);
 
-    const toggleExpand = (progId: string) => {
-        setExpandedPrograms(prev => ({ ...prev, [progId]: !prev[progId] }));
-    };
+    const allSelected = programs.length > 0 && programs.every(p => selectedProgramIds.includes(p.id));
 
     return (
-        <div className="md:col-span-2 space-y-2 border border-border/80 rounded-xl p-3 bg-muted/30">
+        <div className="md:col-span-2 space-y-2 border border-amber-500/30 rounded-xl p-3 bg-amber-500/5">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4 text-amber-500" />
                     <Label className="text-xs font-black text-foreground">
-                        Programas y Fichas para Observador (Modo Solo Lectura) *
+                        Áreas de Formación para Observador (Modo Solo Lectura) *
                     </Label>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
-                    <span>{selectedProgramIds.length} programas</span>
-                    <span>•</span>
-                    <span>{selectedGroupIds.length} fichas seleccionadas</span>
+                    <span>{selectedProgramIds.length} de {programs.length} áreas</span>
+                    {selectedProgramIds.length > 0 && (
+                        <>
+                            <span>•</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">
+                                {totalGroupsInSelected} ficha{totalGroupsInSelected === 1 ? "" : "s"} visible{totalGroupsInSelected === 1 ? "" : "s"}
+                            </span>
+                        </>
+                    )}
                 </div>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-                El observador solo podrá consultar y visualizar en modo lectura las fichas y programas aquí seleccionados.
-            </p>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <p>
+                    El observador podrá consultar y visualizar en modo solo lectura <strong>todas las fichas</strong> y contenidos de las áreas seleccionadas.
+                </p>
+                {programs.length > 1 && onToggleAllPrograms && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] px-2 text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                        onClick={onToggleAllPrograms}
+                    >
+                        {allSelected ? "Desmarcar todas" : "Marcar todas"}
+                    </Button>
+                )}
+            </div>
             
-            <ScrollArea className="h-60 rounded-lg border border-border/60 p-2 bg-card">
+            <ScrollArea className="h-44 rounded-lg border border-border/60 p-2 bg-card">
                 {programs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground p-3 text-center">No hay programas creados.</p>
+                    <p className="text-xs text-muted-foreground p-3 text-center">No hay áreas de formación creadas.</p>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                         {programs.map(prog => {
-                            const progGroups = prog.groups || [];
-                            const isProgSelected = selectedProgramIds.includes(prog.id);
-                            const selectedCount = progGroups.filter(g => selectedGroupIds.includes(g.id)).length;
-                            const isExpanded = expandedPrograms[prog.id] ?? true;
-
+                            const isSelected = selectedProgramIds.includes(prog.id);
+                            const groupCount = prog.groups?.length || 0;
                             return (
-                                <div key={prog.id} className="border border-border/70 rounded-lg overflow-hidden bg-background">
-                                    <div className="flex items-center justify-between p-2.5 bg-muted/40 hover:bg-muted/70 transition-colors">
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                                onClick={() => toggleExpand(prog.id)}
-                                            >
-                                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                            </Button>
-                                            <Checkbox
-                                                id={`prog-${prog.id}`}
-                                                checked={isProgSelected}
-                                                onCheckedChange={() => onToggleProgram(prog.id)}
-                                            />
+                                <div
+                                    key={prog.id}
+                                    onClick={() => onToggleProgram(prog.id)}
+                                    className={cn(
+                                        "flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors",
+                                        isSelected
+                                            ? "bg-amber-500/10 border-amber-500/40 text-amber-950 dark:text-amber-100"
+                                            : "border-border/60 hover:bg-muted/50"
+                                    )}
+                                >
+                                    <div className="flex items-center space-x-2 min-w-0">
+                                        <Checkbox
+                                            id={`obs-prog-${prog.id}`}
+                                            checked={isSelected}
+                                            onCheckedChange={() => onToggleProgram(prog.id)}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <div className="min-w-0">
                                             <label
-                                                htmlFor={`prog-${prog.id}`}
-                                                className="text-xs font-bold text-foreground cursor-pointer truncate"
+                                                htmlFor={`obs-prog-${prog.id}`}
+                                                className="text-xs font-bold leading-tight cursor-pointer block truncate"
+                                                title={prog.name}
+                                                onClick={(e) => e.stopPropagation()}
                                             >
                                                 {prog.name}
                                             </label>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="outline" className={cn("text-[10px] font-semibold", selectedCount > 0 ? "bg-amber-500/10 text-amber-600 border-amber-500/30" : "text-muted-foreground")}>
-                                                {selectedCount} de {progGroups.length} fichas
-                                            </Badge>
-                                            {progGroups.length > 0 && (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-6 text-[10px] px-2 text-muted-foreground hover:text-primary"
-                                                    onClick={() => onToggleAllProgramGroups(prog.id)}
-                                                >
-                                                    {selectedCount === progGroups.length ? "Desmarcar todas" : "Marcar todas"}
-                                                </Button>
-                                            )}
+                                            <span className="text-[10px] text-muted-foreground block">
+                                                {groupCount} ficha{groupCount === 1 ? "" : "s"}
+                                            </span>
                                         </div>
                                     </div>
-
-                                    {isExpanded && (
-                                        <div className="p-2.5 pt-1.5 pl-8 border-t border-border/50 bg-background/50">
-                                            {progGroups.length === 0 ? (
-                                                <p className="text-[11px] text-muted-foreground italic py-1">Este programa no tiene fichas o grupos creados.</p>
-                                            ) : (
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                                                    {progGroups.map(group => {
-                                                        const isChecked = selectedGroupIds.includes(group.id);
-                                                        return (
-                                                            <div
-                                                                key={group.id}
-                                                                className={cn(
-                                                                    "flex items-center space-x-2 p-1.5 rounded-md border text-xs transition-colors",
-                                                                    isChecked ? "bg-amber-500/10 border-amber-500/30 text-amber-950 dark:text-amber-100" : "border-border/50 hover:bg-muted/50"
-                                                                )}
-                                                            >
-                                                                <Checkbox
-                                                                    id={`group-${group.id}`}
-                                                                    checked={isChecked}
-                                                                    onCheckedChange={() => onToggleGroup(group.id, prog.id)}
-                                                                />
-                                                                <label
-                                                                    htmlFor={`group-${group.id}`}
-                                                                    className="text-[11px] font-medium leading-tight cursor-pointer truncate"
-                                                                    title={`${group.code ? `Ficha ${group.code} - ` : ""}${group.name}`}
-                                                                >
-                                                                    <span className="font-bold">{group.code ? `Ficha ${group.code}` : ""}</span>
-                                                                    {group.name && group.code ? ` • ${group.name}` : group.name}
-                                                                </label>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
+                                    {isSelected && (
+                                        <Badge variant="outline" className="text-[9px] font-semibold bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 shrink-0">
+                                            Observando
+                                        </Badge>
                                     )}
                                 </div>
                             );
@@ -312,7 +281,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
         setTelefono(user.profile?.telefono || "");
         setPassword("");
         setSelectedProgramIds(user.programs?.map(p => p.id) || []);
-        setSelectedGroupIds(user.observedGroups?.map(g => g.id) || []);
+        setSelectedGroupIds([]);
         setEditDialogOpen(true);
     };
 
@@ -324,58 +293,11 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
         );
     };
 
-    // Observer specific handlers
-    const handleObserverProgramToggle = (programId: string) => {
-        const prog = programs.find(p => p.id === programId);
-        const progGroupIds = prog?.groups?.map(g => g.id) || [];
-
-        setSelectedProgramIds(prev => {
-            const isCurrentlySelected = prev.includes(programId);
-            if (isCurrentlySelected) {
-                // If unchecking program, remove all its groups
-                setSelectedGroupIds(curr => curr.filter(id => !progGroupIds.includes(id)));
-                return prev.filter(id => id !== programId);
-            } else {
-                // If checking program, select all its groups by default
-                setSelectedGroupIds(curr => Array.from(new Set([...curr, ...progGroupIds])));
-                return [...prev, programId];
-            }
-        });
-    };
-
-    const handleObserverGroupToggle = (groupId: string, programId: string) => {
-        setSelectedGroupIds(prev => {
-            const isSelected = prev.includes(groupId);
-            let nextGroups: string[];
-            if (isSelected) {
-                nextGroups = prev.filter(id => id !== groupId);
-                // Check if any groups left for this program
-                const prog = programs.find(p => p.id === programId);
-                const hasRemaining = prog?.groups?.some(g => g.id !== groupId && nextGroups.includes(g.id));
-                if (!hasRemaining) {
-                    setSelectedProgramIds(pIds => pIds.filter(id => id !== programId));
-                }
-            } else {
-                nextGroups = [...prev, groupId];
-                setSelectedProgramIds(pIds => pIds.includes(programId) ? pIds : [...pIds, programId]);
-            }
-            return nextGroups;
-        });
-    };
-
-    const handleObserverToggleAllProgramGroups = (programId: string) => {
-        const prog = programs.find(p => p.id === programId);
-        if (!prog || !prog.groups || prog.groups.length === 0) return;
-
-        const progGroupIds = prog.groups.map(g => g.id);
-        const allSelected = progGroupIds.every(id => selectedGroupIds.includes(id));
-
-        if (allSelected) {
-            setSelectedGroupIds(prev => prev.filter(id => !progGroupIds.includes(id)));
-            setSelectedProgramIds(prev => prev.filter(id => id !== programId));
+    const handleToggleAllPrograms = () => {
+        if (selectedProgramIds.length === programs.length) {
+            setSelectedProgramIds([]);
         } else {
-            setSelectedGroupIds(prev => Array.from(new Set([...prev, ...progGroupIds])));
-            setSelectedProgramIds(prev => prev.includes(programId) ? prev : [...prev, programId]);
+            setSelectedProgramIds(programs.map(p => p.id));
         }
     };
 
@@ -390,15 +312,9 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
             return;
         }
 
-        if (role === "observer") {
-            if (selectedProgramIds.length === 0) {
-                toast.error("Debes asignar al menos un área de formación al Observador");
-                return;
-            }
-            if (selectedGroupIds.length === 0) {
-                toast.error("Debes asignar al menos una ficha/grupo al Observador");
-                return;
-            }
+        if (role === "observer" && selectedProgramIds.length === 0) {
+            toast.error("Debes asignar al menos un área de formación al Observador");
+            return;
         }
 
         startTransition(async () => {
@@ -414,7 +330,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                     apellido: apellido.trim(),
                     telefono: telefono.trim() || undefined,
                     programIds: (role === "gestor" || role === "observer") ? selectedProgramIds : [],
-                    groupIds: role === "observer" ? selectedGroupIds : []
+                    groupIds: []
                 });
 
                 const newUser: AdminUser = {
@@ -456,15 +372,9 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
             return;
         }
 
-        if (role === "observer") {
-            if (selectedProgramIds.length === 0) {
-                toast.error("Debes asignar al menos un área de formación al Observador");
-                return;
-            }
-            if (selectedGroupIds.length === 0) {
-                toast.error("Debes asignar al menos una ficha/grupo al Observador");
-                return;
-            }
+        if (role === "observer" && selectedProgramIds.length === 0) {
+            toast.error("Debes asignar al menos un área de formación al Observador");
+            return;
         }
 
         startTransition(async () => {
@@ -479,7 +389,7 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                     apellido: apellido.trim(),
                     telefono: telefono.trim() || undefined,
                     programIds: (role === "gestor" || role === "observer") ? selectedProgramIds : [],
-                    groupIds: role === "observer" ? selectedGroupIds : []
+                    groupIds: []
                 });
 
                 setUsers(prev => prev.map(u => u.id === selectedUser.id ? {
@@ -817,11 +727,9 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                                                             Sin áreas asignadas
                                                         </span>
                                                     )}
-                                                    {user.observedGroups && user.observedGroups.length > 0 && (
-                                                        <span className="text-[10.5px] text-muted-foreground font-medium">
-                                                            {user.observedGroups.length} ficha(s) observada(s)
-                                                        </span>
-                                                    )}
+                                                    <span className="text-[10.5px] text-muted-foreground font-medium block">
+                                                        Acceso a todas las fichas del área
+                                                    </span>
                                                 </div>
                                             ) : (
                                                 <Badge className="bg-primary/10 text-primary border border-primary/20 font-bold gap-1">
@@ -1013,15 +921,13 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                             </div>
                         )}
 
-                        {/* Asignación jerárquica de Programas y Fichas si es Observador */}
+                        {/* Asignación de Áreas de Formación si es Observador */}
                         {role === "observer" && (
-                            <ObserverProgramGroupsSelector
+                            <ObserverProgramsSelector
                                 programs={programs}
                                 selectedProgramIds={selectedProgramIds}
-                                selectedGroupIds={selectedGroupIds}
-                                onToggleProgram={handleObserverProgramToggle}
-                                onToggleGroup={handleObserverGroupToggle}
-                                onToggleAllProgramGroups={handleObserverToggleAllProgramGroups}
+                                onToggleProgram={handleProgramToggle}
+                                onToggleAllPrograms={handleToggleAllPrograms}
                             />
                         )}
                     </div>
@@ -1161,15 +1067,13 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
                             </div>
                         )}
 
-                        {/* Asignación jerárquica de Programas y Fichas si es Observador */}
+                        {/* Asignación de Áreas de Formación si es Observador */}
                         {role === "observer" && (
-                            <ObserverProgramGroupsSelector
+                            <ObserverProgramsSelector
                                 programs={programs}
                                 selectedProgramIds={selectedProgramIds}
-                                selectedGroupIds={selectedGroupIds}
-                                onToggleProgram={handleObserverProgramToggle}
-                                onToggleGroup={handleObserverGroupToggle}
-                                onToggleAllProgramGroups={handleObserverToggleAllProgramGroups}
+                                onToggleProgram={handleProgramToggle}
+                                onToggleAllPrograms={handleToggleAllPrograms}
                             />
                         )}
                     </div>

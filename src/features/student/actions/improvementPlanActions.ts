@@ -74,7 +74,7 @@ export async function getImprovementPlans(targetStudentId?: string) {
 
     let studentId = session.user.id;
     if (targetStudentId) {
-        const staffRoles = ["teacher", "admin", "gestor", "coordinador", "manager"];
+        const staffRoles = ["teacher", "admin", "gestor", "coordinador", "manager", "observer"];
         if (!staffRoles.includes(session.user.role) && session.user.id !== targetStudentId) {
             throw new Error("No autorizado");
         }
@@ -115,7 +115,7 @@ export async function getImprovementPlans(targetStudentId?: string) {
 
 export async function getGroupImprovementPlans(groupId: string) {
     const session = await getSession();
-    const allowedRoles = ["teacher", "admin", "gestor", "coordinador", "manager"];
+    const allowedRoles = ["teacher", "admin", "gestor", "coordinador", "manager", "observer"];
     if (!session?.user || !allowedRoles.includes(session.user.role)) {
         throw new Error("No autorizado");
     }

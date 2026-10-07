@@ -139,6 +139,7 @@ interface InteractiveWeeklyCalendarGridProps {
   schedule: ScheduleBuilderData["schedule"];
   group: ScheduleBuilderData["groups"][0];
   novelties?: any[];
+  isReadOnly?: boolean;
   onOpenScheduleModal: (
     day?: DayOfWeek,
     startTime?: string,
@@ -160,6 +161,7 @@ export function InteractiveWeeklyCalendarGrid({
   schedule,
   group,
   novelties = [],
+  isReadOnly = false,
   onOpenScheduleModal,
   onDeleteClassSlot,
 }: InteractiveWeeklyCalendarGridProps) {
@@ -491,27 +493,29 @@ export function InteractiveWeeklyCalendarGrid({
             </div>
           )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                onClick={() => onOpenScheduleModal()}
-                className="rounded-xl h-7 w-7 p-0 flex items-center justify-center font-bold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 shrink-0 cursor-pointer"
-                aria-label="Programar Clase"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
-              <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
-                <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span>Programar Clase</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground font-normal leading-tight">
-                Asignar una nueva sesión formativa con materia, instructor y ambiente.
-              </p>
-            </TooltipContent>
-          </Tooltip>
+          {!isReadOnly && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  onClick={() => onOpenScheduleModal()}
+                  className="rounded-xl h-7 w-7 p-0 flex items-center justify-center font-bold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 shrink-0 cursor-pointer"
+                  aria-label="Programar Clase"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="rounded-2xl p-2.5 max-w-xs space-y-1 shadow-xl border border-border/80 bg-card text-card-foreground z-50">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
+                  <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Programar Clase</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-normal leading-tight">
+                  Asignar una nueva sesión formativa con materia, instructor y ambiente.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 
@@ -639,28 +643,33 @@ export function InteractiveWeeklyCalendarGrid({
                           <div
                             key={h}
                             onClick={() => {
+                              if (isReadOnly) return;
                               if (isDayDisabled) {
                                 toast.info(`El día ${DAY_NAMES_ES_FULL[di]} está configurado como NO LECTIVO para la Ficha ${group.name}`);
                               } else if (!isOutside) {
                                 onOpenScheduleModal(dayEnum, hourStr, nextHourStr);
                               }
                             }}
-                            className={`flex-1 min-h-0 relative group/cell cursor-pointer transition-colors border-b border-border/30 last:border-b-0 touch-manipulation ${
-                              isDayDisabled
+                            className={`flex-1 min-h-0 relative group/cell transition-colors border-b border-border/30 last:border-b-0 touch-manipulation ${
+                              isReadOnly
+                                ? "cursor-default"
+                                : isDayDisabled
                                 ? "cursor-not-allowed hover:bg-amber-500/5"
                                 : !isOutside
-                                ? "hover:bg-primary/10"
+                                ? "cursor-pointer hover:bg-primary/10"
                                 : ""
                             }`}
                             title={
-                              isDayDisabled
+                              isReadOnly
+                                ? undefined
+                                : isDayDisabled
                                 ? `Día No Lectivo (Bloqueado) - Ficha ${group.name}`
                                 : !isOutside
                                 ? `Programar clase el ${DAY_NAMES_ES_FULL[di]} a las ${hourStr}`
                                 : undefined
                             }
                           >
-                            {!isOutside && !isDayDisabled && (
+                            {!isReadOnly && !isOutside && !isDayDisabled && (
                               <Plus className="w-2.5 h-2.5 text-primary absolute right-0.5 top-0.5 opacity-0 group-hover/cell:opacity-100 transition-opacity" />
                             )}
                           </div>
@@ -700,26 +709,30 @@ export function InteractiveWeeklyCalendarGrid({
                               <div
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onOpenScheduleModal(
-                                    evt.dayOfWeek,
-                                    evt.startTime,
-                                    evt.endTime,
-                                    {
-                                      courseScheduleId: evt.courseScheduleId,
-                                      courseTitle: evt.courseTitle,
-                                      teacherId: evt.teacherId,
-                                      environmentId: evt.environmentId,
-                                      dayOfWeek: evt.dayOfWeek,
-                                      startTime: evt.startTime,
-                                      endTime: evt.endTime,
-                                    }
-                                  );
+                                  if (!isReadOnly) {
+                                    onOpenScheduleModal(
+                                      evt.dayOfWeek,
+                                      evt.startTime,
+                                      evt.endTime,
+                                      {
+                                        courseScheduleId: evt.courseScheduleId,
+                                        courseTitle: evt.courseTitle,
+                                        teacherId: evt.teacherId,
+                                        environmentId: evt.environmentId,
+                                        dayOfWeek: evt.dayOfWeek,
+                                        startTime: evt.startTime,
+                                        endTime: evt.endTime,
+                                      }
+                                    );
+                                  }
                                 }}
                                 style={{
                                   top: `${topPercent}%`,
                                   height: `calc(${heightPercent}% - 2px)`,
                                 }}
-                                className={`absolute left-0.5 right-0.5 rounded-lg border p-1.5 text-left text-xs font-medium overflow-hidden transition-all shadow-2xs z-10 flex flex-col justify-between group/card cursor-pointer hover:ring-2 hover:ring-primary/40 ${colorClass} ${
+                                className={`absolute left-0.5 right-0.5 rounded-lg border p-1.5 text-left text-xs font-medium overflow-hidden transition-all shadow-2xs z-10 flex flex-col justify-between group/card ${
+                                  isReadOnly ? "cursor-default" : "cursor-pointer hover:ring-2 hover:ring-primary/40"
+                                } ${colorClass} ${
                                   evt.hasOverlap ? "ring-2 ring-red-500 border-red-500/80 shadow-md" : ""
                                 }`}
                               >
@@ -733,18 +746,20 @@ export function InteractiveWeeklyCalendarGrid({
                                     </span>
                                     <div className="flex items-center gap-1 shrink-0">
                                       {renderTimeOfDayIcon(evt.startTime, evt.endTime)}
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onDeleteClassSlot(evt.courseScheduleId);
-                                        }}
-                                        className="text-muted-foreground/60 hover:text-destructive opacity-70 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity shrink-0 p-0.5 touch-manipulation cursor-pointer"
-                                        title="Eliminar franja"
-                                        aria-label="Eliminar franja"
-                                      >
-                                        <Trash2 className="w-2.5 h-2.5" />
-                                      </button>
+                                      {!isReadOnly && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDeleteClassSlot(evt.courseScheduleId);
+                                          }}
+                                          className="text-muted-foreground/60 hover:text-destructive opacity-70 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity shrink-0 p-0.5 touch-manipulation cursor-pointer"
+                                          title="Eliminar franja"
+                                          aria-label="Eliminar franja"
+                                        >
+                                          <Trash2 className="w-2.5 h-2.5" />
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
 
@@ -851,7 +866,7 @@ export function InteractiveWeeklyCalendarGrid({
                         {format(day, "d")}
                       </span>
 
-                      {!isOutside && (
+                      {!isReadOnly && !isOutside && (
                         <button
                           type="button"
                           onClick={() => {
@@ -878,21 +893,25 @@ export function InteractiveWeeklyCalendarGrid({
                             key={evt.courseScheduleId}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onOpenScheduleModal(
-                                evt.dayOfWeek,
-                                evt.startTime,
-                                evt.endTime,
-                                {
-                                  courseScheduleId: evt.courseScheduleId,
-                                  courseTitle: evt.courseTitle,
-                                  teacherId: evt.teacherId,
-                                  dayOfWeek: evt.dayOfWeek,
-                                  startTime: evt.startTime,
-                                  endTime: evt.endTime,
-                                }
-                              );
+                              if (!isReadOnly) {
+                                onOpenScheduleModal(
+                                  evt.dayOfWeek,
+                                  evt.startTime,
+                                  evt.endTime,
+                                  {
+                                    courseScheduleId: evt.courseScheduleId,
+                                    courseTitle: evt.courseTitle,
+                                    teacherId: evt.teacherId,
+                                    dayOfWeek: evt.dayOfWeek,
+                                    startTime: evt.startTime,
+                                    endTime: evt.endTime,
+                                  }
+                                );
+                              }
                             }}
-                            className={`p-0.5 px-1 rounded border text-[9px] truncate leading-tight font-medium cursor-pointer hover:opacity-80 transition-all ${colorClass}`}
+                            className={`p-0.5 px-1 rounded border text-[9px] truncate leading-tight font-medium transition-all ${
+                              isReadOnly ? "cursor-default" : "cursor-pointer hover:opacity-80"
+                            } ${colorClass}`}
                             title={`${evt.courseTitle} (${evt.startTime} - ${evt.endTime})`}
                           >
                             <span className="font-bold">{evt.startTime}</span> {evt.courseTitle}

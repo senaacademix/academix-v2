@@ -156,20 +156,32 @@ export const adminService = {
             if (filters.role === "student") {
                 andConditions.push({
                     group: {
-                        observers: {
-                            some: { id: filters.observerUserId }
-                        }
+                        OR: [
+                            {
+                                program: {
+                                    observers: {
+                                        some: { id: filters.observerUserId }
+                                    }
+                                }
+                            },
+                            {
+                                observers: {
+                                    some: { id: filters.observerUserId }
+                                }
+                            }
+                        ]
                     }
                 });
             } else if (filters.role === "teacher") {
                 andConditions.push({
-                    programs: {
-                        some: {
-                            observers: {
-                                some: { id: filters.observerUserId }
-                            }
-                        }
-                    }
+                    OR: [
+                        { programs: { some: { observers: { some: { id: filters.observerUserId } } } } },
+                        { groupsTaught: { some: { program: { observers: { some: { id: filters.observerUserId } } } } } },
+                        { coursesTaught: { some: { OR: [
+                            { group: { program: { observers: { some: { id: filters.observerUserId } } } } },
+                            { period: { program: { observers: { some: { id: filters.observerUserId } } } } }
+                        ] } } }
+                    ]
                 });
             }
         }

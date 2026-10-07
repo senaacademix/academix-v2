@@ -5,8 +5,8 @@ import { AcademicManagement } from "@/features/admin/components/AcademicManageme
 import { getAllCoursesAdminAction, getAllUsersAction, getSystemSettingsAction } from "@/features/admin/actions/adminActions";
 
 export const metadata = {
-    title: "Áreas de Formación | AcademiX",
-    description: "Crea y gestiona las Áreas de Formación de la institución.",
+    title: "Programas y Fichas | AcademiX",
+    description: "Consulta y supervisión de programas de formación y fichas institucionales.",
 };
 
 export default async function AdminCoursesPage() {

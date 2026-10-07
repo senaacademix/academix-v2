@@ -249,8 +249,8 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
           SUNDAY: [],
         };
 
-        group.scheduledClasses.forEach((c) => {
-          c.schedules.forEach((s) => {
+        (group.scheduledClasses || []).forEach((c) => {
+          (c.schedules || []).forEach((s) => {
             if (dayClassesMap[s.dayOfWeek]) {
               dayClassesMap[s.dayOfWeek].push({
                 title: c.title,
@@ -264,7 +264,7 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
 
         // Sort classes by startTime for each day
         DAYS_ES.forEach((d) => {
-          dayClassesMap[d.key].sort((a, b) => a.startTime.localeCompare(b.startTime));
+          dayClassesMap[d.key].sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
         });
 
         return (
@@ -295,7 +295,7 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
 
               <View style={styles.groupMetaItem}>
                 <Text style={styles.metaLabel}>Programa de Formación</Text>
-                <Text style={styles.metaValue}>{group.program.name}</Text>
+                <Text style={styles.metaValue}>{group.program?.name || "Sin programa"}</Text>
               </View>
 
               <View style={styles.groupMetaItem}>
@@ -320,7 +320,7 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
               {/* Header Row */}
               <View style={styles.gridHeaderRow}>
                 {DAYS_ES.map((d) => {
-                  const dayConfig = group.daySlotsConfig.find((ds) => ds.dayOfWeek === d.key);
+                  const dayConfig = (group.daySlotsConfig || []).find((ds: any) => ds.dayOfWeek === d.key);
                   return (
                     <View key={d.key} style={{ flex: 1 }}>
                       <Text style={styles.gridHeaderCell}>
@@ -335,7 +335,7 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
               {/* Day Columns */}
               <View style={{ flexDirection: "row" }}>
                 {DAYS_ES.map((d) => {
-                  const classes = dayClassesMap[d.key];
+                  const classes = dayClassesMap[d.key] || [];
                   return (
                     <View key={d.key} style={styles.gridDayColumn}>
                       {classes.length === 0 ? (
@@ -378,7 +378,7 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
             {/* Summary of Courses / Teachers */}
             <View style={styles.summarySection}>
               <Text style={styles.sectionTitle}>
-                Distribución Curricular del Trimestre ({group.trimesterCourses.length} Asignaturas)
+                Distribución Curricular del Trimestre ({(group.trimesterCourses || []).length} Asignaturas)
               </Text>
               <View style={styles.coursesTable}>
                 <View style={[styles.coursesTableRow, styles.coursesTableHeader]}>
@@ -392,14 +392,14 @@ export const SchedulePdfDocument: React.FC<SchedulePdfDocumentProps> = ({
                     Instructor(es) Asignado(s)
                   </Text>
                 </View>
-                {group.trimesterCourses.map((tc) => {
-                  const scheduledMatch = group.scheduledClasses.filter(
-                    (c) => c.title.toLowerCase() === tc.title.toLowerCase()
+                {(group.trimesterCourses || []).map((tc: any) => {
+                  const scheduledMatch = (group.scheduledClasses || []).filter(
+                    (c: any) => (c.title || "").toLowerCase() === (tc.title || "").toLowerCase()
                   );
                   const teachersNames = Array.from(
                     new Set(
                       scheduledMatch
-                        .map((c) => c.teacher?.name)
+                        .map((c: any) => c.teacher?.name)
                         .filter(Boolean)
                     )
                   ).join(", ") || "Pendiente por asignar";

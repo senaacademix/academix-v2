@@ -191,15 +191,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 isActive: false,
               },
               {
-                title: "Áreas de Formación",
+                title: "Programas y Fichas",
                 url: effectiveGestorProgramId ? `/dashboard/admin/courses?programId=${effectiveGestorProgramId}` : "/dashboard/admin/courses",
                 icon: BookOpen,
                 isActive: false,
               },
               {
-                title: "Gestión de Aprendices",
-                url: effectiveGestorProgramId ? `/dashboard/admin/users?programId=${effectiveGestorProgramId}` : "/dashboard/admin/users",
-                icon: GraduationCap,
+                title: "Programación Horaria",
+                url: effectiveGestorProgramId ? `/dashboard/admin/schedules?programId=${effectiveGestorProgramId}` : "/dashboard/admin/schedules",
+                icon: CalendarClock,
                 isActive: false,
               },
             ]
@@ -274,14 +274,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 
 
-        {/* Selector de Área de Formación (Siempre visible para Gestor Académico y Observador) */}
+        {/* Selector de Área / Programa de Formación (Siempre visible para Gestor Académico y Observador) */}
         {displayPrograms.length > 0 && (role === "gestor" || role === "observer") && (
           <div className="px-3.5 py-2.5 mx-2 mb-2 rounded-2xl bg-muted/30 border border-border/60 flex flex-col gap-1.5 group-data-[collapsible=icon]:hidden animate-in fade-in duration-300">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
               <div className="w-5 h-5 rounded-md bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
                 {role === "observer" ? <Eye className="w-3 h-3" /> : <School className="w-3 h-3" />}
               </div>
-              <span>{role === "observer" ? "Área Observada" : "Área de Formación"}</span>
+              <span>{role === "observer" ? "Programa Observado" : "Área de Formación"}</span>
             </span>
             <Select 
               value={effectiveGestorProgramId || displayPrograms[0]?.id || ""} 
@@ -291,7 +291,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               }}
             >
               <SelectTrigger className="h-9 text-xs font-semibold tracking-tight rounded-xl border-border/80 bg-background shadow-2xs">
-                <SelectValue placeholder="Seleccionar Área..." />
+                <SelectValue placeholder={role === "observer" ? "Seleccionar Programa..." : "Seleccionar Área..."} />
               </SelectTrigger>
               <SelectContent className="rounded-2xl">
                 {displayPrograms.map((prog) => (

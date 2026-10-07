@@ -18,8 +18,8 @@ export default async function AdminUsersPage({
 }) {
     const session = await auth.api.getSession({ headers: await headers() });
 
-    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
-        redirect("/dashboard/student");
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
+        redirect(session?.user?.role === "observer" ? "/dashboard/admin" : "/dashboard/student");
     }
 
     const resolvedSearchParams = searchParams ? await searchParams : undefined;

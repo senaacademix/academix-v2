@@ -82,12 +82,14 @@ interface ScheduleManagerViewProps {
   initialSchedules: AcademicScheduleItem[];
   availableGroups: AvailableGroupOption[];
   initialProgramId?: string;
+  isObserver?: boolean;
 }
 
 export function ScheduleManagerView({
   initialSchedules,
   availableGroups,
   initialProgramId,
+  isObserver = false,
 }: ScheduleManagerViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -350,13 +352,15 @@ export function ScheduleManagerView({
               </TooltipContent>
             </Tooltip>
 
-            <Button
-              onClick={handleOpenCreateBasic}
-              className="rounded-2xl gap-2 font-bold shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-[1.02]"
-            >
-              <Plus className="w-4 h-4" />
-              Nuevo Horario
-            </Button>
+            {!isObserver && (
+              <Button
+                onClick={handleOpenCreateBasic}
+                className="rounded-2xl gap-2 font-bold shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-[1.02]"
+              >
+                <Plus className="w-4 h-4" />
+                Nuevo Horario
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -648,80 +652,84 @@ export function ScheduleManagerView({
                       </TooltipContent>
                     </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenConfigureSlots(schedule)}
-                          className="rounded-xl text-xs gap-1.5 font-bold border-border/80 bg-background hover:bg-muted/80 text-foreground shadow-2xs h-9 px-3.5 transition-all"
-                        >
-                          <Users className="w-3.5 h-3.5 text-primary" />
-                          <span>Grupos</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        Configurar fichas y franjas horarias de este horario
-                      </TooltipContent>
-                    </Tooltip>
+                    {!isObserver && (
+                      <>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenConfigureSlots(schedule)}
+                              className="rounded-xl text-xs gap-1.5 font-bold border-border/80 bg-background hover:bg-muted/80 text-foreground shadow-2xs h-9 px-3.5 transition-all"
+                            >
+                              <Users className="w-3.5 h-3.5 text-primary" />
+                              <span>Grupos</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            Configurar fichas y franjas horarias de este horario
+                          </TooltipContent>
+                        </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedScheduleForTeacherModal(schedule.id);
-                            setTeacherModalOpen(true);
-                          }}
-                          className="rounded-xl text-xs gap-1.5 font-bold border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 bg-blue-500/10 shadow-2xs h-9 px-3.5 transition-all"
-                        >
-                          <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                          <span>Instructores</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        Gestionar disponibilidad y materias de los instructores
-                      </TooltipContent>
-                    </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedScheduleForTeacherModal(schedule.id);
+                                setTeacherModalOpen(true);
+                              }}
+                              className="rounded-xl text-xs gap-1.5 font-bold border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 bg-blue-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                            >
+                              <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                              <span>Instructores</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            Gestionar disponibilidad y materias de los instructores
+                          </TooltipContent>
+                        </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl text-xs gap-1.5 font-bold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 bg-purple-500/10 shadow-2xs h-9 px-3.5 transition-all"
-                        >
-                          <Link href={`${schedulesBaseUrl}/${schedule.id}/events${programQuery}`}>
-                            <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                            <span>Eventos</span>
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        Abrir cronograma de eventos institucionales
-                      </TooltipContent>
-                    </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl text-xs gap-1.5 font-bold border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 bg-purple-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                            >
+                              <Link href={`${schedulesBaseUrl}/${schedule.id}/events${programQuery}`}>
+                                <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                                <span>Eventos</span>
+                              </Link>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            Abrir cronograma de eventos institucionales
+                          </TooltipContent>
+                        </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl text-xs gap-1.5 font-bold border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 bg-amber-500/10 shadow-2xs h-9 px-3.5 transition-all"
-                        >
-                          <Link href={`${schedulesBaseUrl}/${schedule.id}/novelties${programQuery}`}>
-                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                            <span>Novedades</span>
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        Registrar y consultar contingencias o cambios de horario
-                      </TooltipContent>
-                    </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl text-xs gap-1.5 font-bold border-amber-500/30 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 bg-amber-500/10 shadow-2xs h-9 px-3.5 transition-all"
+                            >
+                              <Link href={`${schedulesBaseUrl}/${schedule.id}/novelties${programQuery}`}>
+                                <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                <span>Novedades</span>
+                              </Link>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            Registrar y consultar contingencias o cambios de horario
+                          </TooltipContent>
+                        </Tooltip>
+                      </>
+                    )}
 
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -741,7 +749,7 @@ export function ScheduleManagerView({
                       </TooltipContent>
                     </Tooltip>
 
-                    {isMounted && (
+                    {isMounted && !isObserver && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="rounded-xl w-9 h-9 hover:bg-muted/80 border border-border/60 bg-background shadow-2xs">

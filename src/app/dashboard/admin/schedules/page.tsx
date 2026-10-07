@@ -34,14 +34,18 @@ export default async function AdminSchedulesPage({
   }
 
   const [schedules, availableGroups] = await Promise.all([
-    getSchedulesAction(),
-    getAvailableGroupsAction(),
+    getSchedulesAction(programId),
+    getAvailableGroupsAction(programId),
   ]);
+
+  const isObserver = session.user.role === "observer";
 
   return (
     <ScheduleManagerView
       initialSchedules={schedules}
       availableGroups={availableGroups}
+      initialProgramId={programId}
+      isObserver={isObserver}
     />
   );
 }

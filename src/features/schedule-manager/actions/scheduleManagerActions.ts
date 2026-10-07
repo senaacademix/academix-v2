@@ -18,8 +18,16 @@ async function getSession() {
 
 async function requireAdmin() {
   const session = await getSession();
-  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
     throw new Error("No autorizado: Se requiere rol de coordinador o gestor");
+  }
+  return session;
+}
+
+async function requireAdminOrObserver() {
+  const session = await getSession();
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+    throw new Error("No autorizado");
   }
   return session;
 }
@@ -28,7 +36,7 @@ async function requireAdmin() {
  * Obtener todos los profesores registrados para gestión en el panel de horarios
  */
 export async function getTeachersListAction(programId?: string, academicScheduleId?: string) {
-  const session = await requireAdmin();
+  const session = await requireAdminOrObserver();
   const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
   const where: any = { role: "teacher", banned: { not: true } };
 
@@ -102,7 +110,7 @@ export async function getTeachersListAction(programId?: string, academicSchedule
  */
 export async function getSchedulesAction(programId?: string): Promise<AcademicScheduleItem[]> {
   try {
-    const session = await requireAdmin();
+    const session = await requireAdminOrObserver();
 
     const effectiveProgramId = programId && programId !== "all" && programId !== "ALL" ? programId : undefined;
 
@@ -113,6 +121,14 @@ export async function getSchedulesAction(programId?: string): Promise<AcademicSc
       groupSlotsWhere.group = {
         program: {
           gestores: {
+            some: { id: session.user.id }
+          }
+        }
+      };
+    } else if (session.user.role === "observer") {
+      groupSlotsWhere.group = {
+        program: {
+          observers: {
             some: { id: session.user.id }
           }
         }
@@ -137,6 +153,16 @@ export async function getSchedulesAction(programId?: string): Promise<AcademicSc
           AND: [
             { programId: null },
             { groupSlots: { some: { group: { program: { gestores: { some: { id: session.user.id } } } } } } }
+          ]
+        }
+      ];
+    } else if (session.user.role === "observer") {
+      scheduleWhere.OR = [
+        { program: { observers: { some: { id: session.user.id } } } },
+        {
+          AND: [
+            { programId: null },
+            { groupSlots: { some: { group: { program: { observers: { some: { id: session.user.id } } } } } } }
           ]
         }
       ];
@@ -239,7 +265,7 @@ export async function getSchedulesAction(programId?: string): Promise<AcademicSc
  */
 export async function getScheduleByIdAction(id: string): Promise<AcademicScheduleItem | null> {
   try {
-    await requireAdmin();
+    await requireAdminOrObserver();
 
     const item = await prisma.academicSchedule.findUnique({
       where: { id },
@@ -332,7 +358,7 @@ export async function getScheduleByIdAction(id: string): Promise<AcademicSchedul
  */
 export async function getAvailableGroupsAction(programId?: string): Promise<AvailableGroupOption[]> {
   try {
-    const session = await requireAdmin();
+    const session = await requireAdminOrObserver();
 
     const whereClause: any = {
       NOT: {
@@ -345,6 +371,14 @@ export async function getAvailableGroupsAction(programId?: string): Promise<Avai
     } else if (session.user.role === "gestor") {
       whereClause.program = {
         gestores: {
+          some: {
+            id: session.user.id
+          }
+        }
+      };
+    } else if (session.user.role === "observer") {
+      whereClause.program = {
+        observers: {
           some: {
             id: session.user.id
           }

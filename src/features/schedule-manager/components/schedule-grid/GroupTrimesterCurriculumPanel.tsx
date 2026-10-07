@@ -9,12 +9,14 @@ interface GroupTrimesterCurriculumPanelProps {
   group: ScheduleBuilderData["groups"][0];
   teachers: ScheduleBuilderData["teachers"];
   onSelectCourseToSchedule: (courseTitle: string) => void;
+  isReadOnly?: boolean;
 }
 
 export function GroupTrimesterCurriculumPanel({
   group,
   teachers,
   onSelectCourseToSchedule,
+  isReadOnly = false,
 }: GroupTrimesterCurriculumPanelProps) {
   // Calculate scheduled hours per course
   const scheduledHoursByCourseTitle = new Map<string, number>();
@@ -111,7 +113,7 @@ export function GroupTrimesterCurriculumPanel({
             let cardStyle = "bg-background hover:bg-muted/30 border-border/70 text-foreground";
             let badgeStyle = "bg-muted/50 text-muted-foreground border-border/60";
             let statusText = "Sin programar";
-            let iconElement = <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+            let iconElement = isReadOnly ? null : <Plus className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
 
             if (reqHours > 0) {
               if (scheduledHours === reqHours) {
@@ -136,8 +138,9 @@ export function GroupTrimesterCurriculumPanel({
               <button
                 key={course.id}
                 type="button"
-                onClick={() => onSelectCourseToSchedule(course.title)}
-                className={`w-full text-left p-2.5 rounded-xl border text-xs space-y-1.5 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-2xs group cursor-pointer touch-manipulation ${cardStyle}`}
+                disabled={isReadOnly}
+                onClick={() => !isReadOnly && onSelectCourseToSchedule(course.title)}
+                className={`w-full text-left p-2.5 rounded-xl border text-xs space-y-1.5 transition-all shadow-2xs group ${isReadOnly ? "cursor-default" : "cursor-pointer hover:scale-[1.01] active:scale-[0.99] touch-manipulation"} ${cardStyle}`}
               >
                 <div className="flex items-start justify-between gap-1.5">
                   <span className="font-bold text-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">

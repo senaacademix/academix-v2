@@ -172,10 +172,8 @@ const toFormat12h = (t24: string) => {
 
 const formatWeeklyHours = (hours: number | null | undefined) => {
     if (hours == null || hours === 0) return "";
-    const totalMinutes = Math.round(hours * 60);
-    const h = Math.floor(totalMinutes / 60);
-    const m = totalMinutes % 60;
-    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    const h = Math.round(hours);
+    return `${h}h`;
 };
 
 const BADGE_COLORS: Record<string, { label: string; bg: string }> = {
@@ -719,11 +717,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     return;
                 }
             }
-            if (currentUserRole !== "admin") {
+            if (currentUserRole !== "admin" || isObserver) {
                 setSelectedProgram(programs[0]);
             }
         }
-    }, [currentUserRole, programIdParam, initialProgramId, programs]);
+    }, [currentUserRole, isObserver, programIdParam, initialProgramId, programs]);
 
     const [selectedSchedulePeriodId, setSelectedSchedulePeriodId] = useState<string>("");
 
@@ -752,8 +750,10 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
     const [programGestorIds, setProgramGestorIds] = useState<string[]>([]);
 
     useEffect(() => {
-        getGestoresAction().then(setAllGestores).catch(console.error);
-    }, []);
+        if (!isObserver) {
+            getGestoresAction().then(setAllGestores).catch(console.error);
+        }
+    }, [isObserver]);
 
     // Timeline states
     const [selectedTimelineId, setSelectedTimelineId] = useState<string>("");
@@ -3342,7 +3342,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         setCourseToEdit(course);
         setCourseTitle(course.title);
         setCourseDescription(course.description || "");
-        setCourseWeeklyHours(course.weeklyHours || 0);
+        setCourseWeeklyHours(Math.round(course.weeklyHours || 0));
         setCourseBadge(course.badge || "");
         setCourseBadgeColor(course.badgeColor || "slate");
         setCoursePeriodId(course.periodId || "");
@@ -3364,7 +3364,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         formData.append("description", courseDescription);
         formData.append("periodId", coursePeriodId);
         formData.append("externalUrl", "");
-        formData.append("weeklyHours", courseWeeklyHours.toString());
+        formData.append("weeklyHours", Math.round(courseWeeklyHours || 0).toString());
         formData.append("badge", courseBadge);
         formData.append("badgeColor", courseBadgeColor);
         formData.append("startDate", "");
@@ -3451,13 +3451,17 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                         <Card className="border border-border/80 bg-card shadow-xs rounded-3xl overflow-hidden">
                             <div className="p-5 border-b border-border/70 flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-base font-bold text-foreground">Áreas de Formación Activas</h3>
+                                    <h3 className="text-base font-bold text-foreground">
+                                        {isObserver ? "Programas de Formación Asignados" : "Áreas de Formación Activas"}
+                                    </h3>
                                     <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                                        Lista de todas las áreas de formación registradas en la institución.
+                                        {isObserver
+                                            ? "Lista de programas de formación asignados para supervisión y consulta de fichas."
+                                            : "Lista de todas las áreas de formación registradas en la institución."}
                                     </p>
                                 </div>
                                 <Badge variant="outline" className="text-xs font-bold px-3 py-1 rounded-xl bg-primary/10 text-primary border-primary/20">
-                                    {programs.length} {programs.length === 1 ? "Área" : "Áreas"}
+                                    {programs.length} {programs.length === 1 ? (isObserver ? "Programa" : "Área") : (isObserver ? "Programas" : "Áreas")}
                                 </Badge>
                             </div>
 
@@ -3465,9 +3469,11 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow>
-                                            <TableHead className="w-[350px] font-bold">Área de Formación</TableHead>
+                                            <TableHead className="w-[350px] font-bold">
+                                                {isObserver ? "Programa de Formación" : "Área de Formación"}
+                                            </TableHead>
                                             <TableHead className="text-center font-bold">Aprendices / Alumnos</TableHead>
-                                            <TableHead className="font-bold">Gestores Asignados</TableHead>
+                                            {!isObserver && <TableHead className="font-bold">Gestores Asignados</TableHead>}
                                             <TableHead className="text-right font-bold w-[120px]">Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -3486,7 +3492,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                     setSelectedProgram(program);
                                                                     router.push(`${coursesBasePath}?programId=${program.id}`);
                                                                 }}
-                                                                title="Visualizar esta área"
+                                                                title="Visualizar este programa"
                                                             >
                                                                 <GraduationCap className="h-5 w-5" />
                                                             </div>
@@ -3496,7 +3502,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                     setSelectedProgram(program);
                                                                     router.push(`${coursesBasePath}?programId=${program.id}`);
                                                                 }}
-                                                                title="Visualizar esta área"
+                                                                title="Visualizar este programa"
                                                             >
                                                                 <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors flex items-center gap-1">
                                                                     {program.name}
@@ -3514,32 +3520,34 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                         </Badge>
                                                     </TableCell>
 
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            {gestores.length > 0 ? (
-                                                                <div className="flex flex-wrap gap-1 items-center">
-                                                                    {gestores.map((g: any) => (
-                                                                        <Badge key={g.id} variant="outline" className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20">
-                                                                            {g.name}
-                                                                        </Badge>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-xs text-muted-foreground italic">Sin gestor asignado</span>
-                                                            )}
-                                                            {currentUserRole === "admin" && (
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0 rounded-full"
-                                                                    onClick={() => openEditProgram(program)}
-                                                                    title="Asignar o cambiar gestores"
-                                                                >
-                                                                    <Plus className="h-3 w-3" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
+                                                    {!isObserver && (
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2">
+                                                                {gestores.length > 0 ? (
+                                                                    <div className="flex flex-wrap gap-1 items-center">
+                                                                        {gestores.map((g: any) => (
+                                                                            <Badge key={g.id} variant="outline" className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20">
+                                                                                {g.name}
+                                                                            </Badge>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-xs text-muted-foreground italic">Sin gestor asignado</span>
+                                                                )}
+                                                                {currentUserRole === "admin" && (
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0 rounded-full"
+                                                                        onClick={() => openEditProgram(program)}
+                                                                        title="Asignar o cambiar gestores"
+                                                                    >
+                                                                        <Plus className="h-3 w-3" />
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                    )}
 
                                                     <TableCell className="text-right">
                                                         <div className="flex items-center justify-end gap-1">
@@ -3567,7 +3575,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                                     )}
                                                                 </>
                                                             )}
-                                                            {currentUserRole !== "admin" ? (
+                                                            {isObserver ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        setSelectedProgram(program);
+                                                                        router.push(`${coursesBasePath}?programId=${program.id}`);
+                                                                    }}
+                                                                    className="h-8 text-xs font-bold gap-1.5 rounded-xl shadow-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                                                                >
+                                                                    <Eye className="h-3.5 w-3.5" />
+                                                                    Ver Fichas
+                                                                </Button>
+                                                            ) : currentUserRole !== "admin" ? (
                                                                 <Button
                                                                     size="sm"
                                                                     onClick={() => {
@@ -6013,33 +6033,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                             </div>
                             <div className="space-y-2 col-span-2 md:col-span-1">
                                 <Label htmlFor="cWeeklyHours">Horas Semanales</Label>
-                                <div className="flex gap-2">
-                                    <div className="flex-1">
-                                        <Select value={Math.floor(courseWeeklyHours || 0).toString()} onValueChange={(val) => setCourseWeeklyHours(parseInt(val) + ((courseWeeklyHours || 0) % 1))}>
-                                            <SelectTrigger id="cWeeklyHours" className="h-9">
-                                                <SelectValue placeholder="Horas" />
-                                            </SelectTrigger>
-                                            <SelectContent className="max-h-[200px]">
-                                                {Array.from({ length: 41 }, (_, i) => (
-                                                    <SelectItem key={`h-${i}`} value={i.toString()}>{i} hr</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="flex-1">
-                                        <Select value={Math.round(((courseWeeklyHours || 0) % 1) * 60).toString()} onValueChange={(val) => setCourseWeeklyHours(Math.floor(courseWeeklyHours || 0) + parseInt(val) / 60)}>
-                                            <SelectTrigger id="cWeeklyMinutes" className="h-9">
-                                                <SelectValue placeholder="Minutos" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="0">0 min</SelectItem>
-                                                <SelectItem value="15">15 min</SelectItem>
-                                                <SelectItem value="30">30 min</SelectItem>
-                                                <SelectItem value="45">45 min</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
+                                <Select 
+                                    value={Math.round(courseWeeklyHours || 0).toString()} 
+                                    onValueChange={(val) => setCourseWeeklyHours(parseInt(val) || 0)}
+                                >
+                                    <SelectTrigger id="cWeeklyHours" className="h-9">
+                                        <SelectValue placeholder="Seleccionar horas..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[200px]">
+                                        {Array.from({ length: 41 }, (_, i) => (
+                                            <SelectItem key={`h-${i}`} value={i.toString()}>{i} hr</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             {selectedProgram && (
                                 <div className="space-y-2 col-span-2 md:col-span-1">
@@ -6979,33 +6985,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
 
                         <div className="space-y-1 mt-3">
                             <Label htmlFor="gcWeeklyHours" className="text-xs">Horas Semanales Asignadas</Label>
-                            <div className="flex gap-2">
-                                <div className="flex-1">
-                                    <Select value={Math.floor(groupCourseWeeklyHours || 0).toString()} onValueChange={(val) => setGroupCourseWeeklyHours(parseInt(val) + ((groupCourseWeeklyHours || 0) % 1))}>
-                                        <SelectTrigger id="gcWeeklyHours" className="h-9 text-xs">
-                                            <SelectValue placeholder="Horas" />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-[200px]">
-                                            {Array.from({ length: 41 }, (_, i) => (
-                                                <SelectItem key={`h-${i}`} value={i.toString()}>{i} hr</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex-1">
-                                    <Select value={Math.round(((groupCourseWeeklyHours || 0) % 1) * 60).toString()} onValueChange={(val) => setGroupCourseWeeklyHours(Math.floor(groupCourseWeeklyHours || 0) + parseInt(val) / 60)}>
-                                        <SelectTrigger id="gcWeeklyMinutes" className="h-9 text-xs">
-                                            <SelectValue placeholder="Minutos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="0">0 min</SelectItem>
-                                            <SelectItem value="15">15 min</SelectItem>
-                                            <SelectItem value="30">30 min</SelectItem>
-                                            <SelectItem value="45">45 min</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                            <Select 
+                                value={Math.round(groupCourseWeeklyHours || 0).toString()} 
+                                onValueChange={(val) => setGroupCourseWeeklyHours(parseInt(val) || 0)}
+                            >
+                                <SelectTrigger id="gcWeeklyHours" className="h-9 text-xs">
+                                    <SelectValue placeholder="Seleccionar horas..." />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[200px]">
+                                    {Array.from({ length: 41 }, (_, i) => (
+                                        <SelectItem key={`h-${i}`} value={i.toString()}>{i} hr</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {/* Schedule slots editor section */}

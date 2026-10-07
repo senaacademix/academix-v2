@@ -97,6 +97,14 @@ async function requireTeacher() {
     return session.user;
 }
 
+async function requireTeacherOrObserver() {
+    const session = await getSession();
+    if (!session || (session.user.role !== "teacher" && session.user.role !== "admin" && session.user.role !== "gestor" && session.user.role !== "observer")) {
+        throw new Error("Unauthorized: Teacher or Observer access required");
+    }
+    return session.user;
+}
+
 async function verifyCourseTeacher(courseId: string, teacherId: string) {
     const course = await prisma.course.findUnique({
         where: { id: courseId },
@@ -303,7 +311,7 @@ export async function saveRemarkBatch(
 
 export async function getGroupAttendanceHistory(groupId: string) {
     try {
-        const user = await requireTeacher();
+        const user = await requireTeacherOrObserver();
         const group = await prisma.group.findUnique({
             where: { id: groupId },
             include: { courses: true }
@@ -311,8 +319,9 @@ export async function getGroupAttendanceHistory(groupId: string) {
 
         if (!group) return [];
 
-        // Filter courses: teachers only see their own courses, admins see all
-        const coursesTaught = user.role === "admin"
+        // Filter courses: teachers only see their own courses, admins/gestores/observers see all
+        const isPrivileged = user.role === "admin" || user.role === "gestor" || user.role === "observer";
+        const coursesTaught = isPrivileged
             ? group.courses
             : group.courses.filter(c => c.teacherId === user.id);
 
@@ -344,7 +353,7 @@ export async function getGroupAttendanceHistory(groupId: string) {
 
 export async function getGroupRemarksHistory(groupId: string) {
     try {
-        const user = await requireTeacher();
+        const user = await requireTeacherOrObserver();
         const group = await prisma.group.findUnique({
             where: { id: groupId },
             include: { courses: true }
@@ -352,8 +361,9 @@ export async function getGroupRemarksHistory(groupId: string) {
 
         if (!group) return [];
 
-        // Filter courses: teachers only see their own courses, admins see all
-        const coursesTaught = user.role === "admin"
+        // Filter courses: teachers only see their own courses, admins/gestores/observers see all
+        const isPrivileged = user.role === "admin" || user.role === "gestor" || user.role === "observer";
+        const coursesTaught = isPrivileged
             ? group.courses
             : group.courses.filter(c => c.teacherId === user.id);
 
@@ -386,8 +396,12 @@ export async function getGroupRemarksHistory(groupId: string) {
         console.error("Error fetching remarks history:", error);
         return [];
     }
-}export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: string) {
-    const user = await requireTeacher();
+}
+
+export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: string) {
+    const user = await requireTeacherOrObserver();
+
+    const isPrivileged = user.role === "admin" || user.role === "gestor" || user.role === "observer";
 
     const group = await prisma.group.findUnique({
         where: { id: groupId },
@@ -395,7 +409,7 @@ export async function getGroupRemarksHistory(groupId: string) {
             program: true,
             environment: true,
             students: {
-                where: user.role === "admin" ? {} : { banned: { not: true } },
+                where: isPrivileged ? {} : { banned: { not: true } },
                 select: { id: true, name: true, banned: true, profile: { select: { identificacion: true, novedad: true, novedadColor: true } } }
             },
             courses: {
@@ -419,8 +433,8 @@ export async function getGroupRemarksHistory(groupId: string) {
 
     if (!group) throw new Error("Grupo no encontrado");
 
-    // Filter courses: teachers only see their own courses, admins see all
-    const coursesTaught = user.role === "admin"
+    // Filter courses: teachers only see their own courses, admins/gestores/observers see all
+    const coursesTaught = isPrivileged
         ? group.courses
         : group.courses.filter(c => c.teacherId === user.id);
 
@@ -455,15 +469,15 @@ export async function getGroupRemarksHistory(groupId: string) {
     ]);
     const totalCourseClasses = uniqueDates.size;
 
-    // Filter students: teachers do not see banned students, admins see all
-    const studentsToProcess = user.role === "admin"
+    // Filter students: teachers do not see banned students, admins/gestores/observers see all
+    const studentsToProcess = isPrivileged
         ? group.students
         : group.students.filter(s => !s.banned);
 
     // Calculate students stats
     const totalStudents = studentsToProcess.length;
     const bannedStudents = group.students.filter(s => s.banned).length;
-    const activeStudents = user.role === "admin" ? totalStudents - bannedStudents : totalStudents;
+    const activeStudents = isPrivileged ? totalStudents - bannedStudents : totalStudents;
 
     // Calculate courses average grades
     const coursesStats = coursesTaught.map(course => {
