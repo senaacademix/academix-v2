@@ -24,10 +24,14 @@ import {
     CheckCircle2,
     FileText,
     FileSpreadsheet,
-    Loader2
+    Loader2,
+    Eye,
+    Copy,
+    Target
 } from "lucide-react";
 import { toast } from "sonner";
 import { exportProgramCurriculumPdf, exportProgramCurriculumExcel } from "../../utils/programExportUtils";
+import { CourseCompetencyModal } from "./CourseCompetencyModal";
 
 interface ProgramCurriculumTabProps {
     program: any;
@@ -72,6 +76,20 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
 
     const [isExportingPdf, setIsExportingPdf] = useState(false);
     const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+    const [selectedCourseForModal, setSelectedCourseForModal] = useState<{
+        course: any;
+        periodName?: string;
+    } | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const handleOpenCourseModal = (course: any, period: any) => {
+        setSelectedCourseForModal({
+            course,
+            periodName: period.name,
+        });
+        setIsModalOpen(true);
+    };
 
     const handleExportPdf = async () => {
         setIsExportingPdf(true);
@@ -305,37 +323,52 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
                                                 return (
                                                     <div 
                                                         key={course.id}
-                                                        className="p-4 rounded-2xl bg-card border border-border/70 hover:border-border hover:shadow-xs transition-all flex flex-col justify-between gap-3"
+                                                        onClick={() => handleOpenCourseModal(course, period)}
+                                                        className="group p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/50 hover:shadow-md transition-all flex flex-col justify-between gap-3 cursor-pointer relative"
                                                     >
                                                         <div className="space-y-2">
                                                             <div className="flex items-start justify-between gap-2">
-                                                                <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+                                                                <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0 group-hover:scale-105 transition-transform">
                                                                     <CourseIcon className="h-4 w-4" />
                                                                 </div>
                                                                 {course.weeklyHours ? (
-                                                                    <Badge variant="outline" className="text-[10px] font-bold bg-muted/50">
+                                                                    <Badge variant="outline" className="text-[10px] font-bold bg-muted/50 font-mono">
                                                                         {course.weeklyHours}h / sem
                                                                     </Badge>
                                                                 ) : null}
                                                             </div>
 
                                                             <div>
-                                                                <h4 className="text-xs font-black text-foreground line-clamp-2">
+                                                                <h4 className="text-xs font-black text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                                                                     {course.title}
                                                                 </h4>
-                                                                <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1 leading-relaxed">
-                                                                    {course.description || "Sin descripción detallada de competencia."}
-                                                                </p>
                                                             </div>
                                                         </div>
 
-                                                        {course.badge && (
-                                                            <div className="pt-2 border-t border-border/40">
+                                                        {/* Footer with Badge & Action trigger */}
+                                                        <div className="pt-2.5 border-t border-border/40 flex items-center justify-between gap-2">
+                                                            {course.badge ? (
                                                                 <span className="text-[10px] font-semibold text-primary px-2 py-0.5 rounded-md bg-primary/10">
                                                                     {course.badge}
                                                                 </span>
-                                                            </div>
-                                                        )}
+                                                            ) : (
+                                                                <span className="text-[10px] text-muted-foreground font-medium truncate">
+                                                                    {period.name}
+                                                                </span>
+                                                            )}
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleOpenCourseModal(course, period);
+                                                                }}
+                                                                className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary/80 transition-colors bg-primary/5 hover:bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20 shrink-0"
+                                                            >
+                                                                <Eye className="w-3 h-3" />
+                                                                <span>Ver detalles</span>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
@@ -347,6 +380,16 @@ export function ProgramCurriculumTab({ program }: ProgramCurriculumTabProps) {
                     })}
                 </div>
             )}
+
+            {/* Modal para ver y copiar competencia y resultados de aprendizaje (RAP) */}
+            <CourseCompetencyModal
+                open={isModalOpen}
+                onOpenChange={setIsModalOpen}
+                course={selectedCourseForModal?.course || null}
+                periodName={selectedCourseForModal?.periodName}
+                programName={program.name}
+                programCode={program.code}
+            />
         </div>
     );
 }
