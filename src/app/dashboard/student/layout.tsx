@@ -1,16 +1,13 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import prisma from "@/lib/prisma";
+import { getCachedSystemSettings } from "@/features/admin/services/settingsService";
 import { ShieldAlert } from "lucide-react";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
     const session = await auth.api.getSession({ headers: await headers() });
 
     if (session?.user?.role === "student") {
-        const settings = await prisma.systemSettings.findUnique({
-            where: { id: "settings" },
-            select: { studentAccessEnabled: true }
-        });
+        const settings = await getCachedSystemSettings();
 
         if (settings && settings.studentAccessEnabled === false) {
             return (

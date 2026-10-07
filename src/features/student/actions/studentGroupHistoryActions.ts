@@ -61,84 +61,8 @@ export async function getStudentGroupHistoryAction(studentId?: string) {
       return { success: false, error: "Estudiante no encontrado" };
     }
 
-    // 1. Discover all unique group IDs where the student has historical activity
-    const discoveredGroupIds = new Set<string>();
-
-    if (student.groupId) {
-      discoveredGroupIds.add(student.groupId);
-    }
-
-    const existingEnrollments = await prisma.groupEnrollment.findMany({
-      where: { studentId: targetId },
-      select: { groupId: true },
-    });
-    existingEnrollments.forEach((e) => discoveredGroupIds.add(e.groupId));
-
-    // Check attendance records for additional group IDs
-    const attendanceGroups = await prisma.attendance.findMany({
-      where: { userId: targetId },
-      select: { course: { select: { groupId: true } } },
-    });
-    attendanceGroups.forEach((a) => {
-      if (a.course?.groupId) discoveredGroupIds.add(a.course.groupId);
-    });
-
-    // Check student grades for additional group IDs
-    const gradeGroups = await prisma.studentGrade.findMany({
-      where: { userId: targetId },
-      select: { activity: { select: { course: { select: { groupId: true } } } } },
-    });
-    gradeGroups.forEach((g) => {
-      if (g.activity?.course?.groupId) discoveredGroupIds.add(g.activity.course.groupId);
-    });
-
-    // Check remarks for additional group IDs
-    const remarkGroups = await prisma.remark.findMany({
-      where: { userId: targetId },
-      select: { course: { select: { groupId: true } } },
-    });
-    remarkGroups.forEach((r) => {
-      if (r.course?.groupId) discoveredGroupIds.add(r.course.groupId);
-    });
-
-    // 2. Backfill missing GroupEnrollment records for any discovered groups
-    for (const gId of Array.from(discoveredGroupIds)) {
-      const existing = await prisma.groupEnrollment.findFirst({
-        where: { studentId: targetId, groupId: gId },
-      });
-
-      const isCurrentGroup = student.groupId === gId;
-
-      if (!existing) {
-        await prisma.groupEnrollment.create({
-          data: {
-            studentId: targetId,
-            groupId: gId,
-            status: isCurrentGroup ? "ACTIVE" : "TRANSFERRED",
-            isCurrent: isCurrentGroup,
-            joinedAt: student.createdAt || new Date(),
-            leftAt: isCurrentGroup ? null : new Date(),
-            notes: isCurrentGroup ? "Ficha activa de formación" : "Ficha registrada previamente en el historial académico",
-          },
-        });
-      }
-    }
-
-    // 3. Ensure student.groupId is set as the only current active enrollment
-    if (student.groupId) {
-      await prisma.groupEnrollment.updateMany({
-        where: { studentId: targetId, groupId: { not: student.groupId } },
-        data: { isCurrent: false },
-      });
-
-      await prisma.groupEnrollment.updateMany({
-        where: { studentId: targetId, groupId: student.groupId },
-        data: { isCurrent: true, status: "ACTIVE", leftAt: null },
-      });
-    }
-
-    // 4. Fetch all enrollments for this student with group details
-    const enrollments = await prisma.groupEnrollment.findMany({
+    // 1. Fetch existing GroupEnrollment records
+    let enrollments = await prisma.groupEnrollment.findMany({
       where: { studentId: targetId },
       include: {
         group: {
@@ -166,71 +90,179 @@ export async function getStudentGroupHistoryAction(studentId?: string) {
       orderBy: [{ isCurrent: "desc" }, { joinedAt: "desc" }],
     });
 
-    // Enriched history items with statistics per group
-    const historyItems: StudentGroupHistoryItem[] = await Promise.all(
-      enrollments.map(async (en: any) => {
-        // Compute grades average for this student in this group's courses
-        const grades = await prisma.studentGrade.findMany({
-          where: {
-            userId: targetId,
-            activity: {
-              course: {
-                groupId: en.groupId,
+    // Backfill missing GroupEnrollments only if the current active group isn't enrolled
+    const hasCurrentEnrollment = student.groupId
+      ? enrollments.some((e) => e.groupId === student.groupId && e.isCurrent)
+      : enrollments.length > 0;
+
+    if (!hasCurrentEnrollment) {
+      const discoveredGroupIds = new Set<string>();
+      if (student.groupId) discoveredGroupIds.add(student.groupId);
+      enrollments.forEach((e) => discoveredGroupIds.add(e.groupId));
+
+      const [attGroups, grGroups, remGroups] = await Promise.all([
+        prisma.attendance.findMany({
+          where: { userId: targetId },
+          select: { course: { select: { groupId: true } } },
+        }),
+        prisma.studentGrade.findMany({
+          where: { userId: targetId },
+          select: { activity: { select: { course: { select: { groupId: true } } } } },
+        }),
+        prisma.remark.findMany({
+          where: { userId: targetId },
+          select: { course: { select: { groupId: true } } },
+        }),
+      ]);
+
+      attGroups.forEach((a) => { if (a.course?.groupId) discoveredGroupIds.add(a.course.groupId); });
+      grGroups.forEach((g) => { if (g.activity?.course?.groupId) discoveredGroupIds.add(g.activity.course.groupId); });
+      remGroups.forEach((r) => { if (r.course?.groupId) discoveredGroupIds.add(r.course.groupId); });
+
+      const existingGroupIds = new Set(enrollments.map((e) => e.groupId));
+      for (const gId of Array.from(discoveredGroupIds)) {
+        if (!existingGroupIds.has(gId)) {
+          const isCurrentGroup = student.groupId === gId;
+          await prisma.groupEnrollment.create({
+            data: {
+              studentId: targetId,
+              groupId: gId,
+              status: isCurrentGroup ? "ACTIVE" : "TRANSFERRED",
+              isCurrent: isCurrentGroup,
+              joinedAt: student.createdAt || new Date(),
+              leftAt: isCurrentGroup ? null : new Date(),
+              notes: isCurrentGroup ? "Ficha activa de formación" : "Ficha registrada previamente en el historial académico",
+            },
+          });
+        }
+      }
+
+      if (student.groupId) {
+        await prisma.groupEnrollment.updateMany({
+          where: { studentId: targetId, groupId: { not: student.groupId } },
+          data: { isCurrent: false },
+        });
+        await prisma.groupEnrollment.updateMany({
+          where: { studentId: targetId, groupId: student.groupId },
+          data: { isCurrent: true, status: "ACTIVE", leftAt: null },
+        });
+      }
+
+      // Re-fetch enrollments after backfill
+      enrollments = await prisma.groupEnrollment.findMany({
+        where: { studentId: targetId },
+        include: {
+          group: {
+            select: {
+              id: true,
+              name: true,
+              program: {
+                select: {
+                  name: true,
+                  timelines: { select: { id: true, name: true, isDefault: true } },
+                },
+              },
+              scheduleSlots: {
+                include: {
+                  period: {
+                    include: {
+                      timeline: { select: { id: true, name: true } },
+                    },
+                  },
+                },
               },
             },
           },
-          select: { score: true },
-        });
+        },
+        orderBy: [{ isCurrent: "desc" }, { joinedAt: "desc" }],
+      });
+    }
 
-        const validGrades = grades.filter((g: any) => g.score !== null && g.score > 0);
-        const avgGrade =
-          validGrades.length > 0
-            ? validGrades.reduce((acc: number, curr: any) => acc + (curr.score || 0), 0) / validGrades.length
-            : 0;
+    // Compute metrics in bulk (avoid N+1 queries per group)
+    const [allGrades, allAttendances, allRemarks, improvementPlansCount] = await Promise.all([
+      prisma.studentGrade.findMany({
+        where: { userId: targetId },
+        select: {
+          score: true,
+          activity: { select: { course: { select: { groupId: true } } } },
+        },
+      }),
+      prisma.attendance.findMany({
+        where: { userId: targetId },
+        select: {
+          status: true,
+          course: { select: { groupId: true } },
+        },
+      }),
+      prisma.remark.findMany({
+        where: { userId: targetId },
+        select: {
+          course: { select: { groupId: true } },
+        },
+      }),
+      prisma.improvementPlan.count({
+        where: { studentId: targetId },
+      }),
+    ]);
 
-        // Compute attendance rate for this group
-        const attendances = await prisma.attendance.findMany({
-          where: {
-            userId: targetId,
-            course: {
-              groupId: en.groupId,
-            },
-          },
-          select: { status: true },
-        });
+    // Group metrics in memory by groupId
+    const gradesByGroup = new Map<string, number[]>();
+    allGrades.forEach((g) => {
+      const gId = g.activity?.course?.groupId;
+      if (gId && g.score !== null && g.score > 0) {
+        const list = gradesByGroup.get(gId) || [];
+        list.push(g.score);
+        gradesByGroup.set(gId, list);
+      }
+    });
 
-        const totalAtt = attendances.length;
-        const presentAtt = attendances.filter((a: any) => a.status === "PRESENT" || a.status === "LATE").length;
-        const attRate = totalAtt > 0 ? (presentAtt / totalAtt) * 100 : 100;
+    const attendancesByGroup = new Map<string, { total: number; present: number }>();
+    allAttendances.forEach((a) => {
+      const gId = a.course?.groupId;
+      if (gId) {
+        const stats = attendancesByGroup.get(gId) || { total: 0, present: 0 };
+        stats.total++;
+        if (a.status === "PRESENT" || a.status === "LATE") {
+          stats.present++;
+        }
+        attendancesByGroup.set(gId, stats);
+      }
+    });
 
-        // Compute remarks count for this group
-        const remarksCount = await prisma.remark.count({
-          where: {
-            userId: targetId,
-            course: { groupId: en.groupId },
-          },
-        });
+    const remarksByGroup = new Map<string, number>();
+    allRemarks.forEach((r) => {
+      const gId = r.course?.groupId;
+      if (gId) {
+        remarksByGroup.set(gId, (remarksByGroup.get(gId) || 0) + 1);
+      }
+    });
 
-        // Compute improvement plans count
-        const improvementPlansCount = await prisma.improvementPlan.count({
-          where: {
-            studentId: targetId,
-          },
-        });
+    // Enriched history items with statistics per group
+    const historyItems: StudentGroupHistoryItem[] = enrollments.map((en: any) => {
+      const validScores = gradesByGroup.get(en.groupId) || [];
+      const avgGrade =
+        validScores.length > 0
+          ? validScores.reduce((acc, curr) => acc + curr, 0) / validScores.length
+          : 0;
 
-        const slot = en.group?.scheduleSlots?.find((s: any) => s.period?.timeline?.name);
-        const timelineName =
-          slot?.period?.timeline?.name ||
-          en.group?.scheduleSlots?.find((s: any) => s.period)?.period?.timeline?.name ||
-          en.group?.program?.timelines?.find((t: any) => t.isDefault)?.name ||
-          en.group?.program?.timelines?.[0]?.name ||
-          null;
+      const attStats = attendancesByGroup.get(en.groupId) || { total: 0, present: 0 };
+      const attRate = attStats.total > 0 ? (attStats.present / attStats.total) * 100 : 100;
 
-        const periodName =
-          slot?.period?.name ||
-          en.group?.scheduleSlots?.find((s: any) => s.period)?.period?.name ||
-          en.group?.period?.name ||
-          null;
+      const remarksCount = remarksByGroup.get(en.groupId) || 0;
+
+      const slot = en.group?.scheduleSlots?.find((s: any) => s.period?.timeline?.name);
+      const timelineName =
+        slot?.period?.timeline?.name ||
+        en.group?.scheduleSlots?.find((s: any) => s.period)?.period?.timeline?.name ||
+        en.group?.program?.timelines?.find((t: any) => t.isDefault)?.name ||
+        en.group?.program?.timelines?.[0]?.name ||
+        null;
+
+      const periodName =
+        slot?.period?.name ||
+        en.group?.scheduleSlots?.find((s: any) => s.period)?.period?.name ||
+        en.group?.period?.name ||
+        null;
 
         return {
           id: en.id,
@@ -249,8 +281,7 @@ export async function getStudentGroupHistoryAction(studentId?: string) {
           timelineName,
           periodName,
         };
-      })
-    );
+    });
 
     const allSystemGroups = await prisma.group.findMany({
       select: { id: true, name: true },

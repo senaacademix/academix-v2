@@ -11,6 +11,7 @@ import { HeaderRoleBadge } from "@/components/navigation/HeaderRoleBadge";
 import { Footer } from "@/components/Footer";
 import { ProfileCompletionCheck } from "@/components/profile/ProfileCompletionCheck";
 import { getAvailableThemes } from "@/app/actions/themes";
+import { getCachedSystemSettings } from "@/features/admin/services/settingsService";
 import prisma from "@/lib/prisma";
 import { ExceededLimitScreen } from "@/components/auth/ExceededLimitScreen";
 import Link from "next/link";
@@ -47,10 +48,8 @@ export default async function DashboardLayout({
       day: "2-digit"
     }).format(new Date()); // YYYY-MM-DD
     
-    // Obtener configuración del límite diario
-    const settings = await prisma.systemSettings.findUnique({
-      where: { id: "settings" }
-    });
+    // Obtener configuración del límite diario (reutilizando caché per-request)
+    const settings = await getCachedSystemSettings();
     dailyLimit = settings?.studentDailyLimit ?? 2;
 
     // Verificar cantidad de accesos en el día de hoy
@@ -88,19 +87,6 @@ export default async function DashboardLayout({
             userId: session.user.id,
             date: todayStr,
             count: 1
-          }
-        });
-      } else {
-        // Actualizar el updatedAt sin incrementar para mantener la sesión de navegación activa
-        await prisma.studentAccessLog.update({
-          where: {
-            userId_date: {
-              userId: session.user.id,
-              date: todayStr
-            }
-          },
-          data: {
-            updatedAt: new Date()
           }
         });
       }

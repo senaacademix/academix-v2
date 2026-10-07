@@ -12,8 +12,12 @@ export interface ThemeInfo {
 
 import { unstable_noStore as noStore } from 'next/cache';
 
+let cachedThemes: ThemeInfo[] | null = null;
+
 export async function getAvailableThemes(): Promise<ThemeInfo[]> {
-  noStore();
+  if (cachedThemes) {
+    return cachedThemes;
+  }
   try {
     const themesDir = path.join(process.cwd(), "src/app/themes");
     const files = await fs.readdir(themesDir);
@@ -55,6 +59,7 @@ export async function getAvailableThemes(): Promise<ThemeInfo[]> {
       });
     }
     
+    cachedThemes = themes;
     return themes;
   } catch (error) {
     console.error("Error fetching themes:", error);

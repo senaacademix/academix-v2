@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, useMemo } from "react";
+import { useEffect, useState, useTransition, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle, X, AlertTriangle } from "lucide-react";
@@ -94,12 +94,14 @@ interface StudentRecordsProps {
 }
 
 export function StudentRecords({ studentId, hideTables = false, hideDocumentation = false, defaultTab = "attendance", onlyImprovement = false }: StudentRecordsProps = {}) {
+    const initialTab = onlyImprovement ? "improvement" : defaultTab;
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [records, setRecords] = useState<{ attendances: any[], remarks: any[], groupDates?: { startDate: Date | null, endDate: Date | null } | null, scheduleDates?: { startDate: Date | null, endDate: Date | null } | null, targetUser?: any } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [courses, setCourses] = useState<any[]>([]);
-    const [gradesLoading, setGradesLoading] = useState(true);
+    const [gradesLoading, setGradesLoading] = useState(initialTab === "grades" || initialTab === "analytics");
     const [docCourses, setDocCourses] = useState<any[]>([]);
-    const [docLoading, setDocLoading] = useState(true);
+    const [docLoading, setDocLoading] = useState(initialTab === "documentation");
 
     // Submission link dialog
     const [submissionDialog, setSubmissionDialog] = useState<{ open: boolean; activityId: string; activityTitle: string; currentLink: string } | null>(null);
@@ -135,7 +137,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         });
         return Object.values(groups).sort((a, b) => a.teacherName.localeCompare(b.teacherName));
     }, [improvementPlans]);
-    const [improvementLoading, setImprovementLoading] = useState(true);
+    const [improvementLoading, setImprovementLoading] = useState(onlyImprovement || initialTab === "improvement");
     const [showHelpModal, setShowHelpModal] = useState(false);
     
     // Improvement Plan Dialogs
@@ -418,6 +420,11 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         const toastId = toast.loading("Generando expediente completo en Excel...");
         try {
             setIsExporting(true);
+            await Promise.all([
+                loadGradesOnDemand(),
+                loadImprovementPlansOnDemand(),
+                loadGroupHistoryOnDemand(),
+            ]);
             const data = {
                 student: {
                     id: studentId || records?.targetUser?.id || "",
@@ -446,6 +453,11 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         const toastId = toast.loading("Generando expediente completo en PDF...");
         try {
             setIsExporting(true);
+            await Promise.all([
+                loadGradesOnDemand(),
+                loadImprovementPlansOnDemand(),
+                loadGroupHistoryOnDemand(),
+            ]);
             const data = {
                 student: {
                     id: studentId || records?.targetUser?.id || "",
@@ -469,27 +481,11 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             setIsExporting(false);
         }
     };
-    const loadGroupHistory = async () => {
-        try {
-            const targetId = studentId || (await authClient.getSession())?.data?.user?.id;
-            if (targetId) {
-                const res = await getStudentGroupHistoryAction(targetId);
-                if (res.success && res.data?.history) {
-                    setGroupHistory(res.data.history);
-                }
-            }
-        } catch (err) {
-            console.error("Error loading student group history:", err);
-        }
-    };
 
-    useEffect(() => {
-        loadRecords();
-        loadGrades();
-        loadDocumentation();
-        loadImprovementPlans();
-        loadGroupHistory();
-    }, [studentId]);
+    const gradesLoadedRef = useRef(false);
+    const docLoadedRef = useRef(false);
+    const plansLoadedRef = useRef(false);
+    const historyLoadedRef = useRef(false);
 
     const loadRecords = () => {
         getStudentRecords(studentId)
@@ -504,6 +500,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
     };
 
     const loadGrades = async () => {
+        setGradesLoading(true);
         try {
             const targetId = studentId || (await authClient.getSession())?.data?.user?.id;
             if (targetId) {
@@ -518,6 +515,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
     };
 
     const loadDocumentation = async () => {
+        setDocLoading(true);
         try {
             const data = await getStudentDocumentation(studentId);
             setDocCourses(data);
@@ -527,6 +525,81 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             setDocLoading(false);
         }
     };
+
+    const loadGroupHistory = async () => {
+        try {
+            const targetId = studentId || (await authClient.getSession())?.data?.user?.id;
+            if (targetId) {
+                const res = await getStudentGroupHistoryAction(targetId);
+                if (res.success && res.data?.history) {
+                    setGroupHistory(res.data.history);
+                }
+            }
+        } catch (err) {
+            console.error("Error loading student group history:", err);
+        }
+    };
+
+    const loadGradesOnDemand = async () => {
+        if (gradesLoadedRef.current) return;
+        gradesLoadedRef.current = true;
+        await loadGrades();
+    };
+
+    const loadDocumentationOnDemand = async () => {
+        if (docLoadedRef.current) return;
+        docLoadedRef.current = true;
+        await loadDocumentation();
+    };
+
+    const loadImprovementPlansOnDemand = async () => {
+        if (plansLoadedRef.current) return;
+        plansLoadedRef.current = true;
+        await loadImprovementPlans();
+    };
+
+    const loadGroupHistoryOnDemand = async () => {
+        if (historyLoadedRef.current) return;
+        historyLoadedRef.current = true;
+        await loadGroupHistory();
+    };
+
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        if (value === "grades" || value === "analytics") {
+            loadGradesOnDemand();
+        } else if (value === "documentation") {
+            loadDocumentationOnDemand();
+        } else if (value === "improvement") {
+            loadImprovementPlansOnDemand();
+        }
+    };
+
+    useEffect(() => {
+        gradesLoadedRef.current = false;
+        docLoadedRef.current = false;
+        plansLoadedRef.current = false;
+        historyLoadedRef.current = false;
+
+        const initTab = onlyImprovement ? "improvement" : defaultTab;
+        setActiveTab(initTab);
+
+        if (onlyImprovement) {
+            loadImprovementPlansOnDemand();
+            setIsLoading(false);
+            return;
+        }
+
+        loadRecords();
+
+        if (initTab === "grades" || initTab === "analytics") {
+            loadGradesOnDemand();
+        } else if (initTab === "documentation") {
+            loadDocumentationOnDemand();
+        } else if (initTab === "improvement") {
+            loadImprovementPlansOnDemand();
+        }
+    }, [studentId, defaultTab, onlyImprovement]);
 
     const handleJustifySubmit = () => {
         if (!justifyingId) return;
@@ -1139,7 +1212,10 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setHistoryModalOpen(true)}
+                            onClick={async () => {
+                                await loadGroupHistoryOnDemand();
+                                setHistoryModalOpen(true);
+                            }}
                             className="h-8 text-xs font-bold rounded-xl border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10 gap-1.5 shadow-2xs"
                         >
                             <History className="w-3.5 h-3.5" />
@@ -1199,7 +1275,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             {hideTables ? (
                 analyticsContent
             ) : (
-                <Tabs defaultValue={onlyImprovement ? "improvement" : defaultTab} className="space-y-6">
+                <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
                     {!onlyImprovement && (
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <TabsList className={cn(

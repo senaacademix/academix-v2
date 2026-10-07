@@ -1,4 +1,11 @@
 import prisma from "@/lib/prisma";
+import { cache } from "react";
+
+export const getCachedSystemSettings = cache(async () => {
+    return await prisma.systemSettings.findUnique({
+        where: { id: "settings" }
+    });
+});
 
 export const settingsService = {
     async getSettings() {
