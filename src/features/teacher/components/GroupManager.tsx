@@ -82,7 +82,7 @@ import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, Award, ShieldCheck, Building } from "lucide-react";
+import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, CalendarDays, Award, ShieldCheck, Building } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,6 +113,7 @@ import {
 } from "../utils/teacherAttendanceExportUtils";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { CourseDocLinks } from "./CourseDocLinks";
+import { GroupScheduleAttendanceView } from "./GroupScheduleAttendanceView";
 import { GroupAnalyticsPanel } from "@/components/analytics/GroupAnalyticsPanel";
 import { StudentRecords } from "@/features/student/components/StudentRecords";
 import { StudentNovedadBadge } from "@/components/StudentNovedadBadge";
@@ -385,7 +386,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     };
     
     const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id || "");
-    const [activeTab, setActiveTab] = useState<"students" | "attendance" | "remarks" | "analytics" | "grades" | "documentation" | "improvement">("students");
+    const [activeTab, setActiveTab] = useState<"students" | "attendance" | "schedule-attendance" | "remarks" | "analytics" | "grades" | "documentation" | "improvement">("students");
 
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
@@ -2145,6 +2146,14 @@ const handleOpenAnalytics = async () => {
                                         <span className="flex items-center gap-2 justify-center">
                                             <ClipboardList className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
                                             <span>Asistencia</span>
+                                        </span>
+                                    </TabsTrigger>
+
+                                    {/* ── ASISTENCIA SEMANAL MULTIGRUPO / HORARIOS ── */}
+                                    <TabsTrigger value="schedule-attendance" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
+                                        <span className="flex items-center gap-2 justify-center">
+                                            <CalendarDays className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                            <span>Asistencia Semanal</span>
                                         </span>
                                     </TabsTrigger>
 
@@ -4625,6 +4634,17 @@ const handleOpenAnalytics = async () => {
                                     );
                                 })()}
 
+                            </TabsContent>
+
+                            {/* TAB: ASISTENCIA SEMANAL MULTIGRUPO POR HORARIO (LAZY LOADED ON OPEN) */}
+                            <TabsContent value="schedule-attendance" className="m-0 space-y-4 outline-none animate-in fade-in-50 duration-200">
+                                <GroupScheduleAttendanceView
+                                    selectedGroupId={selectedGroupId}
+                                    groups={groups}
+                                    onSelectGroup={(id) => handleGroupChangeAttempt(id)}
+                                    isActiveTab={activeTab === "schedule-attendance"}
+                                    teacherName={teacherName}
+                                />
                             </TabsContent>
 
                             {/* TAB 3: REMARKS & HISTORY */}

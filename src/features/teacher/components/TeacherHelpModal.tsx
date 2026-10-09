@@ -37,6 +37,7 @@ import {
 
 export type TeacherTabKey =
   | "attendance"
+  | "schedule-attendance"
   | "students"
   | "remarks"
   | "improvement"
@@ -105,6 +106,40 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
       },
     ],
     workflowTip: "Toma asistencia al iniciar o finalizar la franja horaria. Guarda los cambios con el botón flotante y exporta la matriz mensual para tener respaldo físico o digital.",
+  },
+
+  "schedule-attendance": {
+    key: "schedule-attendance",
+    tabLabel: "Asistencia Semanal",
+    title: "Sábana Semanal de Asistencia Multigrupo",
+    badge: "Módulo: Malla Semanal",
+    badgeColor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+    icon: <Calendar className="w-5 h-5 text-indigo-500" />,
+    bgIcon: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
+    subtitle: "Visión integral de la asistencia de la ficha para todos los días de la semana, incluyendo materias dictadas por otros instructores y organizado por períodos de horario.",
+    features: [
+      {
+        title: "Todos los Días y Materias",
+        description: "Revisa de lunes a sábado las sesiones de clase de la ficha con sus respectivos instructores titulares y ambientes.",
+        icon: <Calendar className="w-4 h-4 text-indigo-500" />,
+      },
+      {
+        title: "Cruce con Otros Instructores",
+        description: "Supervisa si los aprendices asisten o faltan a las asignaturas orientadas por tus colegas docentes.",
+        icon: <Users className="w-4 h-4 text-indigo-500" />,
+      },
+      {
+        title: "Horario Actual y Horarios Anteriores",
+        description: "Filtra entre el trimestre vigente y los trimestres históricos para contrastar la evolución del ausentismo.",
+        icon: <Clock className="w-4 h-4 text-indigo-500" />,
+      },
+      {
+        title: "Exportación a Excel",
+        description: "Descarga la sábana semanal completa en formato .xlsx con formato institucional listo para presentar.",
+        icon: <FileSpreadsheet className="w-4 h-4 text-indigo-500" />,
+      },
+    ],
+    workflowTip: "Abre esta pestaña para tener la radiografía completa del compromiso semanal del grupo en todas las materias del programa formativo.",
   },
 
   students: {
