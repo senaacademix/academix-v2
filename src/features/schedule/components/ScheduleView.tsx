@@ -280,6 +280,7 @@ export function ScheduleView() {
     courses.forEach((course, idx) => {
         const colorIndex = idx % COURSE_COLORS.length;
         (course.schedules || []).forEach((schedule: any) => {
+            const resolvedEnv = schedule.environment || (course as any).environment || (course as any).group?.environment || null;
             events.push({
                 courseId: course.id,
                 courseTitle: course.title,
@@ -290,6 +291,7 @@ export function ScheduleView() {
                 course: {
                     ...course,
                     teacher: schedule.teacher || course.teacher,
+                    environment: resolvedEnv,
                 },
             });
         });
@@ -1069,6 +1071,16 @@ export function ScheduleView() {
                                                                         <strong className="font-semibold">Ficha:</strong> {event.course.group.name}
                                                                     </span>
                                                                 )}
+                                                                {((event.course as any)?.environment?.name || (event.course as any)?.group?.environment?.name) && (
+                                                                    <span 
+                                                                        className="flex items-center gap-1 truncate text-foreground/85 font-medium" 
+                                                                        title={`Ambiente: ${(event.course as any)?.environment?.name || (event.course as any)?.group?.environment?.name}${((event.course as any)?.environment?.location || (event.course as any)?.group?.environment?.location) ? ` (${(event.course as any)?.environment?.location || (event.course as any)?.group?.environment?.location})` : ''}`}
+                                                                    >
+                                                                        <Building className="w-2.5 h-2.5 text-primary shrink-0" />
+                                                                        <strong className="font-semibold">Ambiente:</strong>{" "}
+                                                                        <span className="truncate">{(event.course as any)?.environment?.name || (event.course as any)?.group?.environment?.name}</span>
+                                                                    </span>
+                                                                )}
                                                                 {(event.course as any)?.timelineName && (
                                                                     <span className="flex items-center gap-1 truncate text-primary font-bold text-[9px] bg-primary/10 px-1 py-0.2 rounded" title={(event.course as any).timelineName}>
                                                                         <GitBranch className="w-2.5 h-2.5 text-primary shrink-0" />
@@ -1094,8 +1106,19 @@ export function ScheduleView() {
                                                     <p className="text-[11px] text-muted-foreground">
                                                         {DAY_NAMES_ES_FULL[DAY_INDEX[event.dayOfWeek]]} de {toFormat12h(event.startTime)} a {toFormat12h(event.endTime)}
                                                     </p>
-                                                    {event.course.teacher && <p className="text-[11px] text-primary font-medium">Instructor: {event.course.teacher.name}</p>}
                                                     {event.course.group && <p className="text-[11px] text-muted-foreground">Ficha: {event.course.group.name}</p>}
+                                                    {((event.course as any)?.environment?.name || (event.course as any)?.group?.environment?.name) && (
+                                                        <p className="text-[11px] text-primary font-medium flex items-center gap-1">
+                                                            <Building className="w-3 h-3 text-primary shrink-0" />
+                                                            Ambiente: {(event.course as any)?.environment?.name || (event.course as any)?.group?.environment?.name}
+                                                            {((event.course as any)?.environment?.location || (event.course as any)?.group?.environment?.location) && (
+                                                                <span className="text-muted-foreground text-[10px]">
+                                                                    ({(event.course as any)?.environment?.location || (event.course as any)?.group?.environment?.location})
+                                                                </span>
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                    {event.course.teacher && <p className="text-[11px] text-primary font-medium">Instructor: {event.course.teacher.name}</p>}
                                                 </TooltipContent>
                                             </Tooltip>
                                         );
@@ -1461,23 +1484,37 @@ export function ScheduleView() {
                                         {selectedCourse?.description || "Esta materia no tiene descripción, competencias o resultados de aprendizaje registrados todavía."}
                                     </div>
                                 </div>
-                                {/* Docente & Grupo */}
-                                <div className="grid grid-cols-2 gap-4">
-
+                                {/* Docente, Grupo & Ambiente */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-muted/40 p-3 rounded-2xl border border-border/60">
                                     {selectedCourse?.group && (
                                         <div className="space-y-1">
-                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <GraduationCap className="w-3 h-3" /> Grupo
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1 font-semibold">
+                                                <Users className="w-3.5 h-3.5 text-primary" /> Ficha / Grupo
                                             </p>
-                                            <p className="text-sm font-medium">{selectedCourse.group.name}</p>
+                                            <p className="text-sm font-bold text-foreground truncate">{selectedCourse.group.name}</p>
+                                        </div>
+                                    )}
+                                    {((selectedCourse as any)?.environment?.name || (selectedCourse as any)?.group?.environment?.name) && (
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1 font-semibold">
+                                                <Building className="w-3.5 h-3.5 text-primary" /> Ambiente
+                                            </p>
+                                            <p className="text-sm font-bold text-foreground truncate">
+                                                {(selectedCourse as any)?.environment?.name || (selectedCourse as any)?.group?.environment?.name}
+                                                {((selectedCourse as any)?.environment?.location || (selectedCourse as any)?.group?.environment?.location) && (
+                                                    <span className="text-xs text-muted-foreground font-normal ml-1">
+                                                        ({(selectedCourse as any)?.environment?.location || (selectedCourse as any)?.group?.environment?.location})
+                                                    </span>
+                                                )}
+                                            </p>
                                         </div>
                                     )}
                                     {selectedCourse?.teacher && (
                                         <div className="space-y-1">
-                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <Users className="w-3 h-3" /> Instructor
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1 font-semibold">
+                                                <GraduationCap className="w-3.5 h-3.5 text-primary" /> Instructor
                                             </p>
-                                            <p className="text-sm font-medium">{selectedCourse.teacher.name}</p>
+                                            <p className="text-sm font-bold text-foreground truncate">{selectedCourse.teacher.name}</p>
                                         </div>
                                     )}
                                 </div>

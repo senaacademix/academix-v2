@@ -202,9 +202,16 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
                     schedules: {
                       include: {
                         teacher: { select: { id: true, name: true, email: true } },
+                        environment: { select: { id: true, name: true, location: true } },
                       },
                     },
-                    group: { select: { id: true, name: true } },
+                    group: {
+                      select: {
+                        id: true,
+                        name: true,
+                        environment: { select: { id: true, name: true, location: true } },
+                      },
+                    },
                     period: {
                       include: {
                         timeline: true,
@@ -238,14 +245,20 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
       slot.group.courses.forEach((c: any) => {
         if (c.academicScheduleId && c.academicScheduleId !== vigenteSchedule.id) return;
         if (!courseMap.has(c.id)) {
+          const groupEnv = slot.group.environment || c.group?.environment || null;
           courseMap.set(c.id, {
             id: c.id,
             title: c.title,
             description: c.description,
             weeklyHours: c.weeklyHours || 0,
             teacher: c.teacher,
-            group: c.group,
-            environment: slot.group.environment,
+            group: {
+              ...c.group,
+              id: slot.group.id || c.group?.id,
+              name: slot.group.name || c.group?.name,
+              environment: groupEnv,
+            },
+            environment: groupEnv,
             period: slot.period || c.period,
             periodId: slot.periodId || c.periodId,
             periodName: slot.period?.name || c.period?.name || null,
@@ -258,6 +271,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
               startTime: s.startTime,
               endTime: s.endTime,
               teacher: s.teacher || c.teacher,
+              environment: s.environment || groupEnv,
             })),
           });
         }
@@ -279,6 +293,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
           schedules: {
             include: {
               teacher: { select: { id: true, name: true, email: true } },
+              environment: { select: { id: true, name: true, location: true } },
             },
           },
           group: {
@@ -299,6 +314,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
 
       directCourses.forEach((c: any) => {
         if (!courseMap.has(c.id)) {
+          const groupEnv = c.group?.environment || null;
           courseMap.set(c.id, {
             id: c.id,
             title: c.title,
@@ -306,7 +322,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
             weeklyHours: c.weeklyHours || 0,
             teacher: c.teacher,
             group: c.group,
-            environment: c.group?.environment,
+            environment: groupEnv,
             period: c.period,
             periodId: c.periodId,
             periodName: c.period?.name || null,
@@ -319,6 +335,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
               startTime: s.startTime,
               endTime: s.endTime,
               teacher: s.teacher || c.teacher,
+              environment: s.environment || groupEnv,
             })),
           });
         }
@@ -372,9 +389,16 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
                   schedules: {
                     include: {
                       teacher: { select: { id: true, name: true, email: true } },
+                      environment: { select: { id: true, name: true, location: true } },
                     },
                   },
-                  group: { select: { id: true, name: true } },
+                  group: {
+                    select: {
+                      id: true,
+                      name: true,
+                      environment: { select: { id: true, name: true, location: true } },
+                    },
+                  },
                   period: {
                     include: {
                       timeline: true,
@@ -453,14 +477,20 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
         if (matchingSchedules.length > 0) {
           const mapKey = `${c.id}-${slot.group.id}`;
           if (!courseMap.has(mapKey)) {
+            const groupEnv = slot.group.environment || c.group?.environment || null;
             courseMap.set(mapKey, {
               id: c.id,
               title: c.title,
               description: c.description,
               weeklyHours: c.weeklyHours || 0,
               teacher: c.teacher,
-              group: c.group,
-              environment: slot.group.environment,
+              group: {
+                ...c.group,
+                id: slot.group.id || c.group?.id,
+                name: slot.group.name || c.group?.name,
+                environment: groupEnv,
+              },
+              environment: groupEnv,
               period: slot.period || c.period,
               periodId: slot.periodId || c.periodId,
               periodName: slot.period?.name || c.period?.name || null,
@@ -473,6 +503,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
                 startTime: s.startTime,
                 endTime: s.endTime,
                 teacher: s.teacher || c.teacher,
+                environment: s.environment || groupEnv,
               })),
             });
           }

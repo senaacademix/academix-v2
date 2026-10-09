@@ -82,7 +82,7 @@ import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, Award, ShieldCheck } from "lucide-react";
+import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, Award, ShieldCheck, Building } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -2076,6 +2076,12 @@ const handleOpenAnalytics = async () => {
                                     <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
                                     {selectedGroup.students?.length || 0} Aprendices
                                 </Badge>
+                                {selectedGroup.environment?.name && (
+                                    <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border text-foreground flex items-center gap-1.5 shadow-2xs" title={`Ambiente de formación asignado: ${selectedGroup.environment.name}${selectedGroup.environment.location ? ` (${selectedGroup.environment.location})` : ''}`}>
+                                        <Building className="w-3.5 h-3.5 text-primary shrink-0" />
+                                        <span>Ambiente {selectedGroup.environment.name}</span>
+                                    </Badge>
+                                )}
                                 {groupScheduleInfo && (
                                     <div className="w-full sm:w-auto flex items-center gap-1.5 text-xs bg-muted/60 px-2.5 py-1 rounded-xl border border-border/70 font-medium">
                                         <Clock className="w-3.5 h-3.5 text-primary shrink-0" />

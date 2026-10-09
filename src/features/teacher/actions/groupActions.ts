@@ -19,21 +19,59 @@ function isDateInCurrentWeek(date: Date | string): boolean {
 }
 
 async function checkIsCourseWeekLocked(courseId: string, dateObj: Date): Promise<boolean> {
+    // 1. Current week is always editable
     if (isDateInCurrentWeek(dateObj)) return false;
 
+    // 2. Admin and Gestor can always edit any date
+    const session = await getSession();
+    if (session?.user?.role === "admin" || session?.user?.role === "gestor") {
+        return false;
+    }
+
+    // 3. System-wide setting: if limitAttendanceToCurrentWeek is false, past dates are not locked globally
+    const settings = await prisma.systemSettings.findUnique({
+        where: { id: "settings" },
+        select: { limitAttendanceToCurrentWeek: true }
+    });
+    if (settings && !settings.limitAttendanceToCurrentWeek) {
+        return false;
+    }
+
+    // 4. Fetch course with relations
     const course = await prisma.course.findUnique({
         where: { id: courseId },
         select: {
             teacherId: true,
             academicScheduleId: true,
+            schedules: {
+                select: {
+                    teacherId: true
+                }
+            },
             group: {
                 select: {
                     programId: true,
+                    teachers: { select: { id: true } },
+                    scheduleSlots: {
+                        select: {
+                            academicScheduleId: true
+                        }
+                    },
+                    program: {
+                        select: {
+                            allowPastAttendanceEdit: true
+                        }
+                    }
                 }
             },
             period: {
                 select: {
                     programId: true,
+                    program: {
+                        select: {
+                            allowPastAttendanceEdit: true
+                        }
+                    }
                 }
             }
         }
@@ -41,50 +79,84 @@ async function checkIsCourseWeekLocked(courseId: string, dateObj: Date): Promise
 
     if (!course) return true;
 
-    // Check instructor-specific permission in the academic schedule
-    if (course.teacherId) {
-        let scheduleId = course.academicScheduleId;
-        if (!scheduleId) {
-            const programId = course.group?.programId || course.period?.programId;
-            // 1. Check if dateObj falls in an academic schedule
-            let schedule = await prisma.academicSchedule.findFirst({
-                where: {
-                    ...(programId ? { programId } : {}),
-                    startDate: { lte: dateObj },
-                    endDate: { gte: dateObj }
-                },
-                orderBy: { startDate: 'desc' }
-            });
-            // 2. Or fallback to current schedule
-            if (!schedule) {
-                const now = new Date();
-                schedule = await prisma.academicSchedule.findFirst({
-                    where: {
-                        ...(programId ? { programId } : {}),
-                        startDate: { lte: now },
-                        endDate: { gte: now }
-                    },
-                    orderBy: { startDate: 'desc' }
-                });
-            }
-            scheduleId = schedule?.id || null;
-        }
+    // 5. Program-level exemption
+    const programAllowPast = course.group?.program?.allowPastAttendanceEdit || course.period?.program?.allowPastAttendanceEdit;
+    if (programAllowPast) {
+        return false;
+    }
 
-        if (scheduleId) {
-            const lock = await prisma.teacherScheduleLock.findUnique({
-                where: {
-                    teacherId_academicScheduleId: {
-                        teacherId: course.teacherId,
-                        academicScheduleId: scheduleId
-                    }
-                },
-                select: { allowPastAttendanceEdit: true }
-            });
+    // 6. Gather all teacher IDs who could be operating on this course
+    const teacherIdsToCheck = new Set<string>();
+    if (session?.user?.id) teacherIdsToCheck.add(session.user.id);
+    if (course.teacherId) teacherIdsToCheck.add(course.teacherId);
+    course.schedules?.forEach(s => { if (s.teacherId) teacherIdsToCheck.add(s.teacherId); });
+    course.group?.teachers?.forEach(t => { if (t.id) teacherIdsToCheck.add(t.id); });
 
-            if (lock && lock.allowPastAttendanceEdit) {
-                return false; // Permitted for this teacher in this schedule
-            }
+    // 7. Check if ANY candidate teacher has an approved attendancePermissionRequest for this date
+    const approvedRequest = await prisma.attendancePermissionRequest.findFirst({
+        where: {
+            courseId,
+            teacherId: { in: Array.from(teacherIdsToCheck) },
+            date: dateObj,
+            status: "APPROVED"
         }
+    });
+    if (approvedRequest) {
+        return false;
+    }
+
+    // 8. Gather all candidate academicScheduleIds
+    const candidateScheduleIds = new Set<string>();
+    if (course.academicScheduleId) candidateScheduleIds.add(course.academicScheduleId);
+    course.group?.scheduleSlots?.forEach(slot => {
+        if (slot.academicScheduleId) candidateScheduleIds.add(slot.academicScheduleId);
+    });
+
+    // Also look up any schedule that covers dateObj or is currently active
+    const programId = course.group?.programId || course.period?.programId;
+    const matchingSchedules = await prisma.academicSchedule.findMany({
+        where: {
+            OR: [
+                { startDate: { lte: dateObj }, endDate: { gte: dateObj } },
+                { isActive: true }
+            ],
+            ...(programId ? {
+                OR: [
+                    { programId },
+                    { programId: null }
+                ]
+            } : {})
+        },
+        select: { id: true }
+    });
+    matchingSchedules.forEach(s => candidateScheduleIds.add(s.id));
+
+    // 9. Check TeacherScheduleLock for allowPastAttendanceEdit
+    // If the teacher has allowPastAttendanceEdit: true in ANY relevant schedule, permit it!
+    const teacherLock = await prisma.teacherScheduleLock.findFirst({
+        where: {
+            teacherId: { in: Array.from(teacherIdsToCheck) },
+            allowPastAttendanceEdit: true,
+            ...(candidateScheduleIds.size > 0 ? {
+                academicScheduleId: { in: Array.from(candidateScheduleIds) }
+            } : {})
+        }
+    });
+
+    if (teacherLock) {
+        return false;
+    }
+
+    // Fallback: check if the teacher has allowPastAttendanceEdit: true in ANY active schedule
+    const anyActiveLock = await prisma.teacherScheduleLock.findFirst({
+        where: {
+            teacherId: { in: Array.from(teacherIdsToCheck) },
+            allowPastAttendanceEdit: true,
+            academicSchedule: { isActive: true }
+        }
+    });
+    if (anyActiveLock) {
+        return false;
     }
 
     return true;
@@ -107,11 +179,34 @@ async function requireTeacherOrObserver() {
 }
 
 async function verifyCourseTeacher(courseId: string, teacherId: string) {
+    const session = await getSession();
+    if (session?.user?.role === "admin" || session?.user?.role === "gestor") {
+        return;
+    }
+
     const course = await prisma.course.findUnique({
         where: { id: courseId },
-        select: { teacherId: true }
+        select: {
+            teacherId: true,
+            schedules: { select: { teacherId: true } },
+            group: {
+                select: {
+                    teachers: { select: { id: true } }
+                }
+            }
+        }
     });
-    if (!course || course.teacherId !== teacherId) {
+
+    if (!course) {
+        throw new Error("Unauthorized: Curso no encontrado");
+    }
+
+    const isAssigned = 
+        course.teacherId === teacherId ||
+        course.schedules.some(s => s.teacherId === teacherId) ||
+        course.group?.teachers.some(t => t.id === teacherId);
+
+    if (!isAssigned) {
         throw new Error("Unauthorized: You do not have permission to modify this course");
     }
 }

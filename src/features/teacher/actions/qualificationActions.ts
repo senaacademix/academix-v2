@@ -595,6 +595,8 @@ export async function toggleTeacherSchedulePastAttendanceAction(teacherId: strin
 
     revalidatePath("/dashboard/gestor/schedules");
     revalidatePath("/dashboard/admin/teachers");
+    revalidatePath("/dashboard/teacher");
+    revalidatePath("/dashboard/teacher/attendance");
     return { success: true };
 }
 

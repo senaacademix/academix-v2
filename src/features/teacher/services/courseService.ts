@@ -282,8 +282,16 @@ export const courseService = {
             },
             orderBy: { createdAt: "desc" },
             include: {
-                schedules: true,
-                group: true,
+                schedules: {
+                    include: {
+                        environment: { select: { id: true, name: true, location: true } }
+                    }
+                },
+                group: {
+                    include: {
+                        environment: { select: { id: true, name: true, location: true } }
+                    }
+                },
                 teacher: { include: { profile: true } },
                 _count: {
                     select: { enrollments: true },
@@ -304,6 +312,7 @@ export const courseService = {
             },
             orderBy: { createdAt: "desc" },
             include: {
+                environment: { select: { id: true, name: true, location: true } },
                 program: {
                     include: {
                         timelines: {
@@ -350,7 +359,11 @@ export const courseService = {
                         ]
                     },
                     include: {
-                        schedules: true,
+                        schedules: {
+                            include: {
+                                environment: { select: { id: true, name: true, location: true } }
+                            }
+                        },
                         academicSchedule: {
                             select: {
                                 id: true,
@@ -436,8 +449,16 @@ export const courseService = {
             include: {
                 course: {
                     include: {
-                        schedules: true,
-                        group: true,
+                        schedules: {
+                            include: {
+                                environment: { select: { id: true, name: true, location: true } }
+                            }
+                        },
+                        group: {
+                            include: {
+                                environment: { select: { id: true, name: true, location: true } }
+                            }
+                        },
                         teacher: { include: { profile: true } }
                     }
                 }
@@ -457,8 +478,16 @@ export const courseService = {
                     }
                 },
                 include: {
-                    schedules: true,
-                    group: true,
+                    schedules: {
+                        include: {
+                            environment: { select: { id: true, name: true, location: true } }
+                        }
+                    },
+                    group: {
+                        include: {
+                            environment: { select: { id: true, name: true, location: true } }
+                        }
+                    },
                     teacher: { include: { profile: true } }
                 }
             });
