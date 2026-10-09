@@ -695,6 +695,37 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     const [isSavingAtt, setIsSavingAtt] = useState(false);
     const [selectedDayFilter, setSelectedDayFilter] = useState<number | null>(null);
     const [historyStudentFilter, setHistoryStudentFilter] = useState<string>("all");
+    const [historyScheduleScope, setHistoryScheduleScope] = useState<"current" | "previous" | "all">("all");
+    const [detailScheduleScope, setDetailScheduleScope] = useState<"current" | "previous" | "all">("all");
+
+    const isRecordInCurrentSchedule = (rec: any, targetCourseId?: string) => {
+        if (!rec || !rec.date) return true;
+        const cId = targetCourseId || rec.courseId || attCourseId;
+        const { start: effectiveStart, end: effectiveEnd } = getEffectiveDatesForCourse(selectedGroup, cId);
+
+        if (rec.course?.academicSchedule) {
+            const sched = rec.course.academicSchedule;
+            if (sched.startDate && sched.endDate && isScheduleCurrent(sched.startDate, sched.endDate)) {
+                return true;
+            }
+        }
+
+        if (!effectiveStart && !effectiveEnd) return true;
+
+        const recYMD = toCalendarYMD(rec.date);
+        if (!recYMD) return true;
+
+        const startYMD = effectiveStart ? toCalendarYMD(effectiveStart) : "";
+        const endYMD = effectiveEnd ? toCalendarYMD(effectiveEnd) : "";
+
+        if (startYMD && recYMD < startYMD) {
+            return false;
+        }
+        if (endYMD && recYMD > endYMD) {
+            return false;
+        }
+        return true;
+    };
     const [attendanceToDelete, setAttendanceToDelete] = useState<{ studentId: string; studentName: string; date: string } | null>(null);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
@@ -854,6 +885,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
 
     const handleShowStudentDetails = (student: any) => {
         setDetailStudent(student);
+        setDetailScheduleScope("all");
         setDetailOpen(true);
     };
 
@@ -1109,6 +1141,32 @@ const handleOpenAnalytics = async () => {
         }
         return [...list].sort((a: any, b: any) => a.name.localeCompare(b.name));
     }, [selectedGroup, searchQuery]);
+
+    const studentAttendanceStats = useMemo(() => {
+        const stats: Record<string, { absentCount: number; lateCount: number; leaveCount: number }> = {};
+        if (!attendanceHistory || attendanceHistory.length === 0 || !attCourseId) return stats;
+
+        for (let i = 0; i < attendanceHistory.length; i++) {
+            const a = attendanceHistory[i];
+            if (a.courseId !== attCourseId) continue;
+            const uid = a.userId;
+            let entry = stats[uid];
+            if (!entry) {
+                entry = { absentCount: 0, lateCount: 0, leaveCount: 0 };
+                stats[uid] = entry;
+            }
+            if (a.status === 'ABSENT') {
+                entry.absentCount++;
+            }
+            if (a.status === 'LATE' || !!a.arrivalTime) {
+                entry.lateCount++;
+            }
+            if (a.status === 'LEAVE_EARLY' || !!a.departureTime) {
+                entry.leaveCount++;
+            }
+        }
+        return stats;
+    }, [attendanceHistory, attCourseId]);
 
     const filteredStudentsForRemark = useMemo(() => {
         if (!selectedGroup?.students) return [];
@@ -1655,9 +1713,13 @@ const handleOpenAnalytics = async () => {
         if (!selectedGroup || !attCourseId) return toast.error("Selecciona un grupo y materia");
         const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
         const courseTitle = course?.title || "Materia";
-        const history = attendanceHistory.filter((r: any) =>
-            r.courseId === attCourseId && r.status !== "PRESENT"
-        );
+        const history = attendanceHistory.filter((r: any) => {
+            if (r.courseId !== attCourseId || r.status === "PRESENT") return false;
+            if (historyStudentFilter !== "all" && r.userId !== historyStudentFilter) return false;
+            if (historyScheduleScope === "current") return isRecordInCurrentSchedule(r, attCourseId);
+            if (historyScheduleScope === "previous") return !isRecordInCurrentSchedule(r, attCourseId);
+            return true;
+        });
         const students = selectedGroup.students ?? [];
 
         const rows: any[] = [];
@@ -1704,9 +1766,13 @@ const handleOpenAnalytics = async () => {
         if (!selectedGroup || !attCourseId) return toast.error("Selecciona un grupo y materia");
         const course = selectedGroup.courses?.find((c: any) => c.id === attCourseId);
         const courseTitle = course?.title || "Materia";
-        const history = attendanceHistory.filter((r: any) =>
-            r.courseId === attCourseId && r.status !== "PRESENT"
-        );
+        const history = attendanceHistory.filter((r: any) => {
+            if (r.courseId !== attCourseId || r.status === "PRESENT") return false;
+            if (historyStudentFilter !== "all" && r.userId !== historyStudentFilter) return false;
+            if (historyScheduleScope === "current") return isRecordInCurrentSchedule(r, attCourseId);
+            if (historyScheduleScope === "previous") return !isRecordInCurrentSchedule(r, attCourseId);
+            return true;
+        });
         const students = selectedGroup.students ?? [];
 
         const rows: any[] = [];
@@ -2898,29 +2964,7 @@ const handleOpenAnalytics = async () => {
                                                 const isAbsent = (rec?.status === "ABSENT") && !isLate && !isLeaveEarly;
                                                 const isPresent = (rec?.status === "PRESENT") && !isLate && !isLeaveEarly;
                                                 
-                                                const studentHistory = attendanceHistory.filter(a => a.userId === s.id);
-                                                const courseHistory = studentHistory.filter(a => a.courseId === attCourseId);
-                                                const absentCount = courseHistory.filter(a => a.status === 'ABSENT').length;
-                                                const lateCount = courseHistory.filter(a => a.status === 'LATE' || !!a.arrivalTime).length;
-                                                const leaveCount = courseHistory.filter(a => a.status === 'LEAVE_EARLY' || !!a.departureTime).length;
-
-                                                const daysOfWeekEng = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
-
-                                                const totalLateHours = courseHistory
-                                                    .filter(a => (a.status === 'LATE' || !!a.arrivalTime) && a.arrivalTime)
-                                                    .reduce((sum, a) => {
-                                                        const { sessionStart: startTimeStr, sessionEnd: endTimeStr } = getSessionScheduleForDay(selectedGroup, attCourseId, a.date);
-                                                        const lost = getLostHoursForAttendance(startTimeStr, endTimeStr, a.arrivalTime, a.departureTime);
-                                                        return sum + lost.lateLostHours;
-                                                    }, 0);
-
-                                                const totalLeaveHours = courseHistory
-                                                    .filter(a => (a.status === 'LEAVE_EARLY' || !!a.departureTime) && a.departureTime)
-                                                    .reduce((sum, a) => {
-                                                        const { sessionStart: startTimeStr, sessionEnd: endTimeStr } = getSessionScheduleForDay(selectedGroup, attCourseId, a.date);
-                                                        const lost = getLostHoursForAttendance(startTimeStr, endTimeStr, a.arrivalTime, a.departureTime);
-                                                        return sum + lost.leaveLostHours;
-                                                    }, 0);
+                                                const { absentCount, lateCount, leaveCount } = studentAttendanceStats[s.id] || { absentCount: 0, lateCount: 0, leaveCount: 0 };
 
                                                  return (
                                                     <div 
@@ -2968,8 +3012,39 @@ const handleOpenAnalytics = async () => {
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                                                                    ID: {s.profile?.identificacion || 'S/N'}
+                                                                <div className="flex items-center gap-1.5 flex-wrap text-[11px] mt-0.5">
+                                                                    <span className="font-mono text-muted-foreground">
+                                                                        ID: {s.profile?.identificacion || 'S/N'}
+                                                                    </span>
+                                                                    {(absentCount > 0 || lateCount > 0 || leaveCount > 0) && (
+                                                                        <span className="inline-flex items-center gap-1 flex-wrap">
+                                                                            <span className="text-muted-foreground/35 font-normal">|</span>
+                                                                            {absentCount > 0 && (
+                                                                                <span 
+                                                                                    className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center"
+                                                                                    title={`${absentCount} inasistencia${absentCount > 1 ? 's' : ''}`}
+                                                                                >
+                                                                                    {absentCount} {absentCount === 1 ? 'Falta' : 'Faltas'}
+                                                                                </span>
+                                                                            )}
+                                                                            {lateCount > 0 && (
+                                                                                <span 
+                                                                                    className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center"
+                                                                                    title={`${lateCount} llegada${lateCount > 1 ? 's' : ''} tarde`}
+                                                                                >
+                                                                                    {lateCount} {lateCount === 1 ? 'Tarde' : 'Tardes'}
+                                                                                </span>
+                                                                            )}
+                                                                            {leaveCount > 0 && (
+                                                                                <span 
+                                                                                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center"
+                                                                                    title={`${leaveCount} retiro${leaveCount > 1 ? 's' : ''} anticipado`}
+                                                                                >
+                                                                                    {leaveCount} {leaveCount === 1 ? 'Retiro' : 'Retiros'}
+                                                                                </span>
+                                                                            )}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </div>
 
@@ -3885,11 +3960,12 @@ const handleOpenAnalytics = async () => {
                                         if (historyStudentFilter !== "all" && student.id !== historyStudentFilter) {
                                             return false;
                                         }
-                                        const studentRecords = attendanceHistory.filter((rec: any) => 
-                                            rec.courseId === attCourseId && 
-                                            rec.userId === student.id && 
-                                            rec.status !== "PRESENT"
-                                        );
+                                        const studentRecords = attendanceHistory.filter((rec: any) => {
+                                            if (rec.courseId !== attCourseId || rec.userId !== student.id || rec.status !== "PRESENT") return false;
+                                            if (historyScheduleScope === "current") return isRecordInCurrentSchedule(rec, attCourseId);
+                                            if (historyScheduleScope === "previous") return !isRecordInCurrentSchedule(rec, attCourseId);
+                                            return true;
+                                        });
                                         if (studentRecords.length === 0) return false;
 
                                         if (searchQuery) {
@@ -3901,17 +3977,23 @@ const handleOpenAnalytics = async () => {
                                     });
 
                                     const sortedStudentsWithNovedades = [...(studentsWithNovedades || [])].sort((a: any, b: any) => {
-                                        const recordsA = attendanceHistory.filter((rec: any) => rec.courseId === attCourseId && rec.userId === a.id && rec.status !== "PRESENT").length;
-                                        const recordsB = attendanceHistory.filter((rec: any) => rec.courseId === attCourseId && rec.userId === b.id && rec.status !== "PRESENT").length;
-                                        return recordsB - recordsA;
+                                        const getCount = (stId: string) => attendanceHistory.filter((rec: any) => {
+                                            if (rec.courseId !== attCourseId || rec.userId !== stId || rec.status !== "PRESENT") return false;
+                                            if (historyScheduleScope === "current") return isRecordInCurrentSchedule(rec, attCourseId);
+                                            if (historyScheduleScope === "previous") return !isRecordInCurrentSchedule(rec, attCourseId);
+                                            return true;
+                                        }).length;
+                                        return getCount(b.id) - getCount(a.id);
                                     });
 
-                                    const totalRecordsCount = attendanceHistory.filter((rec: any) => 
-                                        rec.courseId === attCourseId && 
-                                        rec.status !== "PRESENT" &&
-                                        selectedGroup.students?.some((s: any) => s.id === rec.userId) &&
-                                        (historyStudentFilter === "all" || rec.userId === historyStudentFilter)
-                                    ).length;
+                                    const totalRecordsCount = attendanceHistory.filter((rec: any) => {
+                                        if (rec.courseId !== attCourseId || rec.status === "PRESENT") return false;
+                                        if (!selectedGroup.students?.some((s: any) => s.id === rec.userId)) return false;
+                                        if (historyStudentFilter !== "all" && rec.userId !== historyStudentFilter) return false;
+                                        if (historyScheduleScope === "current") return isRecordInCurrentSchedule(rec, attCourseId);
+                                        if (historyScheduleScope === "previous") return !isRecordInCurrentSchedule(rec, attCourseId);
+                                        return true;
+                                    }).length;
 
                                     return (
                                         <div className="space-y-4">
@@ -3936,21 +4018,37 @@ const handleOpenAnalytics = async () => {
                                             </div>
 
                                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-muted/20 p-3 sm:p-4 rounded-xl border border-border/40 mb-4 w-full">
-                                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
-                                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest shrink-0">Filtrar Aprendiz:</span>
-                                                    <Select value={historyStudentFilter} onValueChange={setHistoryStudentFilter}>
-                                                        <SelectTrigger className="h-9 rounded-lg border-muted-foreground/20 font-semibold bg-background text-xs w-full sm:w-[250px]">
-                                                            <SelectValue placeholder="Seleccionar Aprendiz" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="all" className="font-semibold text-xs">👥 Todos los aprendices</SelectItem>
-                                                            {selectedGroup.students?.map((s: any) => (
-                                                                <SelectItem key={s.id} value={s.id} className="font-semibold text-xs">
-                                                                    {formatName(s.name, s.profile)}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
+                                                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest shrink-0">Filtrar Aprendiz:</span>
+                                                        <Select value={historyStudentFilter} onValueChange={setHistoryStudentFilter}>
+                                                            <SelectTrigger className="h-9 rounded-lg border-muted-foreground/20 font-semibold bg-background text-xs w-full sm:w-[220px]">
+                                                                <SelectValue placeholder="Seleccionar Aprendiz" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all" className="font-semibold text-xs">👥 Todos los aprendices</SelectItem>
+                                                                {selectedGroup.students?.map((s: any) => (
+                                                                    <SelectItem key={s.id} value={s.id} className="font-semibold text-xs">
+                                                                        {formatName(s.name, s.profile)}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest shrink-0">Horarios:</span>
+                                                        <Select value={historyScheduleScope} onValueChange={(v: any) => setHistoryScheduleScope(v)}>
+                                                            <SelectTrigger className="h-9 rounded-lg border-muted-foreground/20 font-semibold bg-background text-xs w-full sm:w-[210px]">
+                                                                <SelectValue placeholder="Seleccionar Horario" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="all" className="font-semibold text-xs">👥 Todos los Horarios</SelectItem>
+                                                                <SelectItem value="current" className="font-semibold text-xs">📅 Horario Actual (Vigente)</SelectItem>
+                                                                <SelectItem value="previous" className="font-semibold text-xs">⏳ Horarios Anteriores</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -3967,15 +4065,123 @@ const handleOpenAnalytics = async () => {
                                             ) : (
                                                 <div ref={historyRef} id="history-table-container" className="space-y-4 bg-background p-2 rounded-xl">
                                                     {sortedStudentsWithNovedades.map((student: any) => {
-                                                        const studentRecords = attendanceHistory.filter((rec: any) => 
+                                                        const allStudentRecords = attendanceHistory.filter((rec: any) => 
                                                             rec.courseId === attCourseId && 
                                                             rec.userId === student.id && 
                                                             rec.status !== "PRESENT"
                                                         );
-                                                        const sortedRecs = [...studentRecords].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                                                        const absentCount = studentRecords.filter(r => r.status === "ABSENT").length;
-                                                        const lateCount = studentRecords.filter(r => r.status === "LATE").length;
-                                                        const leaveEarlyCount = studentRecords.filter(r => r.status === "LEAVE_EARLY").length;
+                                                        const currentRecords = allStudentRecords
+                                                            .filter(r => isRecordInCurrentSchedule(r, attCourseId))
+                                                            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                                                        const previousRecords = allStudentRecords
+                                                            .filter(r => !isRecordInCurrentSchedule(r, attCourseId))
+                                                            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                                                        const recordsToDisplay = historyScheduleScope === "current"
+                                                            ? currentRecords
+                                                            : historyScheduleScope === "previous"
+                                                                ? previousRecords
+                                                                : allStudentRecords;
+
+                                                        const absentCount = recordsToDisplay.filter(r => r.status === "ABSENT").length;
+                                                        const lateCount = recordsToDisplay.filter(r => r.status === "LATE").length;
+                                                        const leaveEarlyCount = recordsToDisplay.filter(r => r.status === "LEAVE_EARLY").length;
+
+                                                        const renderHistoryRow = (rec: any, isPreviousRecord: boolean) => {
+                                                            const isAbsent = rec.status === "ABSENT";
+                                                            const isLate = rec.status === "LATE";
+                                                            const isLeaveEarly = rec.status === "LEAVE_EARLY";
+                                                            const formattedDate = formatCalendarDate(rec.date, "dd/MM/yyyy");
+                                                            
+                                                            return (
+                                                                <TableRow key={rec.id} className="hover:bg-muted/5 transition-colors">
+                                                                    <TableCell className="pl-6 py-3 font-semibold text-xs text-foreground/80">
+                                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                                            <span>{formattedDate}</span>
+                                                                            {isPreviousRecord && (
+                                                                                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold border border-amber-500/20">
+                                                                                    Anterior
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-center py-3">
+                                                                        <Badge variant="outline" className={`font-bold text-[10px] uppercase px-2 py-0.5 rounded-md ${
+                                                                            isAbsent 
+                                                                                ? 'text-red-600 border-red-200 bg-red-50 dark:bg-red-950/20' 
+                                                                                : isLate
+                                                                                    ? 'text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/20'
+                                                                                    : 'text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/20'
+                                                                        }`}>
+                                                                            {isAbsent ? "Falta" : isLate ? "Tarde" : "Retiro"}
+                                                                        </Badge>
+                                                                    </TableCell>
+                                                                    <TableCell className="text-center text-xs py-3 font-medium text-foreground/70">
+                                                                         {isLate && rec.arrivalTime ? (
+                                                                             <span className="font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded text-[11px] border border-amber-500/20">
+                                                                                 {formatTime12h(rec.arrivalTime)}
+                                                                             </span>
+                                                                         ) : isLeaveEarly && rec.departureTime ? (
+                                                                             <span className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded text-[11px] border border-blue-500/20">
+                                                                                 {formatTime12h(rec.departureTime)}
+                                                                             </span>
+                                                                         ) : (
+                                                                             <span className="text-muted-foreground text-[11px]">Día completo</span>
+                                                                         )}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs py-3 max-w-[200px]">
+                                                                        {(() => {
+                                                                            const linkUrl = getJustificationLink(rec);
+                                                                            const hasText = !!(rec.justification && rec.justification.trim().length > 0);
+                                                                            const hasLink = !!linkUrl;
+
+                                                                            if (!hasText && !hasLink) {
+                                                                                return <span className="text-muted-foreground/60 italic text-[11px]">Sin justificación</span>;
+                                                                            }
+
+                                                                            return (
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    className="h-7 px-2.5 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 rounded-lg gap-1.5 shadow-xs"
+                                                                                    onClick={() => setViewJustificationDialog({
+                                                                                        open: true,
+                                                                                        studentName: formatName(student.name, student.profile),
+                                                                                        studentId: student.profile?.identificacion,
+                                                                                        date: formattedDate,
+                                                                                        status: isAbsent ? "Falta" : isLate ? "Tarde" : "Retiro",
+                                                                                        justification: rec.justification || "",
+                                                                                        linkUrl
+                                                                                    })}
+                                                                                >
+                                                                                    <Eye className="w-3.5 h-3.5 text-primary" />
+                                                                                    Ver justificación
+                                                                                </Button>
+                                                                            );
+                                                                        })()}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-right pr-6 py-3">
+                                                                        <Button 
+                                                                            size="sm" 
+                                                                            variant="ghost" 
+                                                                            disabled={isSavingAtt}
+                                                                            onClick={() => {
+                                                                                setAttendanceToDelete({
+                                                                                    studentId: student.id,
+                                                                                    studentName: formatName(student.name, student.profile),
+                                                                                    date: rec.date
+                                                                                });
+                                                                            }}
+                                                                            className="h-7 px-2.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 font-bold"
+                                                                        >
+                                                                            Eliminar
+                                                                        </Button>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            );
+                                                        };
 
                                                         return (
                                                             <div key={student.id} className="print-avoid-break rounded-2xl border bg-card shadow-sm overflow-hidden hover:border-primary/20 transition-all duration-200">
@@ -3999,6 +4205,11 @@ const handleOpenAnalytics = async () => {
                                                                     </div>
 
                                                                     <div className="flex items-center gap-2">
+                                                                        {historyScheduleScope === "all" && previousRecords.length > 0 && (
+                                                                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 font-bold shadow-none px-2.5 py-0.5 rounded-full text-xs">
+                                                                                ⏳ {previousRecords.length} en anteriores
+                                                                            </Badge>
+                                                                        )}
                                                                         {absentCount > 0 && (
                                                                             <Badge className="bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
                                                                                 {absentCount} {absentCount === 1 ? "Falta" : "Faltas"}
@@ -4022,7 +4233,7 @@ const handleOpenAnalytics = async () => {
                                                                     <Table>
                                                                         <TableHeader className="bg-muted/10">
                                                                             <TableRow className="hover:bg-transparent">
-                                                                                <TableHead className="pl-6 w-[120px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Fecha</TableHead>
+                                                                                <TableHead className="pl-6 w-[140px] text-xs font-bold uppercase tracking-wider text-muted-foreground">Fecha</TableHead>
                                                                                 <TableHead className="w-[140px] text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">Novedad</TableHead>
                                                                                 <TableHead className="w-[160px] text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">Detalle / Hora</TableHead>
                                                                                 <TableHead className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Justificación</TableHead>
@@ -4030,93 +4241,69 @@ const handleOpenAnalytics = async () => {
                                                                             </TableRow>
                                                                         </TableHeader>
                                                                         <TableBody>
-                                                                            {sortedRecs.map((rec: any) => {
-                                                                                const isAbsent = rec.status === "ABSENT";
-                                                                                const isLate = rec.status === "LATE";
-                                                                                const isLeaveEarly = rec.status === "LEAVE_EARLY";
-                                                                                const formattedDate = formatCalendarDate(rec.date, "dd/MM/yyyy");
-                                                                                
-                                                                                return (
-                                                                                    <TableRow key={rec.id} className="hover:bg-muted/5 transition-colors">
-                                                                                        <TableCell className="pl-6 py-3 font-semibold text-xs text-foreground/80">
-                                                                                            {formattedDate}
-                                                                                        </TableCell>
-                                                                                        <TableCell className="text-center py-3">
-                                                                                            <Badge variant="outline" className={`font-bold text-[10px] uppercase px-2 py-0.5 rounded-md ${
-                                                                                                isAbsent 
-                                                                                                    ? 'text-red-600 border-red-200 bg-red-50 dark:bg-red-950/20' 
-                                                                                                    : isLate
-                                                                                                        ? 'text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/20'
-                                                                                                        : 'text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/20'
-                                                                                            }`}>
-                                                                                                {isAbsent ? "Falta" : isLate ? "Tarde" : "Retiro"}
-                                                                                            </Badge>
-                                                                                        </TableCell>
-                                                                                        <TableCell className="text-center text-xs py-3 font-medium text-foreground/70">
-                                                                                             {isLate && rec.arrivalTime ? (
-                                                                                                 <span className="font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded text-[11px] border border-amber-500/20">
-                                                                                                     {formatTime12h(rec.arrivalTime)}
-                                                                                             </span>
-                                                                                             ) : isLeaveEarly && rec.departureTime ? (
-                                                                                                 <span className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded text-[11px] border border-blue-500/20">
-                                                                                                     {formatTime12h(rec.departureTime)}
-                                                                                                 </span>
-                                                                                             ) : (
-                                                                                                 <span className="text-muted-foreground text-[11px]">Día completo</span>
-                                                                                             )}
-                                                                                        </TableCell>
-                                                                                        <TableCell className="text-xs py-3 max-w-[200px]">
-                                                                                            {(() => {
-                                                                                                const linkUrl = getJustificationLink(rec);
-                                                                                                const hasText = !!(rec.justification && rec.justification.trim().length > 0);
-                                                                                                const hasLink = !!linkUrl;
+                                                                            {historyScheduleScope === "all" ? (
+                                                                                <>
+                                                                                    {/* Grupo Horario Actual */}
+                                                                                    {currentRecords.length > 0 && (
+                                                                                        <>
+                                                                                            <TableRow className="bg-emerald-500/10 hover:bg-emerald-500/10 border-y border-emerald-500/20">
+                                                                                                <TableCell colSpan={5} className="py-2.5 pl-6">
+                                                                                                    <div className="flex items-center justify-between">
+                                                                                                        <span className="font-extrabold text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                                                                                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                                                                            📅 Horario Actual (Vigente)
+                                                                                                        </span>
+                                                                                                        <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 text-[10px] font-extrabold px-2 py-0.5">
+                                                                                                            {currentRecords.length} {currentRecords.length === 1 ? 'registro' : 'registros'}
+                                                                                                        </Badge>
+                                                                                                    </div>
+                                                                                                </TableCell>
+                                                                                            </TableRow>
+                                                                                            {currentRecords.map(rec => renderHistoryRow(rec, false))}
+                                                                                        </>
+                                                                                    )}
 
-                                                                                                if (!hasText && !hasLink) {
-                                                                                                    return <span className="text-muted-foreground/60 italic text-[11px]">Sin justificación</span>;
-                                                                                                }
+                                                                                    {/* Grupo Horarios Anteriores */}
+                                                                                    {previousRecords.length > 0 && (
+                                                                                        <>
+                                                                                            <TableRow className="bg-amber-500/10 hover:bg-amber-500/10 border-y border-amber-500/20">
+                                                                                                <TableCell colSpan={5} className="py-2.5 pl-6">
+                                                                                                    <div className="flex items-center justify-between">
+                                                                                                        <span className="font-extrabold text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                                                                                                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                                                                                            ⏳ Horarios Anteriores (Histórico)
+                                                                                                        </span>
+                                                                                                        <Badge variant="outline" className="border-amber-500/30 text-amber-700 dark:text-amber-300 bg-amber-500/10 text-[10px] font-extrabold px-2 py-0.5">
+                                                                                                            {previousRecords.length} {previousRecords.length === 1 ? 'registro' : 'registros'}
+                                                                                                        </Badge>
+                                                                                                    </div>
+                                                                                                </TableCell>
+                                                                                            </TableRow>
+                                                                                            {previousRecords.map(rec => renderHistoryRow(rec, true))}
+                                                                                        </>
+                                                                                    )}
 
-                                                                                                return (
-                                                                                                    <Button
-                                                                                                        type="button"
-                                                                                                        variant="outline"
-                                                                                                        size="sm"
-                                                                                                        className="h-7 px-2.5 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 rounded-lg gap-1.5 shadow-xs"
-                                                                                                        onClick={() => setViewJustificationDialog({
-                                                                                                            open: true,
-                                                                                                            studentName: formatName(student.name, student.profile),
-                                                                                                            studentId: student.profile?.identificacion,
-                                                                                                            date: formattedDate,
-                                                                                                            status: isAbsent ? "Falta" : isLate ? "Tarde" : "Retiro",
-                                                                                                            justification: rec.justification || "",
-                                                                                                            linkUrl
-                                                                                                        })}
-                                                                                                    >
-                                                                                                        <Eye className="w-3.5 h-3.5 text-primary" />
-                                                                                                        Ver justificación
-                                                                                                    </Button>
-                                                                                                );
-                                                                                            })()}
-                                                                                        </TableCell>
-                                                                                        <TableCell className="text-right pr-6 py-3">
-                                                                                            <Button 
-                                                                                                size="sm" 
-                                                                                                variant="ghost" 
-                                                                                                disabled={isSavingAtt}
-                                                                                                onClick={() => {
-                                                                                                    setAttendanceToDelete({
-                                                                                                        studentId: student.id,
-                                                                                                        studentName: formatName(student.name, student.profile),
-                                                                                                        date: rec.date
-                                                                                                    });
-                                                                                                }}
-                                                                                                className="h-7 px-2.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 font-bold"
-                                                                                            >
-                                                                                                Eliminar
-                                                                                            </Button>
-                                                                                        </TableCell>
-                                                                                    </TableRow>
-                                                                                );
-                                                                            })}
+                                                                                    {currentRecords.length === 0 && previousRecords.length === 0 && (
+                                                                                        <TableRow>
+                                                                                            <TableCell colSpan={5} className="text-center py-6 text-xs text-muted-foreground italic">
+                                                                                                Sin registros de novedades.
+                                                                                            </TableCell>
+                                                                                        </TableRow>
+                                                                                    )}
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    {recordsToDisplay.length === 0 ? (
+                                                                                        <TableRow>
+                                                                                            <TableCell colSpan={5} className="text-center py-6 text-xs text-muted-foreground italic">
+                                                                                                Sin registros de novedades en este período.
+                                                                                            </TableCell>
+                                                                                        </TableRow>
+                                                                                    ) : (
+                                                                                        recordsToDisplay.map((rec: any) => renderHistoryRow(rec, historyScheduleScope === "previous"))
+                                                                                    )}
+                                                                                </>
+                                                                            )}
                                                                         </TableBody>
                                                                     </Table>
                                                                 </div>
@@ -5831,8 +6018,18 @@ const handleOpenAnalytics = async () => {
                         {(() => {
                             if (!detailStudent) return null;
                             const studentHistory = attendanceHistory.filter(a => a.userId === detailStudent.id && a.status !== 'PRESENT');
-                            const absencesList = studentHistory.filter(a => a.status === 'ABSENT');
-                            const latesList = studentHistory.filter(a => a.status === 'LATE' || a.status === 'LEAVE_EARLY' || a.arrivalTime || a.departureTime);
+                            const currentHistory = studentHistory.filter(a => isRecordInCurrentSchedule(a));
+                            const previousHistory = studentHistory.filter(a => !isRecordInCurrentSchedule(a));
+
+                            // Registros según el alcance seleccionado
+                            const scopedHistory = detailScheduleScope === "current"
+                                ? currentHistory
+                                : detailScheduleScope === "previous"
+                                    ? previousHistory
+                                    : studentHistory;
+
+                            const absencesList = scopedHistory.filter(a => a.status === 'ABSENT');
+                            const latesList = scopedHistory.filter(a => a.status === 'LATE' || a.status === 'LEAVE_EARLY' || a.arrivalTime || a.departureTime);
 
                             const renderRecordCard = (att: any) => {
                                 const dateLabel = formatCalendarDate(att.date, "eeee, d 'de' MMMM 'de' yyyy");
@@ -5841,6 +6038,7 @@ const handleOpenAnalytics = async () => {
                                 const isLate = att.status === 'LATE' || !!att.arrivalTime;
                                 const isLeaveEarly = att.status === 'LEAVE_EARLY' || !!att.departureTime;
                                 const isDual = isLate && isLeaveEarly;
+                                const isCurr = isRecordInCurrentSchedule(att);
 
                                 const badgeLabel = isAbsent ? "Falta" : isDual ? "Tarde + Retiro" : isLate ? "Tarde" : isLeaveEarly ? "Retiro" : att.status;
                                 const badgeClass = isAbsent 
@@ -5854,8 +6052,15 @@ const handleOpenAnalytics = async () => {
                                 return (
                                     <div key={att.id} className="p-3 rounded-xl border border-border bg-card/50 flex flex-col gap-1.5 text-left">
                                         <div className="flex items-center justify-between gap-2">
-                                            <span className="text-xs font-bold text-foreground capitalize">{dateLabel}</span>
-                                            <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                                <span className="text-xs font-bold text-foreground capitalize truncate">{dateLabel}</span>
+                                                {!isCurr && (
+                                                    <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-[9px] px-1 py-0">
+                                                        Horario Anterior
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
                                                 <Badge className={isJustified ? "bg-emerald-500 hover:bg-emerald-500 text-white text-[10px]" : "bg-red-500 hover:bg-red-500 text-white text-[10px]"}>
                                                     {isJustified ? "Justificado" : "No Justificado"}
                                                 </Badge>
@@ -5906,41 +6111,138 @@ const handleOpenAnalytics = async () => {
                                 );
                             };
 
+                            const renderGroupedCards = (items: any[], emptyText: string) => {
+                                if (items.length === 0) {
+                                    return (
+                                        <div className="text-center py-8 text-sm text-muted-foreground italic bg-muted/20 rounded-xl border border-dashed border-muted">
+                                            {emptyText}
+                                        </div>
+                                    );
+                                }
+
+                                if (detailScheduleScope !== "all") {
+                                    return items.map(renderRecordCard);
+                                }
+
+                                const curItems = items.filter(a => isRecordInCurrentSchedule(a));
+                                const prevItems = items.filter(a => !isRecordInCurrentSchedule(a));
+
+                                return (
+                                    <div className="space-y-4">
+                                        {/* Bloque Horario Actual */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between px-1">
+                                                <span className="text-[11px] font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
+                                                    <CalendarClock className="w-3.5 h-3.5" /> Horario Actual
+                                                </span>
+                                                <Badge variant="outline" className="text-[10px] px-2 py-0 border-primary/30 text-primary bg-primary/5 font-bold">
+                                                    {curItems.length} {curItems.length === 1 ? "registro" : "registros"}
+                                                </Badge>
+                                            </div>
+                                            {curItems.length === 0 ? (
+                                                <div className="text-xs text-muted-foreground italic px-3 py-2 bg-muted/10 rounded-lg border border-dashed text-center">
+                                                    Sin registros en el horario actual.
+                                                </div>
+                                            ) : (
+                                                curItems.map(renderRecordCard)
+                                            )}
+                                        </div>
+
+                                        {/* Bloque Horarios Anteriores */}
+                                        {prevItems.length > 0 && (
+                                            <div className="space-y-2 pt-2 border-t border-border/60">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                                        <History className="w-3.5 h-3.5" /> Horarios Anteriores
+                                                    </span>
+                                                    <Badge variant="outline" className="text-[10px] px-2 py-0 border-muted text-muted-foreground bg-muted/30 font-bold">
+                                                        {prevItems.length} {prevItems.length === 1 ? "registro" : "registros"}
+                                                    </Badge>
+                                                </div>
+                                                {prevItems.map(renderRecordCard)}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            };
+
                             return (
-                                <Tabs defaultValue="faltas" className="w-full">
-                                    <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/60 p-1 rounded-xl">
-                                        <TabsTrigger value="faltas" className="rounded-lg text-xs font-bold py-1.5 data-[state=active]:bg-background">
-                                            Faltas ({absencesList.length})
-                                        </TabsTrigger>
-                                        <TabsTrigger value="tardes" className="rounded-lg text-xs font-bold py-1.5 data-[state=active]:bg-background">
-                                            Tardes y Retiros ({latesList.length})
-                                        </TabsTrigger>
-                                    </TabsList>
-                                    
-                                    <TabsContent value="faltas" className="outline-none m-0">
-                                        <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1.5 custom-scrollbar">
-                                            {absencesList.length === 0 ? (
-                                                <div className="text-center py-8 text-sm text-muted-foreground italic bg-muted/20 rounded-xl border border-dashed border-muted">
-                                                    No hay inasistencias registradas.
-                                                </div>
-                                            ) : (
-                                                absencesList.map(renderRecordCard)
+                                <div className="space-y-3">
+                                    {/* Selector de Ámbito de Horario (Actual vs Anteriores) */}
+                                    <div className="flex items-center p-1 bg-muted/60 rounded-xl gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDetailScheduleScope("current")}
+                                            className={cn(
+                                                "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                                                detailScheduleScope === "current"
+                                                    ? "bg-background text-primary shadow-xs border border-primary/20"
+                                                    : "text-muted-foreground hover:text-foreground"
                                             )}
-                                        </div>
-                                    </TabsContent>
-                                    
-                                    <TabsContent value="tardes" className="outline-none m-0">
-                                        <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1.5 custom-scrollbar">
-                                            {latesList.length === 0 ? (
-                                                <div className="text-center py-8 text-sm text-muted-foreground italic bg-muted/20 rounded-xl border border-dashed border-muted">
-                                                    No hay llegadas tarde o retiros registrados.
-                                                </div>
-                                            ) : (
-                                                latesList.map(renderRecordCard)
+                                        >
+                                            <CalendarClock className="w-3.5 h-3.5 text-primary" />
+                                            <span>Horario Actual</span>
+                                            <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-bold">
+                                                {currentHistory.length}
+                                            </Badge>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDetailScheduleScope("previous")}
+                                            className={cn(
+                                                "flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                                                detailScheduleScope === "previous"
+                                                    ? "bg-background text-foreground shadow-xs border border-border"
+                                                    : "text-muted-foreground hover:text-foreground"
                                             )}
-                                        </div>
-                                    </TabsContent>
-                                </Tabs>
+                                        >
+                                            <History className="w-3.5 h-3.5 text-muted-foreground" />
+                                            <span>Horarios Anteriores</span>
+                                            <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-bold">
+                                                {previousHistory.length}
+                                            </Badge>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDetailScheduleScope("all")}
+                                            className={cn(
+                                                "py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1",
+                                                detailScheduleScope === "all"
+                                                    ? "bg-background text-foreground shadow-xs border border-border"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            <span>Todos</span>
+                                            <Badge variant="outline" className="text-[10px] h-4.5 px-1.5 font-bold">
+                                                {studentHistory.length}
+                                            </Badge>
+                                        </button>
+                                    </div>
+
+                                    {/* Tabs por Tipo de Registro */}
+                                    <Tabs defaultValue="faltas" className="w-full">
+                                        <TabsList className="grid w-full grid-cols-2 mb-3 bg-muted/60 p-1 rounded-xl">
+                                            <TabsTrigger value="faltas" className="rounded-lg text-xs font-bold py-1.5 data-[state=active]:bg-background text-red-600 dark:text-red-400">
+                                                Faltas ({absencesList.length})
+                                            </TabsTrigger>
+                                            <TabsTrigger value="tardes" className="rounded-lg text-xs font-bold py-1.5 data-[state=active]:bg-background text-amber-600 dark:text-amber-400">
+                                                Tardes y Retiros ({latesList.length})
+                                            </TabsTrigger>
+                                        </TabsList>
+                                        
+                                        <TabsContent value="faltas" className="outline-none m-0">
+                                            <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1.5 custom-scrollbar">
+                                                {renderGroupedCards(absencesList, "No hay inasistencias registradas.")}
+                                            </div>
+                                        </TabsContent>
+                                        
+                                        <TabsContent value="tardes" className="outline-none m-0">
+                                            <div className="space-y-2.5 max-h-[45vh] overflow-y-auto pr-1.5 custom-scrollbar">
+                                                {renderGroupedCards(latesList, "No hay llegadas tarde o retiros registrados.")}
+                                            </div>
+                                        </TabsContent>
+                                    </Tabs>
+                                </div>
                             );
                         })()}
                     </div>
@@ -6180,10 +6482,7 @@ const handleOpenAnalytics = async () => {
                             const isLeaveEarly = rec?.status === "LEAVE_EARLY";
                             const isPresent = rec?.status === "PRESENT";
                             
-                            const studentHistory = attendanceHistory.filter(a => a.userId === currentStudent.id);
-                            const absentCount = studentHistory.filter(a => a.status === 'ABSENT').length;
-                            const lateCount = studentHistory.filter(a => a.status === 'LATE').length;
-                            const leaveCount = studentHistory.filter(a => a.status === 'LEAVE_EARLY').length;
+                            const { absentCount, lateCount, leaveCount } = studentAttendanceStats[currentStudent.id] || { absentCount: 0, lateCount: 0, leaveCount: 0 };
 
                             return (
                                 <div className="flex-1 flex flex-col justify-between py-6 min-h-0">

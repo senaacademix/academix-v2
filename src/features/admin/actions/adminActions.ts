@@ -5,6 +5,9 @@ import { headers } from "next/headers";
 import { adminService } from "@/features/admin/services/adminService";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
+import { resolveCurrentAcademicSchedule } from "@/lib/academicScheduleResolver";
+import { calculateStudentAttendanceLoss } from "@/lib/gradePenaltyUtils";
+import { isScheduleCurrent, toCalendarYMD } from "@/lib/dateUtils";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
@@ -1470,7 +1473,10 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
             program: true,
             environment: true,
             scheduleSlots: {
-                include: { period: true }
+                include: {
+                    period: true,
+                    academicSchedule: true
+                }
             },
             students: {
                 select: { id: true, name: true, email: true, banned: true, profile: { select: { identificacion: true } } }
@@ -1481,6 +1487,7 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
                     title: true,
                     teacher: { select: { name: true } },
                     schedules: { select: { dayOfWeek: true, startTime: true, endTime: true } },
+                    academicSchedule: true,
                     activities: {
                         select: {
                             grades: {
@@ -1495,18 +1502,53 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
 
     if (!group) throw new Error("Grupo no encontrado");
 
+    // Resolver horario académico vigente actual para enmarcar la analítica
+    const currentSchedule = await resolveCurrentAcademicSchedule({
+        groupId: group.id,
+        programId: group.programId,
+        groupSlots: group.scheduleSlots,
+        courseSchedules: group.courses
+    });
+
     const courseIds = group.courses.map(c => c.id);
 
-    // Fetch attendances
+    // Fetch attendances restringidas estrictamente al horario académico actual
     const attendances = await prisma.attendance.findMany({
-        where: { courseId: { in: courseIds } },
+        where: {
+            courseId: { in: courseIds },
+            ...(currentSchedule.startDateUTC && currentSchedule.endDateUTC ? {
+                date: {
+                    gte: currentSchedule.startDateUTC,
+                    lte: currentSchedule.endDateUTC
+                }
+            } : {})
+        },
         select: { status: true, date: true, userId: true, arrivalTime: true, departureTime: true, courseId: true }
     });
 
-    // Fetch remarks
+    // Fetch remarks restringidas estrictamente al horario académico actual
     const remarks = await prisma.remark.findMany({
-        where: { courseId: { in: courseIds } },
-        select: { type: true, date: true, userId: true, courseId: true }
+        where: {
+            courseId: { in: courseIds },
+            ...(currentSchedule.startDateUTC && currentSchedule.endDateUTC ? {
+                date: {
+                    gte: currentSchedule.startDateUTC,
+                    lte: currentSchedule.endDateUTC
+                }
+            } : {})
+        },
+        select: {
+            id: true,
+            type: true,
+            title: true,
+            description: true,
+            date: true,
+            userId: true,
+            courseId: true,
+            course: { select: { title: true } },
+            user: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
+            teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } }
+        }
     });
 
     // Calculate students stats
@@ -1526,17 +1568,13 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
         };
     });
 
-    // Calculate start and end dates for the group class interval
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    const startDate = group.startDate ? new Date(group.startDate) : threeMonthsAgo;
-    const endDate = group.endDate ? new Date(group.endDate) : new Date();
+    // Fechas de inicio y fin enmarcadas estrictamente en el horario académico actual
+    const startDate = currentSchedule.startDate || (group.startDate ? new Date(group.startDate) : new Date());
+    const endDate = currentSchedule.endDate || (group.endDate ? new Date(group.endDate) : new Date());
 
     const dayIndexMap: Record<string, number> = {
         SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6
     };
-
-    const groupDailyHours = 4;
 
     const courseTotalClassesMap: Record<string, number> = {};
     let globalTotalCourseClasses = 0;
@@ -1613,86 +1651,37 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
             });
             courseGrades[c.id] = cCount > 0 ? Number((cScore / cCount).toFixed(2)) : 0;
 
-            // Attendances
-            const cAtts = sAttendances.filter(a => a.courseId === c.id);
-            const cAbsent = cAtts.filter(a => a.status === 'ABSENT').length;
-            const cLate = cAtts.filter(a => a.status === 'LATE').length;
-            const cLeaveEarly = cAtts.filter(a => a.status === 'LEAVE_EARLY').length;
-            
-            const cTotalClasses = courseTotalClassesMap[c.id];
-            const cPresent = Math.max(0, cTotalClasses - cAbsent - cLate - cLeaveEarly);
-            
-            const cSched = c.schedules?.[0];
-            const cStartTime = cSched?.startTime || "08:00";
-            const cEndTime = cSched?.endTime || "12:00";
-            const [csh, csm] = cStartTime.split(":").map(Number);
-            const [ceh, cem] = cEndTime.split(":").map(Number);
+            // Attendances using accurate loss calculator framed strictly by current schedule
+            const loss = calculateStudentAttendanceLoss(
+                student.id,
+                c.id,
+                attendances as any,
+                c as any,
+                group as any,
+                { startDate: currentSchedule.startDate, endDate: currentSchedule.endDate }
+            );
 
-            const cAbsentHours = cAbsent * groupDailyHours;
-            let cLateHours = 0;
-            cAtts.filter(a => a.status === 'LATE').forEach(rec => {
-                if (!rec.arrivalTime) return;
-                let timePart = "";
-                try {
-                    const dateObj = new Date(rec.arrivalTime);
-                    if (!isNaN(dateObj.getTime())) {
-                        timePart = dateObj.getUTCHours().toString().padStart(2, '0') + ":" + dateObj.getUTCMinutes().toString().padStart(2, '0');
-                    } else {
-                        timePart = String(rec.arrivalTime);
-                    }
-                } catch {
-                    timePart = String(rec.arrivalTime);
-                }
-                const [ah, am] = timePart.split(":").map(Number);
-                if (!isNaN(ah) && !isNaN(am)) {
-                    const lateMinutes = (ah * 60 + am) - (csh * 60 + csm);
-                    if (lateMinutes > 0) {
-                        cLateHours += lateMinutes / 60;
-                    }
-                }
-            });
-
-            let cLeaveEarlyHours = 0;
-            cAtts.filter(a => a.status === 'LEAVE_EARLY').forEach(rec => {
-                if (!rec.departureTime) return;
-                let timePart = "";
-                try {
-                    const dateObj = new Date(rec.departureTime);
-                    if (!isNaN(dateObj.getTime())) {
-                        timePart = dateObj.getUTCHours().toString().padStart(2, '0') + ":" + dateObj.getUTCMinutes().toString().padStart(2, '0');
-                    } else {
-                        timePart = String(rec.departureTime);
-                    }
-                } catch {
-                    timePart = String(rec.departureTime);
-                }
-                const [dh, dm] = timePart.split(":").map(Number);
-                if (!isNaN(dh) && !isNaN(dm)) {
-                    const lostMinutes = (ceh * 60 + cem) - (dh * 60 + dm);
-                    if (lostMinutes > 0) {
-                        cLeaveEarlyHours += lostMinutes / 60;
-                    }
-                }
-            });
+            const cTotalClasses = courseTotalClassesMap[c.id] || 0;
+            const cPresent = Math.max(0, cTotalClasses - loss.absentCount - loss.lateCount - loss.leaveCount);
 
             courseAttendances[c.id] = { 
                 present: cPresent, 
-                absent: cAbsent, 
-                late: cLate, 
-                leaveEarly: cLeaveEarly,
-                absentHours: cAbsentHours, 
-                lateHours: cLateHours, 
-                leaveEarlyHours: cLeaveEarlyHours,
+                absent: loss.absentCount, 
+                late: loss.lateCount, 
+                leaveEarly: loss.leaveCount,
+                absentHours: loss.absentHours, 
+                lateHours: loss.lateHours, 
+                leaveEarlyHours: loss.leaveHours,
                 totalClasses: cTotalClasses 
             };
 
-            globalAbsent += cAbsent;
-            globalLate += cLate;
+            globalAbsent += loss.absentCount;
+            globalLate += loss.lateCount;
             globalPresent += cPresent;
-            globalLeaveEarly += cLeaveEarly;
-            globalAbsentHours += cAbsentHours;
-            globalLateHours += cLateHours;
-            globalLeaveEarlyHours += cLeaveEarlyHours;
+            globalLeaveEarly += loss.leaveCount;
+            globalAbsentHours += loss.absentHours;
+            globalLateHours += loss.lateHours;
+            globalLeaveEarlyHours += loss.leaveHours;
 
             // Remarks
             const cRems = sRemarks.filter(r => r.courseId === c.id);
@@ -1721,7 +1710,7 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
     });
 
     const firstSlot = group.scheduleSlots?.[0];
-    const periodName = firstSlot?.period?.name || null;
+    const periodName = currentSchedule.schedule?.name || firstSlot?.period?.name || null;
 
     return {
         groupId: group.id,
@@ -1733,8 +1722,8 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
         environment: group.environment?.name,
         startTime: firstSlot?.startTime || null,
         endTime: firstSlot?.endTime || null,
-        startDate: group.startDate,
-        endDate: group.endDate,
+        startDate: currentSchedule.startDateISO || (group.startDate ? new Date(group.startDate).toISOString() : null),
+        endDate: currentSchedule.endDateISO || (group.endDate ? new Date(group.endDate).toISOString() : null),
         students: {
             total: totalStudents,
             active: activeStudents,
@@ -1744,12 +1733,19 @@ export async function getComprehensiveGroupAnalyticsAction(groupId: string) {
         attendances,
         remarks,
         coursesStats,
-        coursesList: group.courses.map(c => ({ 
-            id: c.id, 
-            title: c.title,
-            teacherName: c.teacher?.name || "No asignado",
-            schedules: c.schedules || []
-        }))
+        coursesList: group.courses.map(c => {
+            const courseSched = (c.academicSchedule?.startDate && isScheduleCurrent(c.academicSchedule.startDate, c.academicSchedule.endDate))
+                ? c.academicSchedule
+                : currentSchedule.schedule;
+            return {
+                id: c.id, 
+                title: c.title,
+                teacherName: c.teacher?.name || "No asignado",
+                schedules: c.schedules?.map((s: any) => ({ dayOfWeek: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime })) || [],
+                startDate: courseSched?.startDate ? new Date(courseSched.startDate).toISOString() : (currentSchedule.startDateISO || null),
+                endDate: courseSched?.endDate ? new Date(courseSched.endDate).toISOString() : (currentSchedule.endDateISO || null)
+            };
+        })
     };
 }
 

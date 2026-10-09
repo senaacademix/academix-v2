@@ -6,8 +6,9 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
-import { isDateInColombianWeek, parseDateStringToUTCMidday } from "@/lib/dateUtils";
+import { isDateInColombianWeek, parseDateStringToUTCMidday, isScheduleCurrent, toCalendarYMD } from "@/lib/dateUtils";
 import { calculateStudentAttendanceLoss } from "@/lib/gradePenaltyUtils";
+import { resolveCurrentAcademicSchedule } from "@/lib/academicScheduleResolver";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
@@ -152,7 +153,8 @@ export async function resetStudentPassword(studentId: string) {
                     AND: {
                         OR: [
                             { teachers: { some: { id: caller.id } } },
-                            { courses: { some: { teacherId: caller.id } } }
+                            { courses: { some: { teacherId: caller.id } } },
+                            { courses: { some: { schedules: { some: { teacherId: caller.id } } } } }
                         ]
                     }
                 }
@@ -337,11 +339,41 @@ export async function getGroupAttendanceHistory(groupId: string) {
             where: {
                 courseId: { in: courseIds }
             },
-            include: {
-                course: true,
+            select: {
+                id: true,
+                date: true,
+                status: true,
+                arrivalTime: true,
+                departureTime: true,
+                justification: true,
+                justificationUrl: true,
+                courseId: true,
+                userId: true,
+                course: {
+                    select: {
+                        id: true,
+                        title: true,
+                        academicSchedule: {
+                            select: {
+                                id: true,
+                                name: true,
+                                startDate: true,
+                                endDate: true
+                            }
+                        }
+                    }
+                },
                 user: {
-                    include: {
-                        profile: true
+                    select: {
+                        id: true,
+                        name: true,
+                        profile: {
+                            select: {
+                                identificacion: true,
+                                nombres: true,
+                                apellido: true
+                            }
+                        }
                     }
                 }
             },
@@ -413,6 +445,12 @@ export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: strin
         include: {
             program: true,
             environment: true,
+            scheduleSlots: {
+                include: {
+                    period: true,
+                    academicSchedule: true
+                }
+            },
             students: {
                 where: isPrivileged ? {} : { banned: { not: true } },
                 select: { id: true, name: true, banned: true, profile: { select: { identificacion: true, novedad: true, novedadColor: true } } }
@@ -422,6 +460,7 @@ export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: strin
                     id: true,
                     title: true,
                     teacherId: true,
+                    teacher: { select: { name: true } },
                     schedules: true,
                     academicSchedule: true,
                     activities: {
@@ -438,6 +477,14 @@ export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: strin
 
     if (!group) throw new Error("Grupo no encontrado");
 
+    // Resolver horario académico vigente actual para enmarcar la analítica
+    const currentSchedule = await resolveCurrentAcademicSchedule({
+        groupId: group.id,
+        programId: group.programId,
+        groupSlots: group.scheduleSlots,
+        courseSchedules: group.courses
+    });
+
     // Filter courses: teachers only see their own courses, admins/gestores/observers see all
     const coursesTaught = isPrivileged
         ? group.courses
@@ -445,15 +492,31 @@ export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: strin
 
     const courseIds = coursesTaught.map(c => c.id);
 
-    // Fetch attendances
+    // Fetch attendances restringidas estrictamente al horario académico actual
     const attendances = await prisma.attendance.findMany({
-        where: { courseId: { in: courseIds } },
+        where: {
+            courseId: { in: courseIds },
+            ...(currentSchedule.startDateUTC && currentSchedule.endDateUTC ? {
+                date: {
+                    gte: currentSchedule.startDateUTC,
+                    lte: currentSchedule.endDateUTC
+                }
+            } : {})
+        },
         select: { status: true, date: true, userId: true, courseId: true, arrivalTime: true, departureTime: true }
     });
 
-    // Fetch remarks
+    // Fetch remarks restringidas estrictamente al horario académico actual
     const remarks = await prisma.remark.findMany({
-        where: { courseId: { in: courseIds } },
+        where: {
+            courseId: { in: courseIds },
+            ...(currentSchedule.startDateUTC && currentSchedule.endDateUTC ? {
+                date: {
+                    gte: currentSchedule.startDateUTC,
+                    lte: currentSchedule.endDateUTC
+                }
+            } : {})
+        },
         select: {
             id: true,
             type: true,
@@ -535,8 +598,15 @@ export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: strin
             });
             courseGrades[c.id] = cCount > 0 ? Number((cScore / cCount).toFixed(2)) : 0;
 
-            // Attendances using accurate loss calculator
-            const loss = calculateStudentAttendanceLoss(student.id, c.id, attendances as any, c as any, group as any);
+            // Attendances using accurate loss calculator framed by current schedule
+            const loss = calculateStudentAttendanceLoss(
+                student.id,
+                c.id,
+                attendances as any,
+                c as any,
+                group as any,
+                { startDate: currentSchedule.startDate, endDate: currentSchedule.endDate }
+            );
             const cDates = new Set(attendances.filter(a => a.courseId === c.id).map(a => new Date(a.date).toISOString().split('T')[0]));
             const cPresent = Math.max(0, cDates.size - loss.absentCount - loss.lateCount - loss.leaveCount);
             
@@ -589,22 +659,35 @@ export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: strin
         };
     }).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
-    const coursesList = coursesTaught.map(c => ({
-        id: c.id,
-        title: c.title,
-        schedules: c.schedules?.map((s: any) => ({ dayOfWeek: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime }))
-    }));
+    const firstSlot = group.scheduleSlots?.[0];
+
+    const coursesList = coursesTaught.map(c => {
+        const courseSched = (c.academicSchedule?.startDate && isScheduleCurrent(c.academicSchedule.startDate, c.academicSchedule.endDate))
+            ? c.academicSchedule
+            : currentSchedule.schedule;
+        return {
+            id: c.id,
+            title: c.title,
+            teacherName: c.teacher?.name || "No asignado",
+            schedules: c.schedules?.map((s: any) => ({ dayOfWeek: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime })),
+            startDate: courseSched?.startDate ? new Date(courseSched.startDate).toISOString() : (currentSchedule.startDateISO || null),
+            endDate: courseSched?.endDate ? new Date(courseSched.endDate).toISOString() : (currentSchedule.endDateISO || null)
+        };
+    });
 
     return {
+        groupId: group.id,
         studentMetrics,
         coursesList,
         groupName: group.name,
         groupDescription: group.description,
         program: group.program?.name,
-        period: null,
+        period: currentSchedule.schedule?.name || firstSlot?.period?.name || null,
         environment: group.environment?.name,
-        startDate: group.startDate,
-        endDate: group.endDate,
+        startTime: firstSlot?.startTime || null,
+        endTime: firstSlot?.endTime || null,
+        startDate: currentSchedule.startDateISO || (group.startDate ? new Date(group.startDate).toISOString() : null),
+        endDate: currentSchedule.endDateISO || (group.endDate ? new Date(group.endDate).toISOString() : null),
         students: {
             total: totalStudents,
             active: activeStudents,

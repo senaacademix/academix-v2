@@ -263,6 +263,7 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
       where: {
         OR: [
           { teacherId: userId },
+          { schedules: { some: { teacherId: userId } } },
           { group: { teachers: { some: { id: userId } } } }
         ]
       },
@@ -277,7 +278,11 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
 
     const groupsTaught = await prisma.group.findMany({
       where: {
-        OR: [{ teachers: { some: { id: userId } } }, { courses: { some: { teacherId: userId } } }],
+        OR: [
+          { teachers: { some: { id: userId } } },
+          { courses: { some: { teacherId: userId } } },
+          { courses: { some: { schedules: { some: { teacherId: userId } } } } }
+        ],
       },
       include: {
         students: true,

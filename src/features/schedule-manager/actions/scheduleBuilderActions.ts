@@ -762,6 +762,22 @@ export async function assignGroupClassScheduleAction(data: {
       resultSlotId = newScheduleSlot.id;
     }
 
+    // 5. Vincular al docente en group.teachers para asegurar acceso a la ficha en cualquier programa/línea
+    if (resolvedTeacherId) {
+      try {
+        await prisma.group.update({
+          where: { id: data.groupId },
+          data: {
+            teachers: {
+              connect: { id: resolvedTeacherId }
+            }
+          }
+        });
+      } catch {
+        // Ignorar si ya está vinculado
+      }
+    }
+
     // Log de auditoría
     const { auditLogger } = await import("@/features/admin/services/auditLogger");
     await auditLogger.log({
@@ -780,6 +796,8 @@ export async function assignGroupClassScheduleAction(data: {
     revalidatePath("/dashboard/admin/schedules");
     revalidatePath(`/dashboard/gestor/schedules/${data.scheduleId}`);
     revalidatePath("/dashboard/gestor/schedules");
+    revalidatePath("/dashboard/teacher");
+    revalidatePath("/dashboard/teacher/schedule");
 
     return { success: true, courseScheduleId: resultSlotId, courseId: groupCourse.id };
   } catch (err: any) {

@@ -272,6 +272,7 @@ export const courseService = {
             where: {
                 OR: [
                     { teacherId: teacherId },
+                    { schedules: { some: { teacherId: teacherId } } },
                     {
                         group: {
                             teachers: { some: { id: teacherId } }
@@ -297,7 +298,8 @@ export const courseService = {
             where: {
                 OR: [
                     { teachers: { some: { id: teacherId } } },
-                    { courses: { some: { teacherId: teacherId } } }
+                    { courses: { some: { teacherId: teacherId } } },
+                    { courses: { some: { schedules: { some: { teacherId: teacherId } } } } }
                 ]
             },
             orderBy: { createdAt: "desc" },
@@ -336,7 +338,16 @@ export const courseService = {
                 },
                 courses: {
                     where: {
-                        teacherId: teacherId
+                        OR: [
+                            { teacherId: teacherId },
+                            { schedules: { some: { teacherId: teacherId } } },
+                            {
+                                AND: [
+                                    { teacherId: null },
+                                    { group: { teachers: { some: { id: teacherId } } } }
+                                ]
+                            }
+                        ]
                     },
                     include: {
                         schedules: true,

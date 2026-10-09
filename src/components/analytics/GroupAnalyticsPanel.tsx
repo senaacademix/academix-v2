@@ -50,7 +50,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { getGroupImprovementPlans, deleteImprovementPlan } from "@/features/student/actions/improvementPlanActions";
-import { fromUTC } from "@/lib/dateUtils";
+import { fromUTC, toCalendarYMD, formatCalendarDate, getTodayColombianDate, parseDateStringToUTCMidday } from "@/lib/dateUtils";
 import {
   generateAndDownloadGroupPdf,
   GroupExportPayload,
@@ -76,19 +76,19 @@ interface GroupAnalyticsPanelProps {
         program?: string;
         period?: string;
         environment?: string;
-        startDate?: Date | null;
-        endDate?: Date | null;
+        startDate?: Date | string | null;
+        endDate?: Date | string | null;
         startTime?: string;
         endTime?: string;
         students: { total: number; active: number; banned: number };
         totalCourseClasses: number;
-        attendances: { status: string; date: Date; courseId: string }[];
+        attendances: { status: string; date: Date | string; courseId: string }[];
         remarks: {
             id: string;
             type: string;
             title: string;
             description: string;
-            date: Date;
+            date: Date | string;
             userId: string;
             courseId: string;
             course: { title: string };
@@ -96,7 +96,7 @@ interface GroupAnalyticsPanelProps {
             teacher: { name: string; profile: any };
         }[];
         coursesStats: { title: string; averageGrade: number; totalGrades: number }[];
-        coursesList?: { id: string; title: string; teacherName?: string; schedules?: { dayOfWeek: string }[] }[];
+        coursesList?: { id: string; title: string; teacherName?: string; schedules?: { dayOfWeek: string }[]; startDate?: string | Date | null; endDate?: string | Date | null }[];
         studentMetrics?: {
             id: string;
             name: string;
@@ -305,10 +305,10 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
         }));
 
         const startDateStr = analyticsData.startDate
-            ? format(fromUTC(new Date(analyticsData.startDate)), "dd/MM/yyyy", { locale: es })
+            ? formatCalendarDate(analyticsData.startDate, "dd/MM/yyyy")
             : undefined;
         const endDateStr = analyticsData.endDate
-            ? format(fromUTC(new Date(analyticsData.endDate)), "dd/MM/yyyy", { locale: es })
+            ? formatCalendarDate(analyticsData.endDate, "dd/MM/yyyy")
             : undefined;
 
         return {
@@ -316,8 +316,8 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
             program: analyticsData.program || "Programa no asignado",
             period: analyticsData.period || "Actual",
             environment: analyticsData.environment || "No asignado",
-            startDate: analyticsData.startDate ? new Date(analyticsData.startDate).toISOString() : undefined,
-            endDate: analyticsData.endDate ? new Date(analyticsData.endDate).toISOString() : undefined,
+            startDate: analyticsData.startDate ? (typeof analyticsData.startDate === 'string' ? analyticsData.startDate : analyticsData.startDate.toISOString()) : undefined,
+            endDate: analyticsData.endDate ? (typeof analyticsData.endDate === 'string' ? analyticsData.endDate : analyticsData.endDate.toISOString()) : undefined,
             startDateStr,
             endDateStr,
             startTime: analyticsData.startTime,
@@ -643,30 +643,34 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
         });
     }, [analyticsData, disciplineStudentFilter, disciplineTypeFilter, disciplineSearch]);
 
-    // Missing Attendance calculation per teacher
+    // Missing Attendance calculation per teacher strictly bounded by current academic schedule
     const missingAttendanceList = useMemo(() => {
         if (!analyticsData || !analyticsData.coursesList) return [];
 
         const list: { courseId: string; title: string; teacherName: string; missingDates: string[] }[] = [];
         
-        const rawStart = analyticsData.startDate ? new Date(analyticsData.startDate) : null;
-        const rawEnd = analyticsData.endDate ? new Date(analyticsData.endDate) : null;
+        // El horario actual delimita estrictamente el análisis
+        const scheduleStartYMD = analyticsData.startDate ? toCalendarYMD(analyticsData.startDate) : "";
+        const scheduleEndYMD = analyticsData.endDate ? toCalendarYMD(analyticsData.endDate) : "";
         
-        const today = new Date();
-        today.setHours(12, 0, 0, 0);
+        // Si no hay fecha de inicio de horario actual definida, no contemplamos fechas arbitrarias
+        if (!scheduleStartYMD) return [];
+
+        const todayYMD = getTodayColombianDate();
         
-        const start = rawStart && !isNaN(rawStart.getTime()) ? new Date(rawStart) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        start.setHours(12, 0, 0, 0);
-        
-        const end = rawEnd && !isNaN(rawEnd.getTime()) && rawEnd < today ? new Date(rawEnd) : today;
-        end.setHours(12, 0, 0, 0);
+        // El límite superior para clases sin registro es el mínimo entre hoy y el fin del horario actual
+        const effectiveLimitYMD = scheduleEndYMD && scheduleEndYMD < todayYMD ? scheduleEndYMD : todayYMD;
+
+        // Si el horario actual aún no ha iniciado respecto a la fecha límite
+        if (scheduleStartYMD > effectiveLimitYMD) return [];
 
         const dayOfWeekNames = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
 
         const recordedDatesMap = new Map<string, Set<string>>();
         (analyticsData.attendances || []).forEach(att => {
             if (!att.date) return;
-            const dStr = new Date(att.date).toISOString().split('T')[0];
+            const dStr = toCalendarYMD(att.date);
+            if (!dStr) return;
             if (!recordedDatesMap.has(att.courseId)) {
                 recordedDatesMap.set(att.courseId, new Set());
             }
@@ -681,22 +685,39 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                 ? scheduledDays 
                 : ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
 
+            // Rango de la materia acotado por el horario actual y por las fechas propias de la materia (si existen)
+            const courseStartYMD = course.startDate ? toCalendarYMD(course.startDate) : "";
+            const courseEndYMD = course.endDate ? toCalendarYMD(course.endDate) : "";
+
+            const actualStartYMD = courseStartYMD && courseStartYMD > scheduleStartYMD ? courseStartYMD : scheduleStartYMD;
+            
+            let actualEndYMD = effectiveLimitYMD;
+            if (courseEndYMD && courseEndYMD < actualEndYMD) {
+                actualEndYMD = courseEndYMD;
+            }
+
+            if (actualStartYMD > actualEndYMD) {
+                return;
+            }
+
             const missing: string[] = [];
-            const cur = new Date(start);
+            const cur = parseDateStringToUTCMidday(actualStartYMD);
+            const end = parseDateStringToUTCMidday(actualEndYMD);
 
             while (cur <= end) {
-                const jsDay = cur.getDay();
+                const jsDay = cur.getUTCDay();
                 const dayOfWeekName = dayOfWeekNames[jsDay];
                 
                 if (activeScheduledDays.includes(dayOfWeekName)) {
-                    const dateStr = cur.toISOString().split('T')[0];
+                    const dateStr = toCalendarYMD(cur);
                     const courseRecs = recordedDatesMap.get(course.id);
                     
                     if (!courseRecs || !courseRecs.has(dateStr)) {
-                        missing.push(cur.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+                        const [y, m, d] = dateStr.split("-");
+                        missing.push(`${d}/${m}/${y}`);
                     }
                 }
-                cur.setDate(cur.getDate() + 1);
+                cur.setUTCDate(cur.getUTCDate() + 1);
             }
 
             if (missing.length > 0) {
@@ -966,6 +987,17 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                     <Clock className="w-3 h-3 text-primary shrink-0" />
                                                     {analyticsData.startTime || "--:--"} - {analyticsData.endTime || "--:--"}
                                                 </span>
+                                            )}
+                                            {analyticsData.period && (
+                                                <Badge variant="outline" className="text-[11px] font-bold gap-1 text-primary border-primary/30 bg-primary/5 py-0.5">
+                                                    <Calendar className="w-3 h-3 text-primary shrink-0" />
+                                                    <span>{analyticsData.period}</span>
+                                                    {analyticsData.startDate && analyticsData.endDate && (
+                                                        <span className="text-muted-foreground font-normal ml-0.5">
+                                                            ({formatCalendarDate(analyticsData.startDate, "dd/MM/yy")} - {formatCalendarDate(analyticsData.endDate, "dd/MM/yy")})
+                                                        </span>
+                                                    )}
+                                                </Badge>
                                             )}
                                         </div>
 
@@ -1519,12 +1551,19 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                 {!isTeacherView && (
                                     <Card className="col-span-1 lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-800">
                                         <CardHeader className="pb-3">
-                                            <CardTitle className="flex items-center gap-2 text-base font-black">
-                                                <AlertCircle className="w-5 h-5 text-red-500" />
-                                                Seguimiento de Asistencia de Instructores (Clases sin Registro)
-                                            </CardTitle>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                <CardTitle className="flex items-center gap-2 text-base font-black">
+                                                    <AlertCircle className="w-5 h-5 text-red-500" />
+                                                    Seguimiento de Asistencia de Instructores (Clases sin Registro)
+                                                </CardTitle>
+                                                {analyticsData.period && (
+                                                    <Badge variant="outline" className="w-fit text-[10px] font-bold text-red-600 bg-red-50 border-red-200">
+                                                        Vigencia: {analyticsData.period}
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             <CardDescription>
-                                                Muestra los días en que cada instructor tenía clase programada pero no se registró asistencia de ningún aprendiz.
+                                                Muestra los días del horario actual en que cada instructor tenía clase programada pero no se registró asistencia de ningún aprendiz.
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>

@@ -18,7 +18,8 @@ export class ElectionService {
             where: {
                 OR: [
                     { teachers: { some: { id: teacherId } } },
-                    { courses: { some: { teacherId: teacherId } } }
+                    { courses: { some: { teacherId: teacherId } } },
+                    { courses: { some: { schedules: { some: { teacherId: teacherId } } } } }
                 ]
             },
             orderBy: { name: "asc" },
