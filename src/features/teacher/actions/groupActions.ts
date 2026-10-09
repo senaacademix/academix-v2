@@ -142,14 +142,21 @@ export async function resetStudentPassword(studentId: string) {
                 }
             });
 
-            const teachesStudentGroup = student.groupId
-                ? await prisma.group.findFirst({
-                    where: {
-                        id: student.groupId,
-                        teachers: { some: { id: caller.id } }
+            const teachesStudentGroup = await prisma.group.findFirst({
+                where: {
+                    OR: [
+                        ...(student.groupId ? [{ id: student.groupId }] : []),
+                        { students: { some: { id: studentId } } },
+                        { groupEnrollments: { some: { studentId: studentId } } }
+                    ],
+                    AND: {
+                        OR: [
+                            { teachers: { some: { id: caller.id } } },
+                            { courses: { some: { teacherId: caller.id } } }
+                        ]
                     }
-                })
-                : null;
+                }
+            });
 
             if (!teachesStudentCourse && !teachesStudentGroup) {
                 throw new Error("No autorizado: Solo puedes restablecer la contraseña de estudiantes asignados a tus materias o grupos");
