@@ -30,5 +30,6 @@ export {
 } from "@/features/admin/actions/adminActions";
 
 export { assignStudentToGroupAction } from "@/features/admin/actions/academicActions";
+export { getPendingAttendancesSummaryAction } from "@/features/admin/actions/pendingAttendanceActions";
 
 

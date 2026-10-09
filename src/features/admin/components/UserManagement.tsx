@@ -59,9 +59,10 @@ import {
     Search, Trash2, Eye, UserCog, Users as UsersIcon, UserPlus, ChevronLeft, ChevronRight,
     BookOpen, Calendar, MessageSquare, FileText, CheckCircle2, AlertCircle, AlertTriangle, X, GraduationCap,
     Key, RefreshCw, Bookmark, MoreVertical, Pencil, ArrowRightLeft, ShieldAlert, Loader2, History,
-    HelpCircle
+    HelpCircle, ClipboardList
 } from "lucide-react";
 import { toast } from "sonner";
+import { PendingAttendancesModal } from "@/features/admin/components/PendingAttendancesModal";
 import { updateUserRoleAction, deleteUserAction, createUserAction, toggleUserBanAction, getAllUsersAction, resetUserPasswordToDocAction, getComprehensiveGroupAnalyticsAction, getAllFilteredUserIdsAction, getUserEmailsAction, updateStudentNovedadAction, updateStudentAction, assignStudentToGroupAction } from "@/app/admin-actions";
 import { StudentGroupHistoryModal } from "@/features/student/components/StudentGroupHistoryModal";
 import { format } from "date-fns";
@@ -232,6 +233,7 @@ export function UserManagement({
     const [fullAnalyticsData, setFullAnalyticsData] = useState<any>(null);
     const [loadingGroupAnalytics, setLoadingGroupAnalytics] = useState(false);
     const [showGroupAnalytics, setShowGroupAnalytics] = useState(false);
+    const [showPendingAttendances, setShowPendingAttendances] = useState(false);
 
     const [isPending, startTransition] = useTransition();
 
@@ -848,6 +850,16 @@ export function UserManagement({
                         >
                             {showGroupAnalytics ? "Ocultar Analítica" : "Ver Analítica de Grupo"}
                         </Button>
+
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setShowPendingAttendances(true)}
+                            className="shrink-0 gap-1.5 border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50 font-medium"
+                            title="Ver instructores con inasistencias o asistencias pendientes por diligenciar"
+                        >
+                            <ClipboardList className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            <span>Asistencias por Diligenciar</span>
+                        </Button>
                     </div>
 
                     {/* Fichas Buttons Bar */}
@@ -900,6 +912,13 @@ export function UserManagement({
                 onOpenChange={setShowGroupAnalytics}
                 isLoading={loadingGroupAnalytics}
                 analyticsData={fullAnalyticsData}
+            />
+
+            {/* Pending Attendances Modal */}
+            <PendingAttendancesModal
+                open={showPendingAttendances}
+                onOpenChange={setShowPendingAttendances}
+                programId={programFilter}
             />
 
             {/* Users Table */}
