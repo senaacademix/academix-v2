@@ -9,14 +9,13 @@ import {
     EvidenceHistoryItem,
     ResubmissionState,
 } from "@/features/student/utils/improvementPlanHistory";
+import { isDateExpired, parseDateStringToUTCMidday } from "@/lib/dateUtils";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
 }
 
 function processExpiredPlans(plans: any[]) {
-    const now = new Date();
-    
     // 1. Revert automatic grades (0.0) for plans where the teacher countersign is still missing
     const toRevertIds = plans
         .filter(p => p.finalGrade === 0 && p.planScore === 0 && !p.teacherSignedDocUrl)
@@ -34,7 +33,7 @@ function processExpiredPlans(plans: any[]) {
 
     // 2. Find plans to auto-grade to 0.0
     const toUpdateIds = plans
-        .filter(p => now > new Date(p.endDate) && !!p.teacherSignedDocUrl && !p.evidenceUrl && p.finalGrade === null)
+        .filter(p => isDateExpired(p.endDate) && !!p.teacherSignedDocUrl && !p.evidenceUrl && p.finalGrade === null)
         .map(p => p.id);
 
     if (toUpdateIds.length > 0) {
@@ -55,7 +54,7 @@ function processExpiredPlans(plans: any[]) {
                 planScore: null
             };
         }
-        if (now > new Date(p.endDate) && !!p.teacherSignedDocUrl && !p.evidenceUrl && p.finalGrade === null) {
+        if (isDateExpired(p.endDate) && !!p.teacherSignedDocUrl && !p.evidenceUrl && p.finalGrade === null) {
             return {
                 ...p,
                 finalGrade: 0.0,
@@ -213,8 +212,8 @@ export async function upsertImprovementPlan(data: {
                     teacherDocUrl: teacherDocUrl || null,
                     signedDocUrl: signedDocUrl || null,
                     teacherSignedDocUrl: data.teacherSignedDocUrl || null,
-                    startDate: new Date(startDate),
-                    endDate: new Date(endDate),
+                    startDate: parseDateStringToUTCMidday(startDate),
+                    endDate: parseDateStringToUTCMidday(endDate),
                     observations: finalObservations,
                     planScore: planScore !== undefined ? planScore : null,
                     finalGrade: finalGrade !== undefined ? finalGrade : null,
@@ -235,8 +234,8 @@ export async function upsertImprovementPlan(data: {
                     teacherDocUrl: teacherDocUrl || null,
                     signedDocUrl: signedDocUrl || null,
                     teacherSignedDocUrl: data.teacherSignedDocUrl || null,
-                    startDate: new Date(startDate),
-                    endDate: new Date(endDate),
+                    startDate: parseDateStringToUTCMidday(startDate),
+                    endDate: parseDateStringToUTCMidday(endDate),
                     observations: observations || null,
                     planScore: planScore !== undefined ? planScore : null,
                     finalGrade: finalGrade !== undefined ? finalGrade : null,
@@ -608,7 +607,7 @@ export async function requestEvidenceResubmission(
             throw new Error("No se puede solicitar reentrega si aún no hay evidencias cargadas");
         }
 
-        const parsedEndDate = new Date(newEndDate);
+        const parsedEndDate = parseDateStringToUTCMidday(newEndDate);
         if (isNaN(parsedEndDate.getTime())) {
             throw new Error("Fecha extendida de entrega inválida");
         }

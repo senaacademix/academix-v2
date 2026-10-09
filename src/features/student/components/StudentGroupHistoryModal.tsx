@@ -38,6 +38,7 @@ import {
 } from "../actions/studentGroupHistoryActions";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatCalendarDate } from "@/lib/dateUtils";
 
 interface StudentGroupHistoryModalProps {
   open: boolean;
@@ -170,7 +171,7 @@ export function StudentGroupHistoryModal({
   const formatDateStr = (dStr?: string | null) => {
     if (!dStr) return "Presente";
     try {
-      return format(new Date(dStr), "d 'de' MMMM, yyyy", { locale: es });
+      return formatCalendarDate(dStr, "d 'de' MMMM, yyyy");
     } catch {
       return dStr;
     }

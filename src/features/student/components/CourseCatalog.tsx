@@ -6,7 +6,7 @@ import { enrollStudentAction } from "@/features/student/actions/enrollmentAction
 import { BookOpen, User, Lock, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatName } from "@/lib/utils";
-import { formatCalendarDate } from "@/lib/dateUtils";
+import { formatCalendarDate, isDateExpired } from "@/lib/dateUtils";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import React from "react";
 
@@ -62,7 +62,7 @@ export function CourseCatalog({ courses, pendingEnrollments = [] }: { courses: a
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-12 w-full max-w-7xl mx-auto">
             {courses.map((course, idx) => {
                 const isPending = pendingEnrollments.includes(course.id);
-                const isRegistrationClosed = !!(course.group?.endDate && new Date() > new Date(course.group.endDate));
+                const isRegistrationClosed = isDateExpired(course.group?.endDate);
 
                 return (
                     <motion.div 

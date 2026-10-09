@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { formatCalendarDate } from "@/lib/dateUtils";
+import { formatColombianDateTime, formatCalendarDate } from "@/lib/dateUtils";
 import { EvidenceHistoryItem, ResubmissionState } from "../utils/improvementPlanHistory";
 import { ExternalLink, History, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Clock, MessageSquareQuote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -88,9 +88,9 @@ export function PlanEvidenceHistoryList({
                                             Entrega #{item.version} {isLatest && "(Actual)"}
                                         </Badge>
 
-                                        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                        <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
                                             <Clock className="w-3 h-3" />
-                                            {formatCalendarDate(item.submittedAt, "dd/MM/yyyy HH:mm")}
+                                            {formatColombianDateTime(item.submittedAt)}
                                         </span>
                                     </div>
 
@@ -135,7 +135,7 @@ export function PlanEvidenceHistoryList({
                                             </span>
                                             {item.requestedAt && (
                                                 <span className="text-[10px] font-normal text-amber-700/80 dark:text-amber-400">
-                                                    {formatCalendarDate(item.requestedAt, "dd/MM/yyyy HH:mm")}
+                                                    {formatColombianDateTime(item.requestedAt)}
                                                 </span>
                                             )}
                                         </div>
@@ -144,7 +144,7 @@ export function PlanEvidenceHistoryList({
                                         </p>
                                         {item.extendedEndDate && (
                                             <div className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold pt-1 border-t border-amber-200/50">
-                                                Fecha límite extendida al: <span className="font-bold underline">{formatCalendarDate(item.extendedEndDate, "dd/MM/yyyy")}</span>
+                                                Fecha límite extendida al: <span className="font-bold underline">{formatCalendarDate(item.extendedEndDate)}</span>
                                             </div>
                                         )}
                                     </div>

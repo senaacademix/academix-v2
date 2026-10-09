@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatCalendarDate } from "@/lib/dateUtils";
 
 import { SharedContentList } from './SharedContentList';
 import { StudentRemarks } from "./StudentRemarks";
@@ -102,7 +103,7 @@ export function MyEnrollments({
                                         <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter">Inicio</span>
                                         <div className="flex items-center gap-1 mt-0.5 text-[10px] font-bold text-foreground/80">
                                             <Calendar className="h-2.5 w-2.5 text-primary" />
-                                            {enrollment.course.group?.startDate ? format(new Date(enrollment.course.group.startDate), "dd/MM/yy", { locale: es }) : "---"}
+                                            {enrollment.course.group?.startDate ? formatCalendarDate(enrollment.course.group.startDate, "dd/MM/yy") : "---"}
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-center p-2 rounded-xl bg-muted/20 border border-border/10">
@@ -116,7 +117,7 @@ export function MyEnrollments({
                                 
                                 <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 justify-center">
                                     <Clock className="h-2.5 w-2.5" />
-                                    Finaliza: {enrollment.course.group?.endDate ? format(new Date(enrollment.course.group.endDate), "dd MMM yyyy", { locale: es }) : "INDETERMINADO"}
+                                    Finaliza: {enrollment.course.group?.endDate ? formatCalendarDate(enrollment.course.group.endDate, "dd MMM yyyy") : "INDETERMINADO"}
                                 </div>
                             </CardContent>
 

@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatCalendarDate, getTodayColombianDate } from "@/lib/dateUtils";
 
 export interface StudentExportData {
   student: {
@@ -43,7 +44,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
   wsHistory.addRow([`Aprendiz: ${studentName}`]);
   wsHistory.addRow([`Identificación: ${data.student.identificacion} | Email: ${data.student.email}`]);
   wsHistory.addRow([`Ficha Activa Actual: ${data.student.currentGroup}`]);
-  wsHistory.addRow([`Fecha de Generación: ${format(new Date(), "d 'de' MMMM, yyyy", { locale: es })}`]);
+  wsHistory.addRow([`Fecha de Generación: ${formatCalendarDate(getTodayColombianDate(), "d 'de' MMMM, yyyy")}`]);
   wsHistory.addRow([]);
 
   const historyHeaders = [
@@ -71,8 +72,8 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
       g.groupName,
       g.programName,
       g.isCurrent ? "FICHA ACTIVA ACTUAL" : "TRASLADADO / HISTÓRICO",
-      g.joinedAt ? format(new Date(g.joinedAt), "dd/MM/yyyy") : "S/I",
-      g.leftAt ? format(new Date(g.leftAt), "dd/MM/yyyy") : "Presente",
+      g.joinedAt ? formatCalendarDate(g.joinedAt, "dd/MM/yyyy") : "S/I",
+      g.leftAt ? formatCalendarDate(g.leftAt, "dd/MM/yyyy") : "Presente",
       g.averageGrade ? g.averageGrade.toFixed(2) : "N/A",
       g.attendanceRate !== undefined ? `${g.attendanceRate.toFixed(1)}%` : "100%",
       g.remarksCount || 0,
@@ -97,7 +98,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
   data.attendances.forEach((att) => {
     wsAtt.addRow([
       att.course?.group?.name || att.course?.groupId || "General",
-      att.date ? format(new Date(att.date), "dd/MM/yyyy") : "S/I",
+      att.date ? formatCalendarDate(att.date, "dd/MM/yyyy") : "S/I",
       att.course?.title || "Materia no especificada",
       att.status === "ABSENT" ? "INASISTENCIA" : att.status === "LATE" ? "LLEGADA TARDE" : att.status,
       att.justification ? "SÍ" : "NO",
@@ -151,7 +152,7 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
   data.remarks.forEach((r) => {
     wsRemarks.addRow([
       r.course?.group?.name || r.course?.groupId || "General",
-      r.date ? format(new Date(r.date), "dd/MM/yyyy") : "S/I",
+      r.date ? formatCalendarDate(r.date, "dd/MM/yyyy") : "S/I",
       r.type === "ATTENTION" ? "Llamado de Atención" : r.type,
       r.teacher?.name || "Instructor",
       r.course?.title || "Materia",
@@ -175,8 +176,8 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
       p.group?.name || "General",
       p.planNumber,
       p.teacher?.name || "Instructor",
-      p.startDate ? format(new Date(p.startDate), "dd/MM/yyyy") : "S/I",
-      p.endDate ? format(new Date(p.endDate), "dd/MM/yyyy") : "S/I",
+      p.startDate ? formatCalendarDate(p.startDate, "dd/MM/yyyy") : "S/I",
+      p.endDate ? formatCalendarDate(p.endDate, "dd/MM/yyyy") : "S/I",
       p.finalGrade !== undefined && p.finalGrade !== null ? p.finalGrade.toFixed(1) : "Sin calificar"
     ]);
   });
@@ -216,7 +217,7 @@ export function exportStudentRecordPDF(data: StudentExportData) {
   doc.setTextColor(100, 116, 139);
   doc.text(`Identificación: ${data.student.identificacion} | Email: ${data.student.email}`, 14, 30);
   doc.text(`Ficha Activa Actual: ${data.student.currentGroup}`, 14, 35);
-  doc.text(`Fecha de Emisión: ${format(new Date(), "d 'de' MMMM, yyyy", { locale: es })}`, 14, 40);
+  doc.text(`Fecha de Emisión: ${formatCalendarDate(getTodayColombianDate(), "d 'de' MMMM, yyyy")}`, 14, 40);
 
   let currentY = 46;
 
@@ -230,8 +231,8 @@ export function exportStudentRecordPDF(data: StudentExportData) {
     g.groupName,
     g.programName,
     g.isCurrent ? "ACTIVA" : "TRASLADADO",
-    g.joinedAt ? format(new Date(g.joinedAt), "dd/MM/yyyy") : "S/I",
-    g.leftAt ? format(new Date(g.leftAt), "dd/MM/yyyy") : "Presente",
+    g.joinedAt ? formatCalendarDate(g.joinedAt, "dd/MM/yyyy") : "S/I",
+    g.leftAt ? formatCalendarDate(g.leftAt, "dd/MM/yyyy") : "Presente",
     g.averageGrade ? g.averageGrade.toFixed(2) : "N/A",
     g.attendanceRate !== undefined ? `${g.attendanceRate.toFixed(1)}%` : "100%"
   ]);
@@ -294,7 +295,7 @@ export function exportStudentRecordPDF(data: StudentExportData) {
 
   const remarkRows = data.remarks.map((r) => [
     r.course?.group?.name || r.course?.groupId || "General",
-    r.date ? format(new Date(r.date), "dd/MM/yyyy") : "S/I",
+    r.date ? formatCalendarDate(r.date, "dd/MM/yyyy") : "S/I",
     r.type === "ATTENTION" ? "Llamado de Atención" : r.type,
     r.teacher?.name || "Instructor",
     r.content || "-"

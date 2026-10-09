@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatName, cn } from "@/lib/utils";
-import { fromUTC } from "@/lib/dateUtils";
+import { fromUTC, toCalendarYMD, isDateExpired, formatCalendarDate } from "@/lib/dateUtils";
 import { getStudentRecords, justifyAttendanceAction, markRemarkViewed, getStudentDocumentation, deleteJustificationAction } from "../actions/studentActions";
 import { getStudentGrades, submitStudentSubmissionLink } from "@/features/teacher/actions/gradeActions";
 import { getStudentGroupHistoryAction } from "../actions/studentGroupHistoryActions";
@@ -679,8 +679,29 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         return teacher.name || "Sin asignar";
     };
 
-    const rawAttendances = records?.attendances || [];
-    const rawRemarks = records?.remarks || [];
+    const rawAttendances = useMemo(() => {
+        const list = records?.attendances || [];
+        if (!records?.scheduleDates?.startDate || !records?.scheduleDates?.endDate) return list;
+        const startYMD = toCalendarYMD(records.scheduleDates.startDate);
+        const endYMD = toCalendarYMD(records.scheduleDates.endDate);
+        if (!startYMD || !endYMD) return list;
+        return list.filter((a: any) => {
+            const attYMD = toCalendarYMD(a.date);
+            return attYMD ? attYMD >= startYMD && attYMD <= endYMD : true;
+        });
+    }, [records?.attendances, records?.scheduleDates]);
+
+    const rawRemarks = useMemo(() => {
+        const list = records?.remarks || [];
+        if (!records?.scheduleDates?.startDate || !records?.scheduleDates?.endDate) return list;
+        const startYMD = toCalendarYMD(records.scheduleDates.startDate);
+        const endYMD = toCalendarYMD(records.scheduleDates.endDate);
+        if (!startYMD || !endYMD) return list;
+        return list.filter((r: any) => {
+            const remYMD = toCalendarYMD(r.date);
+            return remYMD ? remYMD >= startYMD && remYMD <= endYMD : true;
+        });
+    }, [records?.remarks, records?.scheduleDates]);
 
     const attendances = useMemo(() => {
         if (selectedGroupId === "ALL") return rawAttendances;
@@ -2321,9 +2342,12 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                     const nowMs = Date.now();
                                                     const startMs = fromUTC(plan.startDate).getTime();
                                                     const endMs = fromUTC(plan.endDate).getTime();
-                                                    const datePct = Math.min(100, Math.max(0, Math.round(((nowMs - startMs) / (endMs - startMs)) * 100)));
-                                                    const daysTotal = Math.max(1, Math.round((endMs - startMs) / 86400000));
-                                                    const daysPassed = Math.max(0, Math.round((nowMs - startMs) / 86400000));
+                                                    const totalDuration = endMs - startMs;
+                                                    const datePct = totalDuration > 0
+                                                        ? Math.min(100, Math.max(0, Math.round(((nowMs - startMs) / totalDuration) * 100)))
+                                                        : (nowMs >= endMs ? 100 : 0);
+                                                    const daysTotal = Math.max(1, Math.round(Math.max(0, totalDuration) / 86400000));
+                                                    const daysPassed = Math.max(0, Math.round(Math.max(0, nowMs - startMs) / 86400000));
 
                                                     const steps = [
                                                          { 
@@ -2643,7 +2667,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                             ? isResubmissionRequested
                                                                                 ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200"
                                                                                 : "bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-200/80"
-                                                                            : new Date() > fromUTC(plan.endDate)
+                                                                            : isDateExpired(plan.endDate)
                                                                                 ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200"
                                                                                 : "bg-muted/50 border-muted"
                                                                 }`}>
@@ -2664,7 +2688,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                                         Evidencias recibidas. En espera de evaluación y calificación por parte del instructor.
                                                                                     </p>
                                                                                 )
-                                                                            ) : new Date() > fromUTC(plan.endDate) ? (
+                                                                            ) : isDateExpired(plan.endDate) ? (
                                                                                 <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
                                                                                     Fecha límite finalizada sin evidencias cargadas. Esperando asignación de calificación.
                                                                                 </p>

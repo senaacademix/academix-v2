@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { populateCoursesFallbackDescriptions } from "@/features/teacher/services/courseService";
-import { isScheduleCurrent } from "@/lib/dateUtils";
+import { isScheduleCurrent, toCalendarYMD } from "@/lib/dateUtils";
 
 
 async function getSession() {
@@ -26,42 +26,7 @@ export async function getStudentRecords(targetStudentId?: string) {
         studentId = targetStudentId;
     }
 
-    // Fetch Attendance
-    const attendances = await prisma.attendance.findMany({
-        where: { userId: studentId, status: { not: "PRESENT" } },
-        include: {
-            course: {
-                select: {
-                    id: true,
-                    title: true,
-                    groupId: true,
-                    group: { select: { id: true, name: true } },
-                    teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
-                    schedules: { orderBy: { dayOfWeek: 'asc' } },
-                }
-            },
-        },
-        orderBy: { date: "desc" },
-    });
-
-    // Fetch Remarks
-    const remarks = await prisma.remark.findMany({
-        where: { userId: studentId },
-        include: {
-            course: {
-                select: {
-                    id: true,
-                    title: true,
-                    groupId: true,
-                    group: { select: { id: true, name: true } },
-                    teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
-                }
-            },
-            teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } }
-        },
-        orderBy: { date: "desc" },
-    });
-
+    // 1. Obtener información del usuario, ficha y horario académico efectivo
     const user = await prisma.user.findUnique({
         where: { id: studentId },
         select: {
@@ -96,7 +61,8 @@ export async function getStudentRecords(targetStudentId?: string) {
                                     name: true,
                                     startDate: true,
                                     endDate: true,
-                                    isActive: true
+                                    isActive: true,
+                                    isPublished: true,
                                 }
                             }
                         }
@@ -106,23 +72,28 @@ export async function getStudentRecords(targetStudentId?: string) {
         }
     });
 
-    const groupSlotSchedule = user?.group?.scheduleSlots?.find((slot: any) =>
-        slot.academicSchedule && (
-            isScheduleCurrent(slot.academicSchedule.startDate, slot.academicSchedule.endDate) ||
-            slot.academicSchedule.isActive
-        )
-    )?.academicSchedule || user?.group?.scheduleSlots?.[0]?.academicSchedule;
+    const slotSchedules = (user?.group?.scheduleSlots || [])
+        .map((slot: any) => slot.academicSchedule)
+        .filter((s: any): s is NonNullable<typeof s> => !!s);
 
-    let effectiveSchedule = groupSlotSchedule;
+    let effectiveSchedule =
+        slotSchedules.find((s) => isScheduleCurrent(s.startDate, s.endDate)) ||
+        slotSchedules.find((s) => s.isActive) ||
+        (slotSchedules.length > 0
+            ? [...slotSchedules].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
+            : null);
+
     if (!effectiveSchedule) {
         const allSchedules = await prisma.academicSchedule.findMany({
+            where: { isPublished: true },
             orderBy: { startDate: "desc" },
-            select: { id: true, name: true, startDate: true, endDate: true, isActive: true }
+            select: { id: true, name: true, startDate: true, endDate: true, isActive: true, isPublished: true }
         });
-        effectiveSchedule = allSchedules.find(s => isScheduleCurrent(s.startDate, s.endDate))
-            || allSchedules.find(s => s.isActive)
-            || allSchedules[0]
-            || null;
+        effectiveSchedule =
+            allSchedules.find(s => isScheduleCurrent(s.startDate, s.endDate)) ||
+            allSchedules.find(s => s.isActive) ||
+            allSchedules[0] ||
+            null;
     }
 
     const resolvedScheduleDates = effectiveSchedule
@@ -130,6 +101,69 @@ export async function getStudentRecords(targetStudentId?: string) {
         : (user?.group?.startDate && user?.group?.endDate)
         ? { startDate: user.group.startDate, endDate: user.group.endDate }
         : (user?.group?.program?.startDate ? { startDate: user.group.program.startDate, endDate: user.group.program.endDate } : null);
+
+    // 2. Filtrar inasistencias y observaciones estrictamente dentro del rango del horario actual
+    const attendanceWhere: any = {
+        userId: studentId,
+        status: { not: "PRESENT" },
+    };
+
+    const remarksWhere: any = {
+        userId: studentId,
+    };
+
+    if (resolvedScheduleDates?.startDate && resolvedScheduleDates?.endDate) {
+        const startYMD = toCalendarYMD(resolvedScheduleDates.startDate);
+        const endYMD = toCalendarYMD(resolvedScheduleDates.endDate);
+        if (startYMD && endYMD) {
+            const startDay = new Date(`${startYMD}T00:00:00.000Z`);
+            const endDay = new Date(`${endYMD}T23:59:59.999Z`);
+            attendanceWhere.date = {
+                gte: startDay,
+                lte: endDay,
+            };
+            remarksWhere.date = {
+                gte: startDay,
+                lte: endDay,
+            };
+        }
+    }
+
+    // Fetch Attendance
+    const attendances = await prisma.attendance.findMany({
+        where: attendanceWhere,
+        include: {
+            course: {
+                select: {
+                    id: true,
+                    title: true,
+                    groupId: true,
+                    group: { select: { id: true, name: true } },
+                    teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
+                    schedules: { orderBy: { dayOfWeek: 'asc' } },
+                }
+            },
+        },
+        orderBy: { date: "desc" },
+    });
+
+    // Fetch Remarks
+    const remarks = await prisma.remark.findMany({
+        where: remarksWhere,
+        include: {
+            course: {
+                select: {
+                    id: true,
+                    title: true,
+                    groupId: true,
+                    group: { select: { id: true, name: true } },
+                    teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
+                }
+            },
+            teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } }
+        },
+        orderBy: { date: "desc" },
+    });
 
     return {
         attendances,

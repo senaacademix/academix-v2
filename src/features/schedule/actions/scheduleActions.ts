@@ -22,10 +22,25 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
 
   // CASO A: ESTUDIANTE (Solo consulta su ficha y el horario vigente)
   if (role === "student") {
-    // 1. Obtener exclusivamente la ficha/grupo del estudiante
+    // 1. Obtener la ficha/grupo del estudiante junto con sus franjas horarias
     const studentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { groupId: true },
+      select: {
+        groupId: true,
+        group: {
+          select: {
+            id: true,
+            name: true,
+            startDate: true,
+            endDate: true,
+            scheduleSlots: {
+              select: {
+                academicScheduleId: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!studentUser?.groupId) {
@@ -49,18 +64,75 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
         name: true,
         startDate: true,
         endDate: true,
+        isActive: true,
         isPublished: true,
       },
       orderBy: { startDate: "desc" },
     });
 
-    const vigenteMeta = schedulesMeta.find((s) => isScheduleCurrent(s.startDate, s.endDate));
+    const allSchedulesList = schedulesMeta.map((s) => {
+      const isCurrent = isScheduleCurrent(s.startDate, s.endDate);
+      return {
+        id: s.id,
+        name: s.name,
+        startDate: s.startDate,
+        endDate: s.endDate,
+        isActive: isCurrent,
+        isPublished: s.isPublished,
+      };
+    });
+
+    // Horarios asociados a los slots de la ficha del estudiante
+    const groupSlotScheduleIds = new Set(
+      (studentUser.group?.scheduleSlots || [])
+        .map((slot: any) => slot.academicScheduleId)
+        .filter(Boolean)
+    );
+
+    let vigenteMeta: any = null;
+
+    if (requestedScheduleId) {
+      vigenteMeta = schedulesMeta.find((s) => s.id === requestedScheduleId) || null;
+    }
+
+    if (!vigenteMeta) {
+      // Prioridad 1: Horario de la ficha que esté vigente actualmente
+      vigenteMeta = schedulesMeta.find(
+        (s) => groupSlotScheduleIds.has(s.id) && isScheduleCurrent(s.startDate, s.endDate) && s.isPublished
+      );
+    }
+
+    if (!vigenteMeta) {
+      // Prioridad 2: Horario de la ficha que esté marcado activo
+      vigenteMeta = schedulesMeta.find(
+        (s) => groupSlotScheduleIds.has(s.id) && s.isActive && s.isPublished
+      );
+    }
+
+    if (!vigenteMeta) {
+      // Prioridad 3: Horario global que esté vigente actualmente
+      vigenteMeta = schedulesMeta.find(
+        (s) => isScheduleCurrent(s.startDate, s.endDate) && s.isPublished
+      );
+    }
+
+    if (!vigenteMeta) {
+      // Prioridad 4: Horario global activo
+      vigenteMeta = schedulesMeta.find(
+        (s) => s.isActive && s.isPublished
+      );
+    }
+
+    if (!vigenteMeta && schedulesMeta.length > 0) {
+      // Fallback: el horario publicado más reciente
+      vigenteMeta = schedulesMeta.find((s) => s.isPublished) || schedulesMeta[0];
+    }
 
     if (!vigenteMeta) {
       return {
         isDraft: true,
         isPublished: false,
-        allSchedules: [],
+        allSchedules: allSchedulesList,
         currentSchedule: null,
         courses: [] as any[],
         events: [] as any[],
@@ -70,17 +142,19 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
       };
     }
 
+    const isCurrentSchedule = isScheduleCurrent(vigenteMeta.startDate, vigenteMeta.endDate);
+
     if (!vigenteMeta.isPublished) {
       return {
         isDraft: true,
         isPublished: false,
-        allSchedules: [],
+        allSchedules: allSchedulesList,
         currentSchedule: {
           id: vigenteMeta.id,
           name: vigenteMeta.name,
           startDate: vigenteMeta.startDate,
           endDate: vigenteMeta.endDate,
-          isActive: true,
+          isActive: isCurrentSchedule,
           isPublished: false,
         },
         courses: [] as any[],
@@ -91,7 +165,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
       };
     }
 
-    // 3. Cargar ÚNICAMENTE los datos del horario vigente correspondientes a la ficha del estudiante
+    // 3. Cargar datos del horario vigente correspondientes a la ficha del estudiante
     const vigenteSchedule = await prisma.academicSchedule.findUnique({
       where: { id: vigenteMeta.id },
       include: {
@@ -149,7 +223,7 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
       return {
         isDraft: true,
         isPublished: false,
-        allSchedules: [],
+        allSchedules: allSchedulesList,
         currentSchedule: null,
         courses: [] as any[],
         events: [] as any[],
@@ -190,6 +264,67 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
       });
     });
 
+    // Fallback: si el grupo no tiene franja formal en groupSlots para este horario, buscar cursos asignados a la ficha
+    if (courseMap.size === 0) {
+      const directCourses = await prisma.course.findMany({
+        where: {
+          groupId: studentUser.groupId,
+          OR: [
+            { academicScheduleId: vigenteSchedule.id },
+            { academicScheduleId: null },
+          ],
+        },
+        include: {
+          teacher: { select: { id: true, name: true, email: true } },
+          schedules: {
+            include: {
+              teacher: { select: { id: true, name: true, email: true } },
+            },
+          },
+          group: {
+            select: {
+              id: true,
+              name: true,
+              program: { select: { id: true, name: true } },
+              environment: { select: { id: true, name: true, location: true } },
+            },
+          },
+          period: {
+            include: {
+              timeline: true,
+            },
+          },
+        },
+      });
+
+      directCourses.forEach((c: any) => {
+        if (!courseMap.has(c.id)) {
+          courseMap.set(c.id, {
+            id: c.id,
+            title: c.title,
+            description: c.description,
+            weeklyHours: c.weeklyHours || 0,
+            teacher: c.teacher,
+            group: c.group,
+            environment: c.group?.environment,
+            period: c.period,
+            periodId: c.periodId,
+            periodName: c.period?.name || null,
+            timelineName: c.period?.timeline?.name || c.group?.program?.name || null,
+            programId: c.group?.program?.id,
+            programName: c.group?.program?.name,
+            schedules: (c.schedules || []).map((s: any) => ({
+              id: s.id,
+              dayOfWeek: s.dayOfWeek,
+              startTime: s.startTime,
+              endTime: s.endTime,
+              teacher: s.teacher || c.teacher,
+            })),
+          });
+        }
+      });
+    }
+
     const courses = Array.from(courseMap.values());
     await populateCoursesFallbackDescriptions(courses);
     const studentEvents = (vigenteSchedule.events || []).filter(
@@ -199,13 +334,13 @@ export async function getScheduleViewAction(requestedScheduleId?: string) {
     return {
       isDraft: false,
       isPublished: true,
-      allSchedules: [],
+      allSchedules: allSchedulesList,
       currentSchedule: {
         id: vigenteSchedule.id,
         name: vigenteSchedule.name,
         startDate: vigenteSchedule.startDate,
         endDate: vigenteSchedule.endDate,
-        isActive: true,
+        isActive: isCurrentSchedule,
         isPublished: true,
       },
       courses,

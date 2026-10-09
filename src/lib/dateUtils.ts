@@ -48,7 +48,8 @@ export function fromUTC(date: Date | string | null | undefined): Date {
  * @param date Fecha a formatear
  * @param formatStr String de formato date-fns (default: PPP = "27 de octubre de 2023")
  */
-export function formatCalendarDate(date: Date | string, formatStr: string = "PPP"): string {
+export function formatCalendarDate(date: Date | string | null | undefined, formatStr: string = "PPP"): string {
+    if (!date) return "";
     const d = typeof date === 'string' ? new Date(date) : date;
     // Si la fecha es válida, extraemos componentes UTC y creamos una fecha local "falsa" para formatear
     if (isNaN(d.getTime())) return "Fecha inválida";
@@ -137,18 +138,28 @@ export function isScheduleCurrent(startDate: Date | string, endDate: Date | stri
     if (!startDate || !endDate) return false;
     try {
         const todayInColombia = getTodayColombianDate();
-        
-        const toYMD = (d: Date | string) => {
-            if (typeof d === "string") {
-                return d.slice(0, 10);
-            }
-            return d.toISOString().slice(0, 10);
-        };
-
-        const startYMD = toYMD(startDate);
-        const endYMD = toYMD(endDate);
+        const startYMD = toCalendarYMD(startDate);
+        const endYMD = toCalendarYMD(endDate);
+        if (!startYMD || !endYMD) return false;
 
         return todayInColombia >= startYMD && todayInColombia <= endYMD;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Determina si una fecha límite (calendario) ha expirado según el tiempo de Colombia (America/Bogota).
+ * La fecha se considera vencida ÚNICAMENTE cuando el día de hoy en Colombia es estrictamente
+ * posterior a la fecha límite (es decir, el aprendiz tiene todo el día límite hasta las 23:59:59 para entregar).
+ */
+export function isDateExpired(endDate: Date | string | null | undefined): boolean {
+    if (!endDate) return false;
+    try {
+        const todayInColombia = getTodayColombianDate();
+        const endYMD = toCalendarYMD(endDate);
+        if (!endYMD) return false;
+        return todayInColombia > endYMD;
     } catch {
         return false;
     }
