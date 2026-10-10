@@ -1706,6 +1706,22 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                                                 </TooltipTrigger>
                                                 <TooltipContent><p>Gestionar Aprendices</p></TooltipContent>
                                             </Tooltip>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="outline" 
+                                                        className="h-8 px-2.5 text-xs text-foreground hover:text-primary hover:bg-primary/5 flex items-center gap-1.5"
+                                                        asChild
+                                                    >
+                                                        <Link href={`/dashboard/gestor/attendance?programId=${selectedProgram?.id || (group as any).programId || ""}&groupId=${group.id}`}>
+                                                            <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                                                            <span>Asistencia</span>
+                                                        </Link>
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>Ver Sábana Semanal de Asistencia</p></TooltipContent>
+                                            </Tooltip>
                                             {!isObserver && (
                                                 <>
                                                     <Tooltip>

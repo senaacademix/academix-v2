@@ -176,6 +176,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               isActive: false,
             },
             {
+              title: "Asistencia Semanal",
+              url: effectiveGestorProgramId ? `/dashboard/gestor/attendance?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/attendance",
+              icon: CalendarDays,
+              isActive: false,
+            },
+            {
               title: "Herramientas",
               url: effectiveGestorProgramId ? `/dashboard/gestor/tools?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/tools",
               icon: Wrench,
@@ -200,6 +206,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title: "Programación Horaria",
                 url: effectiveGestorProgramId ? `/dashboard/admin/schedules?programId=${effectiveGestorProgramId}` : "/dashboard/admin/schedules",
                 icon: CalendarClock,
+                isActive: false,
+              },
+              {
+                title: "Asistencia Semanal",
+                url: effectiveGestorProgramId ? `/dashboard/gestor/attendance?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/attendance",
+                icon: CalendarDays,
                 isActive: false,
               },
             ]

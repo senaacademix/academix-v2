@@ -33,7 +33,8 @@ import {
     Briefcase,
     Compass,
     Building2,
-    Wrench
+    Wrench,
+    CalendarDays
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -168,6 +169,13 @@ export function GestorDashboardView({
             color: "text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20"
         },
         {
+            title: "Asistencia Semanal",
+            description: "Sábana semanal y mensual de asistencia consolidada por ficha, instructores y horarios.",
+            link: `/dashboard/gestor/attendance?programId=${currentProgram.id}`,
+            icon: CalendarDays,
+            color: "text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/20"
+        },
+        {
             title: "Herramientas y Analítica",
             description: "Analítica de juicios Sofia Plus, reportes institucionales y seguimiento pedagógico.",
             link: `/dashboard/gestor/tools?programId=${currentProgram.id}`,
@@ -227,6 +235,12 @@ export function GestorDashboardView({
                             <Link href={`/dashboard/gestor/schedules?programId=${currentProgram?.id}`}>
                                 <CalendarClock className="h-4 w-4 mr-2 text-primary" />
                                 Programación Horaria
+                            </Link>
+                        </Button>
+                        <Button variant="outline" asChild className="rounded-2xl h-11 border-border/80 bg-background/80 hover:bg-muted text-foreground font-bold text-xs shadow-2xs">
+                            <Link href={`/dashboard/gestor/attendance?programId=${currentProgram?.id}`}>
+                                <CalendarDays className="h-4 w-4 mr-2 text-primary" />
+                                Asistencia Semanal
                             </Link>
                         </Button>
                         <Button variant="outline" asChild className="rounded-2xl h-11 border-border/80 bg-background/80 hover:bg-muted text-foreground font-bold text-xs shadow-2xs">

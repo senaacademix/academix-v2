@@ -10,8 +10,8 @@ export async function requireGestor() {
         headers: await headers()
     });
 
-    if (!session || (session.user.role !== "gestor" && session.user.role !== "admin")) {
-        throw new Error("Acceso no autorizado. Se requiere perfil de Gestor Académico o Administrador.");
+    if (!session || (session.user.role !== "gestor" && session.user.role !== "admin" && session.user.role !== "observer")) {
+        throw new Error("Acceso no autorizado. Se requiere perfil de Gestor Académico, Administrador u Observador.");
     }
 
     return session;
@@ -35,21 +35,33 @@ export async function getGestorProgramsAction() {
 export async function getGestorGroupsAction(programId?: string) {
     const session = await requireGestor();
     
-    const where: any = {
-        program: {
+    const where: any = {};
+
+    if (session.user.role === "gestor") {
+        where.program = {
             gestores: {
                 some: { id: session.user.id }
             }
-        }
-    };
+        };
+    } else if (session.user.role === "observer") {
+        where.OR = [
+            { program: { observers: { some: { id: session.user.id } } } },
+            { observers: { some: { id: session.user.id } } }
+        ];
+    }
 
-    if (programId && programId !== "all") {
+    if (programId && programId !== "all" && programId !== "ALL") {
         where.programId = programId;
     }
 
     return prisma.group.findMany({
         where,
-        include: {
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            programId: true,
+            categoria: true,
             program: {
                 select: { id: true, name: true }
             },
