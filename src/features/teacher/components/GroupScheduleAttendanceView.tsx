@@ -1303,7 +1303,7 @@ export function GroupScheduleAttendanceView({
                 {/* ── TABLA PRINCIPAL: SÁBANA MULTIGRUPO (SEMANAL O MENSUAL) ── */}
                 <Card className="border border-border/80 shadow-md rounded-3xl overflow-hidden bg-card">
                     {/* Indicador de ayuda táctil en móviles */}
-                    <div className="sm:hidden px-3.5 py-2 bg-primary/5 border-b border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
+                    <div className="md:hidden px-3.5 py-2 bg-primary/5 border-b border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1 font-medium text-foreground">
                             <ChevronLeft className="w-3.5 h-3.5 text-primary animate-pulse" />
                             Desliza para explorar todas las sesiones
@@ -1322,7 +1322,7 @@ export function GroupScheduleAttendanceView({
                                     <tr className="bg-muted border-b border-border/80">
                                         <th 
                                             rowSpan={2} 
-                                            className="p-2 sm:p-3 text-left font-black text-muted-foreground uppercase text-[11px] border-r border-border/60 min-w-[160px] sm:min-w-[220px] bg-muted shadow-2xs"
+                                            className="p-2 sm:p-3 text-left font-black text-muted-foreground uppercase text-[11px] border-r border-border/60 min-w-[160px] md:min-w-[220px] bg-muted md:sticky md:left-0 md:z-20 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"
                                         >
                                             <div className="flex items-center gap-2">
                                                 <span className="w-5 sm:w-6 text-center font-mono text-[10px] text-muted-foreground/80 shrink-0">#</span>
@@ -1474,7 +1474,7 @@ export function GroupScheduleAttendanceView({
                                                 className="hover:bg-muted/40 transition-colors group"
                                             >
                                                 {/* Columna Aprendiz con número de orden */}
-                                                <td className="p-2 sm:p-2.5 border-r border-border/60 bg-card group-hover:bg-muted/50 transition-colors min-w-[160px] sm:min-w-[220px]">
+                                                <td className="p-2 sm:p-2.5 border-r border-border/60 bg-card group-hover:bg-muted/50 transition-colors min-w-[160px] md:min-w-[220px] md:sticky md:left-0 md:z-10 md:bg-card md:group-hover:bg-muted md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                                     <div className="flex items-center gap-2 sm:gap-2.5">
                                                         <span className="w-5 sm:w-6 text-center font-mono font-bold text-muted-foreground text-[10px] sm:text-[11px] shrink-0">
                                                             {idx + 1}
