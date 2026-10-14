@@ -73,7 +73,7 @@ export default async function GestorAttendancePage({
         : (mappedGroups[0]?.id || "");
 
     return (
-        <div className="container mx-auto py-6 sm:py-8 px-3 sm:px-6 max-w-7xl">
+        <div className="w-full min-w-0">
             <GestorAttendanceView
                 groups={mappedGroups}
                 initialGroupId={selectedGroupId}

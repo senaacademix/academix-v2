@@ -236,7 +236,7 @@ export function GestorAttendanceView({
                                 </div>
 
                                 <Select value={categoryFilter} onValueChange={handleCategoryChange}>
-                                    <SelectTrigger className="h-9 w-[150px] text-xs font-bold rounded-xl border-border/80 bg-background">
+                                    <SelectTrigger className="h-9 w-full sm:w-[150px] text-xs font-bold rounded-xl border-border/80 bg-background">
                                         <SelectValue placeholder="Etapa" />
                                     </SelectTrigger>
                                     <SelectContent>

@@ -1138,30 +1138,43 @@ export function GroupScheduleAttendanceView({
                 </div>
 
                 {/* ── BARRA DE NAVEGACIÓN TEMPORAL (SEMANAL O MENSUAL) ── */}
-                <div className="bg-card border border-border/80 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="bg-card border border-border/80 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                     
                     {/* MODO SEMANA */}
                     {viewMode === "week" && weeks.length > 0 && currentWeek && (
-                        <div className="flex items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={selectedWeekIndex <= 0}
-                                onClick={() => setSelectedWeekIndex(prev => Math.max(0, prev - 1))}
-                                className="h-8 w-8 p-0 rounded-xl border-border"
-                                title="Semana anterior"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </Button>
+                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={selectedWeekIndex <= 0}
+                                    onClick={() => setSelectedWeekIndex(prev => Math.max(0, prev - 1))}
+                                    className="h-8 w-8 p-0 rounded-xl border-border shrink-0"
+                                    title="Semana anterior"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={selectedWeekIndex >= weeks.length - 1}
+                                    onClick={() => setSelectedWeekIndex(prev => Math.min(weeks.length - 1, prev + 1))}
+                                    className="h-8 w-8 p-0 rounded-xl border-border shrink-0"
+                                    title="Semana siguiente"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-[200px] max-w-full">
                                 <Select
                                     value={String(selectedWeekIndex)}
                                     onValueChange={(val) => setSelectedWeekIndex(Number(val))}
                                 >
-                                    <SelectTrigger className="h-8 text-xs font-black rounded-xl border-border bg-background min-w-[240px]">
-                                        <Calendar className="w-3.5 h-3.5 mr-1 text-primary" />
+                                    <SelectTrigger className="h-8 text-xs font-black rounded-xl border-border bg-background w-full sm:w-[260px] min-w-0">
+                                        <Calendar className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl shadow-md border-border max-h-[300px]">
@@ -1175,29 +1188,17 @@ export function GroupScheduleAttendanceView({
                                 </Select>
 
                                 {currentWeek.isCurrentWeek && (
-                                    <Badge variant="secondary" className="text-[10px] font-black py-0.5 px-2 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg">
+                                    <Badge variant="secondary" className="text-[10px] font-black py-0.5 px-2 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg shrink-0">
                                         Esta Semana
                                     </Badge>
                                 )}
                             </div>
-
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={selectedWeekIndex >= weeks.length - 1}
-                                onClick={() => setSelectedWeekIndex(prev => Math.min(weeks.length - 1, prev + 1))}
-                                className="h-8 w-8 p-0 rounded-xl border-border"
-                                title="Semana siguiente"
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </Button>
                         </div>
                     )}
 
                     {/* MODO MES */}
                     {viewMode === "month" && months.length > 0 && selectedMonth && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                             {(() => {
                                 const currentMonthIdx = months.findIndex(m => m.key === selectedMonthKey);
                                 const hasPrev = currentMonthIdx > 0;
@@ -1205,27 +1206,42 @@ export function GroupScheduleAttendanceView({
 
                                 return (
                                     <>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={!hasPrev}
-                                            onClick={() => {
-                                                if (hasPrev) setSelectedMonthKey(months[currentMonthIdx - 1].key);
-                                            }}
-                                            className="h-8 w-8 p-0 rounded-xl border-border"
-                                            title="Mes anterior"
-                                        >
-                                            <ChevronLeft className="w-4 h-4" />
-                                        </Button>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={!hasPrev}
+                                                onClick={() => {
+                                                    if (hasPrev) setSelectedMonthKey(months[currentMonthIdx - 1].key);
+                                                }}
+                                                className="h-8 w-8 p-0 rounded-xl border-border shrink-0"
+                                                title="Mes anterior"
+                                            >
+                                                <ChevronLeft className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={!hasNext}
+                                                onClick={() => {
+                                                    if (hasNext) setSelectedMonthKey(months[currentMonthIdx + 1].key);
+                                                }}
+                                                className="h-8 w-8 p-0 rounded-xl border-border shrink-0"
+                                                title="Mes siguiente"
+                                            >
+                                                <ChevronRight className="w-4 h-4" />
+                                            </Button>
+                                        </div>
 
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-[200px] max-w-full">
                                             <Select
                                                 value={selectedMonthKey}
                                                 onValueChange={(val) => setSelectedMonthKey(val)}
                                             >
-                                                <SelectTrigger className="h-8 text-xs font-black rounded-xl border-border bg-background min-w-[200px]">
-                                                    <CalendarDays className="w-3.5 h-3.5 mr-1 text-primary" />
+                                                <SelectTrigger className="h-8 text-xs font-black rounded-xl border-border bg-background w-full sm:w-[200px] min-w-0">
+                                                    <CalendarDays className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl shadow-md border-border">
@@ -1238,29 +1254,15 @@ export function GroupScheduleAttendanceView({
                                             </Select>
 
                                             {selectedMonth.isCurrentMonth && (
-                                                <Badge variant="secondary" className="text-[10px] font-black py-0.5 px-2 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg">
+                                                <Badge variant="secondary" className="text-[10px] font-black py-0.5 px-2 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg shrink-0">
                                                     Mes Actual
                                                 </Badge>
                                             )}
 
-                                            <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-2 bg-muted/60 rounded-lg border-border">
-                                                {allMonthSessions.length} clases en el mes
+                                            <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-2 bg-muted/60 rounded-lg border-border shrink-0 hidden sm:inline-flex">
+                                                {allMonthSessions.length} clases
                                             </Badge>
                                         </div>
-
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={!hasNext}
-                                            onClick={() => {
-                                                if (hasNext) setSelectedMonthKey(months[currentMonthIdx + 1].key);
-                                            }}
-                                            className="h-8 w-8 p-0 rounded-xl border-border"
-                                            title="Mes siguiente"
-                                        >
-                                            <ChevronRight className="w-4 h-4" />
-                                        </Button>
                                     </>
                                 );
                             })()}
@@ -1268,15 +1270,15 @@ export function GroupScheduleAttendanceView({
                     )}
 
                     {/* Barra de Búsqueda y Filtro de Estado */}
-                    <div className="flex flex-wrap items-center gap-2">
-                        <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+                        <div className="relative w-full sm:w-56">
                             <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             <Input
                                 type="text"
                                 placeholder="Buscar por nombre o documento..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="h-8 pl-8 text-xs rounded-xl border-border bg-background"
+                                className="h-8 pl-8 text-xs rounded-xl border-border bg-background w-full"
                             />
                         </div>
 
@@ -1284,8 +1286,8 @@ export function GroupScheduleAttendanceView({
                             value={statusFilter}
                             onValueChange={(val: any) => setStatusFilter(val)}
                         >
-                            <SelectTrigger className="h-8 text-xs font-bold rounded-xl border-border bg-background w-[160px]">
-                                <Filter className="w-3.5 h-3.5 mr-1 text-primary" />
+                            <SelectTrigger className="h-8 text-xs font-bold rounded-xl border-border bg-background w-full sm:w-[160px]">
+                                <Filter className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl shadow-md border-border">
@@ -1300,23 +1302,32 @@ export function GroupScheduleAttendanceView({
 
                 {/* ── TABLA PRINCIPAL: SÁBANA MULTIGRUPO (SEMANAL O MENSUAL) ── */}
                 <Card className="border border-border/80 shadow-md rounded-3xl overflow-hidden bg-card">
+                    {/* Indicador de ayuda táctil en móviles */}
+                    <div className="sm:hidden px-3.5 py-2 bg-primary/5 border-b border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1 font-medium text-foreground">
+                            <ChevronLeft className="w-3.5 h-3.5 text-primary animate-pulse" />
+                            Desliza para explorar todas las sesiones
+                            <ChevronRight className="w-3.5 h-3.5 text-primary animate-pulse" />
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground/80 font-bold">
+                            {activeSessions.length} ses.
+                        </span>
+                    </div>
+
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto w-full max-w-full">
+                        <div className="overflow-x-auto w-full max-w-full touch-pan-x scrollbar-thin">
                             <table className="w-full border-collapse text-left text-xs">
                                 <thead>
                                     {/* Fila 1: Encabezados superiores */}
-                                    <tr className="bg-muted/60 border-b border-border/80">
+                                    <tr className="bg-muted border-b border-border/80">
                                         <th 
                                             rowSpan={2} 
-                                            className="p-3 text-center font-black text-muted-foreground uppercase text-[11px] border-r border-border/60 w-12 sticky left-0 bg-muted/90 z-20"
+                                            className="p-2 sm:p-3 text-left font-black text-muted-foreground uppercase text-[11px] border-r border-border/60 min-w-[160px] sm:min-w-[220px] bg-muted shadow-2xs"
                                         >
-                                            #
-                                        </th>
-                                        <th 
-                                            rowSpan={2} 
-                                            className="p-3 font-black text-muted-foreground uppercase text-[11px] border-r border-border/60 min-w-[220px] sticky left-12 bg-muted/90 z-20"
-                                        >
-                                            Aprendiz
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-5 sm:w-6 text-center font-mono text-[10px] text-muted-foreground/80 shrink-0">#</span>
+                                                <span className="font-black text-foreground">Aprendiz</span>
+                                            </div>
                                         </th>
 
                                         {/* Columnas de sesiones (semanales o mensuales) */}
@@ -1367,32 +1378,32 @@ export function GroupScheduleAttendanceView({
                                         {/* Columnas de Resumen */}
                                         <th 
                                             rowSpan={2} 
-                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/40"
+                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
                                         >
                                             Asist.
                                         </th>
                                         <th 
                                             rowSpan={2} 
-                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/40"
+                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
                                         >
                                             Fallas
                                         </th>
                                         <th 
                                             rowSpan={2} 
-                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/40"
+                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
                                         >
                                             Tardes
                                         </th>
                                         <th 
                                             rowSpan={2} 
-                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-20 bg-muted/40"
+                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-20 bg-muted/60"
                                         >
                                             % Cumpl.
                                         </th>
                                     </tr>
 
                                     {/* Fila 2: Materias e Instructores de cada sesión */}
-                                    <tr className="bg-muted/30 border-b border-border/80">
+                                    <tr className="bg-muted/80 border-b border-border/80">
                                         {activeSessions.length === 0 ? (
                                             <th className="p-3 text-center text-muted-foreground italic font-normal">
                                                 No hay sesiones programadas en este período.
@@ -1405,7 +1416,7 @@ export function GroupScheduleAttendanceView({
                                                     <th
                                                         key={`${session.dayOfWeekKey}_${session.dateStr}_${sIdx}`}
                                                         className={cn(
-                                                            "p-2 border-r border-border/60 text-center align-top min-w-[140px] max-w-[190px]",
+                                                            "p-2 sm:p-2.5 border-r border-border/60 text-center align-top min-w-[150px] sm:min-w-[185px]",
                                                             session.dayMeta.dateStr === getTodayColombianDate() && "bg-primary/5"
                                                         )}
                                                     >
@@ -1423,18 +1434,18 @@ export function GroupScheduleAttendanceView({
                                                                     </div>
                                                                 )}
                                                                 <span 
-                                                                    className="font-bold text-foreground text-[11px] line-clamp-1 block"
+                                                                    className="font-bold text-foreground text-[11px] sm:text-xs line-clamp-2 block leading-snug"
                                                                     title={session.courseTitle}
                                                                 >
                                                                     {session.courseTitle}
                                                                 </span>
-                                                                <div className="flex items-center justify-center gap-1 text-[10px] text-primary font-semibold">
-                                                                    <GraduationCap className="w-3 h-3 shrink-0" />
-                                                                    <span className="truncate max-w-[120px]" title={`Instructor: ${session.teacherName}`}>
+                                                                <div className="flex items-center justify-center gap-1 text-[10px] sm:text-[11px] text-primary font-semibold">
+                                                                    <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                                                                    <span className="line-clamp-1 break-words" title={`Instructor: ${session.teacherName}`}>
                                                                         {session.teacherName}
                                                                     </span>
                                                                 </div>
-                                                                <div className="text-[9px] font-mono text-muted-foreground">
+                                                                <div className="text-[9px] sm:text-[10px] font-mono text-muted-foreground">
                                                                     {session.startTime} - {session.endTime}
                                                                 </div>
                                                             </div>
@@ -1450,7 +1461,7 @@ export function GroupScheduleAttendanceView({
                                     {filteredStudents.length === 0 ? (
                                         <tr>
                                             <td 
-                                                colSpan={Math.max(1, activeSessions.length) + 6}
+                                                colSpan={Math.max(1, activeSessions.length) + 5}
                                                 className="p-8 text-center text-muted-foreground font-medium"
                                             >
                                                 No se encontraron aprendices con los filtros seleccionados.
@@ -1462,26 +1473,26 @@ export function GroupScheduleAttendanceView({
                                                 key={st.id} 
                                                 className="hover:bg-muted/40 transition-colors group"
                                             >
-                                                {/* Columna # */}
-                                                <td className="p-2.5 text-center font-bold text-muted-foreground border-r border-border/60 sticky left-0 bg-card group-hover:bg-muted/60 z-10 text-[11px]">
-                                                    {idx + 1}
-                                                </td>
-
-                                                {/* Columna Aprendiz */}
-                                                <td className="p-2.5 border-r border-border/60 sticky left-12 bg-card group-hover:bg-muted/60 z-10">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-extrabold text-foreground text-xs leading-tight">
-                                                            {formatName(st.name)}
+                                                {/* Columna Aprendiz con número de orden */}
+                                                <td className="p-2 sm:p-2.5 border-r border-border/60 bg-card group-hover:bg-muted/50 transition-colors min-w-[160px] sm:min-w-[220px]">
+                                                    <div className="flex items-center gap-2 sm:gap-2.5">
+                                                        <span className="w-5 sm:w-6 text-center font-mono font-bold text-muted-foreground text-[10px] sm:text-[11px] shrink-0">
+                                                            {idx + 1}
                                                         </span>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[10px] font-mono text-muted-foreground">
-                                                                {st.profile?.identificacion || "S/D"}
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="font-extrabold text-foreground text-xs leading-tight whitespace-nowrap sm:whitespace-normal" title={formatName(st.name)}>
+                                                                {formatName(st.name)}
                                                             </span>
-                                                            {st.profile?.novedad && (
-                                                                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                                                                    {st.profile.novedad}
+                                                            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+                                                                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                                                                    {st.profile?.identificacion || "S/D"}
                                                                 </span>
-                                                            )}
+                                                                {st.profile?.novedad && (
+                                                                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
+                                                                        {st.profile.novedad}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
