@@ -36,10 +36,11 @@ if (process.env.NODE_ENV === "production") {
   const adapter = new PrismaPg(pool);
   prisma = new PrismaClient({ adapter });
 } else {
-  // Check if cached prisma instance has the latest schema with programId on AcademicSchedule
+  // Check if cached prisma instance has the latest schema with CommitteeReport and CommitteeProcess
   const isPrismaClientUpToDate = 
     globalForPrisma.prisma && 
-    (globalForPrisma.prisma as any)._runtimeDataModel?.models?.AcademicSchedule?.fields?.some((f: any) => f.name === "programId");
+    Boolean((globalForPrisma.prisma as any).committeeReport) &&
+    Boolean((globalForPrisma.prisma as any).committeeProcess);
 
   if (!globalForPrisma.prisma || !isPrismaClientUpToDate) {
     if (globalForPrisma.pgPool) {

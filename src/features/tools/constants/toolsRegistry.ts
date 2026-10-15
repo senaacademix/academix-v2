@@ -3,6 +3,7 @@ import {
     Dices,
     Shuffle,
     Award,
+    Scale,
     LucideIcon
 } from "lucide-react";
 
@@ -24,6 +25,29 @@ export interface ToolDefinition {
 }
 
 export const TOOLS_REGISTRY: ToolDefinition[] = [
+    {
+        id: "committee-reports",
+        title: "Comité de Evaluación",
+        shortTitle: "Comité de Evaluación",
+        description: "Gestión integral de procesos de citación y reporte de aprendices a comités de evaluación. Permite a los instructores reportar casos con evidencias obligatorias por ficha y al Gestor consolidar y auditar la totalidad de aprendices reportados.",
+        category: "Evaluación",
+        status: "available",
+        isAutonomous: false,
+        version: "v1.0",
+        icon: Scale,
+        color: "text-amber-600 dark:text-amber-400",
+        badgeBg: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25",
+        features: [
+            "Creación y administración de procesos de comité por trimestre o periodo",
+            "Visualización y auditoría de la totalidad de aprendices reportados",
+            "Acceso para instructores a todas las fichas del área de formación",
+            "Campo obligatorio para enlace (URL) de evidencias documentales",
+            "Gestión, edición y retiro de reportes de aprendices en tiempo real",
+            "Exportación corporativa a Excel (.xlsx) para actas de comité"
+        ],
+        author: "AcademiX Gestión",
+        allowedRoles: ["gestor", "teacher", "admin"]
+    },
     {
         id: "sofia-reports",
         title: "Reporte de Juicios Evaluativos",

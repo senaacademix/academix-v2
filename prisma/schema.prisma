@@ -90,6 +90,9 @@ model User {
   candidacies                  ElectionCandidate[] @relation("StudentCandidacies")
   electionVotes                ElectionVote[]    @relation("StudentVotes")
   announcementsCreated         Announcement[]    @relation("AdminAnnouncements")
+  committeeProcessesCreated    CommitteeProcess[] @relation("GestorCommitteeProcesses")
+  studentCommitteeReports      CommitteeReport[]  @relation("StudentCommitteeReports")
+  teacherCommitteeReports      CommitteeReport[]  @relation("TeacherCommitteeReports")
 
   @@unique([email])
   @@index([groupId])
@@ -454,6 +457,7 @@ model Program {
   environments    TrainingEnvironment[]
   academicSchedules AcademicSchedule[]
   scheduleEvents    ScheduleEvent[]
+  committeeProcesses CommitteeProcess[] @relation("ProgramCommitteeProcesses")
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -518,6 +522,7 @@ model Group {
   scheduleEvents ScheduleEvent[]
   groupEnrollments GroupEnrollment[]
   elections GroupElection[]
+  committeeReports  CommitteeReport[]  @relation("GroupCommitteeReports")
 
   voceroPrincipalId String?
   voceroSuplenteId  String?
@@ -917,6 +922,73 @@ model Announcement {
   @@index([status, publishedAt])
   @@index([isPinned])
   @@map("announcements")
+}
+
+enum CommitteeProcessStatus {
+  OPEN
+  CLOSED
+}
+
+enum CommitteeFaultType {
+  ACADEMICO
+  DISCIPLINARIO
+  INASISTENCIA
+  MIXTO
+}
+
+model CommitteeProcess {
+  id          String                 @id @default(cuid())
+  title       String
+  description String?                @db.Text
+  status      CommitteeProcessStatus @default(OPEN)
+  startDate   DateTime?
+  endDate     DateTime?
+
+  programId   String?
+  program     Program?               @relation("ProgramCommitteeProcesses", fields: [programId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User                   @relation("GestorCommitteeProcesses", fields: [createdById], references: [id], onDelete: Cascade)
+
+  reports     CommitteeReport[]
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([programId])
+  @@index([createdById])
+  @@index([status])
+  @@map("committee_process")
+}
+
+model CommitteeReport {
+  id            String             @id @default(cuid())
+  processId     String
+  process       CommitteeProcess   @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  studentId     String
+  student       User               @relation("StudentCommitteeReports", fields: [studentId], references: [id], onDelete: Cascade)
+
+  groupId       String
+  group         Group              @relation("GroupCommitteeReports", fields: [groupId], references: [id], onDelete: Cascade)
+
+  reportedById  String
+  reportedBy    User               @relation("TeacherCommitteeReports", fields: [reportedById], references: [id], onDelete: Cascade)
+
+  evidenceUrl   String?            @db.Text
+  faultType     CommitteeFaultType @default(ACADEMICO)
+  reason        String             @db.Text
+  observations  String?            @db.Text
+  status        String             @default("REPORTADO")
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([processId])
+  @@index([studentId])
+  @@index([groupId])
+  @@index([reportedById])
+  @@map("committee_report")
 }
 
 

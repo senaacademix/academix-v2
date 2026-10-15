@@ -7,6 +7,7 @@ import { SofiaReportsTool } from "./SofiaReportsTool";
 import { TeacherRouletteTool } from "./TeacherRouletteTool";
 import { TeacherGroupGeneratorTool } from "./TeacherGroupGeneratorTool";
 import { TeacherVoceroElectionTool } from "./TeacherVoceroElectionTool";
+import { CommitteeTool } from "@/features/committee/components/CommitteeTool";
 import { ArrowLeft, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TOOLS_REGISTRY } from "../constants/toolsRegistry";
@@ -14,9 +15,11 @@ import { TOOLS_REGISTRY } from "../constants/toolsRegistry";
 interface ToolsDashboardProps {
     initialGroups?: any[];
     userRole?: string;
+    programId?: string;
+    programName?: string;
 }
 
-function ToolsDashboardContent({ initialGroups = [], userRole = "gestor" }: ToolsDashboardProps) {
+function ToolsDashboardContent({ initialGroups = [], userRole = "gestor", programId, programName }: ToolsDashboardProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -73,6 +76,20 @@ function ToolsDashboardContent({ initialGroups = [], userRole = "gestor" }: Tool
                 </div>
             );
         }
+
+        if (selectedToolId === "committee-reports") {
+            return (
+                <div className="h-full flex-1 flex flex-col min-h-0 animate-in fade-in duration-300">
+                    <CommitteeTool
+                        onBack={handleBackToHub}
+                        userRole={userRole}
+                        initialGroups={initialGroups}
+                        programId={programId}
+                        programName={programName}
+                    />
+                </div>
+            );
+        }
     }
 
     return (
@@ -82,7 +99,12 @@ function ToolsDashboardContent({ initialGroups = [], userRole = "gestor" }: Tool
     );
 }
 
-export function ToolsDashboard({ initialGroups = [], userRole = "gestor" }: ToolsDashboardProps) {
+export function ToolsDashboard({
+    initialGroups = [],
+    userRole = "gestor",
+    programId,
+    programName
+}: ToolsDashboardProps) {
     return (
         <Suspense
             fallback={
@@ -92,7 +114,12 @@ export function ToolsDashboard({ initialGroups = [], userRole = "gestor" }: Tool
                 </div>
             }
         >
-            <ToolsDashboardContent initialGroups={initialGroups} userRole={userRole} />
+            <ToolsDashboardContent
+                initialGroups={initialGroups}
+                userRole={userRole}
+                programId={programId}
+                programName={programName}
+            />
         </Suspense>
     );
 }
