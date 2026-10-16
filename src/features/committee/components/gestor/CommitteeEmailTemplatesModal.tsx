@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Dialog,
     DialogContent,
@@ -74,8 +74,10 @@ export function CommitteeEmailTemplatesModal({
     const [formBody, setFormBody] = useState("");
     const [formIsDefault, setFormIsDefault] = useState(false);
 
-    // Active field tracking for variable insertion
+    // Active field tracking & refs for exact cursor position variable insertion
     const [lastFocusedField, setLastFocusedField] = useState<"subject" | "body">("body");
+    const subjectInputRef = useRef<HTMLInputElement>(null);
+    const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const loadTemplates = async () => {
         try {
@@ -134,8 +136,26 @@ SENA - Academix`);
     };
 
     const handleInsertVariable = (tag: string) => {
-        if (lastFocusedField === "subject") {
-            setFormSubject((prev) => prev + " " + tag);
+        if (lastFocusedField === "subject" && subjectInputRef.current) {
+            const input = subjectInputRef.current;
+            const start = input.selectionStart ?? formSubject.length;
+            const end = input.selectionEnd ?? formSubject.length;
+            const newText = formSubject.substring(0, start) + tag + formSubject.substring(end);
+            setFormSubject(newText);
+            setTimeout(() => {
+                input.focus();
+                input.setSelectionRange(start + tag.length, start + tag.length);
+            }, 0);
+        } else if (bodyTextareaRef.current) {
+            const textarea = bodyTextareaRef.current;
+            const start = textarea.selectionStart ?? formBody.length;
+            const end = textarea.selectionEnd ?? formBody.length;
+            const newText = formBody.substring(0, start) + tag + formBody.substring(end);
+            setFormBody(newText);
+            setTimeout(() => {
+                textarea.focus();
+                textarea.setSelectionRange(start + tag.length, start + tag.length);
+            }, 0);
         } else {
             setFormBody((prev) => prev + " " + tag);
         }
@@ -225,7 +245,7 @@ SENA - Academix`);
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+            <DialogContent className="max-w-5xl sm:max-w-5xl lg:max-w-5xl xl:max-w-6xl w-[95vw] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl border border-border/80">
                 <DialogHeader className="p-5 pb-4 border-b border-border/80 bg-muted/20">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5">
@@ -411,6 +431,7 @@ SENA - Academix`);
                                 </Label>
                                 <Input
                                     id="template-subject"
+                                    ref={subjectInputRef}
                                     placeholder="ej: Citación a Comité de Evaluación y Seguimiento - {{proceso}}"
                                     value={formSubject}
                                     onFocus={() => setLastFocusedField("subject")}
@@ -431,8 +452,9 @@ SENA - Academix`);
                                         <button
                                             key={v.tag}
                                             type="button"
+                                            onMouseDown={(e) => e.preventDefault()}
                                             onClick={() => handleInsertVariable(v.tag)}
-                                            className="px-2 py-1 rounded-lg bg-background hover:bg-primary hover:text-primary-foreground border border-border text-[11px] font-mono transition-colors shadow-2xs flex items-center gap-1"
+                                            className="px-2.5 py-1 rounded-lg bg-background hover:bg-primary hover:text-primary-foreground border border-border text-[11px] font-mono transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
                                             title={`Inserta ${v.tag} (ej: ${v.example})`}
                                         >
                                             <span className="font-bold">{v.tag}</span>
@@ -449,11 +471,12 @@ SENA - Academix`);
                                 </Label>
                                 <Textarea
                                     id="template-body"
+                                    ref={bodyTextareaRef}
                                     placeholder="Escribe el contenido del correo. Puedes usar las variables dinámicas de arriba..."
                                     value={formBody}
                                     onFocus={() => setLastFocusedField("body")}
                                     onChange={(e) => setFormBody(e.target.value)}
-                                    rows={10}
+                                    rows={12}
                                     className="text-xs rounded-xl font-mono leading-relaxed"
                                     required
                                 />

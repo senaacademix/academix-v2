@@ -269,7 +269,7 @@ export function CommitteeEmailComposerModal({
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+                <DialogContent className="max-w-5xl sm:max-w-5xl lg:max-w-5xl xl:max-w-6xl w-[95vw] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl border border-border/80">
                     {/* Header */}
                     <DialogHeader className="p-5 pb-4 border-b border-border/80 bg-muted/20">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

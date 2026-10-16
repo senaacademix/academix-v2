@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { isDateInColombianWeek, parseDateStringToUTCMidday, isScheduleCurrent, toCalendarYMD } from "@/lib/dateUtils";
 import { calculateStudentAttendanceLoss } from "@/lib/gradePenaltyUtils";
 import { resolveCurrentAcademicSchedule } from "@/lib/academicScheduleResolver";
+import { interpolateRemarkTemplate } from "../utils/remarkTemplateVariables";
 
 async function getSession() {
     return await auth.api.getSession({ headers: await headers() });
@@ -388,14 +389,48 @@ export async function saveRemarkBatch(
 
         if (studentIds.length === 0) throw new Error("No students selected");
 
+        // Fetch students and course/group details for variable interpolation
+        const [students, course] = await Promise.all([
+            prisma.user.findMany({
+                where: { id: { in: studentIds } },
+                include: { profile: true }
+            }),
+            prisma.course.findUnique({
+                where: { id: courseId },
+                include: {
+                    group: {
+                        include: {
+                            program: true
+                        }
+                    }
+                }
+            })
+        ]);
+
+        const studentMap = new Map(students.map(s => [s.id, s]));
+
         const finalData = studentIds.map(studentId => {
+            const student = studentMap.get(studentId);
+            const personalizedTitle = interpolateRemarkTemplate(title, {
+                student,
+                group: course?.group,
+                teacherName: teacher.name,
+                currentDate: new Date()
+            });
+            const personalizedDescription = interpolateRemarkTemplate(description, {
+                student,
+                group: course?.group,
+                teacherName: teacher.name,
+                currentDate: new Date()
+            });
+
             return {
                 userId: studentId,
                 teacherId,
                 courseId,
                 type,
-                title,
-                description,
+                title: personalizedTitle || title,
+                description: personalizedDescription || description,
                 date: new Date()
             };
         });

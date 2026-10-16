@@ -136,7 +136,7 @@ export async function getRemarkTemplatesAction() {
     });
 }
 
-export async function createRemarkTemplateAction(title: string, description: string, type: RemarkType) {
+export async function createRemarkTemplateAction(title: string, description: string, type: RemarkType, subject?: string | null) {
     const session = await getSession();
     if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
         throw new Error("Solo el Gestor Académico o Administrador pueden gestionar las plantillas institucionales.");
@@ -147,7 +147,12 @@ export async function createRemarkTemplateAction(title: string, description: str
     }
 
     const template = await prisma.remarkTemplate.create({
-        data: { title, description, type },
+        data: {
+            title,
+            description,
+            type,
+            subject: subject ? subject.trim() : null
+        },
     });
 
     // 🎯 AUDIT LOG
@@ -166,7 +171,7 @@ export async function createRemarkTemplateAction(title: string, description: str
     return template;
 }
 
-export async function updateRemarkTemplateAction(id: string, title: string, description: string, type: RemarkType) {
+export async function updateRemarkTemplateAction(id: string, title: string, description: string, type: RemarkType, subject?: string | null) {
     const session = await getSession();
     if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
         throw new Error("Solo el Gestor Académico o Administrador pueden gestionar las plantillas institucionales.");
@@ -178,7 +183,12 @@ export async function updateRemarkTemplateAction(id: string, title: string, desc
 
     const template = await prisma.remarkTemplate.update({
         where: { id },
-        data: { title, description, type },
+        data: {
+            title,
+            description,
+            type,
+            subject: subject ? subject.trim() : null
+        },
     });
 
     // 🎯 AUDIT LOG

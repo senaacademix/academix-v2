@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
     ClipboardList,
     Plus,
@@ -17,7 +17,9 @@ import {
     ShieldAlert,
     Filter,
     Layers,
-    FileText
+    FileText,
+    Eye,
+    Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,10 @@ import {
     updateRemarkTemplateAction,
     deleteRemarkTemplateAction
 } from "@/features/teacher/actions/remarkActions";
+import {
+    REMARK_AVAILABLE_VARIABLES,
+    interpolateRemarkTemplate
+} from "@/features/teacher/utils/remarkTemplateVariables";
 
 interface RemarkTemplatesToolProps {
     onBack: () => void;
@@ -58,28 +64,33 @@ const CATEGORIES = [
 const SUGGESTED_SENA_TEMPLATES = [
     {
         title: "Llamado de atención por llegadas tarde reiteradas",
+        subject: "Llamado de Atención por Llegadas Tarde - Ficha {{ficha}} - SENA",
         type: "ATTENTION" as const,
-        description: "Se registra llamado de atención al aprendiz debido a reiteradas llegadas tarde a las sesiones de formación presenciales y/o virtuales, afectando el normal desarrollo de las actividades pedagógicas y la adquisición de competencias según el reglamento del aprendiz."
+        description: "Estimado(a) aprendiz {{nombre_aprendiz}} (identificación: {{identificacion}}):\n\nSe registra llamado de atención formal debido a reiteradas llegadas tarde a las sesiones de formación presenciales y/o virtuales de la ficha {{ficha}} (Programa: {{programa}}), afectando el normal desarrollo pedagógico y la adquisición de competencias según el reglamento del aprendiz SENA.\n\nLe solicitamos puntualidad en la jornada {{jornada}} y concertar los compromisos correspondientes con su instructor {{nombre_instructor}}.\n\nFecha: {{fecha_actual}}"
     },
     {
         title: "Llamado de atención por no entrega de evidencias en fecha",
+        subject: "Llamado de Atención por Evidencias Pendientes - Ficha {{ficha}} - SENA",
         type: "ATTENTION" as const,
-        description: "El aprendiz no realizó la entrega oportuna de las evidencias de aprendizaje asignadas en plataforma dentro de los plazos establecidos, sin presentar justificación previa ante el equipo ejecutor de la formación."
+        description: "Estimado(a) aprendiz {{nombre_aprendiz}}:\n\nSe notifica que en la ficha {{ficha}} no realizó la entrega oportuna de las evidencias de aprendizaje asignadas en plataforma dentro de los plazos establecidos para el programa {{programa}}, sin haber presentado justificación previa ante el equipo ejecutor.\n\nPor favor comuníquese de inmediato con su instructor {{nombre_instructor}} para acordar el plan de mejoramiento.\n\nFecha de notificación: {{fecha_actual}}"
     },
     {
         title: "Reconocimiento por excelencia y liderazgo en equipo",
+        subject: "Felicitación por Excelencia y Liderazgo Académico - Ficha {{ficha}}",
         type: "COMMENDATION" as const,
-        description: "Felicitación formal por demostrar alto compromiso, calidad técnica en sus entregas, proactividad y liderazgo positivo en las actividades colaborativas de la ficha."
+        description: "Estimado(a) {{nombre_aprendiz}}:\n\nReciba una felicitación formal por demostrar alto compromiso, calidad técnica en sus entregas, proactividad y liderazgo positivo en las actividades formativas de la ficha {{ficha}} - {{programa}}.\n\n¡Continúe con este excelente desempeño!\n\nAtentamente,\nInstructor: {{nombre_instructor}}\nFecha: {{fecha_actual}}"
     },
     {
         title: "Citación a sesión pedagógica y concertación de compromisos",
+        subject: "Citación a Sesión Pedagógica y Concertación de Compromisos - Ficha {{ficha}}",
         type: "CITATION" as const,
-        description: "Se convoca formalmente al aprendiz a comparecer ante el instructor vocero y equipo pedagógico para revisar el estado de su proceso formativo y concertar compromisos académicos y de asistencia."
+        description: "Estimado(a) aprendiz {{nombre_aprendiz}} (identificación: {{identificacion}}):\n\nSe convoca formalmente a comparecer ante el instructor vocero {{nombre_instructor}} para revisar el estado de su proceso formativo en el programa {{programa}} (Ficha {{ficha}}) y concertar compromisos académicos y de asistencia.\n\nFecha de emisión: {{fecha_actual}}"
     },
     {
         title: "Observación de seguimiento al plan de mejoramiento",
+        subject: "Seguimiento al Plan de Mejoramiento Académico - Ficha {{ficha}}",
         type: "OTHER" as const,
-        description: "Registro de seguimiento al cumplimiento de los compromisos concertados en el plan de mejoramiento académico. Se verifica el avance en las actividades asignadas."
+        description: "Estimado(a) aprendiz {{nombre_aprendiz}}:\n\nRegistro de seguimiento al cumplimiento de los compromisos concertados en el plan de mejoramiento académico de la ficha {{ficha}} ({{programa}}). Se verifica el avance en las actividades asignadas.\n\nInstructor de seguimiento: {{nombre_instructor}}\nFecha: {{fecha_actual}}"
     }
 ];
 
@@ -93,9 +104,76 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
     const [formTitle, setFormTitle] = useState("");
+    const [formSubject, setFormSubject] = useState("");
     const [formType, setFormType] = useState<"ATTENTION" | "COMMENDATION" | "CITATION" | "OTHER">("ATTENTION");
     const [formDesc, setFormDesc] = useState("");
+    const [activeTargetField, setActiveTargetField] = useState<"subject" | "desc">("desc");
     const [isSaving, setIsSaving] = useState(false);
+
+    // Refs for cursor tracking and exact position insertion
+    const subjectInputRef = useRef<HTMLInputElement>(null);
+    const descTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const lastCursorPosRef = useRef<{ field: "subject" | "desc"; start: number; end: number }>({
+        field: "desc",
+        start: 0,
+        end: 0
+    });
+
+    const updateCursorPosition = (field: "subject" | "desc") => {
+        setActiveTargetField(field);
+        const el = field === "subject" ? subjectInputRef.current : descTextareaRef.current;
+        if (el) {
+            const currentVal = field === "subject" ? formSubject : formDesc;
+            lastCursorPosRef.current = {
+                field,
+                start: el.selectionStart ?? currentVal.length,
+                end: el.selectionEnd ?? currentVal.length
+            };
+        }
+    };
+
+    const handleInsertVariable = (variableKey: string) => {
+        const isSubject = activeTargetField === "subject";
+        const el = isSubject ? subjectInputRef.current : descTextareaRef.current;
+        const currentVal = isSubject ? formSubject : formDesc;
+        
+        let start = currentVal.length;
+        let end = currentVal.length;
+
+        if (el && typeof el.selectionStart === "number") {
+            start = el.selectionStart;
+            end = el.selectionEnd ?? start;
+        } else if (lastCursorPosRef.current.field === activeTargetField) {
+            start = lastCursorPosRef.current.start;
+            end = lastCursorPosRef.current.end;
+        }
+
+        const before = currentVal.substring(0, start);
+        const after = currentVal.substring(end);
+        const newVal = `${before}${variableKey}${after}`;
+        const newPos = start + variableKey.length;
+
+        if (isSubject) {
+            setFormSubject(newVal);
+        } else {
+            setFormDesc(newVal);
+        }
+
+        lastCursorPosRef.current = {
+            field: activeTargetField,
+            start: newPos,
+            end: newPos
+        };
+
+        requestAnimationFrame(() => {
+            if (el) {
+                el.focus();
+                el.setSelectionRange(newPos, newPos);
+            }
+        });
+
+        toast.success(`Insertada: ${variableKey}`);
+    };
 
     const loadTemplates = async () => {
         try {
@@ -117,6 +195,7 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
     const openCreateModal = () => {
         setEditingTemplate(null);
         setFormTitle("");
+        setFormSubject("");
         setFormType(selectedCategory !== "ALL" ? selectedCategory : "ATTENTION");
         setFormDesc("");
         setIsModalOpen(true);
@@ -125,6 +204,7 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
     const openEditModal = (tpl: any) => {
         setEditingTemplate(tpl);
         setFormTitle(tpl.title);
+        setFormSubject(tpl.subject || "");
         setFormType(tpl.type || "ATTENTION");
         setFormDesc(tpl.description);
         setIsModalOpen(true);
@@ -133,6 +213,7 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
     const openDuplicateModal = (tpl: any) => {
         setEditingTemplate(null);
         setFormTitle(`${tpl.title} (Copia)`);
+        setFormSubject(tpl.subject ? `${tpl.subject} (Copia)` : "");
         setFormType(tpl.type || "ATTENTION");
         setFormDesc(tpl.description);
         setIsModalOpen(true);
@@ -151,11 +232,12 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
 
         try {
             setIsSaving(true);
+            const cleanSubject = formSubject.trim() || null;
             if (editingTemplate) {
-                await updateRemarkTemplateAction(editingTemplate.id, formTitle.trim(), formDesc.trim(), formType);
+                await updateRemarkTemplateAction(editingTemplate.id, formTitle.trim(), formDesc.trim(), formType, cleanSubject);
                 toast.success("Plantilla actualizada correctamente en la base de datos.");
             } else {
-                await createRemarkTemplateAction(formTitle.trim(), formDesc.trim(), formType);
+                await createRemarkTemplateAction(formTitle.trim(), formDesc.trim(), formType, cleanSubject);
                 toast.success("Plantilla creada correctamente y disponible para los instructores.");
             }
 
@@ -186,7 +268,7 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
         try {
             setIsSaving(true);
             for (const tpl of SUGGESTED_SENA_TEMPLATES) {
-                await createRemarkTemplateAction(tpl.title, tpl.description, tpl.type);
+                await createRemarkTemplateAction(tpl.title, tpl.description, tpl.type, tpl.subject);
             }
             toast.success("5 plantillas institucionales base cargadas correctamente.");
             await loadTemplates();
@@ -205,6 +287,7 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
             const matchesSearch =
                 !term ||
                 (tpl.title || "").toLowerCase().includes(term) ||
+                (tpl.subject || "").toLowerCase().includes(term) ||
                 (tpl.description || "").toLowerCase().includes(term);
 
             return matchesCategory && matchesSearch;
@@ -444,6 +527,16 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
                                         {tpl.title}
                                     </h3>
 
+                                    {/* Email Subject if defined */}
+                                    {tpl.subject && (
+                                        <div className="flex items-center gap-1.5 text-[11px] text-primary/90 font-medium bg-primary/5 border border-primary/15 rounded-lg px-2.5 py-1">
+                                            <Mail className="w-3 h-3 shrink-0 text-primary" />
+                                            <span className="truncate" title={tpl.subject}>
+                                                <strong>Asunto:</strong> {tpl.subject}
+                                            </span>
+                                        </div>
+                                    )}
+
                                     {/* Description */}
                                     <div className="p-3 rounded-xl bg-muted/30 border border-border/50 text-xs text-muted-foreground leading-relaxed whitespace-pre-line max-h-36 overflow-y-auto font-sans">
                                         {tpl.description}
@@ -499,116 +592,242 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
 
             {/* Modal para Crear / Editar Plantilla */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-xl p-0 overflow-hidden rounded-2xl">
-                    <DialogHeader className="p-5 pb-4 border-b border-border/80 bg-muted/20">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                <DialogContent className="max-w-4xl sm:max-w-4xl w-[95vw] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl border border-border/80">
+                    <DialogHeader className="p-5 sm:p-6 pb-4 border-b border-border/80 bg-muted/20 shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
                                 <ClipboardList className="w-5 h-5" />
                             </div>
                             <div>
-                                <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
+                                <DialogTitle className="text-base sm:text-xl font-black text-foreground">
                                     {editingTemplate ? "Editar Plantilla de Observación" : "Nueva Plantilla de Observación"}
                                 </DialogTitle>
-                                <DialogDescription className="text-xs text-muted-foreground">
-                                    Esta plantilla estará disponible de inmediato para todos los instructores en sus fichas.
+                                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                                    Esta plantilla institucional se guardará en la base de datos y estará disponible para todos los instructores.
                                 </DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <form onSubmit={handleSaveTemplate} className="p-5 space-y-4">
-                        {/* Title */}
-                        <div className="space-y-1.5">
-                            <Label htmlFor="template-form-title" className="text-xs font-semibold">
-                                Título de la Plantilla <span className="text-destructive">*</span>
-                            </Label>
-                            <Input
-                                id="template-form-title"
-                                placeholder="ej: Llamado de atención por llegadas tarde constantes"
-                                value={formTitle}
-                                onChange={(e) => setFormTitle(e.target.value)}
-                                className="h-9 text-xs rounded-xl"
-                                required
-                            />
-                        </div>
+                    <form onSubmit={handleSaveTemplate} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 min-h-0">
+                        {/* Title & Category Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="sm:col-span-2 space-y-1.5">
+                                <Label htmlFor="template-form-title" className="text-xs font-bold text-foreground">
+                                    Título de la Plantilla <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    id="template-form-title"
+                                    placeholder="ej: Llamado de atención por faltas reiteradas o abandono"
+                                    value={formTitle}
+                                    onChange={(e) => setFormTitle(e.target.value)}
+                                    className="h-10 text-xs sm:text-sm rounded-xl bg-background"
+                                    required
+                                />
+                            </div>
 
-                        {/* Category */}
-                        <div className="space-y-1.5">
-                            <Label htmlFor="template-form-type" className="text-xs font-semibold">
-                                Tipo de Observación (Categoría) <span className="text-destructive">*</span>
-                            </Label>
-                            <Select
-                                value={formType}
-                                onValueChange={(val: any) => setFormType(val)}
-                            >
-                                <SelectTrigger id="template-form-type" className="h-9 text-xs rounded-xl">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ATTENTION" className="text-rose-600 font-semibold text-xs">
-                                        🔴 Llamado de Atención
-                                    </SelectItem>
-                                    <SelectItem value="COMMENDATION" className="text-emerald-600 font-semibold text-xs">
-                                        🟢 Felicitación
-                                    </SelectItem>
-                                    <SelectItem value="CITATION" className="text-blue-600 font-semibold text-xs">
-                                        🔵 Citación
-                                    </SelectItem>
-                                    <SelectItem value="OTHER" className="text-purple-600 font-semibold text-xs">
-                                        ⚪ Otra Observación
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Description */}
-                        <div className="space-y-1.5">
-                            <Label htmlFor="template-form-desc" className="text-xs font-semibold">
-                                Descripción Detallada <span className="text-destructive">*</span>
-                            </Label>
-                            <Textarea
-                                id="template-form-desc"
-                                placeholder="Escribe el texto detallado de la observación que se cargará para el instructor..."
-                                value={formDesc}
-                                onChange={(e) => setFormDesc(e.target.value)}
-                                rows={6}
-                                className="text-xs rounded-xl leading-relaxed"
-                                required
-                            />
-                        </div>
-
-                        {/* Live Sample Preview */}
-                        <div className="p-3.5 rounded-xl border border-border/80 bg-muted/20 space-y-1.5">
-                            <span className="text-[11px] font-bold text-foreground block">
-                                Vista Previa del Mensaje para el Instructor:
-                            </span>
-                            <div className="p-2.5 rounded-lg bg-card border border-border/60 text-xs space-y-1">
-                                <p className="font-bold text-foreground">
-                                    {formTitle || "(Sin título definido)"}
-                                </p>
-                                <p className="text-muted-foreground whitespace-pre-line text-[11px] leading-relaxed">
-                                    {formDesc || "(Sin descripción detallada)"}
-                                </p>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="template-form-type" className="text-xs font-bold text-foreground">
+                                    Tipo / Categoría <span className="text-destructive">*</span>
+                                </Label>
+                                <Select
+                                    value={formType}
+                                    onValueChange={(val: any) => setFormType(val)}
+                                >
+                                    <SelectTrigger id="template-form-type" className="h-10 text-xs sm:text-sm rounded-xl bg-background">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ATTENTION" className="text-rose-600 font-semibold text-xs sm:text-sm">
+                                            🔴 Llamado de Atención
+                                        </SelectItem>
+                                        <SelectItem value="COMMENDATION" className="text-emerald-600 font-semibold text-xs sm:text-sm">
+                                            🟢 Felicitación
+                                        </SelectItem>
+                                        <SelectItem value="CITATION" className="text-blue-600 font-semibold text-xs sm:text-sm">
+                                            🔵 Citación
+                                        </SelectItem>
+                                        <SelectItem value="OTHER" className="text-purple-600 font-semibold text-xs sm:text-sm">
+                                            ⚪ Otra Observación
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
-                        {/* Footer buttons */}
-                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/80">
+                        {/* Email Subject Field */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="template-form-subject" className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Mail className="w-3.5 h-3.5 text-primary" />
+                                    <span>Asunto del Correo Electrónico</span>
+                                </Label>
+                                <span className="text-[11px] text-muted-foreground">
+                                    Opcional (se precargará en el correo del instructor)
+                                </span>
+                            </div>
+                            <Input
+                                ref={subjectInputRef}
+                                id="template-form-subject"
+                                placeholder="ej: Llamado de Atención por Inasistencias, Ficha {{ficha}} – SENA"
+                                value={formSubject}
+                                onFocus={() => updateCursorPosition("subject")}
+                                onClick={() => updateCursorPosition("subject")}
+                                onKeyUp={() => updateCursorPosition("subject")}
+                                onSelect={() => updateCursorPosition("subject")}
+                                onChange={(e) => {
+                                    setFormSubject(e.target.value);
+                                    updateCursorPosition("subject");
+                                }}
+                                className="h-10 text-xs sm:text-sm rounded-xl bg-background"
+                            />
+                            <p className="text-[11px] text-muted-foreground">
+                                Este asunto se transferirá automáticamente al cliente de correo al presionar &quot;Enviar Correo&quot;.
+                            </p>
+                        </div>
+
+                        {/* Variables Selector Panel */}
+                        <div className="p-3.5 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                                    <span>Variables disponibles (clic para insertar)</span>
+                                </span>
+                                <span className="text-[10px] text-muted-foreground font-medium">
+                                    Insertando en: <strong className="text-primary uppercase">{activeTargetField === "subject" ? "Asunto" : "Descripción"}</strong>
+                                </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {REMARK_AVAILABLE_VARIABLES.map((v) => (
+                                    <button
+                                        key={v.key}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                            // Prevenir pérdida de foco y cursor en el campo de texto
+                                            e.preventDefault();
+                                        }}
+                                        onClick={() => handleInsertVariable(v.key)}
+                                        title={`${v.label}: ${v.description} (Ejemplo: ${v.sampleValue})`}
+                                        className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2.5 py-1 rounded-lg bg-background hover:bg-primary hover:text-primary-foreground border border-border/80 shadow-2xs transition-all cursor-pointer"
+                                    >
+                                        <span className="text-primary font-bold">+</span>
+                                        <span>{v.key}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">
+                                Al aplicarse en la ficha, la plataforma reemplazará automáticamente estas etiquetas por los datos reales del aprendiz seleccionado.
+                            </p>
+                        </div>
+
+                        {/* Description with dedicated scroll */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="template-form-desc" className="text-xs font-bold text-foreground">
+                                    Descripción Detallada <span className="text-destructive">*</span>
+                                </Label>
+                                <span className="text-[11px] text-muted-foreground font-mono">
+                                    {formDesc.length} caracteres
+                                </span>
+                            </div>
+                            <div className="rounded-xl border border-border/80 bg-background focus-within:ring-2 focus-within:ring-primary/30 transition-all">
+                                <Textarea
+                                    ref={descTextareaRef}
+                                    id="template-form-desc"
+                                    placeholder="Escribe el texto detallado de la observación que se cargará para el instructor..."
+                                    value={formDesc}
+                                    onFocus={() => updateCursorPosition("desc")}
+                                    onClick={() => updateCursorPosition("desc")}
+                                    onKeyUp={() => updateCursorPosition("desc")}
+                                    onSelect={() => updateCursorPosition("desc")}
+                                    onChange={(e) => {
+                                        setFormDesc(e.target.value);
+                                        updateCursorPosition("desc");
+                                    }}
+                                    rows={8}
+                                    className="min-h-[180px] max-h-[280px] sm:max-h-[340px] w-full resize-y overflow-y-auto text-xs sm:text-sm leading-relaxed p-3.5 bg-transparent border-0 focus-visible:ring-0 focus-visible:outline-none scrollbar-thin"
+                                    required
+                                />
+                            </div>
+                            <p className="text-[11px] text-muted-foreground flex items-center justify-between">
+                                <span>El área cuenta con barra de desplazamiento vertical interna para redactar o revisar textos extensos.</span>
+                            </p>
+                        </div>
+
+                        {/* Live Sample Preview with Interpolated Variables */}
+                        <div className="p-4 rounded-xl border border-border/80 bg-muted/20 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                    <Eye className="w-3.5 h-3.5 text-primary" />
+                                    <span>Vista Previa del Mensaje para el Instructor</span>
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                    <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-primary/10 text-primary border-primary/20 font-semibold">
+                                        ✨ Simulación con datos de prueba
+                                    </Badge>
+                                    <Badge variant="outline" className="text-[10px] py-0 px-2 font-semibold">
+                                        {formType === "ATTENTION" && "Llamado de Atención"}
+                                        {formType === "COMMENDATION" && "Felicitación"}
+                                        {formType === "CITATION" && "Citación"}
+                                        {formType === "OTHER" && "Otra"}
+                                    </Badge>
+                                </div>
+                            </div>
+                            <div className="p-3.5 rounded-lg bg-card border border-border/60 text-xs space-y-2.5 max-h-48 overflow-y-auto">
+                                <div className="space-y-0.5 border-b border-border/40 pb-2">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                        Título Interno
+                                    </p>
+                                    <p className="font-bold text-foreground text-xs sm:text-sm">
+                                        {interpolateRemarkTemplate(formTitle, { useSampleValues: true }) || "(Sin título definido)"}
+                                    </p>
+                                </div>
+                                <div className="space-y-0.5 border-b border-border/40 pb-2">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                                        <Mail className="w-3 h-3 text-primary" />
+                                        Asunto para el Correo (Interpolado)
+                                    </p>
+                                    <p className="text-foreground font-semibold text-xs">
+                                        {interpolateRemarkTemplate(formSubject || formTitle, { useSampleValues: true }) || "(Sin asunto especificado)"}
+                                    </p>
+                                </div>
+                                <div className="space-y-0.5 pt-0.5">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                        Cuerpo del Mensaje / Observación (Interpolado)
+                                    </p>
+                                    <p className="text-muted-foreground whitespace-pre-line text-[11px] sm:text-xs leading-relaxed">
+                                        {interpolateRemarkTemplate(formDesc, { useSampleValues: true }) || "(Sin descripción detallada)"}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    {/* Sticky Footer */}
+                    <div className="p-4 sm:p-5 border-t border-border/80 bg-card flex items-center justify-between gap-3 shrink-0">
+                        <span className="text-xs text-muted-foreground hidden sm:inline">
+                            Los instructores podrán utilizar esta plantilla directamente o redactar una personalizada.
+                        </span>
+                        <div className="flex items-center gap-2 ml-auto">
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setIsModalOpen(false)}
                                 disabled={isSaving}
-                                className="h-8 px-3 text-xs rounded-xl"
+                                className="h-9 px-4 text-xs rounded-xl"
                             >
                                 Cancelar
                             </Button>
                             <Button
-                                type="submit"
+                                type="button"
+                                onClick={(e) => {
+                                    const form = (e.currentTarget.closest('div')?.parentElement?.parentElement as HTMLElement)?.querySelector('form');
+                                    if (form) form.requestSubmit();
+                                }}
                                 size="sm"
                                 disabled={isSaving}
-                                className="h-8 px-4 text-xs rounded-xl font-semibold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-2xs"
+                                className="h-9 px-5 text-xs rounded-xl font-semibold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-2xs cursor-pointer"
                             >
                                 {isSaving ? (
                                     <>
@@ -623,7 +842,7 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
                                 )}
                             </Button>
                         </div>
-                    </form>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

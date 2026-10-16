@@ -82,7 +82,7 @@ import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, CalendarDays, Award, ShieldCheck, Building } from "lucide-react";
+import { Users, User, Check, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, CalendarDays, Award, ShieldCheck, Building } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,7 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { resetStudentPassword, saveAttendanceBatch, saveRemarkBatch, getGroupAttendanceHistory, getGroupRemarksHistory, getTeacherComprehensiveGroupAnalyticsAction, saveSingleAttendanceAction, deleteRemarkAction, resetStudentDailyAttempts, notifyEmailSentBatchAction } from "../actions/groupActions";
 import { getRemarkTemplatesAction } from "../actions/remarkActions";
+import { interpolateRemarkTemplate } from "../utils/remarkTemplateVariables";
 import { getGroupImprovementPlans, upsertImprovementPlan, deleteImprovementPlan, deleteSignedDocument, deleteTeacherSignedDoc, submitTeacherSignedDoc, markPlanViewed, resetPlanToStep, gradeImprovementPlan } from "@/features/student/actions/improvementPlanActions";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -795,6 +796,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     const [remarkCourseId, setRemarkCourseId] = useState("");
     const [isSavingRemark, setIsSavingRemark] = useState(false);
     const [remarkStudentSearch, setRemarkStudentSearch] = useState("");
+    const [selectedRemarkStudentId, setSelectedRemarkStudentId] = useState<string | null>(null);
     const [sendEmailOnSave, setSendEmailOnSave] = useState(false);
 
     // Remarks Message Templates State
@@ -837,8 +839,31 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
 
 
 
-    const getParsedDescription = () => {
-        return remarkDesc;
+    const selectedRemarkStudent = useMemo(() => {
+        if (!selectedRemarkStudentId || !selectedGroup?.students) return null;
+        return selectedGroup.students.find((s: any) => s.id === selectedRemarkStudentId) || null;
+    }, [selectedRemarkStudentId, selectedGroup]);
+
+    const getParsedDescription = (customStudent?: any) => {
+        const student = customStudent || selectedRemarkStudent;
+        return interpolateRemarkTemplate(remarkDesc, {
+            student,
+            group: selectedGroup,
+            teacherName: teacherName || "",
+            currentDate: new Date(),
+            useSampleValues: !student
+        });
+    };
+
+    const getParsedTitle = (customStudent?: any) => {
+        const student = customStudent || selectedRemarkStudent;
+        return interpolateRemarkTemplate(remarkTitle || "Observación Académica/Disciplinaria", {
+            student,
+            group: selectedGroup,
+            teacherName: teacherName || "",
+            currentDate: new Date(),
+            useSampleValues: !student
+        });
     };
 
     const handleCopyToClipboard = async () => {
@@ -849,7 +874,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         }
         try {
             await navigator.clipboard.writeText(textToCopy);
-            toast.success("Texto copiado al portapapeles. ¡Listo para pegar en tu correo!");
+            toast.success("Texto copiado al portapapeles" + (selectedRemarkStudent ? " con los datos del aprendiz." : "."));
         } catch (err) {
             console.error("Error al copiar al portapapeles:", err);
             toast.error("No se pudo copiar el texto. Inténtalo de nuevo.");
@@ -1024,6 +1049,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             setRemarkType("ATTENTION");
             setRemarkTitle("");
             setRemarkDesc("");
+            setSelectedRemarkStudentId(null);
             setRemarkCourseId(firstCourseId);
             setSendEmailOnSave(false);
 
@@ -1867,33 +1893,29 @@ const handleOpenAnalytics = async () => {
 
     const handleSaveRemarks = async () => {
         if (!remarkCourseId) return toast.error("Selecciona una materia");
-        if (selectedStudents.length === 0) return toast.error("Selecciona al menos un aprendiz");
+        if (!selectedRemarkStudentId || !selectedRemarkStudent) return toast.error("Selecciona un aprendiz para la observación");
         if (!remarkTitle.trim() || !remarkDesc.trim()) return toast.error("Completa el título y la descripción");
 
         setIsSavingRemark(true);
-        const res = await saveRemarkBatch(teacherId!, remarkCourseId, selectedStudents, remarkType, remarkTitle, remarkDesc);
+        const res = await saveRemarkBatch(teacherId!, remarkCourseId, [selectedRemarkStudentId], remarkType, remarkTitle, remarkDesc);
         if (res.success) {
             toast.success("Observación guardada correctamente");
             
             if (sendEmailOnSave) {
-                const selectedEmails = (selectedGroup.students || [])
-                    .filter((s: any) => selectedStudents.includes(s.id) && s.email)
-                    .map((s: any) => s.email)
-                    .join(',');
-                if (selectedEmails) {
-                    const subject = encodeURIComponent(remarkTitle);
-                    const body = encodeURIComponent(getParsedDescription());
-                    window.location.href = `mailto:${selectedEmails}?subject=${subject}&body=${body}`;
-                    // Notify students via push
-                    notifyEmailSentBatchAction(selectedStudents, "REMARK");
+                if (selectedRemarkStudent.email) {
+                    const subject = encodeURIComponent(getParsedTitle(selectedRemarkStudent));
+                    const body = encodeURIComponent(getParsedDescription(selectedRemarkStudent));
+                    window.location.href = `mailto:${selectedRemarkStudent.email}?subject=${subject}&body=${body}`;
+                    // Notify student via push
+                    notifyEmailSentBatchAction([selectedRemarkStudent.id], "REMARK");
                 } else {
-                    toast.warning("No hay correos registrados para los aprendices seleccionados.");
+                    toast.warning("El aprendiz seleccionado no tiene un correo registrado.");
                 }
             }
 
             setRemarkTitle("");
             setRemarkDesc("");
-            setSelectedStudents([]);
+            setSelectedRemarkStudentId(null);
             setSendEmailOnSave(false);
             loadHistory(selectedGroup!.id);
         } else {
@@ -4700,7 +4722,7 @@ const handleOpenAnalytics = async () => {
                                                     setSelectedTemplateId(val);
                                                     const template = remarkTemplates.find(t => t.id === val);
                                                     if (template) {
-                                                        setRemarkTitle(template.title);
+                                                        setRemarkTitle(template.subject || template.title);
                                                         setRemarkDesc(template.description);
                                                     }
                                                 }}
@@ -4724,123 +4746,146 @@ const handleOpenAnalytics = async () => {
                                             </p>
                                         </div>
 
-                                        <div className="space-y-2 mb-6">
-                                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Aprendices a aplicar</Label>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button 
-                                                            type="button" 
-                                                            variant="outline"
-                                                            className="flex h-12 w-full items-center justify-between rounded-xl border border-primary/20 bg-background px-3 py-2 text-sm text-foreground font-medium hover:bg-background hover:text-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 transition-colors"
-                                                        >
+                                         <div className="space-y-2 mb-6">
+                                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Aprendiz a Notificar (Individual)</Label>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="outline"
+                                                        className="flex h-12 w-full items-center justify-between rounded-xl border border-primary/20 bg-background px-3 py-2 text-sm text-foreground font-medium hover:bg-background hover:text-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/25 focus:ring-offset-0 transition-colors"
+                                                    >
+                                                        <div className="flex items-center gap-2 truncate">
+                                                            <User className="w-4 h-4 text-primary shrink-0" />
                                                             <span className="truncate">
-                                                                {selectedStudents.length === 0 
-                                                                    ? "Seleccionar aprendices" 
-                                                                    : selectedStudents.length === 1 
-                                                                        ? "1 aprendiz seleccionado" 
-                                                                        : `${selectedStudents.length} aprendices seleccionados`}
+                                                                {selectedRemarkStudent 
+                                                                    ? formatName(selectedRemarkStudent.name, selectedRemarkStudent.profile)
+                                                                    : "Seleccionar un solo aprendiz..."}
                                                             </span>
-                                                            <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent className="w-[300px] max-h-[350px] overflow-y-auto p-2" align="start">
-                                                        <div className="p-1.5 border-b mb-2 flex gap-1">
-                                                            <Input 
-                                                                placeholder="Buscar aprendiz..." 
-                                                                className="h-9 rounded-lg bg-muted/30 border-0 focus-visible:ring-1" 
-                                                                value={remarkStudentSearch}
-                                                                onChange={e => setRemarkStudentSearch(e.target.value)}
-                                                            />
-                                                            {remarkStudentSearch && (
-                                                                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setRemarkStudentSearch("")}>
-                                                                    <X className="w-4 h-4" />
-                                                                </Button>
-                                                            )}
                                                         </div>
-                                                        <div className="flex justify-between px-2 mb-2">
+                                                        <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent className="w-[320px] max-h-[350px] overflow-y-auto p-2" align="start">
+                                                    <div className="p-1.5 border-b mb-2 flex gap-1">
+                                                        <Input 
+                                                            placeholder="Buscar aprendiz..." 
+                                                            className="h-9 rounded-lg bg-muted/30 border-0 focus-visible:ring-1 text-xs" 
+                                                            value={remarkStudentSearch}
+                                                            onChange={e => setRemarkStudentSearch(e.target.value)}
+                                                        />
+                                                        {remarkStudentSearch && (
+                                                            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setRemarkStudentSearch("")}>
+                                                                <X className="w-4 h-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    {selectedRemarkStudentId && (
+                                                        <div className="px-1 mb-2">
                                                             <Button 
                                                                 variant="ghost" 
                                                                 type="button"
-                                                                className="text-[11px] h-6 px-1.5 font-bold text-primary hover:bg-primary/10 cursor-pointer"
-                                                                onClick={() => {
-                                                                    const allIds = filteredStudentsForRemark.map((s: any) => s.id);
-                                                                    setSelectedStudents(allIds);
-                                                                }}
+                                                                className="text-[11px] h-7 w-full justify-center font-bold text-muted-foreground hover:bg-muted hover:text-destructive cursor-pointer"
+                                                                onClick={() => setSelectedRemarkStudentId(null)}
                                                             >
-                                                                Todos
-                                                            </Button>
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                type="button"
-                                                                className="text-[11px] h-6 px-1.5 font-bold text-muted-foreground hover:bg-muted cursor-pointer"
-                                                                onClick={() => setSelectedStudents([])}
-                                                            >
-                                                                Ninguno
+                                                                Quitar selección
                                                             </Button>
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            {filteredStudentsForRemark.length === 0 ? (
-                                                                <p className="text-xs text-muted-foreground text-center py-4">No se encontraron aprendices</p>
-                                                            ) : (
-                                                                filteredStudentsForRemark.map((s: any) => {
-                                                                    const isChecked = selectedStudents.includes(s.id);
-                                                                    return (
-                                                                        <div 
-                                                                            key={s.id} 
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault();
-                                                                                e.stopPropagation();
-                                                                                toggleStudentSelection(s.id);
-                                                                            }}
-                                                                            className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-primary/5 rounded-lg cursor-pointer transition-colors"
-                                                                        >
-                                                                            <Checkbox 
-                                                                                checked={isChecked} 
-                                                                                onCheckedChange={() => {}} // handled by onClick
-                                                                                className="pointer-events-none"
-                                                                            />
-                                                                            <div className="text-left">
-                                                                                <p className="text-xs font-bold text-foreground leading-none">{formatName(s.name, s.profile)}</p>
-                                                                                <p className="text-[10px] text-muted-foreground mt-0.5">{s.profile?.identificacion || "S/D"}</p>
+                                                    )}
+                                                    <div className="space-y-1">
+                                                        {filteredStudentsForRemark.length === 0 ? (
+                                                            <p className="text-xs text-muted-foreground text-center py-4">No se encontraron aprendices</p>
+                                                        ) : (
+                                                            filteredStudentsForRemark.map((s: any) => {
+                                                                const isSelected = selectedRemarkStudentId === s.id;
+                                                                return (
+                                                                    <div 
+                                                                        key={s.id} 
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            setSelectedRemarkStudentId(isSelected ? null : s.id);
+                                                                        }}
+                                                                        className={cn(
+                                                                            "flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors",
+                                                                            isSelected 
+                                                                                ? "bg-primary/15 text-primary font-bold" 
+                                                                                : "hover:bg-primary/5 text-foreground"
+                                                                        )}
+                                                                    >
+                                                                        <div className="text-left min-w-0 pr-2">
+                                                                            <p className="text-xs font-bold leading-tight truncate">
+                                                                                {formatName(s.name, s.profile)}
+                                                                            </p>
+                                                                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                                                                                <span>CC: {s.profile?.identificacion || "S/D"}</span>
+                                                                                {s.email && <span className="truncate max-w-[140px]">• {s.email}</span>}
                                                                             </div>
                                                                         </div>
-                                                                    );
-                                                                })
-                                                            )}
-                                                        </div>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
+                                                                        {isSelected ? (
+                                                                            <Check className="w-4 h-4 text-primary shrink-0" />
+                                                                        ) : (
+                                                                            <div className="w-3.5 h-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </div>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
 
-                                        {selectedStudents.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5 mb-6 max-h-[100px] overflow-y-auto p-2 bg-background/50 rounded-xl border border-primary/10">
-                                                {selectedStudents.map(id => {
-                                                    const student = selectedGroup.students?.find((s: any) => s.id === id);
-                                                    if (!student) return null;
-                                                    return (
-                                                        <Badge key={id} variant="outline" className="text-xs py-1 px-2.5 font-bold bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 flex items-center gap-1.5 rounded-lg">
-                                                            {formatName(student.name, student.profile)}
-                                                            <button 
-                                                                type="button" 
-                                                                onClick={() => toggleStudentSelection(id)}
-                                                                className="hover:bg-primary/20 p-0.5 rounded-full text-primary hover:text-primary transition-colors cursor-pointer"
-                                                            >
-                                                                <X className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        </Badge>
-                                                    );
-                                                })}
+                                        {selectedRemarkStudent && (
+                                            <div className="flex items-center justify-between p-3.5 mb-6 bg-primary/10 rounded-xl border border-primary/20">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <Avatar className="h-9 w-9 border border-primary/30 shrink-0">
+                                                        <AvatarFallback className="text-xs font-bold bg-primary text-primary-foreground">
+                                                            {selectedRemarkStudent.name?.substring(0, 2).toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-sm font-bold text-foreground">
+                                                                {formatName(selectedRemarkStudent.name, selectedRemarkStudent.profile)}
+                                                            </span>
+                                                            <Badge variant="outline" className="text-[10px] font-mono py-0 h-5 border-primary/30 text-primary">
+                                                                Doc: {selectedRemarkStudent.profile?.identificacion || "S/D"}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground truncate">
+                                                            {selectedRemarkStudent.email || "Sin correo registrado"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={() => setSelectedRemarkStudentId(null)}
+                                                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer shrink-0"
+                                                >
+                                                    <X className="w-4 h-4 mr-1" /> Quitar
+                                                </Button>
                                             </div>
                                         )}
                                         
                                         <div className="space-y-2 mb-6">
-                                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Título</Label>
-                                            <Input className="h-12 rounded-xl bg-background border-primary/20" value={remarkTitle} onChange={e => setRemarkTitle(e.target.value)} placeholder="Ej. Excelente participación, Retraso constante..." />
+                                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Título / Asunto del Correo</Label>
+                                            <Input className="h-12 rounded-xl bg-background border-primary/20" value={remarkTitle} onChange={e => setRemarkTitle(e.target.value)} placeholder="Ej. Llamado de atención por inasistencia..." />
                                         </div>
                                         
                                         <div className="space-y-2 mb-4">
                                             <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Descripción Detallada</Label>
                                             <Textarea className="min-h-[120px] rounded-xl bg-background border-primary/20 p-4" value={remarkDesc} onChange={e => setRemarkDesc(e.target.value)} placeholder="Describe el suceso o justificación de la observación..." />
+                                            {(remarkDesc.includes("{{") || (remarkDesc.includes("{") && remarkDesc.includes("}"))) && (
+                                                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20 text-xs text-primary font-medium">
+                                                    <Sparkles className="w-4 h-4 shrink-0 text-primary" />
+                                                    <span>
+                                                        <strong>Variables dinámicas activas:</strong> Se personalizarán automáticamente con los datos de <strong>{selectedRemarkStudent ? formatName(selectedRemarkStudent.name, selectedRemarkStudent.profile) : "el aprendiz seleccionado"}</strong> al generar el correo o guardar.
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Settings Row: Switches Grid */}
@@ -4854,7 +4899,7 @@ const handleOpenAnalytics = async () => {
                                                 />
                                                 <Label htmlFor="send-email-remark" className="text-xs sm:text-sm font-bold text-foreground cursor-pointer select-none flex items-center gap-2">
                                                     <Mail className="w-4 h-4 text-primary shrink-0" />
-                                                    <span>Enviar correo (abre cliente del sistema operativo al guardar)</span>
+                                                    <span>Enviar correo individual (abre cliente del sistema operativo al guardar)</span>
                                                 </Label>
                                             </div>
                                         </div>
@@ -4862,8 +4907,16 @@ const handleOpenAnalytics = async () => {
                                         {/* Action Buttons Row */}
                                         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 mt-8 bg-background/50 p-4 rounded-xl border border-primary/10">
                                             <div className="text-sm font-semibold flex items-center justify-center lg:justify-start gap-2 w-full lg:w-auto">
-                                                <Users className="w-5 h-5 text-primary shrink-0" />
-                                                <span>Aplicará a <Badge className="text-sm px-3">{selectedStudents.length}</Badge> aprendices seleccionados.</span>
+                                                <UserCheck className="w-5 h-5 text-primary shrink-0" />
+                                                <span>
+                                                    {selectedRemarkStudent ? (
+                                                        <>
+                                                            Destinatario individual: <strong className="text-primary">{formatName(selectedRemarkStudent.name, selectedRemarkStudent.profile)}</strong> {selectedRemarkStudent.email ? `(${selectedRemarkStudent.email})` : "(Sin correo)"}
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">Debes seleccionar un aprendiz para continuar</span>
+                                                    )}
+                                                </span>
                                             </div>
                                             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                                                 <Button 
@@ -4879,21 +4932,20 @@ const handleOpenAnalytics = async () => {
                                                 <Button 
                                                     type="button"
                                                     variant="outline"
-                                                    disabled={selectedStudents.length === 0}
+                                                    disabled={!selectedRemarkStudent}
                                                     onClick={() => {
-                                                        const selectedEmails = (selectedGroup.students || [])
-                                                            .filter((s: any) => selectedStudents.includes(s.id) && s.email)
-                                                            .map((s: any) => s.email)
-                                                            .join(',');
-                                                        if (selectedEmails) {
-                                                            const subject = encodeURIComponent(remarkTitle || "Observación Académica/Disciplinaria");
-                                                            const body = encodeURIComponent(getParsedDescription() || "");
-                                                            window.location.href = `mailto:${selectedEmails}?subject=${subject}&body=${body}`;
-                                                            // Notify students via push
-                                                            notifyEmailSentBatchAction(selectedStudents, "REMARK");
-                                                        } else {
-                                                            toast.warning("No hay correos registrados para los aprendices seleccionados.");
+                                                        if (!selectedRemarkStudent) {
+                                                            toast.warning("Selecciona un aprendiz para enviar el correo.");
+                                                            return;
                                                         }
+                                                        if (!selectedRemarkStudent.email) {
+                                                            toast.warning("El aprendiz seleccionado no tiene correo electrónico registrado.");
+                                                            return;
+                                                        }
+                                                        const subject = encodeURIComponent(getParsedTitle(selectedRemarkStudent));
+                                                        const body = encodeURIComponent(getParsedDescription(selectedRemarkStudent));
+                                                        window.location.href = `mailto:${selectedRemarkStudent.email}?subject=${subject}&body=${body}`;
+                                                        notifyEmailSentBatchAction([selectedRemarkStudent.id], "REMARK");
                                                     }}
                                                     size="lg" 
                                                     className="rounded-xl px-5 h-12 font-bold w-full sm:w-auto border-primary/20 text-primary hover:bg-primary/5 gap-2 flex items-center justify-center cursor-pointer"
@@ -4903,7 +4955,7 @@ const handleOpenAnalytics = async () => {
                                                 
                                                 <Button 
                                                     onClick={handleSaveRemarks} 
-                                                    disabled={isSavingRemark || selectedStudents.length === 0} 
+                                                    disabled={isSavingRemark || !selectedRemarkStudent} 
                                                     size="lg" 
                                                     className="rounded-xl px-8 h-12 font-bold w-full sm:w-auto cursor-pointer"
                                                 >
