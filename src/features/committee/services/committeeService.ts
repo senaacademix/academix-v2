@@ -6,7 +6,10 @@ import {
     CreateCommitteeProcessInput,
     UpdateCommitteeProcessInput,
     CreateCommitteeReportInput,
-    UpdateCommitteeReportInput
+    UpdateCommitteeReportInput,
+    CommitteeEmailTemplateDTO,
+    CreateCommitteeEmailTemplateInput,
+    UpdateCommitteeEmailTemplateInput
 } from "../types";
 import { parseInputDate, checkProcessDiligenceWindow } from "../utils/dateUtils";
 
@@ -778,6 +781,265 @@ export class CommitteeService {
             where: { id: reportId }
         });
 
+        return true;
+    }
+
+    /**
+     * Obtiene las plantillas de correo de comités guardadas en la base de datos
+     */
+    async getEmailTemplates(filters?: { programId?: string }): Promise<CommitteeEmailTemplateDTO[]> {
+        const where: any = {};
+        if (filters?.programId && filters.programId !== "all" && filters.programId !== "none") {
+            where.OR = [
+                { programId: null },
+                { programId: filters.programId }
+            ];
+        }
+
+        let templates = await prisma.committeeEmailTemplate.findMany({
+            where,
+            orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+            include: {
+                program: { select: { id: true, name: true } },
+                createdBy: { select: { id: true, name: true, email: true } }
+            }
+        });
+
+        // Si no existen plantillas aún en la base de datos, crear las plantillas por defecto
+        if (templates.length === 0) {
+            await this.seedDefaultTemplates(filters?.programId);
+            templates = await prisma.committeeEmailTemplate.findMany({
+                where,
+                orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+                include: {
+                    program: { select: { id: true, name: true } },
+                    createdBy: { select: { id: true, name: true, email: true } }
+                }
+            });
+        }
+
+        return templates.map((t) => ({
+            id: t.id,
+            title: t.title,
+            subject: t.subject,
+            body: t.body,
+            isDefault: t.isDefault,
+            programId: t.programId,
+            programName: t.program?.name || null,
+            createdById: t.createdById,
+            createdByName: t.createdBy?.name || null,
+            createdAt: t.createdAt.toISOString(),
+            updatedAt: t.updatedAt.toISOString()
+        }));
+    }
+
+    /**
+     * Siembra las plantillas base oficiales para comités de evaluación
+     */
+    async seedDefaultTemplates(programId?: string) {
+        const count = await prisma.committeeEmailTemplate.count();
+        if (count > 0) return;
+
+        const effectiveProgramId = programId && programId !== "all" && programId !== "none" ? programId : null;
+
+        await prisma.committeeEmailTemplate.createMany({
+            data: [
+                {
+                    title: "Citación Oficial a Descargos (Predeterminada)",
+                    subject: "Citación a Comité de Evaluación y Seguimiento - {{proceso}}",
+                    body: `Estimado(a) aprendiz {{aprendiz}},
+
+Por medio de la presente comunicación oficial del Centro de Formación (SENA), se le notifica que ha sido convocado(a) a comparecer ante el Comité de Evaluación y Seguimiento en el marco del proceso:
+
+• Convocatoria / Proceso: {{proceso}}
+• Ficha / Grupo: {{ficha}}
+• Causal / Falta reportada: {{causal}}
+• Motivo del reporte: {{motivo}}
+
+Se le solicita estar atento(a) a las instrucciones del Gestor Académico e instructores sobre la fecha, hora y modalidad de la sesión para la presentación formal de sus descargos y análisis del caso.
+
+Le recordamos que tiene derecho a allegar las evidencias o soportes que considere pertinentes para su defensa.
+
+Atentamente,
+Gestor Académico
+SENA - Academix`,
+                    isDefault: true,
+                    programId: effectiveProgramId
+                },
+                {
+                    title: "Recordatorio Urgente de Comparecencia",
+                    subject: "RECORDATORIO: Citación a Comité de Evaluación - {{proceso}}",
+                    body: `Estimado(a) aprendiz {{aprendiz}},
+
+Nos comunicamos con carácter prioritario para recordarle la importancia de su asistencia a la sesión del Comité de Evaluación y Seguimiento:
+
+• Convocatoria: {{proceso}}
+• Ficha: {{ficha}}
+• Causal: {{causal}}
+
+Es indispensable su participación para garantizar el debido proceso y la formulación de compromisos o descargos correspondientes.
+
+Atentamente,
+Comité de Evaluación y Seguimiento
+SENA - Academix`,
+                    isDefault: false,
+                    programId: effectiveProgramId
+                },
+                {
+                    title: "Notificación Preventiva de Rendimiento / Asistencia",
+                    subject: "Notificación Preventiva de Novedad Académica - {{ficha}}",
+                    body: `Apreciado(a) aprendiz {{aprendiz}},
+
+Le informamos que se ha registrado una novedad académica o de asistencia en su proceso formativo:
+• Ficha / Grupo: {{ficha}}
+• Causal: {{causal}}
+• Detalle reportado: {{motivo}}
+
+Le invitamos a comunicarse a la mayor brevedad con su equipo ejecutor para analizar alternativas de nivelación previas a la decisión del Comité.
+
+Cordialmente,
+Gestoría Académica
+SENA - Academix`,
+                    isDefault: false,
+                    programId: effectiveProgramId
+                }
+            ]
+        });
+    }
+
+    /**
+     * Crea una nueva plantilla de correo
+     */
+    async createEmailTemplate(
+        userId: string,
+        input: CreateCommitteeEmailTemplateInput
+    ): Promise<CommitteeEmailTemplateDTO> {
+        if (!input.title?.trim()) {
+            throw new Error("El título de la plantilla es obligatorio.");
+        }
+        if (!input.subject?.trim()) {
+            throw new Error("El asunto del correo es obligatorio.");
+        }
+        if (!input.body?.trim()) {
+            throw new Error("El cuerpo del correo es obligatorio.");
+        }
+
+        const effectiveProgramId = input.programId && input.programId !== "all" && input.programId !== "none"
+            ? input.programId
+            : null;
+
+        // Si se marca como predeterminada, desmarcar las demás
+        if (input.isDefault) {
+            await prisma.committeeEmailTemplate.updateMany({
+                where: {
+                    OR: [
+                        { programId: null },
+                        { programId: effectiveProgramId }
+                    ]
+                },
+                data: { isDefault: false }
+            });
+        }
+
+        const template = await prisma.committeeEmailTemplate.create({
+            data: {
+                title: input.title.trim(),
+                subject: input.subject.trim(),
+                body: input.body.trim(),
+                isDefault: Boolean(input.isDefault),
+                programId: effectiveProgramId,
+                createdById: userId
+            },
+            include: {
+                program: { select: { id: true, name: true } },
+                createdBy: { select: { id: true, name: true, email: true } }
+            }
+        });
+
+        return {
+            id: template.id,
+            title: template.title,
+            subject: template.subject,
+            body: template.body,
+            isDefault: template.isDefault,
+            programId: template.programId,
+            programName: template.program?.name || null,
+            createdById: template.createdById,
+            createdByName: template.createdBy?.name || null,
+            createdAt: template.createdAt.toISOString(),
+            updatedAt: template.updatedAt.toISOString()
+        };
+    }
+
+    /**
+     * Actualiza una plantilla de correo existente
+     */
+    async updateEmailTemplate(
+        id: string,
+        input: UpdateCommitteeEmailTemplateInput
+    ): Promise<CommitteeEmailTemplateDTO> {
+        const existing = await prisma.committeeEmailTemplate.findUnique({
+            where: { id }
+        });
+
+        if (!existing) {
+            throw new Error("La plantilla no fue encontrada.");
+        }
+
+        if (input.isDefault) {
+            await prisma.committeeEmailTemplate.updateMany({
+                where: {
+                    id: { not: id },
+                    OR: [
+                        { programId: null },
+                        { programId: existing.programId }
+                    ]
+                },
+                data: { isDefault: false }
+            });
+        }
+
+        const template = await prisma.committeeEmailTemplate.update({
+            where: { id },
+            data: {
+                ...(input.title !== undefined && { title: input.title.trim() }),
+                ...(input.subject !== undefined && { subject: input.subject.trim() }),
+                ...(input.body !== undefined && { body: input.body.trim() }),
+                ...(input.isDefault !== undefined && { isDefault: Boolean(input.isDefault) }),
+                ...(input.programId !== undefined && {
+                    programId: input.programId && input.programId !== "all" && input.programId !== "none"
+                        ? input.programId
+                        : null
+                })
+            },
+            include: {
+                program: { select: { id: true, name: true } },
+                createdBy: { select: { id: true, name: true, email: true } }
+            }
+        });
+
+        return {
+            id: template.id,
+            title: template.title,
+            subject: template.subject,
+            body: template.body,
+            isDefault: template.isDefault,
+            programId: template.programId,
+            programName: template.program?.name || null,
+            createdById: template.createdById,
+            createdByName: template.createdBy?.name || null,
+            createdAt: template.createdAt.toISOString(),
+            updatedAt: template.updatedAt.toISOString()
+        };
+    }
+
+    /**
+     * Elimina una plantilla de correo
+     */
+    async deleteEmailTemplate(id: string): Promise<boolean> {
+        await prisma.committeeEmailTemplate.delete({
+            where: { id }
+        });
         return true;
     }
 }

@@ -36,11 +36,12 @@ if (process.env.NODE_ENV === "production") {
   const adapter = new PrismaPg(pool);
   prisma = new PrismaClient({ adapter });
 } else {
-  // Check if cached prisma instance has the latest schema with CommitteeReport and CommitteeProcess
+  // Check if cached prisma instance has the latest schema with CommitteeReport, CommitteeProcess and CommitteeEmailTemplate
   const isPrismaClientUpToDate = 
     globalForPrisma.prisma && 
     Boolean((globalForPrisma.prisma as any).committeeReport) &&
-    Boolean((globalForPrisma.prisma as any).committeeProcess);
+    Boolean((globalForPrisma.prisma as any).committeeProcess) &&
+    Boolean((globalForPrisma.prisma as any).committeeEmailTemplate);
 
   if (!globalForPrisma.prisma || !isPrismaClientUpToDate) {
     if (globalForPrisma.pgPool) {

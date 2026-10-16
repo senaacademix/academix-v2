@@ -4,6 +4,7 @@ import {
     Shuffle,
     Award,
     Scale,
+    ClipboardList,
     LucideIcon
 } from "lucide-react";
 
@@ -136,5 +137,27 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
         ],
         author: "AcademiX Elecciones",
         allowedRoles: ["teacher"]
+    },
+    {
+        id: "remark-templates",
+        title: "Plantillas de Observaciones",
+        shortTitle: "Banco de Observaciones",
+        description: "Gestión centralizada del banco institucional de plantillas para llamados de atención, felicitaciones, citaciones y observaciones disciplinarias/académicas utilizadas por los instructores.",
+        category: "Pedagógica",
+        status: "available",
+        isAutonomous: false,
+        version: "v1.0",
+        icon: ClipboardList,
+        color: "text-indigo-600 dark:text-indigo-400",
+        badgeBg: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
+        features: [
+            "Creación y administración de plantillas institucionales oficiales",
+            "Clasificación por tipo: Llamados de Atención, Felicitaciones, Citaciones y Otras",
+            "Sincronización en tiempo real con el panel de todos los instructores",
+            "Estandarización pedagógica y disciplinaria institucional",
+            "Plantillas listas para usar o personalizar en cada ficha"
+        ],
+        author: "AcademiX Gestión",
+        allowedRoles: ["gestor", "admin"]
     }
 ];

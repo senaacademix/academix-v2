@@ -98,7 +98,7 @@ import { formatCalendarDate, fromUTC, getTodayColombianDate, toCalendarYMD, isSc
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { resetStudentPassword, saveAttendanceBatch, saveRemarkBatch, getGroupAttendanceHistory, getGroupRemarksHistory, getTeacherComprehensiveGroupAnalyticsAction, saveSingleAttendanceAction, deleteRemarkAction, resetStudentDailyAttempts, notifyEmailSentBatchAction } from "../actions/groupActions";
-import { getRemarkTemplatesAction, createRemarkTemplateAction, updateRemarkTemplateAction, deleteRemarkTemplateAction } from "../actions/remarkActions";
+import { getRemarkTemplatesAction } from "../actions/remarkActions";
 import { getGroupImprovementPlans, upsertImprovementPlan, deleteImprovementPlan, deleteSignedDocument, deleteTeacherSignedDoc, submitTeacherSignedDoc, markPlanViewed, resetPlanToStep, gradeImprovementPlan } from "@/features/student/actions/improvementPlanActions";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -800,14 +800,6 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     // Remarks Message Templates State
     const [remarkTemplates, setRemarkTemplates] = useState<any[]>([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState("");
-    const [manageTemplatesOpen, setManageTemplatesOpen] = useState(false);
-    
-    // Modal states for creating/editing templates
-    const [templateEditId, setTemplateEditId] = useState<string | null>(null);
-    const [templateTitle, setTemplateTitle] = useState("");
-    const [templateDesc, setTemplateDesc] = useState("");
-    const [templateType, setTemplateType] = useState<"ATTENTION" | "COMMENDATION" | "CITATION" | "OTHER">("ATTENTION");
-    const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
     const [confirmConfig, setConfirmConfig] = useState<{
         open: boolean;
@@ -843,18 +835,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         setSelectedTemplateId("");
     }, [remarkType]);
 
-    const [modalFilterType, setModalFilterType] = useState<"ALL" | "ATTENTION" | "COMMENDATION" | "CITATION" | "OTHER">("ALL");
 
-    const filteredModalTemplates = useMemo(() => {
-        if (modalFilterType === "ALL") return remarkTemplates;
-        return remarkTemplates.filter((t) => t.type === modalFilterType);
-    }, [remarkTemplates, modalFilterType]);
-
-    useEffect(() => {
-        if (modalFilterType !== "ALL" && !templateEditId) {
-            setTemplateType(modalFilterType as any);
-        }
-    }, [modalFilterType, templateEditId]);
 
     const getParsedDescription = () => {
         return remarkDesc;
@@ -4690,42 +4671,57 @@ const handleOpenAnalytics = async () => {
                                         </div>
 
                                         {/* Template Selector Row */}
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 items-end">
-                                            <div className="space-y-2 md:col-span-2">
-                                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Plantilla de Mensaje</Label>
-                                                <Select value={selectedTemplateId} onValueChange={(val) => {
+                                        <div className="space-y-2 mb-6">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                                    Plantilla Institucional (Gestoría Académica)
+                                                </Label>
+                                                {selectedTemplateId && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedTemplateId("");
+                                                        }}
+                                                        className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                                                    >
+                                                        Desvincular plantilla
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <Select 
+                                                value={selectedTemplateId || "custom"} 
+                                                onValueChange={(val) => {
+                                                    if (val === "custom") {
+                                                        setSelectedTemplateId("");
+                                                        return;
+                                                    }
                                                     setSelectedTemplateId(val);
                                                     const template = remarkTemplates.find(t => t.id === val);
                                                     if (template) {
                                                         setRemarkTitle(template.title);
                                                         setRemarkDesc(template.description);
                                                     }
-                                                }}>
-                                                    <SelectTrigger className="h-12 rounded-xl bg-background border-primary/20">
-                                                        <SelectValue placeholder="Seleccionar plantilla predefinida..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {filteredTemplates.map((t) => (
-                                                            <SelectItem key={t.id} value={t.id} className="font-semibold">
-                                                                {t.title}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div>
-                                                <Button 
-                                                    type="button" 
-                                                    variant="outline" 
-                                                    onClick={() => {
-                                                        setModalFilterType(remarkType);
-                                                        setManageTemplatesOpen(true);
-                                                    }}
-                                                    className="w-full h-12 rounded-xl border-primary/20 hover:bg-primary/5 text-primary font-bold flex items-center justify-center gap-2 cursor-pointer"
-                                                >
-                                                    <ClipboardList className="w-4 h-4" /> Gestionar Plantillas
-                                                </Button>
-                                            </div>
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 rounded-xl bg-background border-primary/20">
+                                                    <SelectValue placeholder="Seleccionar plantilla oficial o redactar personalizado..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="custom" className="text-muted-foreground italic font-medium">
+                                                        ✍️ Observación personalizada (sin plantilla)
+                                                    </SelectItem>
+                                                    {filteredTemplates.map((t) => (
+                                                        <SelectItem key={t.id} value={t.id} className="font-semibold">
+                                                            {t.title}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Puedes elegir una plantilla oficial establecida por la Gestoría Académica o redactar un mensaje personalizado libremente. Modificar el texto no alterará las plantillas guardadas en la base de datos.
+                                            </p>
                                         </div>
 
                                         <div className="space-y-2 mb-6">
@@ -5820,212 +5816,7 @@ const handleOpenAnalytics = async () => {
 
             
 
-            {/* Template Management Dialog */}
-            <Dialog open={manageTemplatesOpen} onOpenChange={setManageTemplatesOpen}>
-                <DialogContent className="max-w-[95vw] w-full md:max-w-6xl h-[90vh] md:h-[85vh] flex flex-col rounded-2xl sm:rounded-3xl p-6 sm:p-8 overflow-hidden">
-                    <DialogHeader className="shrink-0">
-                        <DialogTitle className="text-xl sm:text-2xl font-black text-foreground flex items-center gap-2">
-                            <ClipboardList className="w-6 h-6 text-primary" />
-                            Gestionar Plantillas de Observaciones
-                        </DialogTitle>
-                        <DialogDescription className="text-sm text-muted-foreground">
-                            Crea y edita plantillas de observaciones. Todos los instructores pueden visualizar y modificar estas plantillas. Están organizadas por tipo de observación.
-                        </DialogDescription>
-                    </DialogHeader>
 
-                    <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 gap-8 mt-6 overflow-hidden">
-                        {/* List of Templates */}
-                        <div className="flex flex-col h-full overflow-hidden min-h-0">
-                            <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3 shrink-0">Plantillas Activas</h4>
-                            
-                            {/* Filter Tabs */}
-                            <div className="flex flex-wrap gap-1 mb-4 shrink-0 bg-muted/40 p-1 rounded-xl border border-border/40">
-                                {[
-                                    { value: "ALL", label: "Todas" },
-                                    { value: "ATTENTION", label: "🔴 Llamados" },
-                                    { value: "COMMENDATION", label: "🟢 Felicitaciones" },
-                                    { value: "CITATION", label: "🔵 Citaciones" },
-                                    { value: "OTHER", label: "⚪ Otras" }
-                                ].map((tab) => (
-                                    <button
-                                        key={tab.value}
-                                        type="button"
-                                        onClick={() => setModalFilterType(tab.value as any)}
-                                        className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer text-center whitespace-nowrap ${
-                                            modalFilterType === tab.value
-                                                ? "bg-background text-foreground shadow-xs border border-border/10"
-                                                : "text-muted-foreground hover:text-foreground"
-                                        }`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="flex-grow overflow-y-auto pr-2 space-y-2.5 max-h-[30vh] md:max-h-none">
-                                {remarkTemplates.length === 0 ? (
-                                    <p className="text-xs text-muted-foreground text-center py-8 bg-muted/20 rounded-xl border border-dashed">
-                                        No hay plantillas creadas. Usa el formulario para crear la primera.
-                                    </p>
-                                ) : filteredModalTemplates.length === 0 ? (
-                                    <p className="text-xs text-muted-foreground text-center py-8 bg-muted/20 rounded-xl border border-dashed">
-                                        No hay plantillas registradas en esta categoría.
-                                    </p>
-                                ) : (
-                                    filteredModalTemplates.map((template) => (
-                                        <div key={template.id} className="p-3.5 bg-muted/30 hover:bg-muted/50 rounded-xl border border-border/40 transition-colors flex flex-col gap-2 relative group/item">
-                                            <div className="flex justify-between items-start gap-2">
-                                                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                                                    <h5 className="font-bold text-xs text-foreground truncate max-w-[200px]">{template.title}</h5>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {template.type === "ATTENTION" && <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-red-50 text-red-700 border-red-200">Llamado de Atención</Badge>}
-                                                        {template.type === "COMMENDATION" && <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-emerald-50 text-emerald-700 border-emerald-200">Felicitación</Badge>}
-                                                        {template.type === "CITATION" && <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-blue-50 text-blue-700 border-blue-200">Citación</Badge>}
-                                                        {template.type === "OTHER" && <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-gray-50 text-gray-700 border-gray-200">Otra</Badge>}
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-1 shrink-0">
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="w-7 h-7 hover:bg-primary/10 text-primary rounded-md cursor-pointer"
-                                                        onClick={() => {
-                                                            setTemplateEditId(template.id);
-                                                            setTemplateTitle(template.title);
-                                                            setTemplateDesc(template.description);
-                                                            setTemplateType(template.type || "ATTENTION");
-                                                        }}
-                                                        title="Editar"
-                                                    >
-                                                        <FileText className="w-3.5 h-3.5" />
-                                                    </Button>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="w-7 h-7 hover:bg-red-50 text-red-600 rounded-md cursor-pointer"
-                                                        onClick={() => {
-                                                            requestConfirm(
-                                                                "¿Eliminar plantilla?",
-                                                                `¿Seguro de que deseas eliminar la plantilla "${template.title}"? Esta acción no se puede deshacer.`,
-                                                                async () => {
-                                                                    try {
-                                                                        await deleteRemarkTemplateAction(template.id);
-                                                                        toast.success("Plantilla eliminada correctamente");
-                                                                        if (selectedTemplateId === template.id) {
-                                                                            setSelectedTemplateId("");
-                                                                        }
-                                                                        fetchTemplates();
-                                                                    } catch (err: any) {
-                                                                        toast.error("Error al eliminar plantilla: " + err.message);
-                                                                    }
-                                                                }
-                                                            );
-                                                        }}
-                                                        title="Eliminar"
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground line-clamp-4 whitespace-pre-wrap leading-relaxed">{template.description}</p>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Create/Edit Form */}
-                        <div className="flex flex-col h-full overflow-hidden min-h-0 border-t md:border-t-0 md:border-l md:pl-8 pt-4 md:pt-0">
-                            <h4 className="font-bold text-sm text-muted-foreground uppercase tracking-wider mb-3 shrink-0">
-                                {templateEditId ? "Editar Plantilla" : "Nueva Plantilla"}
-                            </h4>
-                            <div className="flex-grow flex flex-col gap-4 min-h-0 overflow-y-auto md:overflow-visible">
-                                <div className="space-y-1.5 shrink-0">
-                                    <Label className="text-xs font-bold text-muted-foreground">Título de la plantilla</Label>
-                                    <Input 
-                                        placeholder="Ej. Tareas Pendientes" 
-                                        value={templateTitle}
-                                        onChange={(e) => setTemplateTitle(e.target.value)}
-                                        className="h-11 rounded-lg bg-background"
-                                    />
-                                </div>
-                                <div className="space-y-1.5 shrink-0">
-                                    <Label className="text-xs font-bold text-muted-foreground">Categoría (Tipo de Observación)</Label>
-                                    <Select value={templateType} onValueChange={(v) => setTemplateType(v as any)}>
-                                        <SelectTrigger className="h-11 rounded-lg bg-background">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="ATTENTION" className="text-red-600 font-bold">🔴 Llamado de Atención</SelectItem>
-                                            <SelectItem value="COMMENDATION" className="text-emerald-600 font-bold">🟢 Felicitación</SelectItem>
-                                            <SelectItem value="CITATION" className="text-blue-600 font-bold">🔵 Citación</SelectItem>
-                                            <SelectItem value="OTHER" className="text-gray-600 font-bold">⚪ Otra Observación</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5 flex-grow flex flex-col min-h-0">
-                                    <Label className="text-xs font-bold text-muted-foreground shrink-0">Descripción detallada</Label>
-                                    <Textarea 
-                                        placeholder="Ej. No ha presentado las últimas actividades del módulo ni asistió a la retroalimentación programada..." 
-                                        value={templateDesc}
-                                        onChange={(e) => setTemplateDesc(e.target.value)}
-                                        className="flex-grow min-h-[120px] md:min-h-0 rounded-lg bg-background p-3 text-xs leading-relaxed resize-none"
-                                    />
-                                </div>
-                                <div className="flex gap-2 justify-end pt-2 shrink-0">
-                                    {templateEditId && (
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            onClick={() => {
-                                                setTemplateEditId(null);
-                                                setTemplateTitle("");
-                                                setTemplateDesc("");
-                                                setTemplateType("ATTENTION");
-                                            }}
-                                            className="text-xs rounded-lg h-9 cursor-pointer"
-                                        >
-                                            Cancelar
-                                        </Button>
-                                    )}
-                                    <Button 
-                                        type="button"
-                                        onClick={async () => {
-                                            if (!templateTitle.trim() || !templateDesc.trim()) {
-                                                toast.error("Por favor completa todos los campos");
-                                                return;
-                                            }
-                                            setIsSavingTemplate(true);
-                                            try {
-                                                if (templateEditId) {
-                                                    await updateRemarkTemplateAction(templateEditId, templateTitle, templateDesc, templateType);
-                                                    toast.success("Plantilla actualizada correctamente");
-                                                } else {
-                                                    await createRemarkTemplateAction(templateTitle, templateDesc, templateType);
-                                                    toast.success("Plantilla creada correctamente");
-                                                }
-                                                setTemplateEditId(null);
-                                                setTemplateTitle("");
-                                                setTemplateDesc("");
-                                                setTemplateType("ATTENTION");
-                                                fetchTemplates();
-                                            } catch (err: any) {
-                                                toast.error("Error al guardar la plantilla: " + err.message);
-                                            } finally {
-                                                setIsSavingTemplate(false);
-                                            }
-                                        }}
-                                        disabled={isSavingTemplate}
-                                        className="text-xs font-bold rounded-lg h-9 px-4 cursor-pointer"
-                                    >
-                                        {isSavingTemplate ? "Guardando..." : templateEditId ? "Actualizar" : "Crear"}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
             {/* Student Attendance Details Dialog */}
             <Dialog open={detailOpen} onOpenChange={setDetailOpen}>

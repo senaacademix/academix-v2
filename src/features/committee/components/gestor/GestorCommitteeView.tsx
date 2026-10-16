@@ -20,7 +20,8 @@ import {
     School,
     Lock,
     Eye,
-    User
+    User,
+    Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ import { getGestorProgramsAction } from "@/features/gestor/actions/gestorActions
 import { CommitteeProcessDTO, CommitteeReportDTO } from "../../types";
 import { CommitteeProcessModal } from "./CommitteeProcessModal";
 import { AllReportedLearnersTable } from "./AllReportedLearnersTable";
+import { CommitteeEmailTemplatesModal } from "./CommitteeEmailTemplatesModal";
 import {
     formatSafeDate,
     formatSafeShortDate,
@@ -113,6 +115,9 @@ export function GestorCommitteeView({
     // Modal state for creating / editing committee processes
     const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
     const [processToEdit, setProcessToEdit] = useState<CommitteeProcessDTO | null>(null);
+
+    // Modal state for managing email templates
+    const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
 
     const loadData = async (targetProgId?: string) => {
         const progId = targetProgId || effectiveProgramId;
@@ -295,6 +300,18 @@ export function GestorCommitteeView({
 
                         {/* Action buttons */}
                         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-start sm:justify-end shrink-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsTemplatesModalOpen(true)}
+                                className="h-10 px-3.5 text-xs rounded-xl gap-1.5 flex-1 sm:flex-initial justify-center hover:border-primary/40 transition-colors"
+                                title="Gestionar plantillas de correo guardadas en la base de datos"
+                            >
+                                <Mail className="w-3.5 h-3.5 text-primary" />
+                                <span>Plantillas de Correo</span>
+                            </Button>
+
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -675,6 +692,7 @@ export function GestorCommitteeView({
                     isLoading={isLoading}
                     onRefresh={() => loadData(effectiveProgramId)}
                     onDeleteReport={handleDeleteReport}
+                    programId={effectiveProgramId}
                 />
             </div>
 
@@ -689,6 +707,13 @@ export function GestorCommitteeView({
                 processToEdit={processToEdit}
                 currentProgramId={effectiveProgramId}
                 programName={effectiveProgramName}
+            />
+
+            {/* Modal de Plantillas de Correo */}
+            <CommitteeEmailTemplatesModal
+                isOpen={isTemplatesModalOpen}
+                onClose={() => setIsTemplatesModalOpen(false)}
+                programId={effectiveProgramId}
             />
         </div>
     );

@@ -100,3 +100,33 @@ export interface UpdateCommitteeReportInput {
     observations?: string;
     status?: string;
 }
+
+export interface CommitteeEmailTemplateDTO {
+    id: string;
+    title: string;
+    subject: string;
+    body: string;
+    isDefault: boolean;
+    programId?: string | null;
+    programName?: string | null;
+    createdById?: string | null;
+    createdByName?: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateCommitteeEmailTemplateInput {
+    title: string;
+    subject: string;
+    body: string;
+    isDefault?: boolean;
+    programId?: string;
+}
+
+export interface UpdateCommitteeEmailTemplateInput {
+    title?: string;
+    subject?: string;
+    body?: string;
+    isDefault?: boolean;
+    programId?: string | null;
+}

@@ -11,7 +11,10 @@ import {
     CreateCommitteeProcessInput,
     UpdateCommitteeProcessInput,
     CreateCommitteeReportInput,
-    UpdateCommitteeReportInput
+    UpdateCommitteeReportInput,
+    CommitteeEmailTemplateDTO,
+    CreateCommitteeEmailTemplateInput,
+    UpdateCommitteeEmailTemplateInput
 } from "../types";
 
 async function getAuthSession() {
@@ -147,3 +150,51 @@ export async function deleteReportAction(reportId: string) {
 
     return { success: true };
 }
+
+export async function getEmailTemplatesAction(programId?: string): Promise<CommitteeEmailTemplateDTO[]> {
+    await getAuthSession();
+    return await committeeService.getEmailTemplates({ programId });
+}
+
+export async function createEmailTemplateAction(input: CreateCommitteeEmailTemplateInput) {
+    const { user, role } = await getAuthSession();
+    if (role !== "gestor" && role !== "admin") {
+        throw new Error("Solo el Gestor Académico o el Administrador pueden crear plantillas de correo.");
+    }
+
+    const template = await committeeService.createEmailTemplate(user.id, input);
+
+    revalidatePath("/dashboard/gestor/tools");
+    revalidatePath("/dashboard/teacher/tools");
+
+    return { success: true, template };
+}
+
+export async function updateEmailTemplateAction(id: string, input: UpdateCommitteeEmailTemplateInput) {
+    const { role } = await getAuthSession();
+    if (role !== "gestor" && role !== "admin") {
+        throw new Error("Solo el Gestor Académico o el Administrador pueden editar plantillas de correo.");
+    }
+
+    const template = await committeeService.updateEmailTemplate(id, input);
+
+    revalidatePath("/dashboard/gestor/tools");
+    revalidatePath("/dashboard/teacher/tools");
+
+    return { success: true, template };
+}
+
+export async function deleteEmailTemplateAction(id: string) {
+    const { role } = await getAuthSession();
+    if (role !== "gestor" && role !== "admin") {
+        throw new Error("Solo el Gestor Académico o el Administrador pueden eliminar plantillas de correo.");
+    }
+
+    await committeeService.deleteEmailTemplate(id);
+
+    revalidatePath("/dashboard/gestor/tools");
+    revalidatePath("/dashboard/teacher/tools");
+
+    return { success: true };
+}
+

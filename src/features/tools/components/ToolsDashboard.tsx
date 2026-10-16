@@ -8,6 +8,7 @@ import { TeacherRouletteTool } from "./TeacherRouletteTool";
 import { TeacherGroupGeneratorTool } from "./TeacherGroupGeneratorTool";
 import { TeacherVoceroElectionTool } from "./TeacherVoceroElectionTool";
 import { CommitteeTool } from "@/features/committee/components/CommitteeTool";
+import { RemarkTemplatesTool } from "./RemarkTemplatesTool";
 import { ArrowLeft, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TOOLS_REGISTRY } from "../constants/toolsRegistry";
@@ -87,6 +88,14 @@ function ToolsDashboardContent({ initialGroups = [], userRole = "gestor", progra
                         programId={programId}
                         programName={programName}
                     />
+                </div>
+            );
+        }
+
+        if (selectedToolId === "remark-templates") {
+            return (
+                <div className="h-full flex-1 flex flex-col min-h-0 overflow-y-auto animate-in fade-in duration-300">
+                    <RemarkTemplatesTool onBack={handleBackToHub} />
                 </div>
             );
         }

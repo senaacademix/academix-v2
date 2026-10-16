@@ -138,8 +138,8 @@ export async function getRemarkTemplatesAction() {
 
 export async function createRemarkTemplateAction(title: string, description: string, type: RemarkType) {
     const session = await getSession();
-    if (!session || (session.user.role !== "teacher" && session.user.role !== "admin" && session.user.role !== "gestor")) {
-        throw new Error("Unauthorized");
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
+        throw new Error("Solo el Gestor Académico o Administrador pueden gestionar las plantillas institucionales.");
     }
 
     if (!title || !description || !type) {
@@ -157,7 +157,7 @@ export async function createRemarkTemplateAction(title: string, description: str
         entity: "REMARK_TEMPLATE",
         entityId: template.id,
         userId: session.user.id,
-        userName: session.user.name || "Profesor",
+        userName: session.user.name || "Gestor Académico",
         userRole: session.user.role,
         description: `Plantilla de observación creada: ${title}`,
         success: true,
@@ -168,8 +168,8 @@ export async function createRemarkTemplateAction(title: string, description: str
 
 export async function updateRemarkTemplateAction(id: string, title: string, description: string, type: RemarkType) {
     const session = await getSession();
-    if (!session || (session.user.role !== "teacher" && session.user.role !== "admin" && session.user.role !== "gestor")) {
-        throw new Error("Unauthorized");
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
+        throw new Error("Solo el Gestor Académico o Administrador pueden gestionar las plantillas institucionales.");
     }
 
     if (!title || !description || !type) {
@@ -188,7 +188,7 @@ export async function updateRemarkTemplateAction(id: string, title: string, desc
         entity: "REMARK_TEMPLATE",
         entityId: template.id,
         userId: session.user.id,
-        userName: session.user.name || "Profesor",
+        userName: session.user.name || "Gestor Académico",
         userRole: session.user.role,
         description: `Plantilla de observación actualizada: ${title}`,
         success: true,
@@ -199,8 +199,8 @@ export async function updateRemarkTemplateAction(id: string, title: string, desc
 
 export async function deleteRemarkTemplateAction(id: string) {
     const session = await getSession();
-    if (!session || (session.user.role !== "teacher" && session.user.role !== "admin" && session.user.role !== "gestor")) {
-        throw new Error("Unauthorized");
+    if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
+        throw new Error("Solo el Gestor Académico o Administrador pueden gestionar las plantillas institucionales.");
     }
 
     const template = await prisma.remarkTemplate.delete({
@@ -214,7 +214,7 @@ export async function deleteRemarkTemplateAction(id: string) {
         entity: "REMARK_TEMPLATE",
         entityId: template.id,
         userId: session.user.id,
-        userName: session.user.name || "Profesor",
+        userName: session.user.name || "Gestor Académico",
         userRole: session.user.role,
         description: `Plantilla de observación eliminada: ${template.title}`,
         success: true,

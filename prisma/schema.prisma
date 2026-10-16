@@ -93,6 +93,7 @@ model User {
   committeeProcessesCreated    CommitteeProcess[] @relation("GestorCommitteeProcesses")
   studentCommitteeReports      CommitteeReport[]  @relation("StudentCommitteeReports")
   teacherCommitteeReports      CommitteeReport[]  @relation("TeacherCommitteeReports")
+  committeeEmailTemplates      CommitteeEmailTemplate[] @relation("UserCommitteeEmailTemplates")
 
   @@unique([email])
   @@index([groupId])
@@ -458,6 +459,7 @@ model Program {
   academicSchedules AcademicSchedule[]
   scheduleEvents    ScheduleEvent[]
   committeeProcesses CommitteeProcess[] @relation("ProgramCommitteeProcesses")
+  committeeEmailTemplates CommitteeEmailTemplate[] @relation("ProgramCommitteeEmailTemplates")
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -989,6 +991,27 @@ model CommitteeReport {
   @@index([groupId])
   @@index([reportedById])
   @@map("committee_report")
+}
+
+model CommitteeEmailTemplate {
+  id          String   @id @default(cuid())
+  title       String
+  subject     String
+  body        String   @db.Text
+  isDefault   Boolean  @default(false)
+
+  programId   String?
+  program     Program? @relation("ProgramCommitteeEmailTemplates", fields: [programId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User?    @relation("UserCommitteeEmailTemplates", fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([programId])
+  @@index([createdById])
+  @@map("committee_email_template")
 }
 
 

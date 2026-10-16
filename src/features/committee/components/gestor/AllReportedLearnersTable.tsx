@@ -26,12 +26,15 @@ import {
     Trash2,
     Calendar,
     RefreshCw,
-    Mail
+    Mail,
+    FileText
 } from "lucide-react";
 import { CommitteeReportDTO, CommitteeProcessDTO } from "../../types";
 import { exportCommitteeReportsToExcel } from "../../utils/committeeExportUtils";
 import { formatSafeDate } from "../../utils/dateUtils";
 import { ProcessReportDetailModal } from "./ProcessReportDetailModal";
+import { CommitteeEmailComposerModal } from "./CommitteeEmailComposerModal";
+import { CommitteeEmailTemplatesModal } from "./CommitteeEmailTemplatesModal";
 import { toast } from "sonner";
 
 interface AllReportedLearnersTableProps {
@@ -42,6 +45,7 @@ interface AllReportedLearnersTableProps {
     onDeleteReport?: (reportId: string) => Promise<void>;
     fixedProcessId?: string;
     hideProcessColumn?: boolean;
+    programId?: string;
 }
 
 export function AllReportedLearnersTable({
@@ -51,7 +55,8 @@ export function AllReportedLearnersTable({
     onRefresh,
     onDeleteReport,
     fixedProcessId,
-    hideProcessColumn = Boolean(fixedProcessId)
+    hideProcessColumn = Boolean(fixedProcessId),
+    programId
 }: AllReportedLearnersTableProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedProcessId, setSelectedProcessId] = useState<string>(fixedProcessId || "all");
@@ -60,6 +65,11 @@ export function AllReportedLearnersTable({
 
     // Selection state for sending emails
     const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
+
+    // Modals for Email Composer and Template Manager
+    const [isComposerOpen, setIsComposerOpen] = useState(false);
+    const [composerReports, setComposerReports] = useState<CommitteeReportDTO[]>([]);
+    const [isTemplatesManagerOpen, setIsTemplatesManagerOpen] = useState(false);
 
     // Sync with fixedProcessId if provided
     useEffect(() => {
@@ -120,85 +130,22 @@ export function AllReportedLearnersTable({
         );
     };
 
-    // Open OS Email client (mailto:) for selected learners
-    const handleSendBulkEmail = () => {
+    // Open email composer modal for selected learners
+    const handleOpenBulkEmailModal = () => {
         if (selectedReportIds.length === 0) {
             toast.info("Selecciona uno o más aprendices en la tabla para enviarles correo.");
             return;
         }
 
-        const selectedReports = reports.filter((r) => selectedReportIds.includes(r.id));
-        const validEmails = Array.from(
-            new Set(
-                selectedReports
-                    .map((r) => r.studentEmail?.trim())
-                    .filter((email): email is string => Boolean(email && email.length > 0))
-            )
-        );
-
-        if (validEmails.length === 0) {
-            toast.error("Ninguno de los aprendices seleccionados tiene correo electrónico registrado.");
-            return;
-        }
-
-        const missingCount = selectedReports.length - validEmails.length;
-        if (missingCount > 0) {
-            toast.warning(`${missingCount} aprendiz(ces) no tienen correo registrado y no se incluirán.`);
-        }
-
-        const currentProc = processes.find((p) => p.id === (fixedProcessId || selectedProcessId));
-        const processTitle = currentProc ? currentProc.title : "Comité de Evaluación y Seguimiento";
-
-        const subject = encodeURIComponent(`Citación a Comité de Evaluación y Seguimiento - ${processTitle}`);
-        const body = encodeURIComponent(
-            `Estimado(a) aprendiz,\n\n` +
-            `Por medio de la presente comunicación oficial se le notifica que ha sido convocado(a) al proceso de Comité de Evaluación y Seguimiento:\n\n` +
-            `• Convocatoria: ${processTitle}\n\n` +
-            `Se le solicita estar atento(a) a las instrucciones del Gestor Académico e instructores sobre la fecha, hora y modalidad de la sesión de evaluación para la presentación de sus descargos y análisis del caso.\n\n` +
-            `Atentamente,\n` +
-            `Gestor Académico\n` +
-            `SENA - Academix`
-        );
-
-        let mailtoUrl = "";
-        if (validEmails.length === 1) {
-            mailtoUrl = `mailto:${validEmails[0]}?subject=${subject}&body=${body}`;
-        } else {
-            // Se usa 'bcc' (copia oculta) para respetar la privacidad entre aprendices
-            mailtoUrl = `mailto:?bcc=${validEmails.join(",")}&subject=${subject}&body=${body}`;
-        }
-
-        const anchor = document.createElement("a");
-        anchor.href = mailtoUrl;
-        anchor.click();
-
-        toast.success(`Abriendo cliente de correo del sistema con ${validEmails.length} destinatario(s)...`);
+        const selected = reports.filter((r) => selectedReportIds.includes(r.id));
+        setComposerReports(selected);
+        setIsComposerOpen(true);
     };
 
-    // Send single email to a specific learner
-    const handleSendDirectEmail = (report: CommitteeReportDTO) => {
-        if (!report.studentEmail) {
-            toast.error(`El aprendiz ${report.studentName} no tiene correo electrónico registrado.`);
-            return;
-        }
-
-        const subject = encodeURIComponent(`Citación a Comité de Evaluación - ${report.processTitle}`);
-        const body = encodeURIComponent(
-            `Estimado(a) ${report.studentName},\n\n` +
-            `Se le notifica que ha sido convocado(a) ante el Comité de Evaluación en el proceso «${report.processTitle}» con causal: ${report.faultType}.\n\n` +
-            `Motivo registrado:\n"${report.reason}"\n\n` +
-            `Por favor prepare sus descargos y evidencias correspondientes.\n\n` +
-            `Atentamente,\n` +
-            `Gestor Académico\n` +
-            `SENA - Academix`
-        );
-
-        const mailtoUrl = `mailto:${report.studentEmail.trim()}?subject=${subject}&body=${body}`;
-        const anchor = document.createElement("a");
-        anchor.href = mailtoUrl;
-        anchor.click();
-
-        toast.success(`Abriendo cliente de correo para ${report.studentName}...`);
+    // Open email composer modal for a specific learner
+    const handleOpenDirectEmailModal = (report: CommitteeReportDTO) => {
+        setComposerReports([report]);
+        setIsComposerOpen(true);
     };
 
     const handleExportExcel = async () => {
@@ -332,12 +279,25 @@ export function AllReportedLearnersTable({
 
                 {/* Action buttons */}
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end shrink-0 pt-1 sm:pt-0">
+                    {/* Plantillas Button */}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsTemplatesManagerOpen(true)}
+                        className="h-9 px-3 text-xs rounded-xl gap-1.5 flex-initial hover:border-primary/40 transition-colors"
+                        title="Gestionar plantillas de correo guardadas en la base de datos"
+                    >
+                        <FileText className="w-3.5 h-3.5 text-primary" />
+                        <span className="hidden sm:inline">Plantillas</span>
+                    </Button>
+
                     {/* Send Email Button */}
                     <Button
                         type="button"
                         variant={selectedReportIds.length > 0 ? "default" : "outline"}
                         size="sm"
-                        onClick={handleSendBulkEmail}
+                        onClick={handleOpenBulkEmailModal}
                         className={`h-9 px-3 text-xs rounded-xl gap-1.5 transition-all shadow-2xs flex-1 sm:flex-initial justify-center ${
                             selectedReportIds.length > 0
                                 ? "bg-primary text-primary-foreground hover:bg-primary/90 font-semibold ring-2 ring-primary/20"
@@ -345,7 +305,7 @@ export function AllReportedLearnersTable({
                         }`}
                         title={
                             selectedReportIds.length > 0
-                                ? `Abrir cliente de correo para ${selectedReportIds.length} aprendiz(ces) seleccionados`
+                                ? `Redactar y enviar citación por correo para ${selectedReportIds.length} aprendiz(ces) seleccionados`
                                 : "Selecciona aprendices de la tabla para enviarles citación por correo"
                         }
                     >
@@ -552,9 +512,9 @@ export function AllReportedLearnersTable({
                                                         type="button"
                                                         size="sm"
                                                         variant="ghost"
-                                                        onClick={() => handleSendDirectEmail(report)}
+                                                        onClick={() => handleOpenDirectEmailModal(report)}
                                                         className="h-7 w-7 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
-                                                        title={`Enviar correo con app del sistema a ${report.studentEmail}`}
+                                                        title={`Redactar y enviar correo a ${report.studentEmail}`}
                                                     >
                                                         <Mail className="w-3.5 h-3.5" />
                                                     </Button>
@@ -602,6 +562,24 @@ export function AllReportedLearnersTable({
                 report={selectedReport}
                 isOpen={!!selectedReport}
                 onClose={() => setSelectedReport(null)}
+            />
+
+            {/* Email Composer Modal with Template System */}
+            <CommitteeEmailComposerModal
+                isOpen={isComposerOpen}
+                onClose={() => setIsComposerOpen(false)}
+                reports={composerReports}
+                programId={programId}
+                defaultProcessTitle={
+                    processes.find((p) => p.id === (fixedProcessId || selectedProcessId))?.title
+                }
+            />
+
+            {/* Templates Manager Modal */}
+            <CommitteeEmailTemplatesModal
+                isOpen={isTemplatesManagerOpen}
+                onClose={() => setIsTemplatesManagerOpen(false)}
+                programId={programId}
             />
         </div>
     );
