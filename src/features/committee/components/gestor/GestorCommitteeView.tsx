@@ -19,11 +19,13 @@ import {
     ArrowRight,
     School,
     Lock,
-    Eye
+    Eye,
+    User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
     getProcessesAction,
@@ -33,6 +35,7 @@ import {
     getAllReportedStudentsAction,
     deleteReportAction
 } from "../../actions/committeeActions";
+import { getGestorProgramsAction } from "@/features/gestor/actions/gestorActions";
 import { CommitteeProcessDTO, CommitteeReportDTO } from "../../types";
 import { CommitteeProcessModal } from "./CommitteeProcessModal";
 import { AllReportedLearnersTable } from "./AllReportedLearnersTable";
@@ -56,9 +59,47 @@ export function GestorCommitteeView({
     selectedProcessId: controlledProcessId,
     onSelectProcess
 }: GestorCommitteeViewProps) {
-    const { selectedProgramId, selectedProgram } = useGestorProgram();
-    const effectiveProgramId = selectedProgramId || programId;
-    const effectiveProgramName = selectedProgram?.name || programName || "Área de Formación";
+    const {
+        selectedProgramId,
+        selectedProgram,
+        managedPrograms,
+        setManagedPrograms,
+        selectProgram
+    } = useGestorProgram();
+
+    // Auto-fetch managed programs if empty so context is populated for this gestor
+    useEffect(() => {
+        if (managedPrograms.length === 0) {
+            getGestorProgramsAction()
+                .then((progs) => {
+                    if (progs && progs.length > 0) {
+                        const mapped = progs.map((p) => ({
+                            id: p.id,
+                            name: p.name,
+                            color: (p as any).color || "#3b82f6",
+                            code: (p as any).code || ""
+                        }));
+                        setManagedPrograms(mapped as any);
+                    }
+                })
+                .catch(console.error);
+        }
+    }, [managedPrograms.length, setManagedPrograms]);
+
+    const effectiveProgramId =
+        selectedProgramId || programId || (managedPrograms.length > 0 ? managedPrograms[0].id : undefined);
+    const effectiveProgramName =
+        selectedProgram?.name ||
+        managedPrograms.find((p) => p.id === effectiveProgramId)?.name ||
+        programName ||
+        "Área de Formación";
+
+    const handleProgramChange = (newProgId: string) => {
+        const found = managedPrograms.find((p) => p.id === newProgId);
+        selectProgram(newProgId, found);
+        setSelectedProcessId(null);
+        loadData(newProgId);
+    };
 
     const [processes, setProcesses] = useState<CommitteeProcessDTO[]>([]);
     const [reports, setReports] = useState<CommitteeReportDTO[]>([]);
@@ -220,9 +261,27 @@ export function GestorCommitteeView({
                                             <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
                                                 Área:
                                             </span>
-                                            <span className="font-bold text-foreground text-xs">
-                                                {effectiveProgramName}
-                                            </span>
+                                            {managedPrograms.length > 1 ? (
+                                                <Select
+                                                    value={effectiveProgramId || ""}
+                                                    onValueChange={handleProgramChange}
+                                                >
+                                                    <SelectTrigger className="h-6 text-xs font-bold border-0 bg-transparent shadow-none p-0 focus:ring-0 gap-1 text-foreground">
+                                                        <SelectValue placeholder="Seleccionar Área" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        {managedPrograms.map((p) => (
+                                                            <SelectItem key={p.id} value={p.id} className="text-xs font-medium">
+                                                                {p.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <span className="font-bold text-foreground text-xs">
+                                                    {effectiveProgramName}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -230,22 +289,22 @@ export function GestorCommitteeView({
 
                             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                                 Administra los procesos de citación a comités de evaluación para el área de{" "}
-                                <strong>{effectiveProgramName}</strong>. Crea nuevas convocatorias con fechas de diligenciamiento e ingresa a cada una para supervisar y auditar los aprendices reportados por los instructores.
+                                <strong>{effectiveProgramName}</strong>. Todos los procesos de comité convocados en esta área son visibles y compartidos para todos los gestores académicos asignados. Crea nuevas convocatorias con fechas de diligenciamiento e ingresa a cada una para supervisar y auditar los aprendices reportados por los instructores.
                             </p>
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
+                        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-start sm:justify-end shrink-0">
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => loadData(effectiveProgramId)}
                                 disabled={isLoading}
-                                className="h-10 px-3 text-xs gap-1.5 text-muted-foreground rounded-xl"
+                                className="h-10 px-3 text-xs gap-1.5 text-muted-foreground rounded-xl flex-1 sm:flex-initial justify-center"
                             >
                                 <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-                                <span className="hidden sm:inline">Actualizar</span>
+                                <span className="inline">Actualizar</span>
                             </Button>
 
                             <Button
@@ -254,7 +313,7 @@ export function GestorCommitteeView({
                                     setProcessToEdit(null);
                                     setIsProcessModalOpen(true);
                                 }}
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-10 px-4 rounded-xl shadow-xs gap-1.5"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-10 px-4 rounded-xl shadow-xs gap-1.5 flex-1 sm:flex-initial justify-center"
                             >
                                 <Plus className="w-4 h-4" />
                                 <span>Nuevo Proceso</span>
@@ -321,6 +380,15 @@ export function GestorCommitteeView({
                                                     Sin observaciones adicionales.
                                                 </p>
                                             )}
+                                        </div>
+
+                                        {/* Creator Gestor Badge */}
+                                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-lg border border-border/50">
+                                            <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                                            <span className="text-muted-foreground font-medium">Convocado por:</span>
+                                            <span className="font-semibold text-foreground truncate">
+                                                {process.createdByName || "Gestor Académico"}
+                                            </span>
                                         </div>
 
                                         {/* Diligence dates range */}
@@ -504,14 +572,26 @@ export function GestorCommitteeView({
                             </p>
                         )}
 
-                        <div className="pt-1 text-xs text-muted-foreground">
-                            <span>Estado para instructores: </span>
-                            <strong className="text-foreground">{activeProcessDiligence?.message}</strong>
+                        <div className="flex items-center gap-2 flex-wrap pt-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/50 border border-border/60 text-[11px]">
+                                <User className="w-3.5 h-3.5 text-primary" />
+                                <span>Convocado por:</span>
+                                <strong className="text-foreground">{activeProcess.createdByName}</strong>
+                                {activeProcess.createdByEmail && (
+                                    <span className="text-muted-foreground/70 font-mono text-[10px]">
+                                        ({activeProcess.createdByEmail})
+                                    </span>
+                                )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                <span>Estado para instructores: </span>
+                                <strong className="text-foreground">{activeProcessDiligence?.message}</strong>
+                            </div>
                         </div>
                     </div>
 
                     {/* Gestor Actions for this Process */}
-                    <div className="flex items-center gap-2 flex-wrap shrink-0">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end shrink-0 pt-2 sm:pt-0">
                         <Button
                             type="button"
                             variant="ghost"

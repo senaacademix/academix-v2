@@ -36,14 +36,14 @@ export function CommitteeTool({
     return (
         <div className="w-full flex-1 flex flex-col space-y-4 animate-in fade-in duration-300">
             {/* Top Navigation Bar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border/80 shadow-2xs">
                 {selectedProcessId ? (
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedProcessId(null)}
-                        className="h-9 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground gap-1.5 rounded-xl"
+                        className="h-9 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground gap-1.5 rounded-xl w-full sm:w-auto justify-start"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Volver a Convocatorias de Comité</span>
@@ -54,7 +54,7 @@ export function CommitteeTool({
                         variant="ghost"
                         size="sm"
                         onClick={onBack}
-                        className="h-9 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground gap-1.5 rounded-xl"
+                        className="h-9 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground gap-1.5 rounded-xl w-full sm:w-auto justify-start"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Volver al Centro de Herramientas</span>
@@ -63,13 +63,13 @@ export function CommitteeTool({
 
                 {/* Role Switcher if Gestor or Admin */}
                 {isGestorOrAdmin && (
-                    <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border/60 self-end sm:self-auto">
+                    <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border/60 w-full sm:w-auto justify-center sm:justify-start">
                         <Button
                             type="button"
                             size="sm"
                             variant={viewMode === "gestor" ? "default" : "ghost"}
                             onClick={() => handleRoleSwitch("gestor")}
-                            className="h-7 text-xs font-semibold rounded-lg px-2.5 gap-1.5"
+                            className="flex-1 sm:flex-initial h-7 text-xs font-semibold rounded-lg px-2.5 gap-1.5 justify-center"
                         >
                             <Scale className="w-3.5 h-3.5" />
                             <span>Panel Gestor</span>
@@ -79,7 +79,7 @@ export function CommitteeTool({
                             size="sm"
                             variant={viewMode === "teacher" ? "default" : "ghost"}
                             onClick={() => handleRoleSwitch("teacher")}
-                            className="h-7 text-xs font-semibold rounded-lg px-2.5 gap-1.5"
+                            className="flex-1 sm:flex-initial h-7 text-xs font-semibold rounded-lg px-2.5 gap-1.5 justify-center"
                         >
                             <UserCheck className="w-3.5 h-3.5" />
                             <span>Modo Reporte (Instructor)</span>

@@ -3,6 +3,7 @@ import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ToolsDashboard } from "@/features/tools/components/ToolsDashboard";
 import prisma from "@/lib/prisma";
+import { gestorService } from "@/features/gestor/services/gestorService";
 
 export const metadata = {
     title: "Centro de Herramientas Académicas | AcademiX",
@@ -25,15 +26,42 @@ export default async function GestorToolsPage({
 
     const cookieStore = await cookies();
     const cookieProgramId = cookieStore.get("academix_gestor_program_id")?.value;
-    const effectiveProgramId = programIdParam || cookieProgramId;
+    let effectiveProgramId = programIdParam || cookieProgramId;
 
     let programName = "";
-    if (effectiveProgramId) {
-        const prog = await prisma.program.findUnique({
-            where: { id: effectiveProgramId },
-            select: { name: true }
-        });
-        if (prog) programName = prog.name;
+
+    if (session.user.role === "gestor") {
+        const managedPrograms = await gestorService.getManagedPrograms(session.user.id);
+        const hasEffective = managedPrograms.some((p) => p.id === effectiveProgramId);
+        if (!effectiveProgramId || !hasEffective) {
+            if (managedPrograms.length >= 1) {
+                effectiveProgramId = managedPrograms[0].id;
+                programName = managedPrograms[0].name;
+            } else {
+                redirect("/dashboard/gestor");
+            }
+        } else {
+            const found = managedPrograms.find((p) => p.id === effectiveProgramId);
+            if (found) programName = found.name;
+        }
+    } else {
+        // Admin or observer
+        if (effectiveProgramId) {
+            const prog = await prisma.program.findUnique({
+                where: { id: effectiveProgramId },
+                select: { name: true }
+            });
+            if (prog) programName = prog.name;
+        } else {
+            const firstProg = await prisma.program.findFirst({
+                select: { id: true, name: true },
+                orderBy: { name: "asc" }
+            });
+            if (firstProg) {
+                effectiveProgramId = firstProg.id;
+                programName = firstProg.name;
+            }
+        }
     }
 
     return (

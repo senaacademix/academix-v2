@@ -121,7 +121,7 @@ export function CommitteeProcessModal({
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto">
                     {/* Program badge if applicable */}
                     {programName && (
                         <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-primary/10 border border-primary/20 text-xs text-foreground shadow-2xs">
@@ -215,20 +215,20 @@ export function CommitteeProcessModal({
                         </div>
                     </div>
 
-                    <DialogFooter className="pt-4 border-t border-border/60 flex items-center justify-end gap-2">
+                    <DialogFooter className="pt-4 border-t border-border/60 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={onClose}
                             disabled={isSubmitting}
-                            className="text-xs h-9"
+                            className="text-xs h-9 w-full sm:w-auto"
                         >
                             Cancelar
                         </Button>
                         <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-9 gap-1.5"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-9 gap-1.5 w-full sm:w-auto"
                         >
                             {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                             <span>{processToEdit ? "Guardar Cambios" : "Crear Proceso"}</span>

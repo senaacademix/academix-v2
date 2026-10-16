@@ -226,9 +226,9 @@ export function TeacherCommitteeView({
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end shrink-0">
                             {programs.length > 1 && (
-                                <div className="w-52">
+                                <div className="w-full sm:w-52">
                                     <Select value={selectedProgramId} onValueChange={(val) => setSelectedProgramId(val)}>
                                         <SelectTrigger className="h-9 text-xs font-semibold rounded-xl border-amber-500/30 bg-background/80 shadow-2xs">
                                             <SelectValue placeholder="Área..." />
@@ -250,7 +250,7 @@ export function TeacherCommitteeView({
                                 size="sm"
                                 onClick={() => selectedProgramId && loadProgramData(selectedProgramId)}
                                 disabled={isLoading}
-                                className="h-9 px-3 text-xs gap-1.5 text-muted-foreground rounded-xl"
+                                className="h-9 px-3 text-xs gap-1.5 text-muted-foreground rounded-xl flex-1 sm:flex-initial justify-center"
                             >
                                 <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
                                 <span>Actualizar</span>
@@ -434,18 +434,18 @@ export function TeacherCommitteeView({
                     </div>
 
                     {/* Action buttons on the right */}
-                    <div className="flex items-center gap-2 self-start md:self-auto shrink-0 flex-wrap">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end shrink-0 pt-1 sm:pt-0">
                         <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             onClick={() => selectedProgramId && loadProgramData(selectedProgramId)}
                             disabled={isLoading}
-                            className="h-10 px-3 text-xs gap-1.5 text-muted-foreground rounded-xl"
+                            className="h-10 px-3 text-xs gap-1.5 text-muted-foreground rounded-xl flex-initial"
                             title="Actualizar datos"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-                            <span className="hidden sm:inline">Actualizar</span>
+                            <span className="inline">Actualizar</span>
                         </Button>
 
                         {canEditActiveProcess ? (
@@ -456,13 +456,13 @@ export function TeacherCommitteeView({
                                     setIsReportModalOpen(true);
                                 }}
                                 disabled={trainingGroups.length === 0}
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-10 px-4 rounded-xl shadow-xs gap-1.5"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-10 px-4 rounded-xl shadow-xs gap-1.5 flex-1 sm:flex-initial justify-center"
                             >
                                 <Plus className="w-4 h-4" />
                                 <span>Reportar Aprendiz</span>
                             </Button>
                         ) : (
-                            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs font-medium">
+                            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs font-medium w-full sm:w-auto">
                                 <Lock className="w-4 h-4 shrink-0" />
                                 <span>Plazo cerrado para nuevos reportes</span>
                             </div>

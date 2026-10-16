@@ -221,47 +221,47 @@ export function AllReportedLearnersTable({
     return (
         <div className="space-y-4">
             {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-1">
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-1">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block truncate">
                         Total Reportes
                     </span>
                     <div className="flex items-center gap-2">
-                        <span className="text-xl sm:text-2xl font-black text-foreground">
+                        <span className="text-lg sm:text-2xl font-black text-foreground">
                             {filteredReports.length}
                         </span>
                     </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-1">
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-1">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block truncate">
                         Aprendices Únicos
                     </span>
                     <div className="flex items-center gap-2">
-                        <span className="text-xl sm:text-2xl font-black text-primary">
+                        <span className="text-lg sm:text-2xl font-black text-primary">
                             {uniqueStudentsCount}
                         </span>
-                        <Users className="w-4 h-4 text-primary" />
+                        <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                     </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-1">
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-1">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block truncate">
                         Faltas Académicas
                     </span>
                     <div className="flex items-center gap-2">
-                        <span className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400">
+                        <span className="text-lg sm:text-2xl font-black text-blue-600 dark:text-blue-400">
                             {filteredReports.filter((r) => r.faultType === "ACADEMICO" || r.faultType === "MIXTO").length}
                         </span>
                     </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-1">
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <div className="p-3 sm:p-3.5 rounded-2xl bg-card border border-border/70 shadow-2xs space-y-1">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block truncate">
                         Faltas Disciplinarias
                     </span>
                     <div className="flex items-center gap-2">
-                        <span className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400">
+                        <span className="text-lg sm:text-2xl font-black text-rose-600 dark:text-rose-400">
                             {filteredReports.filter((r) => r.faultType === "DISCIPLINARIO" || r.faultType === "INASISTENCIA" || r.faultType === "MIXTO").length}
                         </span>
                     </div>
@@ -331,14 +331,14 @@ export function AllReportedLearnersTable({
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end shrink-0 pt-1 sm:pt-0">
                     {/* Send Email Button */}
                     <Button
                         type="button"
                         variant={selectedReportIds.length > 0 ? "default" : "outline"}
                         size="sm"
                         onClick={handleSendBulkEmail}
-                        className={`h-9 px-3.5 text-xs rounded-xl gap-1.5 transition-all shadow-2xs ${
+                        className={`h-9 px-3 text-xs rounded-xl gap-1.5 transition-all shadow-2xs flex-1 sm:flex-initial justify-center ${
                             selectedReportIds.length > 0
                                 ? "bg-primary text-primary-foreground hover:bg-primary/90 font-semibold ring-2 ring-primary/20"
                                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -352,7 +352,7 @@ export function AllReportedLearnersTable({
                         <Mail className="w-3.5 h-3.5" />
                         <span>
                             {selectedReportIds.length > 0
-                                ? `Enviar Correo (${selectedReportIds.length})`
+                                ? `Correo (${selectedReportIds.length})`
                                 : "Enviar Correo"}
                         </span>
                     </Button>
@@ -363,7 +363,7 @@ export function AllReportedLearnersTable({
                         size="sm"
                         onClick={onRefresh}
                         disabled={isLoading}
-                        className="h-9 px-3 text-xs rounded-xl gap-1.5"
+                        className="h-9 px-3 text-xs rounded-xl gap-1.5 flex-initial"
                     >
                         <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
                         <span className="hidden sm:inline">Refrescar</span>
@@ -374,10 +374,10 @@ export function AllReportedLearnersTable({
                         variant="outline"
                         size="sm"
                         onClick={handleExportExcel}
-                        className="h-9 px-3.5 text-xs rounded-xl gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                        className="h-9 px-3 text-xs rounded-xl gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 flex-1 sm:flex-initial justify-center"
                     >
                         <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>Exportar Excel</span>
+                        <span>Excel</span>
                     </Button>
                 </div>
             </div>

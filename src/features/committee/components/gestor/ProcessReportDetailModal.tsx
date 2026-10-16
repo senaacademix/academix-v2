@@ -111,16 +111,16 @@ export function ProcessReportDetailModal({
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-xl p-0 overflow-hidden border-border/80 rounded-2xl shadow-2xl">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/60 p-6 pb-5">
-                    <div className="flex items-center justify-between gap-3">
+                <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/60 p-5 sm:p-6 pb-4 sm:pb-5">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                            <Avatar className="w-12 h-12 border-2 border-primary/20 shadow-xs">
+                            <Avatar className="w-11 h-11 sm:w-12 sm:h-12 border-2 border-primary/20 shadow-xs shrink-0">
                                 <AvatarImage src={report.studentImage || undefined} alt={report.studentName} />
                                 <AvatarFallback className="font-bold text-sm bg-primary/15 text-primary">
                                     {report.studentName.slice(0, 2).toUpperCase()}
                                 </AvatarFallback>
                             </Avatar>
-                            <div>
+                            <div className="space-y-0.5">
                                 <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
                                     {report.studentName}
                                 </DialogTitle>
@@ -143,7 +143,7 @@ export function ProcessReportDetailModal({
                             </div>
                         </div>
 
-                        <Badge variant="outline" className={`text-xs px-2.5 py-0.5 border ${faultConfig.className}`}>
+                        <Badge variant="outline" className={`text-xs px-2.5 py-0.5 border self-start sm:self-auto ${faultConfig.className}`}>
                             {faultConfig.label}
                         </Badge>
                     </div>
@@ -246,7 +246,7 @@ export function ProcessReportDetailModal({
                     )}
                 </div>
 
-                <DialogFooter className="p-4 bg-muted/30 border-t border-border/60 flex flex-wrap items-center justify-between gap-2">
+                <DialogFooter className="p-4 bg-muted/30 border-t border-border/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">Estado actual:</span>
                         <Badge variant="secondary" className="text-[11px] font-semibold">
@@ -254,21 +254,21 @@ export function ProcessReportDetailModal({
                         </Badge>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
                         {report.studentEmail && (
                             <Button
                                 type="button"
                                 variant="default"
                                 size="sm"
                                 onClick={handleSendEmail}
-                                className="text-xs h-9 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+                                className="text-xs h-9 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 flex-1 sm:flex-initial justify-center"
                             >
                                 <Mail className="w-3.5 h-3.5" />
                                 <span>Enviar Correo</span>
                             </Button>
                         )}
 
-                        <Button type="button" variant="outline" onClick={onClose} className="text-xs h-9">
+                        <Button type="button" variant="outline" onClick={onClose} className="text-xs h-9 flex-1 sm:flex-initial justify-center">
                             Cerrar
                         </Button>
                     </div>

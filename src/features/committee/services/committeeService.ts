@@ -227,7 +227,6 @@ export class CommitteeService {
 
         if (filters?.programId && filters.programId !== "all" && filters.programId !== "none") {
             where.process = { programId: filters.programId };
-            where.group = { programId: filters.programId };
         }
 
         if (filters?.search && filters.search.trim().length > 0) {
@@ -331,6 +330,7 @@ export class CommitteeService {
                 where: { id: teacherId },
                 select: {
                     programs: { select: { id: true, name: true } },
+                    managedPrograms: { select: { id: true, name: true } },
                     groupsTaught: { select: { programId: true } },
                     coursesTaught: {
                         select: {
@@ -345,6 +345,9 @@ export class CommitteeService {
 
             if (teacher?.programs) {
                 teacher.programs.forEach((p: any) => foundIds.add(p.id));
+            }
+            if (teacher?.managedPrograms) {
+                teacher.managedPrograms.forEach((p: any) => foundIds.add(p.id));
             }
             if (teacher?.groupsTaught) {
                 teacher.groupsTaught.forEach((g: any) => {
