@@ -5,6 +5,8 @@ import { ToolsDashboard } from "@/features/tools/components/ToolsDashboard";
 import prisma from "@/lib/prisma";
 import { gestorService } from "@/features/gestor/services/gestorService";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
     title: "Centro de Herramientas Académicas | AcademiX",
     description: "Panel modular y catálogo de herramientas y utilidades autónomas para la gestión formativa.",
@@ -16,8 +18,10 @@ export default async function GestorToolsPage({
     searchParams?: Promise<{ programId?: string; tool?: string }>;
 }) {
     const session = await auth.api.getSession({ headers: await headers() });
+    const user = session?.user as any;
+    const role = user?.role || (Array.isArray(user?.roles) ? user?.roles[0] : undefined);
 
-    if (!session || (session.user.role !== "gestor" && session.user.role !== "admin")) {
+    if (!session || (role !== "gestor" && role !== "admin")) {
         redirect("/dashboard");
     }
 
@@ -30,7 +34,7 @@ export default async function GestorToolsPage({
 
     let programName = "";
 
-    if (session.user.role === "gestor") {
+    if (role === "gestor") {
         const managedPrograms = await gestorService.getManagedPrograms(session.user.id);
         const hasEffective = managedPrograms.some((p) => p.id === effectiveProgramId);
         if (!effectiveProgramId || !hasEffective) {
@@ -67,7 +71,7 @@ export default async function GestorToolsPage({
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-[1900px] mx-auto w-full">
             <ToolsDashboard
-                userRole={session.user.role}
+                userRole={role || "gestor"}
                 programId={effectiveProgramId}
                 programName={programName}
             />

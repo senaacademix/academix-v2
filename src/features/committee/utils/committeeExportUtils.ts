@@ -1,10 +1,17 @@
 import ExcelJS from "exceljs";
 import { CommitteeReportDTO, formatFaultTypeLabel } from "../types";
 import { formatSafeDateTime } from "./dateUtils";
-import { CommitteeExportOptions, generateAndDownloadCommitteePdf } from "./committeeCorporatePdfExport";
+import type { CommitteeExportOptions } from "./committeeCorporatePdfExport";
 
 export type { CommitteeExportOptions };
-export { generateAndDownloadCommitteePdf };
+
+export async function generateAndDownloadCommitteePdf(
+    reports: CommitteeReportDTO[],
+    options?: CommitteeExportOptions
+) {
+    const { generateAndDownloadCommitteePdf: exportPdf } = await import("./committeeCorporatePdfExport");
+    return exportPdf(reports, options);
+}
 
 export async function exportCommitteeReportsToExcel(
     reports: CommitteeReportDTO[],

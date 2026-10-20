@@ -7,11 +7,24 @@ import { SofiaReportsTool } from "./SofiaReportsTool";
 import { TeacherRouletteTool } from "./TeacherRouletteTool";
 import { TeacherGroupGeneratorTool } from "./TeacherGroupGeneratorTool";
 import { TeacherVoceroElectionTool } from "./TeacherVoceroElectionTool";
-import { CommitteeTool } from "@/features/committee/components/CommitteeTool";
+import dynamic from "next/dynamic";
 import { RemarkTemplatesTool } from "./RemarkTemplatesTool";
 import { ArrowLeft, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TOOLS_REGISTRY } from "../constants/toolsRegistry";
+
+const CommitteeTool = dynamic(
+    () => import("@/features/committee/components/CommitteeTool").then((m) => m.CommitteeTool),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex flex-col items-center justify-center p-16 text-muted-foreground gap-3 min-h-[300px]">
+                <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-medium">Cargando herramienta de comités de evaluación...</span>
+            </div>
+        ),
+    }
+);
 
 interface ToolsDashboardProps {
     initialGroups?: any[];

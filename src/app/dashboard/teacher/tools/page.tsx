@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { ToolsDashboard } from "@/features/tools/components/ToolsDashboard";
 import { courseService } from "@/features/teacher/services/courseService";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
     title: "Centro de Herramientas Académicas | AcademiX",
     description: "Panel modular y catálogo de herramientas y utilidades autónomas para la gestión formativa.",
@@ -12,7 +14,7 @@ export const metadata = {
 export default async function TeacherToolsPage() {
     const session = await auth.api.getSession({ headers: await headers() });
     const user = session?.user as any;
-    const role = Array.isArray(user?.roles) ? user?.roles[0] : user?.role;
+    const role = user?.role || (Array.isArray(user?.roles) ? user?.roles[0] : undefined);
 
     if (!session || (role !== "teacher" && role !== "admin")) {
         redirect("/dashboard");
@@ -24,7 +26,7 @@ export default async function TeacherToolsPage() {
 
     return (
         <div className="w-full max-w-[1900px] mx-auto h-full flex-1 flex flex-col min-h-0">
-            <ToolsDashboard initialGroups={groups} userRole="teacher" />
+            <ToolsDashboard initialGroups={groups} userRole={role || "teacher"} />
         </div>
     );
 }

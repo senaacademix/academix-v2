@@ -9,8 +9,21 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, X } from "lucide-react";
-import { StudentRecords } from "@/features/student/components/StudentRecords";
+import dynamic from "next/dynamic";
+import { GraduationCap, X, Loader2 } from "lucide-react";
+
+const StudentRecords = dynamic(
+    () => import("@/features/student/components/StudentRecords").then((m) => m.StudentRecords),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex flex-col items-center justify-center p-16 text-muted-foreground gap-3 min-h-[350px]">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <span className="text-sm font-medium">Cargando registro académico individual...</span>
+            </div>
+        ),
+    }
+);
 
 export interface StudentAcademicInfo {
     id?: string;
