@@ -15,6 +15,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from "@/components/ui/alert-dialog";
+import {
     Mail,
     Plus,
     Edit2,
@@ -25,7 +34,8 @@ import {
     Check,
     AlertCircle,
     Copy,
-    ArrowLeft
+    ArrowLeft,
+    X
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -49,7 +59,9 @@ const AVAILABLE_VARIABLES = [
     { tag: "{{ficha}}", label: "Ficha / Grupo", example: "3223877" },
     { tag: "{{proceso}}", label: "Nombre Convocatoria", example: "Comité de Evaluación Trimestre 3" },
     { tag: "{{causal}}", label: "Causal / Falta", example: "INASISTENCIA" },
-    { tag: "{{motivo}}", label: "Motivo del Reporte", example: "Acumulación de más de 3 fallas sin justificar" },
+    { tag: "{{observaciones}}", label: "Observaciones", example: "Acumulación de fallas consecutivas sin presentar justificación" },
+    { tag: "{{dias_inasistencia}}", label: "Días Inasistencia", example: "4" },
+    { tag: "{{motivo}}", label: "Motivo (Observaciones)", example: "Acumulación de más de 3 fallas sin justificar" },
     { tag: "{{instructor}}", label: "Instructor que Reporta", example: "Jhon Fredy Valencia" },
     { tag: "{{fecha}}", label: "Fecha Actual", example: new Date().toLocaleDateString("es-CO") }
 ];
@@ -67,6 +79,8 @@ export function CommitteeEmailTemplatesModal({
     // Form Mode: "list" | "create" | "edit"
     const [mode, setMode] = useState<"list" | "create" | "edit">("list");
     const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+    const [templateToDelete, setTemplateToDelete] = useState<CommitteeEmailTemplateDTO | null>(null);
+    const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
 
     // Form fields
     const [formTitle, setFormTitle] = useState("");
@@ -220,16 +234,7 @@ SENA - Academix`);
     };
 
     const handleDelete = async (template: CommitteeEmailTemplateDTO) => {
-        if (!confirm(`¿Eliminar la plantilla "${template.title}" de la base de datos?`)) {
-            return;
-        }
-        try {
-            await deleteEmailTemplateAction(template.id);
-            toast.success("Plantilla eliminada correctamente.");
-            await loadTemplates();
-        } catch (err: any) {
-            toast.error(err.message || "Error al eliminar la plantilla.");
-        }
+        setTemplateToDelete(template);
     };
 
     // Interpolate sample data for live preview
@@ -245,7 +250,7 @@ SENA - Academix`);
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl sm:max-w-5xl lg:max-w-5xl xl:max-w-6xl w-[95vw] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl border border-border/80">
+            <DialogContent showCloseButton={false} className="max-w-5xl sm:max-w-5xl lg:max-w-5xl xl:max-w-6xl w-[95vw] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl border border-border/80">
                 <DialogHeader className="p-5 pb-4 border-b border-border/80 bg-muted/20">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5">
@@ -268,30 +273,43 @@ SENA - Academix`);
                             </div>
                         </div>
 
-                        {mode === "list" && (
-                            <Button
-                                type="button"
-                                size="sm"
-                                onClick={handleOpenCreate}
-                                className="h-8 px-3 text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold gap-1.5 shadow-2xs"
-                            >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>Nueva Plantilla</span>
-                            </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {mode === "list" && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleOpenCreate}
+                                    className="h-8 px-3 text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold gap-1.5 shadow-2xs cursor-pointer"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Nueva Plantilla</span>
+                                </Button>
+                            )}
 
-                        {mode !== "list" && (
+                            {mode !== "list" && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setMode("list")}
+                                    className="h-8 px-2.5 text-xs text-muted-foreground rounded-xl gap-1 cursor-pointer"
+                                >
+                                    <ArrowLeft className="w-3.5 h-3.5" />
+                                    <span>Volver a la lista</span>
+                                </Button>
+                            )}
+
                             <Button
                                 type="button"
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                onClick={() => setMode("list")}
-                                className="h-8 px-2.5 text-xs text-muted-foreground rounded-xl gap-1"
+                                onClick={onClose}
+                                className="h-8 px-3 text-xs rounded-xl gap-1.5 hover:bg-muted font-medium shrink-0 cursor-pointer"
                             >
-                                <ArrowLeft className="w-3.5 h-3.5" />
-                                <span>Volver a la lista</span>
+                                <X className="w-3.5 h-3.5" />
+                                <span>Cerrar</span>
                             </Button>
-                        )}
+                        </div>
                     </div>
                 </DialogHeader>
 
@@ -341,30 +359,18 @@ SENA - Academix`);
                                     {templates.map((tpl) => (
                                         <div
                                             key={tpl.id}
-                                            className="p-4 rounded-xl border border-border/80 bg-card hover:border-primary/40 transition-all shadow-2xs space-y-2.5"
+                                            className="p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card hover:border-primary/40 transition-all shadow-2xs space-y-2"
                                         >
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <h3 className="text-sm font-bold text-foreground">
                                                         {tpl.title}
                                                     </h3>
-                                                    {tpl.isDefault ? (
+                                                    {tpl.isDefault && (
                                                         <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] py-0 px-2 font-semibold gap-1">
                                                             <Star className="w-2.5 h-2.5 fill-current" />
                                                             Predeterminada
                                                         </Badge>
-                                                    ) : (
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleSetDefault(tpl)}
-                                                            className="h-6 px-2 text-[10px] text-muted-foreground hover:text-amber-600 rounded-md gap-1"
-                                                            title="Marcar como predeterminada"
-                                                        >
-                                                            <Star className="w-3 h-3" />
-                                                            <span>Hacer predeterminada</span>
-                                                        </Button>
                                                     )}
                                                 </div>
 
@@ -374,7 +380,7 @@ SENA - Academix`);
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => handleOpenEdit(tpl)}
-                                                        className="h-7 px-2.5 text-xs rounded-lg gap-1"
+                                                        className="h-7 px-2.5 text-xs rounded-lg gap-1 cursor-pointer"
                                                     >
                                                         <Edit2 className="w-3 h-3 text-primary" />
                                                         <span>Editar</span>
@@ -384,7 +390,7 @@ SENA - Academix`);
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => handleDelete(tpl)}
-                                                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                                                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
                                                         title="Eliminar plantilla"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />
@@ -392,13 +398,10 @@ SENA - Academix`);
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-1 text-xs">
+                                            <div className="text-xs">
                                                 <p className="font-medium text-foreground/90">
                                                     <span className="text-muted-foreground font-normal">Asunto: </span>
                                                     {tpl.subject}
-                                                </p>
-                                                <p className="text-muted-foreground line-clamp-2 text-[11px] leading-relaxed whitespace-pre-line bg-muted/30 p-2 rounded-lg font-mono">
-                                                    {tpl.body}
                                                 </p>
                                             </div>
                                         </div>
@@ -572,6 +575,69 @@ SENA - Academix`);
                     )}
                 </div>
             </DialogContent>
+
+            {/* Modal Temático para Eliminar Plantilla */}
+            <AlertDialog open={Boolean(templateToDelete)} onOpenChange={(open) => !open && setTemplateToDelete(null)}>
+                <AlertDialogContent className="border-border/80 rounded-2xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 max-w-md w-[95vw]">
+                    <AlertDialogHeader className="space-y-2 text-left">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-destructive/15 text-destructive border border-destructive/25 flex items-center justify-center shrink-0">
+                                <Trash2 className="w-5 h-5" />
+                            </div>
+                            <div className="space-y-1">
+                                <AlertDialogTitle className="text-base font-bold text-foreground">
+                                    ¿Eliminar plantilla de correo?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-xs text-muted-foreground">
+                                    Esta plantilla será eliminada de la base de datos de manera permanente.
+                                </AlertDialogDescription>
+                            </div>
+                        </div>
+                    </AlertDialogHeader>
+
+                    {templateToDelete && (
+                        <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-1 my-2">
+                            <span className="text-muted-foreground text-[11px] block">Título de la plantilla:</span>
+                            <strong className="text-foreground text-xs block">{templateToDelete.title}</strong>
+                            <p className="text-[11px] text-muted-foreground/80 font-mono truncate pt-0.5">
+                                Asunto: {templateToDelete.subject}
+                            </p>
+                        </div>
+                    )}
+
+                    <AlertDialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
+                        <AlertDialogCancel
+                            disabled={isDeletingTemplate}
+                            className="text-xs h-9 rounded-xl w-full sm:w-auto"
+                        >
+                            Cancelar
+                        </AlertDialogCancel>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={isDeletingTemplate}
+                            onClick={async () => {
+                                if (!templateToDelete) return;
+                                try {
+                                    setIsDeletingTemplate(true);
+                                    await deleteEmailTemplateAction(templateToDelete.id);
+                                    setTemplateToDelete(null);
+                                    toast.success("Plantilla eliminada correctamente.");
+                                    await loadTemplates();
+                                } catch (err: any) {
+                                    toast.error(err.message || "Error al eliminar la plantilla");
+                                } finally {
+                                    setIsDeletingTemplate(false);
+                                }
+                            }}
+                            className="text-xs font-semibold h-9 rounded-xl gap-1.5 w-full sm:w-auto"
+                        >
+                            {isDeletingTemplate ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                            <span>Eliminar Plantilla</span>
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Dialog>
     );
 }

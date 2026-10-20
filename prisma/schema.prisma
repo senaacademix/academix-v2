@@ -672,13 +672,14 @@ model AttendancePermissionRequest {
 }
 
 model RemarkTemplate {
-  id          String     @id @default(cuid())
-  type        RemarkType @default(ATTENTION)
-  title       String
-  subject     String?
-  description String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id              String     @id @default(cuid())
+  type            RemarkType @default(ATTENTION)
+  title           String
+  subject         String?
+  description     String
+  customVariables Json?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   @@map("remark_template")
 }
@@ -937,6 +938,11 @@ enum CommitteeFaultType {
   DISCIPLINARIO
   INASISTENCIA
   MIXTO
+  SOLICITUD_PLAN_MEJORAMIENTO
+  INCUMPLIMIENTO_PLAN_MEJORAMIENTO
+  DESERCION
+  PLAGIO_FRAUDE
+  OTRO
 }
 
 model CommitteeProcess {
@@ -978,14 +984,20 @@ model CommitteeReport {
   reportedById  String
   reportedBy    User               @relation("TeacherCommitteeReports", fields: [reportedById], references: [id], onDelete: Cascade)
 
-  evidenceUrl   String?            @db.Text
-  faultType     CommitteeFaultType @default(ACADEMICO)
-  reason        String             @db.Text
-  observations  String?            @db.Text
-  status        String             @default("REPORTADO")
+  evidenceUrl       String?            @db.Text
+  faultType         CommitteeFaultType @default(ACADEMICO)
+  customFaultType   String?            // Especificación personalizada si la causal es OTRO
+  groupSchedule     String?            // Horario de la ficha
+  subject           String?            // Actividad de proyecto o materia reportada
+  absenceDays       Int?               @default(0) // Cantidad de días de inasistencia
+  absenceHours      Int?               @default(0) // Cantidad de horas de inasistencia
+  committeeDecision String?            // Solución del comité (Cancelado, Condicionado, Absuelto, u Otro)
+  reason            String             @db.Text
+  observations      String?            @db.Text
+  status            String             @default("REPORTADO")
 
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([processId])
   @@index([studentId])

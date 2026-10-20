@@ -17,7 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
     Mail,
     Send,
-    Sparkles,
     Copy,
     Settings,
     Star,
@@ -35,7 +34,7 @@ import {
     getEmailTemplatesAction,
     createEmailTemplateAction
 } from "../../actions/committeeActions";
-import { CommitteeReportDTO, CommitteeEmailTemplateDTO } from "../../types";
+import { CommitteeReportDTO, CommitteeEmailTemplateDTO, formatFaultTypeLabel } from "../../types";
 import { CommitteeEmailTemplatesModal } from "./CommitteeEmailTemplatesModal";
 
 interface CommitteeEmailComposerModalProps {
@@ -45,17 +44,6 @@ interface CommitteeEmailComposerModalProps {
     programId?: string;
     defaultProcessTitle?: string;
 }
-
-const AVAILABLE_VARIABLES = [
-    { tag: "{{aprendiz}}", label: "Nombre Aprendiz" },
-    { tag: "{{documento}}", label: "Documento" },
-    { tag: "{{ficha}}", label: "Ficha / Grupo" },
-    { tag: "{{proceso}}", label: "Convocatoria" },
-    { tag: "{{causal}}", label: "Causal / Falta" },
-    { tag: "{{motivo}}", label: "Motivo" },
-    { tag: "{{instructor}}", label: "Instructor" },
-    { tag: "{{fecha}}", label: "Fecha Actual" }
-];
 
 export function CommitteeEmailComposerModal({
     isOpen,
@@ -70,7 +58,6 @@ export function CommitteeEmailComposerModal({
 
     const [subject, setSubject] = useState("");
     const [body, setBody] = useState("");
-    const [lastFocusedField, setLastFocusedField] = useState<"subject" | "body">("body");
 
     // Modal for managing templates
     const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
@@ -133,14 +120,6 @@ export function CommitteeEmailComposerModal({
         }
     };
 
-    const handleInsertVariable = (tag: string) => {
-        if (lastFocusedField === "subject") {
-            setSubject((prev) => prev + " " + tag);
-        } else {
-            setBody((prev) => prev + " " + tag);
-        }
-    };
-
     // Helper to interpolate variables for a specific report
     const interpolateText = (text: string, report?: CommitteeReportDTO) => {
         if (!report) {
@@ -156,8 +135,11 @@ export function CommitteeEmailComposerModal({
             .replace(/\{\{documento\}\}/g, report.studentDocument || "Sin documento")
             .replace(/\{\{ficha\}\}/g, report.groupName)
             .replace(/\{\{proceso\}\}/g, report.processTitle || defaultProcessTitle || "Comité de Evaluación")
-            .replace(/\{\{causal\}\}/g, report.faultType)
-            .replace(/\{\{motivo\}\}/g, report.reason)
+            .replace(/\{\{causal\}\}/g, formatFaultTypeLabel(report.faultType, report.customFaultType))
+            .replace(/\{\{observaciones\}\}/g, report.observations || report.reason)
+            .replace(/\{\{motivo\}\}/g, report.observations || report.reason)
+            .replace(/\{\{dias_inasistencia\}\}/g, String(report.absenceDays ?? report.absenceHours ?? 0))
+            .replace(/\{\{horas_inasistencia\}\}/g, String(report.absenceDays ?? report.absenceHours ?? 0))
             .replace(/\{\{instructor\}\}/g, report.reportedByName)
             .replace(/\{\{fecha\}\}/g, new Date().toLocaleDateString("es-CO"));
     };
@@ -269,7 +251,7 @@ export function CommitteeEmailComposerModal({
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent className="max-w-5xl sm:max-w-5xl lg:max-w-5xl xl:max-w-6xl w-[95vw] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl border border-border/80">
+                <DialogContent showCloseButton={false} className="max-w-5xl sm:max-w-5xl lg:max-w-5xl xl:max-w-6xl w-[95vw] max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl border border-border/80">
                     {/* Header */}
                     <DialogHeader className="p-5 pb-4 border-b border-border/80 bg-muted/20">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -287,27 +269,38 @@ export function CommitteeEmailComposerModal({
                                 </div>
                             </div>
 
-                            {/* View Mode Toggle */}
-                            <div className="flex items-center gap-1.5 self-start sm:self-auto bg-muted/60 p-1 rounded-xl border border-border/60">
+                            {/* View Mode Toggle & Close Button */}
+                            <div className="flex items-center gap-2 self-start sm:self-auto">
+                                <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border/60">
+                                    <Button
+                                        type="button"
+                                        variant={viewMode === "compose" ? "default" : "ghost"}
+                                        size="sm"
+                                        onClick={() => setViewMode("compose")}
+                                        className="h-7 px-3 text-xs rounded-lg gap-1.5"
+                                    >
+                                        <Code className="w-3.5 h-3.5" />
+                                        <span>Redactar</span>
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={viewMode === "preview" ? "default" : "ghost"}
+                                        size="sm"
+                                        onClick={() => setViewMode("preview")}
+                                        className="h-7 px-3 text-xs rounded-lg gap-1.5"
+                                    >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>Vista Previa</span>
+                                    </Button>
+                                </div>
                                 <Button
                                     type="button"
-                                    variant={viewMode === "compose" ? "default" : "ghost"}
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={() => setViewMode("compose")}
-                                    className="h-7 px-3 text-xs rounded-lg gap-1.5"
+                                    onClick={onClose}
+                                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground rounded-lg"
                                 >
-                                    <Code className="w-3.5 h-3.5" />
-                                    <span>Redactar</span>
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={viewMode === "preview" ? "default" : "ghost"}
-                                    size="sm"
-                                    onClick={() => setViewMode("preview")}
-                                    className="h-7 px-3 text-xs rounded-lg gap-1.5"
-                                >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>Vista Previa</span>
+                                    Cerrar
                                 </Button>
                             </div>
                         </div>
@@ -456,27 +449,6 @@ export function CommitteeEmailComposerModal({
                         {viewMode === "compose" ? (
                             /* COMPOSE VIEW */
                             <div className="space-y-3.5">
-                                {/* Variables insertion helper */}
-                                <div className="p-2.5 rounded-xl bg-muted/40 border border-border/70 space-y-1.5">
-                                    <div className="flex items-center gap-1 text-[11px] font-bold text-primary">
-                                        <Sparkles className="w-3 h-3" />
-                                        <span>Haz clic en una variable para insertarla en el mensaje:</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-1">
-                                        {AVAILABLE_VARIABLES.map((v) => (
-                                            <button
-                                                key={v.tag}
-                                                type="button"
-                                                onClick={() => handleInsertVariable(v.tag)}
-                                                className="px-2 py-0.5 rounded-md bg-card hover:bg-primary hover:text-primary-foreground border border-border/80 text-[10px] font-mono transition-colors shadow-2xs"
-                                                title={`Insertar ${v.tag}`}
-                                            >
-                                                {v.tag}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
                                 {/* Subject */}
                                 <div className="space-y-1">
                                     <Label htmlFor="email-subject" className="text-xs font-semibold">
@@ -485,7 +457,6 @@ export function CommitteeEmailComposerModal({
                                     <Input
                                         id="email-subject"
                                         value={subject}
-                                        onFocus={() => setLastFocusedField("subject")}
                                         onChange={(e) => setSubject(e.target.value)}
                                         className="h-9 text-xs rounded-xl font-medium"
                                         placeholder="Asunto del correo..."
@@ -500,7 +471,6 @@ export function CommitteeEmailComposerModal({
                                     <Textarea
                                         id="email-body"
                                         value={body}
-                                        onFocus={() => setLastFocusedField("body")}
                                         onChange={(e) => setBody(e.target.value)}
                                         rows={10}
                                         className="text-xs rounded-xl font-mono leading-relaxed"

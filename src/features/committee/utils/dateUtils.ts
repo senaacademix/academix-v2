@@ -187,41 +187,11 @@ export function checkProcessDiligenceWindow(process?: {
         };
     }
 
-    const todayStr = getTodayDateString();
-    const startStr = toDateInputValue(process.startDate);
-    const endStr = toDateInputValue(process.endDate);
-
-    if (startStr && todayStr < startStr) {
-        return {
-            canEdit: false,
-            status: "NOT_STARTED",
-            badgeText: "Próximamente (Solo Lectura)",
-            message: `El periodo de diligenciamiento inicia el ${formatSafeDate(process.startDate)}.`,
-            isExpired: false,
-            isUpcoming: true,
-            isClosed: false
-        };
-    }
-
-    if (endStr && todayStr > endStr) {
-        return {
-            canEdit: false,
-            status: "EXPIRED",
-            badgeText: "Plazo Finalizado (Solo Lectura)",
-            message: `El plazo de diligenciamiento finalizó el ${formatSafeDate(process.endDate)}. Modo solo lectura.`,
-            isExpired: true,
-            isUpcoming: false,
-            isClosed: false
-        };
-    }
-
     return {
         canEdit: true,
         status: "OPEN",
-        badgeText: "Habilitado para Diligenciar",
-        message: endStr
-            ? `Diligenciamiento disponible hasta el ${formatSafeDate(process.endDate)}.`
-            : "Proceso abierto para recepción de reportes.",
+        badgeText: "Habilitado para Reportar",
+        message: "Proceso abierto para recepción de reportes.",
         isExpired: false,
         isUpcoming: false,
         isClosed: false

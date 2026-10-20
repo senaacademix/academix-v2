@@ -380,7 +380,8 @@ export async function saveRemarkBatch(
     studentIds: string[], 
     type: RemarkType, 
     title: string, 
-    description: string
+    description: string,
+    customValues?: Record<string, string>
 ) {
     try {
         const teacher = await requireTeacher();
@@ -415,13 +416,15 @@ export async function saveRemarkBatch(
                 student,
                 group: course?.group,
                 teacherName: teacher.name,
-                currentDate: new Date()
+                currentDate: new Date(),
+                customValues
             });
             const personalizedDescription = interpolateRemarkTemplate(description, {
                 student,
                 group: course?.group,
                 teacherName: teacher.name,
-                currentDate: new Date()
+                currentDate: new Date(),
+                customValues
             });
 
             return {

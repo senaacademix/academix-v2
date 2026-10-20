@@ -29,7 +29,9 @@ import {
     Search,
     X,
     Check,
-    ChevronDown
+    ChevronDown,
+    Timer,
+    Calendar
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -43,7 +45,8 @@ import {
     TrainingAreaGroupDTO,
     CommitteeFaultType,
     CreateCommitteeReportInput,
-    UpdateCommitteeReportInput
+    UpdateCommitteeReportInput,
+    formatFaultTypeLabel
 } from "../../types";
 
 interface ReportLearnerModalProps {
@@ -73,6 +76,12 @@ export function ReportLearnerModal({
 }: ReportLearnerModalProps) {
     const activeProcesses = useMemo(() => processes.filter((p) => isProcessInDiligenceWindow(p)), [processes]);
 
+    const lectiveGroups = useMemo(() => {
+        return groups.filter(
+            (g) => !g.categoria || g.categoria.toUpperCase() === "LECTIVA"
+        );
+    }, [groups]);
+
     const editDiligence = useMemo(() => {
         if (!reportToEdit) return null;
         return checkProcessDiligenceWindow({
@@ -82,14 +91,22 @@ export function ReportLearnerModal({
         });
     }, [reportToEdit]);
 
-    const isReadOnly = editDiligence !== null && !editDiligence.canEdit;
+    const isDecisionLocked = useMemo(() => {
+        if (!reportToEdit?.committeeDecision) return false;
+        const dec = reportToEdit.committeeDecision.trim().toLowerCase();
+        return dec !== "" && dec !== "pending" && dec !== "pendiente";
+    }, [reportToEdit]);
+
+    const isReadOnly = (editDiligence !== null && !editDiligence.canEdit) || isDecisionLocked;
 
     const [processId, setProcessId] = useState("");
     const [groupId, setGroupId] = useState("");
+    const [groupSearch, setGroupSearch] = useState("");
     const [studentId, setStudentId] = useState("");
     const [faultType, setFaultType] = useState<CommitteeFaultType>("ACADEMICO");
+    const [customFaultType, setCustomFaultType] = useState("");
+    const [absenceDays, setAbsenceDays] = useState<number | string>(0);
     const [evidenceUrl, setEvidenceUrl] = useState("");
-    const [reason, setReason] = useState("");
     const [observations, setObservations] = useState("");
     const [studentSearch, setStudentSearch] = useState("");
     const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
@@ -113,29 +130,34 @@ export function ReportLearnerModal({
             setGroupId(reportToEdit.groupId);
             setStudentId(reportToEdit.studentId);
             setFaultType(reportToEdit.faultType);
+            setCustomFaultType(reportToEdit.customFaultType || "");
+            setAbsenceDays(reportToEdit.absenceDays ?? reportToEdit.absenceHours ?? 0);
             setEvidenceUrl(reportToEdit.evidenceUrl || "");
-            setReason(reportToEdit.reason);
-            setObservations(reportToEdit.observations || "");
+            // Muestra observations si existe, si no usa reason como fallback
+            setObservations(reportToEdit.observations || reportToEdit.reason || "");
         } else {
             const defaultProc = (selectedProcessId && activeProcesses.some(p => p.id === selectedProcessId))
                 ? selectedProcessId
                 : (activeProcesses[0]?.id || "");
+            const defGroupId = selectedGroupId || lectiveGroups[0]?.id || "";
             setProcessId(defaultProc);
-            setGroupId(selectedGroupId || groups[0]?.id || "");
+            setGroupId(defGroupId);
             setStudentId("");
             setFaultType("ACADEMICO");
+            setCustomFaultType("");
+            setAbsenceDays(0);
             setEvidenceUrl("");
-            setReason("");
             setObservations("");
             setStudentSearch("");
+            setGroupSearch("");
             setIsStudentDropdownOpen(false);
         }
-    }, [reportToEdit, isOpen, activeProcesses, selectedGroupId, selectedProcessId, groups]);
+    }, [reportToEdit, isOpen, activeProcesses, selectedGroupId, selectedProcessId, lectiveGroups]);
 
     // Current group object
     const currentGroup = useMemo(() => {
-        return groups.find((g) => g.id === groupId) || groups[0] || null;
-    }, [groups, groupId]);
+        return lectiveGroups.find((g) => g.id === groupId) || lectiveGroups[0] || null;
+    }, [lectiveGroups, groupId]);
 
     // Helper to normalize accents and spaces for search
     const normalizeSearch = (str: string) => {
@@ -145,6 +167,25 @@ export function ReportLearnerModal({
             .toLowerCase()
             .trim();
     };
+
+    // Filtered lective groups based on groupSearch
+    const filteredLectiveGroups = useMemo(() => {
+        if (!groupSearch.trim()) return lectiveGroups;
+        const term = normalizeSearch(groupSearch);
+        return lectiveGroups.filter((g) => {
+            const nameMatch = normalizeSearch(g.name).includes(term);
+            const progMatch = g.programName ? normalizeSearch(g.programName).includes(term) : false;
+            return nameMatch || progMatch;
+        });
+    }, [lectiveGroups, groupSearch]);
+
+    // Ensure currently selected group is preserved in options for Select display
+    const displayGroups = useMemo(() => {
+        if (!groupId) return filteredLectiveGroups;
+        if (filteredLectiveGroups.some((g) => g.id === groupId)) return filteredLectiveGroups;
+        const current = lectiveGroups.find((g) => g.id === groupId);
+        return current ? [current, ...filteredLectiveGroups] : filteredLectiveGroups;
+    }, [filteredLectiveGroups, groupId, lectiveGroups]);
 
     // Filtered students for current group with accent-insensitive search
     const groupStudents = useMemo(() => {
@@ -192,20 +233,28 @@ export function ReportLearnerModal({
             }
         }
 
-        if (!reason.trim()) {
-            toast.error("El motivo o causal del reporte es obligatorio.");
+        if (faultType === "OTRO" && !customFaultType.trim()) {
+            toast.error("Por favor especifica la causal o motivo del reporte.");
             return;
         }
 
         try {
             setIsSubmitting(true);
             const cleanUrl = evidenceUrl.trim() || undefined;
+            const parsedAbsenceDays = Math.max(0, Number(absenceDays) || 0);
+            const observationsText = observations.trim() || null;
+            const fallbackReason = observations.trim() || (faultType === "OTRO" ? (customFaultType.trim() || "Reporte a comité") : formatFaultTypeLabel(faultType));
+            const finalCustomFault = faultType === "OTRO" ? customFaultType.trim() : null;
+
             if (reportToEdit && onSubmitUpdate) {
                 await onSubmitUpdate(reportToEdit.id, {
                     evidenceUrl: cleanUrl,
                     faultType,
-                    reason: reason.trim(),
-                    observations: observations.trim() || undefined
+                    customFaultType: finalCustomFault,
+                    absenceDays: parsedAbsenceDays,
+                    absenceHours: parsedAbsenceDays,
+                    reason: fallbackReason,
+                    observations: observationsText
                 });
             } else {
                 await onSubmitCreate({
@@ -214,8 +263,11 @@ export function ReportLearnerModal({
                     groupId,
                     evidenceUrl: cleanUrl,
                     faultType,
-                    reason: reason.trim(),
-                    observations: observations.trim() || undefined
+                    customFaultType: finalCustomFault,
+                    absenceDays: parsedAbsenceDays,
+                    absenceHours: parsedAbsenceDays,
+                    reason: fallbackReason,
+                    observations: observationsText
                 });
             }
             onClose();
@@ -228,29 +280,53 @@ export function ReportLearnerModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl p-0 overflow-hidden border-border/80 rounded-2xl sm:rounded-3xl shadow-2xl">
+            <DialogContent showCloseButton={false} className="w-[95vw] max-w-[95vw] sm:max-w-3xl md:max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden border-border/80 rounded-2xl sm:rounded-3xl shadow-2xl">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-border/60 p-5 sm:p-6 pb-4 sm:pb-5">
-                    <div className="flex items-start gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-                            <Scale className="w-5 h-5" />
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                                <Scale className="w-5 h-5" />
+                            </div>
+                            <div className="space-y-1">
+                                <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
+                                    {reportToEdit ? "Editar Reporte a Comité" : "Reportar Aprendiz a Comité de Evaluación"}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground">
+                                    {reportToEdit
+                                        ? "Modifica la causal, los hechos o el enlace de evidencias documentales."
+                                        : "Registra el caso ante el comité de evaluación con la causal y hechos correspondientes."}
+                                </DialogDescription>
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
-                                {reportToEdit ? "Editar Reporte a Comité" : "Reportar Aprendiz a Comité de Evaluación"}
-                            </DialogTitle>
-                            <DialogDescription className="text-xs text-muted-foreground">
-                                {reportToEdit
-                                    ? "Modifica la causal, los hechos o el enlace de evidencias documentales."
-                                    : "Registra el caso ante el comité de evaluación con la causal y hechos correspondientes."}
-                            </DialogDescription>
-                        </div>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={onClose}
+                            className="h-8 px-3 text-xs rounded-xl gap-1.5 hover:bg-muted font-medium shrink-0 cursor-pointer"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Cerrar</span>
+                        </Button>
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5 max-h-[78vh] overflow-y-auto">
+                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto">
+                    {/* Read-only warning if decision is already made by committee */}
+                    {isDecisionLocked && (
+                        <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-900 dark:text-purple-200 text-xs flex items-start gap-2.5">
+                            <Scale className="w-4 h-4 shrink-0 mt-0.5 text-purple-600 dark:text-purple-400" />
+                            <div className="space-y-0.5">
+                                <p className="font-bold">Decisión Oficial Emitida por el Comité: {reportToEdit?.committeeDecision}</p>
+                                <p>Este reporte ya fue resuelto por el Comité de Evaluación. La causal, inasistencias y observaciones están bloqueadas para edición.</p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Read-only warning if editing outside diligence window */}
-                    {isReadOnly && (
+                    {!isDecisionLocked && isReadOnly && (
                         <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
                             <Lock className="w-4 h-4 shrink-0 mt-0.5" />
                             <div className="space-y-0.5">
@@ -261,8 +337,8 @@ export function ReportLearnerModal({
                     )}
 
                     {/* 2-COLUMN GRID LAYOUT */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-                        {/* COLUMNA 1: DATOS DEL APRENDIZ Y EVIDENCIAS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
+                        {/* COLUMNA 1: DATOS DEL APRENDIZ Y CAUSALES */}
                         <div className="space-y-4">
                             {/* Process selector (only if creating and NO selectedProcessId was specified) */}
                             {!reportToEdit && !selectedProcessId && (
@@ -295,35 +371,82 @@ export function ReportLearnerModal({
                                 </div>
                             )}
 
-                            {/* Ficha / Group selector (if creating) */}
+                            {/* Ficha / Group selector with Search on the left (if creating) */}
                             {!reportToEdit ? (
                                 <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <Label htmlFor="group-select" className="text-xs font-semibold">
-                                            Ficha o Grupo del Área <span className="text-destructive">*</span>
-                                        </Label>
-                                        <Badge variant="secondary" className="text-[10px] py-0 px-1.5">
-                                            {groups.length} Fichas
-                                        </Badge>
+                                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                                        {/* Búsqueda por ficha a la izquierda */}
+                                        <div className="sm:col-span-5 space-y-1.5">
+                                            <Label htmlFor="group-search-input" className="text-xs font-semibold flex items-center gap-1.5">
+                                                <Search className="w-3.5 h-3.5 text-primary" />
+                                                <span>Buscar Ficha</span>
+                                            </Label>
+                                            <div className="relative">
+                                                <Input
+                                                    id="group-search-input"
+                                                    placeholder="N° ficha o nombre..."
+                                                    value={groupSearch}
+                                                    onChange={(e) => setGroupSearch(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter" && filteredLectiveGroups.length === 1) {
+                                                            e.preventDefault();
+                                                            setGroupId(filteredLectiveGroups[0].id);
+                                                            setStudentId("");
+                                                        }
+                                                    }}
+                                                    className="pr-7 h-9 text-xs rounded-xl"
+                                                />
+                                                {groupSearch && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setGroupSearch("")}
+                                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                                                        title="Limpiar búsqueda"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Campo Ficha o Grupo a la derecha */}
+                                        <div className="sm:col-span-7 space-y-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="group-select" className="text-xs font-semibold truncate">
+                                                    Ficha o Grupo <span className="text-destructive">*</span>
+                                                </Label>
+                                                <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-semibold shrink-0">
+                                                    {groupSearch.trim()
+                                                        ? `${filteredLectiveGroups.length} de ${lectiveGroups.length}`
+                                                        : `${lectiveGroups.length} Fichas`}
+                                                </Badge>
+                                            </div>
+                                            <Select
+                                                value={groupId}
+                                                onValueChange={(val) => {
+                                                    setGroupId(val);
+                                                    setStudentId(""); // Reset student when ficha changes
+                                                }}
+                                            >
+                                                <SelectTrigger id="group-select" className="h-9 text-xs font-medium">
+                                                    <SelectValue placeholder="Selecciona la ficha lectiva" />
+                                                </SelectTrigger>
+                                                <SelectContent className="max-h-56">
+                                                    {filteredLectiveGroups.length === 0 ? (
+                                                        <div className="p-3 text-center text-xs text-muted-foreground">
+                                                            No se encontraron fichas con "{groupSearch}"
+                                                        </div>
+                                                    ) : (
+                                                        displayGroups.map((g) => (
+                                                            <SelectItem key={g.id} value={g.id} className="text-xs">
+                                                                {g.name} ({g.studentsCount} apr.) • {g.programName}
+                                                            </SelectItem>
+                                                        ))
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
-                                    <Select
-                                        value={groupId}
-                                        onValueChange={(val) => {
-                                            setGroupId(val);
-                                            setStudentId(""); // Reset student when ficha changes
-                                        }}
-                                    >
-                                        <SelectTrigger id="group-select" className="h-9 text-xs font-medium">
-                                            <SelectValue placeholder="Selecciona la ficha" />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-56">
-                                            {groups.map((g) => (
-                                                <SelectItem key={g.id} value={g.id} className="text-xs">
-                                                    {g.name} ({g.studentsCount} apr.) • {g.programName}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
                                 </div>
                             ) : (
                                 <div className="p-3 rounded-xl bg-muted/40 border border-border/60 text-xs flex items-center justify-between">
@@ -505,12 +628,90 @@ export function ReportLearnerModal({
                                         <SelectItem value="MIXTO" className="text-xs">
                                             📓 Mixto (Académico y disciplinario/asistencia)
                                         </SelectItem>
+                                        <SelectItem value="SOLICITUD_PLAN_MEJORAMIENTO" className="text-xs">
+                                            📝 Solicitud Plan de Mejoramiento (Concertación de compromisos)
+                                        </SelectItem>
+                                        <SelectItem value="INCUMPLIMIENTO_PLAN_MEJORAMIENTO" className="text-xs">
+                                            ⚠️ Incumplimiento Plan de Mejoramiento (Vencimiento de compromisos)
+                                        </SelectItem>
+                                        <SelectItem value="DESERCION" className="text-xs">
+                                            🚶 Deserción (Inasistencia injustificada reiterada / abandono)
+                                        </SelectItem>
+                                        <SelectItem value="PLAGIO_FRAUDE" className="text-xs">
+                                            🚫 Plagio o Fraude Académico (Copia no autorizada de evidencias)
+                                        </SelectItem>
+                                        <SelectItem value="ETAPA_PRODUCTIVA" className="text-xs">
+                                            🏭 Incumplimiento en Etapa Productiva (Empresa / Práctica)
+                                        </SelectItem>
+                                        <SelectItem value="OTRO" className="text-xs">
+                                            📋 Otro (Especificar causal personalizada)
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
+                            {/* Especificar Causal si es OTRO */}
+                            {faultType === "OTRO" && (
+                                <div className="space-y-1.5 p-3 rounded-xl bg-primary/5 border border-primary/20 animate-in fade-in duration-200">
+                                    <Label htmlFor="custom-fault" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                        <FileText className="w-3.5 h-3.5 text-primary" />
+                                        Especificar Causal o Motivo <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Input
+                                        id="custom-fault"
+                                        type="text"
+                                        value={customFaultType}
+                                        onChange={(e) => setCustomFaultType(e.target.value)}
+                                        placeholder="Escribe la causal o motivo del reporte..."
+                                        className="text-xs h-9 bg-card"
+                                        disabled={isReadOnly}
+                                    />
+                                    <p className="text-[11px] text-muted-foreground leading-tight">
+                                        Indica la causal o motivo por el cual se reporta al aprendiz.
+                                    </p>
+                                </div>
+                            )}
+
+
+
+                            {/* Cantidad de Días de Inasistencias */}
+                            <div className={`space-y-1.5 p-3 rounded-xl border transition-colors ${
+                                faultType === "INASISTENCIA" || faultType === "DESERCION" || Number(absenceDays) > 0
+                                    ? "bg-amber-500/5 border-amber-500/30"
+                                    : "bg-muted/30 border-border/70"
+                            }`}>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="absence-days" className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                                        <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                                        Días de Inasistencias
+                                    </Label>
+                                    {Number(absenceDays) > 0 ? (
+                                        <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40 font-mono font-semibold">
+                                            {absenceDays} {Number(absenceDays) === 1 ? "día inasistencia" : "días inasistencias"}
+                                        </Badge>
+                                    ) : null}
+                                </div>
+                                <Input
+                                    id="absence-days"
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    value={absenceDays}
+                                    onChange={(e) => setAbsenceDays(e.target.value)}
+                                    placeholder="0"
+                                    className="text-xs h-9 bg-card font-mono"
+                                    disabled={isReadOnly}
+                                />
+                                <p className="text-[11px] text-muted-foreground leading-tight">
+                                    Cantidad de días no asistidos por el aprendiz. Diligenciado libremente por el instructor.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* COLUMNA 2: EVIDENCIAS Y OBSERVACIONES */}
+                        <div className="space-y-4 flex flex-col h-full">
                             {/* OPTIONAL EVIDENCE URL */}
-                            <div className="space-y-1.5 p-3.5 rounded-xl bg-muted/40 border border-border/70">
+                            <div className="space-y-1.5 p-3 rounded-xl bg-muted/40 border border-border/70">
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="evidence-url" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                                         <LinkIcon className="w-3.5 h-3.5 text-muted-foreground" />
@@ -530,55 +731,39 @@ export function ReportLearnerModal({
                                     disabled={isReadOnly}
                                 />
                                 <p className="text-[11px] text-muted-foreground leading-normal">
-                                    Enlace público opcional con las pruebas documentales (actas, pantallazos, plan de mejoramiento).
+                                    Enlace público opcional con pruebas documentales (actas, pantallazos, plan de mejoramiento).
                                 </p>
                             </div>
-                        </div>
 
-                        {/* COLUMNA 2: MOTIVOS Y OBSERVACIONES */}
-                        <div className="space-y-4 flex flex-col h-full">
-                            {/* Reason / Facts */}
-                            <div className="space-y-1.5 flex-1">
-                                <Label htmlFor="report-reason" className="text-xs font-semibold">
-                                    Motivo o Hechos del Caso <span className="text-destructive">*</span>
-                                </Label>
+                            {/* Observaciones / Hechos del Caso */}
+                            <div className="space-y-1.5 flex-1 flex flex-col">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="report-observations" className="text-xs font-semibold">
+                                        Observaciones
+                                    </Label>
+                                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-border/80">
+                                        Opcional
+                                    </Badge>
+                                </div>
                                 <Textarea
-                                    id="report-reason"
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    placeholder="Describe detalladamente los hechos, fechas, competencias o resultados de aprendizaje afectados..."
-                                    rows={6}
-                                    className="text-xs resize-none h-36"
-                                    disabled={isReadOnly}
-                                    required
-                                />
-                            </div>
-
-                            {/* Additional observations */}
-                            <div className="space-y-1.5">
-                                <Label htmlFor="report-obs" className="text-xs font-semibold">
-                                    Observaciones Adicionales <span className="text-muted-foreground text-[11px]">(Opcional)</span>
-                                </Label>
-                                <Textarea
-                                    id="report-obs"
+                                    id="report-observations"
                                     value={observations}
                                     onChange={(e) => setObservations(e.target.value)}
-                                    placeholder="Descargos preliminares, acuerdos previos o anotaciones para el comité..."
-                                    rows={4}
-                                    className="text-xs resize-none"
+                                    placeholder="Describe detalladamente los hechos, fechas, competencias o resultados de aprendizaje afectados (opcional)..."
+                                    className="text-xs resize-none flex-1 min-h-[170px]"
                                     disabled={isReadOnly}
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="pt-3 border-t border-border/60 flex items-center justify-end gap-2">
+                    <DialogFooter className="pt-3 border-t border-border/60 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 w-full sm:w-auto">
                         {isReadOnly ? (
                             <Button
                                 type="button"
                                 variant="outline"
                                 onClick={onClose}
-                                className="text-xs h-9"
+                                className="text-xs h-9 w-full sm:w-auto"
                             >
                                 Cerrar (Solo Lectura)
                             </Button>
@@ -589,14 +774,14 @@ export function ReportLearnerModal({
                                     variant="outline"
                                     onClick={onClose}
                                     disabled={isSubmitting}
-                                    className="text-xs h-9"
+                                    className="text-xs h-9 w-full sm:w-auto"
                                 >
                                     Cancelar
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={isSubmitting || (!reportToEdit && !selectedProcessId && activeProcesses.length === 0)}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-9 gap-1.5 px-4 rounded-xl"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-9 gap-1.5 px-4 rounded-xl w-full sm:w-auto"
                                 >
                                     {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                                     <span>{reportToEdit ? "Guardar Cambios" : "Confirmar Reporte"}</span>

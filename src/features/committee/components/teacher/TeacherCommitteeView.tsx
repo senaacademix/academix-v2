@@ -293,12 +293,12 @@ export function TeacherCommitteeView({
                                             {canEdit ? (
                                                 <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold gap-1.5 rounded-full px-2.5 py-0.5">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                    <span>Habilitado para Diligenciar</span>
+                                                    <span>Habilitado para Reportar</span>
                                                 </Badge>
                                             ) : (
                                                 <Badge className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 text-[10px] font-semibold gap-1.5 rounded-full px-2.5 py-0.5">
                                                     <Lock className="w-3 h-3" />
-                                                    <span>Plazo Finalizado (Solo Lectura)</span>
+                                                    <span>Cerrado (Solo Lectura)</span>
                                                 </Badge>
                                             )}
 
@@ -323,16 +323,8 @@ export function TeacherCommitteeView({
                                             )}
                                         </div>
 
-                                        {/* Dates range */}
-                                        <div className="p-3 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-1">
-                                            <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                                                <span className="flex items-center gap-1 font-semibold text-foreground/80">
-                                                    <Calendar className="w-3.5 h-3.5 text-primary" /> Plazo:
-                                                </span>
-                                                <span className="font-mono font-bold text-foreground" suppressHydrationWarning>
-                                                    {formatSafeDate(process.startDate)} - {formatSafeDate(process.endDate)}
-                                                </span>
-                                            </div>
+                                        {/* Status message */}
+                                        <div className="p-2.5 rounded-xl bg-muted/40 border border-border/60 text-xs">
                                             <p className="text-[11px] text-muted-foreground leading-snug">
                                                 {diligence.message}
                                             </p>
@@ -408,18 +400,14 @@ export function TeacherCommitteeView({
                             {canEditActiveProcess ? (
                                 <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-xs font-semibold gap-1.5 rounded-full px-2.5 py-0.5">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span>Habilitado para Diligenciar</span>
+                                    <span>Habilitado para Reportar</span>
                                 </Badge>
                             ) : (
                                 <Badge className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 text-xs font-semibold gap-1.5 rounded-full px-2.5 py-0.5">
                                     <Lock className="w-3.5 h-3.5" />
-                                    <span>Modo Solo Lectura (Plazo Finalizado)</span>
+                                    <span>Modo Solo Lectura (Cerrado)</span>
                                 </Badge>
                             )}
-
-                            <span className="text-xs text-muted-foreground font-mono" suppressHydrationWarning>
-                                Plazo: {formatSafeDate(activeProcess.startDate)} - {formatSafeDate(activeProcess.endDate)}
-                            </span>
                         </div>
 
                         <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
@@ -499,6 +487,7 @@ export function TeacherCommitteeView({
                 <TeacherReportsTable
                     reports={activeProcessReports}
                     isLoading={isLoading}
+                    groups={trainingGroups}
                     onEditReport={(report) => {
                         setReportToEdit(report);
                         setIsReportModalOpen(true);

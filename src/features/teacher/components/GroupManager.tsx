@@ -82,7 +82,7 @@ import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, User, Check, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, CalendarDays, Award, ShieldCheck, Building } from "lucide-react";
+import { Users, User, Check, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, CalendarDays, Award, ShieldCheck, Building, SlidersHorizontal, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,7 +99,7 @@ import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { resetStudentPassword, saveAttendanceBatch, saveRemarkBatch, getGroupAttendanceHistory, getGroupRemarksHistory, getTeacherComprehensiveGroupAnalyticsAction, saveSingleAttendanceAction, deleteRemarkAction, resetStudentDailyAttempts, notifyEmailSentBatchAction } from "../actions/groupActions";
 import { getRemarkTemplatesAction } from "../actions/remarkActions";
-import { interpolateRemarkTemplate } from "../utils/remarkTemplateVariables";
+import { interpolateRemarkTemplate, type CustomVariableDefinition } from "../utils/remarkTemplateVariables";
 import { getGroupImprovementPlans, upsertImprovementPlan, deleteImprovementPlan, deleteSignedDocument, deleteTeacherSignedDoc, submitTeacherSignedDoc, markPlanViewed, resetPlanToStep, gradeImprovementPlan } from "@/features/student/actions/improvementPlanActions";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -802,6 +802,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     // Remarks Message Templates State
     const [remarkTemplates, setRemarkTemplates] = useState<any[]>([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState("");
+    const [templateCustomValues, setTemplateCustomValues] = useState<Record<string, string>>({});
 
     const [confirmConfig, setConfirmConfig] = useState<{
         open: boolean;
@@ -835,9 +836,19 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
 
     useEffect(() => {
         setSelectedTemplateId("");
-    }, [remarkType]);
+        setTemplateCustomValues({});
+    }, [remarkType, selectedGroupId]);
 
+    const selectedTemplate = useMemo(() => {
+        if (!selectedTemplateId) return null;
+        return remarkTemplates.find((t: any) => t.id === selectedTemplateId) || null;
+    }, [selectedTemplateId, remarkTemplates]);
 
+    const templateCustomVariables: CustomVariableDefinition[] = useMemo(() => {
+        if (!selectedTemplate || !selectedTemplate.customVariables) return [];
+        if (Array.isArray(selectedTemplate.customVariables)) return selectedTemplate.customVariables as CustomVariableDefinition[];
+        return [];
+    }, [selectedTemplate]);
 
     const selectedRemarkStudent = useMemo(() => {
         if (!selectedRemarkStudentId || !selectedGroup?.students) return null;
@@ -851,7 +862,9 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             group: selectedGroup,
             teacherName: teacherName || "",
             currentDate: new Date(),
-            useSampleValues: !student
+            useSampleValues: !student,
+            customVariables: templateCustomVariables,
+            customValues: templateCustomValues
         });
     };
 
@@ -862,7 +875,9 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             group: selectedGroup,
             teacherName: teacherName || "",
             currentDate: new Date(),
-            useSampleValues: !student
+            useSampleValues: !student,
+            customVariables: templateCustomVariables,
+            customValues: templateCustomValues
         });
     };
 
@@ -1897,7 +1912,7 @@ const handleOpenAnalytics = async () => {
         if (!remarkTitle.trim() || !remarkDesc.trim()) return toast.error("Completa el título y la descripción");
 
         setIsSavingRemark(true);
-        const res = await saveRemarkBatch(teacherId!, remarkCourseId, [selectedRemarkStudentId], remarkType, remarkTitle, remarkDesc);
+        const res = await saveRemarkBatch(teacherId!, remarkCourseId, [selectedRemarkStudentId], remarkType, remarkTitle, remarkDesc, templateCustomValues);
         if (res.success) {
             toast.success("Observación guardada correctamente");
             
@@ -1916,6 +1931,8 @@ const handleOpenAnalytics = async () => {
             setRemarkTitle("");
             setRemarkDesc("");
             setSelectedRemarkStudentId(null);
+            setSelectedTemplateId("");
+            setTemplateCustomValues({});
             setSendEmailOnSave(false);
             loadHistory(selectedGroup!.id);
         } else {
@@ -4705,6 +4722,7 @@ const handleOpenAnalytics = async () => {
                                                         size="sm"
                                                         onClick={() => {
                                                             setSelectedTemplateId("");
+                                                            setTemplateCustomValues({});
                                                         }}
                                                         className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
                                                     >
@@ -4717,6 +4735,7 @@ const handleOpenAnalytics = async () => {
                                                 onValueChange={(val) => {
                                                     if (val === "custom") {
                                                         setSelectedTemplateId("");
+                                                        setTemplateCustomValues({});
                                                         return;
                                                     }
                                                     setSelectedTemplateId(val);
@@ -4724,6 +4743,15 @@ const handleOpenAnalytics = async () => {
                                                     if (template) {
                                                         setRemarkTitle(template.subject || template.title);
                                                         setRemarkDesc(template.description);
+                                                        const initialVals: Record<string, string> = {};
+                                                        if (Array.isArray(template.customVariables)) {
+                                                            template.customVariables.forEach((cv: any) => {
+                                                                if (cv && cv.token) {
+                                                                    initialVals[cv.token] = cv.defaultValue || "";
+                                                                }
+                                                            });
+                                                        }
+                                                        setTemplateCustomValues(initialVals);
                                                     }
                                                 }}
                                             >
@@ -4745,6 +4773,47 @@ const handleOpenAnalytics = async () => {
                                                 Puedes elegir una plantilla oficial establecida por la Gestoría Académica o redactar un mensaje personalizado libremente. Modificar el texto no alterará las plantillas guardadas en la base de datos.
                                             </p>
                                         </div>
+
+                                        {/* Custom Variables Section for the Selected Template */}
+                                        {templateCustomVariables.length > 0 && (
+                                            <div className="p-4 rounded-xl border border-primary/20 bg-primary/[0.04] space-y-3 mb-6 animate-in fade-in duration-200">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <SlidersHorizontal className="w-4 h-4 text-primary shrink-0" />
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                                                            Variables Personalizadas de la Plantilla ({templateCustomVariables.length})
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[11px] text-muted-foreground">
+                                                        Valores por defecto editables para esta observación
+                                                    </span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                                                    {templateCustomVariables.map((cv) => (
+                                                        <div key={cv.token} className="space-y-1.5 bg-background/80 p-2.5 rounded-lg border border-border/60">
+                                                            <Label className="text-xs font-semibold flex items-center justify-between gap-1 text-foreground">
+                                                                <span className="truncate">{cv.label}</span>
+                                                                <code className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-bold shrink-0">
+                                                                    {`{{${cv.token}}}`}
+                                                                </code>
+                                                            </Label>
+                                                            <Input
+                                                                value={templateCustomValues[cv.token] ?? cv.defaultValue ?? ""}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setTemplateCustomValues(prev => ({
+                                                                        ...prev,
+                                                                        [cv.token]: val
+                                                                    }));
+                                                                }}
+                                                                placeholder={cv.defaultValue || `Valor para {{${cv.token}}}...`}
+                                                                className="h-8 text-xs rounded-md bg-background border-border/80"
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
                                          <div className="space-y-2 mb-6">
                                             <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Aprendiz a Notificar (Individual)</Label>

@@ -13,6 +13,116 @@ import {
 } from "../types";
 import { parseInputDate, checkProcessDiligenceWindow } from "../utils/dateUtils";
 
+export function formatGroupSchedule(slots?: any[]): string {
+    if (!slots || slots.length === 0) return "";
+
+    const dayOrder = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+    const dayNames: Record<string, string> = {
+        MONDAY: "Lunes",
+        TUESDAY: "Martes",
+        WEDNESDAY: "Miércoles",
+        THURSDAY: "Jueves",
+        FRIDAY: "Viernes",
+        SATURDAY: "Sábado",
+        SUNDAY: "Domingo"
+    };
+
+    const validSlots = slots.filter(s => s && s.dayOfWeek && s.startTime && s.endTime);
+    if (validSlots.length === 0) return "";
+
+    const sortedSlots = [...validSlots].sort((a, b) => {
+        return dayOrder.indexOf(a.dayOfWeek) - dayOrder.indexOf(b.dayOfWeek);
+    });
+
+    const days = sortedSlots.map(s => s.dayOfWeek);
+    const firstTime = `${sortedSlots[0].startTime} - ${sortedSlots[0].endTime}`;
+    const allSameTime = sortedSlots.every(s => `${s.startTime} - ${s.endTime}` === firstTime);
+
+    const isMonToFri = days.length === 5 && ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"].every(d => days.includes(d));
+    const isMonToSat = days.length === 6 && ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"].every(d => days.includes(d));
+
+    if (allSameTime) {
+        if (isMonToFri) {
+            return `Lunes a Viernes (${firstTime})`;
+        }
+        if (isMonToSat) {
+            return `Lunes a Sábado (${firstTime})`;
+        }
+        const dayList = sortedSlots.map(s => dayNames[s.dayOfWeek]?.slice(0, 3) || s.dayOfWeek).join(", ");
+        return `${dayList} (${firstTime})`;
+    }
+
+    return sortedSlots.map(s => `${dayNames[s.dayOfWeek] || s.dayOfWeek}: ${s.startTime}-${s.endTime}`).join(", ");
+}
+
+/**
+ * Resuelve y formatea el último horario académico de una ficha (grupo),
+ * priorizando las franjas (slots) del horario activo o más reciente,
+ * o en su defecto los horarios asignados a las materias/cursos de la ficha.
+ */
+export function resolveLatestGroupSchedule(group: any): string {
+    if (!group) return "";
+
+    // 1. Franjas directas de la ficha (ScheduleGroupSlot)
+    if (group.scheduleSlots && group.scheduleSlots.length > 0) {
+        // Agrupar slots por academicScheduleId
+        const slotsBySchedule = new Map<string, any[]>();
+        const scheduleMeta = new Map<string, any>();
+
+        for (const slot of group.scheduleSlots) {
+            const schedId = slot.academicScheduleId || "default";
+            if (!slotsBySchedule.has(schedId)) {
+                slotsBySchedule.set(schedId, []);
+                if (slot.academicSchedule) {
+                    scheduleMeta.set(schedId, slot.academicSchedule);
+                }
+            }
+            slotsBySchedule.get(schedId)!.push(slot);
+        }
+
+        // 1.1 Buscar primero el horario que esté activo
+        let targetSlots: any[] | null = null;
+        for (const [schedId, meta] of scheduleMeta.entries()) {
+            if (meta?.isActive) {
+                targetSlots = slotsBySchedule.get(schedId) || null;
+                break;
+            }
+        }
+
+        // 1.2 Si no hay activo, ordenar por startDate o fecha de creación más reciente
+        if (!targetSlots) {
+            const sorted = Array.from(scheduleMeta.entries()).sort((a, b) => {
+                const dateA = a[1]?.startDate ? new Date(a[1].startDate).getTime() : 0;
+                const dateB = b[1]?.startDate ? new Date(b[1].startDate).getTime() : 0;
+                return dateB - dateA;
+            });
+            if (sorted.length > 0) {
+                targetSlots = slotsBySchedule.get(sorted[0][0]) || null;
+            }
+        }
+
+        // 1.3 Si no hay meta, usar las franjas directas disponibles
+        if (!targetSlots || targetSlots.length === 0) {
+            targetSlots = group.scheduleSlots;
+        }
+
+        const formatted = formatGroupSchedule(targetSlots || undefined);
+        if (formatted) return formatted;
+    }
+
+    // 2. Horarios asignados a los cursos de la ficha (CourseSchedule)
+    if (group.courses && group.courses.length > 0) {
+        for (const course of group.courses) {
+            if (course.schedules && course.schedules.length > 0) {
+                const formatted = formatGroupSchedule(course.schedules);
+                if (formatted) return formatted;
+            }
+        }
+    }
+
+    return "";
+}
+
 export class CommitteeService {
     /**
      * Obtiene los procesos de comité con conteos de reportes y aprendices únicos
@@ -243,7 +353,12 @@ export class CommitteeService {
                         { student: { profile: { identificacion: { contains: term, mode: "insensitive" } } } },
                         { group: { name: { contains: term, mode: "insensitive" } } },
                         { reportedBy: { name: { contains: term, mode: "insensitive" } } },
-                        { reason: { contains: term, mode: "insensitive" } }
+                        { reason: { contains: term, mode: "insensitive" } },
+                        { observations: { contains: term, mode: "insensitive" } },
+                        { customFaultType: { contains: term, mode: "insensitive" } },
+                        { subject: { contains: term, mode: "insensitive" } },
+                        { groupSchedule: { contains: term, mode: "insensitive" } },
+                        { committeeDecision: { contains: term, mode: "insensitive" } }
                     ]
                 }
             ];
@@ -272,7 +387,32 @@ export class CommitteeService {
                     select: {
                         id: true,
                         name: true,
-                        program: { select: { id: true, name: true } }
+                        program: { select: { id: true, name: true } },
+                        scheduleSlots: {
+                            include: {
+                                academicSchedule: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        startDate: true,
+                                        endDate: true,
+                                        isActive: true
+                                    }
+                                }
+                            },
+                            orderBy: { createdAt: "desc" }
+                        },
+                        courses: {
+                            select: {
+                                schedules: {
+                                    select: {
+                                        dayOfWeek: true,
+                                        startTime: true,
+                                        endTime: true
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 reportedBy: {
@@ -307,6 +447,12 @@ export class CommitteeService {
             reportedByEmail: r.reportedBy.email,
             evidenceUrl: r.evidenceUrl,
             faultType: r.faultType,
+            customFaultType: r.customFaultType || null,
+            groupSchedule: resolveLatestGroupSchedule(r.group) || r.groupSchedule || null,
+            subject: r.subject || null,
+            absenceDays: r.absenceDays ?? r.absenceHours ?? 0,
+            absenceHours: r.absenceDays ?? r.absenceHours ?? 0,
+            committeeDecision: r.committeeDecision || null,
             reason: r.reason,
             observations: r.observations,
             status: r.status,
@@ -382,12 +528,35 @@ export class CommitteeService {
             orderBy: { name: "asc" }
         });
 
-        // Obtener TODAS las fichas o grupos de dichas áreas de formación
+        // Obtener SOLO las fichas o grupos en estado LECTIVO de dichas áreas de formación
         const groups = await prisma.group.findMany({
-            where: { programId: { in: programIds } },
+            where: {
+                programId: { in: programIds },
+                categoria: "LECTIVA"
+            },
             orderBy: { name: "asc" },
             include: {
                 program: { select: { id: true, name: true } },
+                scheduleSlots: {
+                    select: {
+                        dayOfWeek: true,
+                        startTime: true,
+                        endTime: true
+                    }
+                },
+                courses: {
+                    select: {
+                        id: true,
+                        title: true,
+                        schedules: {
+                            select: {
+                                dayOfWeek: true,
+                                startTime: true,
+                                endTime: true
+                            }
+                        }
+                    }
+                },
                 students: {
                     where: { banned: { not: true } },
                     select: {
@@ -407,22 +576,35 @@ export class CommitteeService {
             }
         });
 
-        const formattedGroups: TrainingAreaGroupDTO[] = groups.map((g: any) => ({
-            id: g.id,
-            name: g.name,
-            description: g.description,
-            programId: g.programId,
-            programName: g.program?.name || "Área de Formación",
-            studentsCount: g.students.length,
-            students: g.students.map((s: any) => ({
-                id: s.id,
-                name: s.name,
-                email: s.email,
-                image: s.image,
-                identificacion: s.profile?.identificacion || null,
-                telefono: s.profile?.telefono || null
-            }))
-        }));
+        const formattedGroups: TrainingAreaGroupDTO[] = groups.map((g: any) => {
+            const rawSlots = g.scheduleSlots && g.scheduleSlots.length > 0
+                ? g.scheduleSlots
+                : (g.courses?.[0]?.schedules || []);
+            const scheduleText = formatGroupSchedule(rawSlots);
+
+            return {
+                id: g.id,
+                name: g.name,
+                description: g.description,
+                programId: g.programId,
+                programName: g.program?.name || "Área de Formación",
+                categoria: g.categoria || "LECTIVA",
+                scheduleInfo: scheduleText,
+                courses: (g.courses || []).map((c: any) => ({
+                    id: c.id,
+                    title: c.title
+                })),
+                studentsCount: g.students.length,
+                students: g.students.map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    email: s.email,
+                    image: s.image,
+                    identificacion: s.profile?.identificacion || null,
+                    telefono: s.profile?.telefono || null
+                }))
+            };
+        });
 
         return {
             programs: programsList,
@@ -474,7 +656,32 @@ export class CommitteeService {
                     select: {
                         id: true,
                         name: true,
-                        program: { select: { id: true, name: true } }
+                        program: { select: { id: true, name: true } },
+                        scheduleSlots: {
+                            include: {
+                                academicSchedule: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        startDate: true,
+                                        endDate: true,
+                                        isActive: true
+                                    }
+                                }
+                            },
+                            orderBy: { createdAt: "desc" }
+                        },
+                        courses: {
+                            select: {
+                                schedules: {
+                                    select: {
+                                        dayOfWeek: true,
+                                        startTime: true,
+                                        endTime: true
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 reportedBy: {
@@ -509,6 +716,12 @@ export class CommitteeService {
             reportedByEmail: r.reportedBy.email,
             evidenceUrl: r.evidenceUrl,
             faultType: r.faultType,
+            customFaultType: r.customFaultType || null,
+            groupSchedule: resolveLatestGroupSchedule(r.group) || r.groupSchedule || null,
+            subject: r.subject || null,
+            absenceDays: r.absenceDays ?? r.absenceHours ?? 0,
+            absenceHours: r.absenceDays ?? r.absenceHours ?? 0,
+            committeeDecision: r.committeeDecision || null,
             reason: r.reason,
             observations: r.observations,
             status: r.status,
@@ -545,7 +758,36 @@ export class CommitteeService {
         // Validar que el proceso y la ficha pertenezcan a la misma área y el proceso esté abierto
         const [process, group] = await Promise.all([
             prisma.committeeProcess.findUnique({ where: { id: input.processId } }),
-            prisma.group.findUnique({ where: { id: input.groupId } })
+            prisma.group.findUnique({
+                where: { id: input.groupId },
+                include: {
+                    scheduleSlots: {
+                        include: {
+                            academicSchedule: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    startDate: true,
+                                    endDate: true,
+                                    isActive: true
+                                }
+                            }
+                        },
+                        orderBy: { createdAt: "desc" }
+                    },
+                    courses: {
+                        select: {
+                            schedules: {
+                                select: {
+                                    dayOfWeek: true,
+                                    startTime: true,
+                                    endTime: true
+                                }
+                            }
+                        }
+                    }
+                }
+            })
         ]);
 
         if (!process) {
@@ -566,6 +808,14 @@ export class CommitteeService {
             throw new Error("La ficha seleccionada no pertenece al área de formación de este proceso de comité.");
         }
 
+        const rawAbsenceDays = input.absenceDays !== undefined ? input.absenceDays : input.absenceHours;
+        const parsedAbsenceDays = typeof rawAbsenceDays === "number"
+            ? Math.max(0, rawAbsenceDays)
+            : (rawAbsenceDays ? parseInt(String(rawAbsenceDays), 10) : 0);
+        const finalAbsenceDays = isNaN(parsedAbsenceDays) ? 0 : parsedAbsenceDays;
+
+        const resolvedGroupSchedule = input.groupSchedule?.trim() || resolveLatestGroupSchedule(group) || null;
+
         const report = await prisma.committeeReport.create({
             data: {
                 processId: input.processId,
@@ -574,7 +824,13 @@ export class CommitteeService {
                 reportedById: teacherId,
                 evidenceUrl: cleanEvidenceUrl,
                 faultType: input.faultType || "ACADEMICO",
-                reason: input.reason.trim(),
+                customFaultType: input.faultType === "OTRO" ? (input.customFaultType?.trim() || null) : null,
+                groupSchedule: resolvedGroupSchedule,
+                subject: input.subject?.trim() || null,
+                absenceDays: finalAbsenceDays,
+                absenceHours: finalAbsenceDays,
+                committeeDecision: input.committeeDecision?.trim() || null,
+                reason: input.reason?.trim() || input.observations?.trim() || "Reporte a comité",
                 observations: input.observations?.trim() || null,
                 status: "REPORTADO"
             },
@@ -622,6 +878,12 @@ export class CommitteeService {
             reportedByEmail: report.reportedBy.email,
             evidenceUrl: report.evidenceUrl,
             faultType: report.faultType,
+            customFaultType: report.customFaultType || null,
+            groupSchedule: report.groupSchedule || null,
+            subject: report.subject || null,
+            absenceDays: report.absenceDays ?? report.absenceHours ?? 0,
+            absenceHours: report.absenceDays ?? report.absenceHours ?? 0,
+            committeeDecision: report.committeeDecision || null,
             reason: report.reason,
             observations: report.observations,
             status: report.status,
@@ -658,6 +920,13 @@ export class CommitteeService {
             if (!diligence.canEdit) {
                 throw new Error(`No es posible modificar este reporte: ${diligence.message}`);
             }
+
+            // Si la solución del comité ya no es pendiente, el instructor no puede modificarlo
+            const dec = existing.committeeDecision?.trim().toLowerCase();
+            const isDecisionPending = !dec || dec === "" || dec === "pending" || dec === "pendiente";
+            if (!isDecisionPending) {
+                throw new Error("No es posible modificar un reporte que ya cuenta con una resolución oficial emitida por el Comité de Evaluación.");
+            }
         }
 
         const updateData: any = {};
@@ -680,13 +949,39 @@ export class CommitteeService {
 
         if (input.faultType !== undefined) {
             updateData.faultType = input.faultType;
+            if (input.faultType === "OTRO") {
+                updateData.customFaultType = input.customFaultType?.trim() || null;
+            } else {
+                updateData.customFaultType = null;
+            }
+        } else if (input.customFaultType !== undefined) {
+            updateData.customFaultType = input.customFaultType?.trim() || null;
+        }
+
+        if (input.groupSchedule !== undefined) {
+            updateData.groupSchedule = input.groupSchedule?.trim() || null;
+        }
+
+        if (input.subject !== undefined) {
+            updateData.subject = input.subject?.trim() || null;
+        }
+
+        if (input.absenceDays !== undefined || input.absenceHours !== undefined) {
+            const rawVal = input.absenceDays !== undefined ? input.absenceDays : input.absenceHours;
+            const parsed = typeof rawVal === "number"
+                ? Math.max(0, rawVal)
+                : (rawVal ? parseInt(String(rawVal), 10) : 0);
+            const finalVal = isNaN(parsed) ? 0 : parsed;
+            updateData.absenceDays = finalVal;
+            updateData.absenceHours = finalVal;
+        }
+
+        if (input.committeeDecision !== undefined && isGestorOrAdmin) {
+            updateData.committeeDecision = input.committeeDecision?.trim() || null;
         }
 
         if (input.reason !== undefined) {
-            if (!input.reason || input.reason.trim().length === 0) {
-                throw new Error("El motivo o causal del reporte es obligatorio.");
-            }
-            updateData.reason = input.reason.trim();
+            updateData.reason = input.reason?.trim() || (input.observations?.trim() || "Reporte a comité");
         }
 
         if (input.observations !== undefined) {
@@ -744,11 +1039,140 @@ export class CommitteeService {
             reportedByEmail: report.reportedBy.email,
             evidenceUrl: report.evidenceUrl,
             faultType: report.faultType,
+            customFaultType: report.customFaultType || null,
+            groupSchedule: report.groupSchedule || null,
+            absenceDays: report.absenceDays ?? report.absenceHours ?? 0,
+            absenceHours: report.absenceDays ?? report.absenceHours ?? 0,
+            committeeDecision: report.committeeDecision || null,
             reason: report.reason,
             observations: report.observations,
             status: report.status,
             createdAt: report.createdAt.toISOString(),
             updatedAt: report.updatedAt.toISOString()
+        };
+    }
+
+    /**
+     * Actualiza la solución/decisión del comité para un reporte específico (Gestor o Admin)
+     */
+    async updateReportDecision(reportId: string, decision: string | null): Promise<CommitteeReportDTO> {
+        const report = await prisma.committeeReport.update({
+            where: { id: reportId },
+            data: {
+                committeeDecision: decision?.trim() || null
+            },
+            include: {
+                process: { select: { id: true, title: true, status: true, startDate: true, endDate: true } },
+                student: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        image: true,
+                        profile: { select: { identificacion: true, telefono: true } }
+                    }
+                },
+                group: {
+                    select: {
+                        id: true,
+                        name: true,
+                        program: { select: { id: true, name: true } }
+                    }
+                },
+                reportedBy: { select: { id: true, name: true, email: true } }
+            }
+        });
+
+        return {
+            id: report.id,
+            processId: report.processId,
+            processTitle: report.process.title,
+            processStatus: report.process.status,
+            processStartDate: report.process.startDate ? report.process.startDate.toISOString() : null,
+            processEndDate: report.process.endDate ? report.process.endDate.toISOString() : null,
+            studentId: report.studentId,
+            studentName: report.student.name,
+            studentEmail: report.student.email,
+            studentDocument: report.student.profile?.identificacion || null,
+            studentImage: report.student.image || null,
+            studentPhone: report.student.profile?.telefono || null,
+            groupId: report.groupId,
+            groupName: report.group.name,
+            programId: report.group.program?.id || null,
+            programName: report.group.program?.name || null,
+            reportedById: report.reportedById,
+            reportedByName: report.reportedBy.name,
+            reportedByEmail: report.reportedBy.email,
+            evidenceUrl: report.evidenceUrl,
+            faultType: report.faultType,
+            customFaultType: report.customFaultType || null,
+            groupSchedule: report.groupSchedule || null,
+            absenceDays: report.absenceDays ?? report.absenceHours ?? 0,
+            absenceHours: report.absenceDays ?? report.absenceHours ?? 0,
+            committeeDecision: report.committeeDecision || null,
+            reason: report.reason,
+            observations: report.observations,
+            status: report.status,
+            createdAt: report.createdAt.toISOString(),
+            updatedAt: report.updatedAt.toISOString()
+        };
+    }
+
+    /**
+     * Calcula o consulta las horas e inasistencias registradas para un estudiante en una ficha
+     */
+    async getStudentAbsenceData(groupId: string, studentId: string): Promise<{
+        absentHours: number;
+        absentCount: number;
+    }> {
+        if (!groupId || !studentId) {
+            return { absentHours: 0, absentCount: 0 };
+        }
+
+        const attendances = await prisma.attendance.findMany({
+            where: {
+                userId: studentId,
+                course: { groupId },
+                status: "ABSENT"
+            },
+            include: {
+                course: {
+                    include: {
+                        schedules: true,
+                        group: {
+                            include: { scheduleSlots: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        let totalHours = 0;
+        const dayOfWeekNames = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+
+        for (const att of attendances) {
+            const attDate = new Date(att.date);
+            const dayIdx = !isNaN(attDate.getTime()) ? attDate.getUTCDay() : -1;
+            const dayName = dayOfWeekNames[dayIdx];
+
+            const sched = att.course?.schedules?.find((s: any) => s.dayOfWeek === dayName) ||
+                          att.course?.group?.scheduleSlots?.find((s: any) => s.dayOfWeek === dayName) ||
+                          att.course?.schedules?.[0] ||
+                          att.course?.group?.scheduleSlots?.[0];
+
+            if (sched && sched.startTime && sched.endTime) {
+                const [sh, sm] = sched.startTime.split(":").map(Number);
+                const [eh, em] = sched.endTime.split(":").map(Number);
+                const diff = Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
+                totalHours += diff > 0 ? diff : 4;
+            } else {
+                totalHours += 4;
+            }
+        }
+
+        return {
+            absentHours: Math.round(totalHours * 10) / 10,
+            absentCount: attendances.length
         };
     }
 
@@ -774,6 +1198,13 @@ export class CommitteeService {
             const diligence = checkProcessDiligenceWindow(existing.process);
             if (!diligence.canEdit) {
                 throw new Error(`No es posible eliminar este reporte: ${diligence.message}`);
+            }
+
+            // Si la solución del comité ya no es pendiente, el instructor no puede eliminarlo
+            const dec = existing.committeeDecision?.trim().toLowerCase();
+            const isDecisionPending = !dec || dec === "" || dec === "pending" || dec === "pendiente";
+            if (!isDecisionPending) {
+                throw new Error("No es posible eliminar un reporte que ya cuenta con una resolución oficial emitida por el Comité de Evaluación.");
             }
         }
 

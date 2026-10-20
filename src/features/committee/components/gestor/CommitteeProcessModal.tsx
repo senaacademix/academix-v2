@@ -15,10 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Scale, Calendar, AlertCircle, Loader2, School } from "lucide-react";
+import { Scale, AlertCircle, Loader2, School } from "lucide-react";
 import { CommitteeProcessDTO, CreateCommitteeProcessInput, UpdateCommitteeProcessInput } from "../../types";
-
-import { toDateInputValue } from "../../utils/dateUtils";
 
 interface CommitteeProcessModalProps {
     isOpen: boolean;
@@ -40,8 +38,6 @@ export function CommitteeProcessModal({
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [status, setStatus] = useState<"OPEN" | "CLOSED">("OPEN");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -49,14 +45,10 @@ export function CommitteeProcessModal({
             setTitle(processToEdit.title);
             setDescription(processToEdit.description || "");
             setStatus(processToEdit.status);
-            setStartDate(toDateInputValue(processToEdit.startDate));
-            setEndDate(toDateInputValue(processToEdit.endDate));
         } else {
             setTitle("");
             setDescription("");
             setStatus("OPEN");
-            setStartDate("");
-            setEndDate("");
         }
     }, [processToEdit, isOpen]);
 
@@ -78,17 +70,13 @@ export function CommitteeProcessModal({
                 await onSubmit({
                     title: title.trim(),
                     description: description.trim() || undefined,
-                    status,
-                    startDate: startDate || undefined,
-                    endDate: endDate || undefined
+                    status
                 });
             } else {
                 await onSubmit({
                     title: title.trim(),
                     description: description.trim() || undefined,
-                    programId: currentProgramId,
-                    startDate: startDate || undefined,
-                    endDate: endDate || undefined
+                    programId: currentProgramId
                 });
             }
             onClose();
@@ -101,23 +89,34 @@ export function CommitteeProcessModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-lg p-0 overflow-hidden border-border/80 rounded-2xl shadow-2xl">
+            <DialogContent showCloseButton={false} className="sm:max-w-lg p-0 overflow-hidden border-border/80 rounded-2xl shadow-2xl">
                 {/* Header with visual accent */}
-                <div className="relative bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-border/60 p-6 pb-5">
-                    <div className="flex items-start gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-                            <Scale className="w-5 h-5" />
+                <div className="relative bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-border/60 p-5 sm:p-6 pb-4 sm:pb-5">
+                    <div className="flex items-start justify-between gap-3.5">
+                        <div className="flex items-start gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                                <Scale className="w-5 h-5" />
+                            </div>
+                            <div className="space-y-1">
+                                <DialogTitle className="text-lg font-bold text-foreground">
+                                    {processToEdit ? "Editar Proceso de Comité" : "Nuevo Proceso de Comité"}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground">
+                                    {processToEdit
+                                        ? "Actualiza la información, directrices o estado de este proceso evaluativo."
+                                        : "Habilita una convocatoria formal para que los instructores reporten aprendices."}
+                                </DialogDescription>
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <DialogTitle className="text-lg font-bold text-foreground">
-                                {processToEdit ? "Editar Proceso de Comité" : "Nuevo Proceso de Comité"}
-                            </DialogTitle>
-                            <DialogDescription className="text-xs text-muted-foreground">
-                                {processToEdit
-                                    ? "Actualiza la información, directrices o estado de este proceso evaluativo."
-                                    : "Habilita una convocatoria formal para que los instructores reporten aprendices."}
-                            </DialogDescription>
-                        </div>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={onClose}
+                            className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground rounded-lg shrink-0"
+                        >
+                            Cerrar
+                        </Button>
                     </div>
                 </div>
 
@@ -184,36 +183,6 @@ export function CommitteeProcessModal({
                             </Select>
                         </div>
                     )}
-
-                    {/* Date Limits */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="process-start" className="text-xs font-semibold flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                                <span>Fecha de Inicio</span>
-                            </Label>
-                            <Input
-                                id="process-start"
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="text-xs h-9"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="process-end" className="text-xs font-semibold flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                                <span>Fecha Límite</span>
-                            </Label>
-                            <Input
-                                id="process-end"
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="text-xs h-9"
-                            />
-                        </div>
-                    </div>
 
                     <DialogFooter className="pt-4 border-t border-border/60 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
                         <Button

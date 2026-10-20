@@ -151,6 +151,25 @@ export async function deleteReportAction(reportId: string) {
     return { success: true };
 }
 
+export async function updateReportDecisionAction(reportId: string, decision: string | null) {
+    const { role } = await getAuthSession();
+    if (role !== "gestor" && role !== "admin") {
+        throw new Error("Solo el Gestor Académico o el Administrador pueden registrar la solución o decisión del comité.");
+    }
+
+    const report = await committeeService.updateReportDecision(reportId, decision);
+
+    revalidatePath("/dashboard/gestor/tools");
+    revalidatePath("/dashboard/teacher/tools");
+
+    return { success: true, report };
+}
+
+export async function getStudentAbsenceDataAction(groupId: string, studentId: string) {
+    await getAuthSession();
+    return await committeeService.getStudentAbsenceData(groupId, studentId);
+}
+
 export async function getEmailTemplatesAction(programId?: string): Promise<CommitteeEmailTemplateDTO[]> {
     await getAuthSession();
     return await committeeService.getEmailTemplates({ programId });

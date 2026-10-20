@@ -136,7 +136,7 @@ export async function getRemarkTemplatesAction() {
     });
 }
 
-export async function createRemarkTemplateAction(title: string, description: string, type: RemarkType, subject?: string | null) {
+export async function createRemarkTemplateAction(title: string, description: string, type: RemarkType, subject?: string | null, customVariables?: any) {
     const session = await getSession();
     if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
         throw new Error("Solo el Gestor Académico o Administrador pueden gestionar las plantillas institucionales.");
@@ -151,7 +151,8 @@ export async function createRemarkTemplateAction(title: string, description: str
             title,
             description,
             type,
-            subject: subject ? subject.trim() : null
+            subject: subject ? subject.trim() : null,
+            customVariables: customVariables ?? undefined
         },
     });
 
@@ -171,7 +172,7 @@ export async function createRemarkTemplateAction(title: string, description: str
     return template;
 }
 
-export async function updateRemarkTemplateAction(id: string, title: string, description: string, type: RemarkType, subject?: string | null) {
+export async function updateRemarkTemplateAction(id: string, title: string, description: string, type: RemarkType, subject?: string | null, customVariables?: any) {
     const session = await getSession();
     if (!session || (session.user.role !== "admin" && session.user.role !== "gestor")) {
         throw new Error("Solo el Gestor Académico o Administrador pueden gestionar las plantillas institucionales.");
@@ -187,7 +188,8 @@ export async function updateRemarkTemplateAction(id: string, title: string, desc
             title,
             description,
             type,
-            subject: subject ? subject.trim() : null
+            subject: subject ? subject.trim() : null,
+            customVariables: customVariables !== undefined ? customVariables : undefined
         },
     });
 

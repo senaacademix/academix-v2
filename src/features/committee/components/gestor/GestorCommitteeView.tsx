@@ -34,13 +34,24 @@ import {
     updateProcessAction,
     deleteProcessAction,
     getAllReportedStudentsAction,
-    deleteReportAction
+    deleteReportAction,
+    getTeacherTrainingAreaGroupsAction
 } from "../../actions/committeeActions";
 import { getGestorProgramsAction } from "@/features/gestor/actions/gestorActions";
-import { CommitteeProcessDTO, CommitteeReportDTO } from "../../types";
+import { CommitteeProcessDTO, CommitteeReportDTO, TrainingAreaGroupDTO } from "../../types";
 import { CommitteeProcessModal } from "./CommitteeProcessModal";
 import { AllReportedLearnersTable } from "./AllReportedLearnersTable";
 import { CommitteeEmailTemplatesModal } from "./CommitteeEmailTemplatesModal";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import {
     formatSafeDate,
     formatSafeShortDate,
@@ -105,7 +116,10 @@ export function GestorCommitteeView({
 
     const [processes, setProcesses] = useState<CommitteeProcessDTO[]>([]);
     const [reports, setReports] = useState<CommitteeReportDTO[]>([]);
+    const [areaGroups, setAreaGroups] = useState<TrainingAreaGroupDTO[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [processToDelete, setProcessToDelete] = useState<CommitteeProcessDTO | null>(null);
+    const [isDeletingProcess, setIsDeletingProcess] = useState(false);
 
     // Selected process ID when entering a process (like the teacher view)
     const [internalProcessId, setInternalProcessId] = useState<string | null>(null);
@@ -128,12 +142,14 @@ export function GestorCommitteeView({
 
         try {
             setIsLoading(true);
-            const [fetchedProcesses, fetchedReports] = await Promise.all([
+            const [fetchedProcesses, fetchedReports, areaData] = await Promise.all([
                 getProcessesAction(progId),
-                getAllReportedStudentsAction({ programId: progId })
+                getAllReportedStudentsAction({ programId: progId }),
+                getTeacherTrainingAreaGroupsAction(progId).catch(() => ({ groups: [] }))
             ]);
             setProcesses(fetchedProcesses);
             setReports(fetchedReports);
+            setAreaGroups(areaData.groups || []);
         } catch (err: any) {
             console.error("Error cargando comités:", err);
             toast.error(err.message || "Error al cargar la información de comités.");
@@ -184,25 +200,8 @@ export function GestorCommitteeView({
         await loadData(effectiveProgramId);
     };
 
-    const handleDeleteProcess = async (process: CommitteeProcessDTO) => {
-        if (
-            !confirm(
-                `¿Estás seguro de eliminar el proceso «${process.title}»? Esta acción eliminará permanentemente todos los reportes de aprendices asociados a esta convocatoria.`
-            )
-        ) {
-            return;
-        }
-
-        try {
-            await deleteProcessAction(process.id);
-            toast.success("Proceso de comité eliminado.");
-            if (selectedProcessId === process.id) {
-                setSelectedProcessId(null);
-            }
-            await loadData(effectiveProgramId);
-        } catch (err: any) {
-            toast.error(err.message || "Error al eliminar el proceso.");
-        }
+    const handleDeleteProcess = (process: CommitteeProcessDTO) => {
+        setProcessToDelete(process);
     };
 
     const handleToggleStatus = async (process: CommitteeProcessDTO) => {
@@ -294,7 +293,7 @@ export function GestorCommitteeView({
 
                             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                                 Administra los procesos de citación a comités de evaluación para el área de{" "}
-                                <strong>{effectiveProgramName}</strong>. Todos los procesos de comité convocados en esta área son visibles y compartidos para todos los gestores académicos asignados. Crea nuevas convocatorias con fechas de diligenciamiento e ingresa a cada una para supervisar y auditar los aprendices reportados por los instructores.
+                                <strong>{effectiveProgramName}</strong>. Todos los procesos de comité convocados en esta área son visibles y compartidos para todos los gestores académicos asignados. Crea nuevas convocatorias e ingresa a cada una para supervisar y auditar los aprendices reportados por los instructores.
                             </p>
                         </div>
 
@@ -353,7 +352,6 @@ export function GestorCommitteeView({
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {processes.map((process) => {
                             const isOpen = process.status === "OPEN";
-                            const diligence = checkProcessDiligenceWindow(process);
 
                             return (
                                 <Card
@@ -408,20 +406,6 @@ export function GestorCommitteeView({
                                             </span>
                                         </div>
 
-                                        {/* Diligence dates range */}
-                                        <div className="p-3 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-1">
-                                            <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                                                <span className="flex items-center gap-1 font-semibold text-foreground/80">
-                                                    <Calendar className="w-3.5 h-3.5 text-primary" /> Plazo Instructores:
-                                                </span>
-                                                <span className="font-mono font-bold text-foreground" suppressHydrationWarning>
-                                                    {formatSafeDate(process.startDate)} - {formatSafeDate(process.endDate)}
-                                                </span>
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                                {diligence.message}
-                                            </p>
-                                        </div>
 
                                         {/* Counters */}
                                         <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
@@ -569,10 +553,6 @@ export function GestorCommitteeView({
                                 />
                                 {isProcessOpen ? "Proceso Abierto" : "Proceso Cerrado"}
                             </Badge>
-
-                            <span className="text-xs text-muted-foreground font-mono" suppressHydrationWarning>
-                                Plazo Instructores: {formatSafeDate(activeProcess.startDate)} - {formatSafeDate(activeProcess.endDate)}
-                            </span>
                         </div>
 
                         <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
@@ -693,6 +673,8 @@ export function GestorCommitteeView({
                     onRefresh={() => loadData(effectiveProgramId)}
                     onDeleteReport={handleDeleteReport}
                     programId={effectiveProgramId}
+                    programName={programName}
+                    groups={areaGroups}
                 />
             </div>
 
@@ -715,6 +697,49 @@ export function GestorCommitteeView({
                 onClose={() => setIsTemplatesModalOpen(false)}
                 programId={effectiveProgramId}
             />
+
+            {/* Modal de confirmación para eliminar proceso de comité */}
+            <AlertDialog open={!!processToDelete} onOpenChange={(open) => !open && setProcessToDelete(null)}>
+                <AlertDialogContent className="max-w-md bg-card border-border/80">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-base font-bold text-foreground">
+                            ¿Eliminar proceso de comité?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-muted-foreground">
+                            Estás a punto de eliminar la convocatoria <strong className="text-foreground">«{processToDelete?.title}»</strong>. Esta acción eliminará permanentemente todas las citaciones y reportes de aprendices asociados a este proceso.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+                        <AlertDialogCancel disabled={isDeletingProcess} className="h-9 text-xs">
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={isDeletingProcess}
+                            onClick={async () => {
+                                if (processToDelete) {
+                                    try {
+                                        setIsDeletingProcess(true);
+                                        await deleteProcessAction(processToDelete.id);
+                                        toast.success("Proceso de comité eliminado.");
+                                        if (selectedProcessId === processToDelete.id) {
+                                            setSelectedProcessId(null);
+                                        }
+                                        setProcessToDelete(null);
+                                        await loadData(effectiveProgramId);
+                                    } catch (err: any) {
+                                        toast.error(err.message || "Error al eliminar el proceso.");
+                                    } finally {
+                                        setIsDeletingProcess(false);
+                                    }
+                                }
+                            }}
+                            className="h-9 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeletingProcess ? "Eliminando..." : "Eliminar Proceso"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

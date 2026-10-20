@@ -86,6 +86,13 @@ export const REMARK_AVAILABLE_VARIABLES: RemarkVariableDefinition[] = [
     }
 ];
 
+export interface CustomVariableDefinition {
+    id?: string;
+    token: string;          // e.g. "lugar"
+    label: string;          // e.g. "Lugar de citación"
+    defaultValue: string;   // e.g. "Ambiente 302"
+}
+
 export interface InterpolationContext {
     student?: {
         name?: string | null;
@@ -108,6 +115,8 @@ export interface InterpolationContext {
     teacherName?: string | null;
     currentDate?: Date | string | null;
     useSampleValues?: boolean;
+    customValues?: Record<string, string>;
+    customVariables?: CustomVariableDefinition[];
 }
 
 /**
@@ -116,7 +125,7 @@ export interface InterpolationContext {
 export function interpolateRemarkTemplate(text: string | null | undefined, context: InterpolationContext): string {
     if (!text) return "";
 
-    const { student, group, teacherName, currentDate, useSampleValues } = context;
+    const { student, group, teacherName, currentDate, useSampleValues, customValues, customVariables } = context;
 
     // Obtener fecha formateada
     let dateStr = "";
@@ -173,6 +182,24 @@ export function interpolateRemarkTemplate(text: string | null | undefined, conte
         fecha_actual: dateStr,
         fecha: dateStr
     };
+
+    // Agregar valores por defecto de variables personalizadas si se proporcionaron
+    if (customVariables && Array.isArray(customVariables)) {
+        customVariables.forEach((cv) => {
+            const normalizedToken = cv.token.toLowerCase().replace(/[\{\}]/g, "").trim();
+            valuesMap[normalizedToken] = cv.defaultValue || "";
+        });
+    }
+
+    // Sobrescribir con los valores personalizados ingresados o editados por el usuario
+    if (customValues) {
+        Object.entries(customValues).forEach(([k, v]) => {
+            const normalizedKey = k.toLowerCase().replace(/[\{\}]/g, "").trim();
+            if (v !== undefined && v !== null) {
+                valuesMap[normalizedKey] = v;
+            }
+        });
+    }
 
     // Reemplazar tanto {{variable}} como {variable} de forma insensible a mayúsculas
     return text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}|\{\s*([a-zA-Z0-9_]+)\s*\}/gi, (match, p1, p2) => {
