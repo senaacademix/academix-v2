@@ -195,21 +195,20 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
 
         const course = group.courses?.find((c: any) => c.id === courseId);
 
-        // 1. Horario académico específico asignado al curso
+        // 1. Horario académico específico asignado al curso que esté vigente según calendario colombiano
         if (course?.academicSchedule?.startDate && course?.academicSchedule?.endDate) {
-            return {
-                start: course.academicSchedule.startDate,
-                end: course.academicSchedule.endDate
-            };
+            if (isScheduleCurrent(course.academicSchedule.startDate, course.academicSchedule.endDate)) {
+                return {
+                    start: course.academicSchedule.startDate,
+                    end: course.academicSchedule.endDate
+                };
+            }
         }
 
         // 2. Horario académico asignado al grupo en sus franjas (priorizando vigente/activo)
         const slotSchedule = group.scheduleSlots?.find((slot: any) =>
-            slot.academicSchedule && (
-                isScheduleCurrent(slot.academicSchedule.startDate, slot.academicSchedule.endDate) ||
-                slot.academicSchedule.isActive
-            )
-        )?.academicSchedule || group.scheduleSlots?.[0]?.academicSchedule;
+            slot.academicSchedule && isScheduleCurrent(slot.academicSchedule.startDate, slot.academicSchedule.endDate)
+        )?.academicSchedule;
 
         if (slotSchedule?.startDate && slotSchedule?.endDate) {
             return {
@@ -226,7 +225,26 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             };
         }
 
-        // 4. Fechas del grupo o programa como fallback
+        // 4. Fallback al horario asignado al curso o al slot aunque no cumpla isScheduleCurrent hoy
+        if (course?.academicSchedule?.startDate && course?.academicSchedule?.endDate) {
+            return {
+                start: course.academicSchedule.startDate,
+                end: course.academicSchedule.endDate
+            };
+        }
+
+        const fallbackSlot = group.scheduleSlots?.find((slot: any) =>
+            slot.academicSchedule?.isActive
+        )?.academicSchedule || group.scheduleSlots?.[0]?.academicSchedule;
+
+        if (fallbackSlot?.startDate && fallbackSlot?.endDate) {
+            return {
+                start: fallbackSlot.startDate,
+                end: fallbackSlot.endDate
+            };
+        }
+
+        // 5. Fechas del grupo o programa como fallback
         const groupStart = scheduleStartDate || group.startDate || group.program?.startDate || null;
         const groupEnd = scheduleEndDate || group.endDate || group.program?.endDate || null;
 
@@ -705,13 +723,6 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         const cId = targetCourseId || rec.courseId || attCourseId;
         const { start: effectiveStart, end: effectiveEnd } = getEffectiveDatesForCourse(selectedGroup, cId);
 
-        if (rec.course?.academicSchedule) {
-            const sched = rec.course.academicSchedule;
-            if (sched.startDate && sched.endDate && isScheduleCurrent(sched.startDate, sched.endDate)) {
-                return true;
-            }
-        }
-
         if (!effectiveStart && !effectiveEnd) return true;
 
         const recYMD = toCalendarYMD(rec.date);
@@ -904,10 +915,12 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     // Details Modal State
     const [detailStudent, setDetailStudent] = useState<any | null>(null);
     const [detailOpen, setDetailOpen] = useState(false);
+    const [detailMateriaFilter, setDetailMateriaFilter] = useState<"current" | "all">("current");
 
     const handleShowStudentDetails = (student: any) => {
         setDetailStudent(student);
         setDetailScheduleScope("all");
+        setDetailMateriaFilter("current");
         setDetailOpen(true);
     };
 
@@ -1046,8 +1059,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         if (selectedGroup) {
             const firstCourseId = selectedGroup.courses?.[0]?.id || "";
 
-            // Reset ALL tab states when group changes
-            setActiveTab("students");
+            // Reset search & student selections when group changes (preserve activeTab)
             setSearchQuery("");
             setSelectedStudents([]);
             setSelectedStudentForAnalytics(null);
@@ -1166,7 +1178,14 @@ const handleOpenAnalytics = async () => {
     }, [selectedGroup, searchQuery]);
 
     const studentAttendanceStats = useMemo(() => {
-        const stats: Record<string, { absentCount: number; lateCount: number; leaveCount: number }> = {};
+        const stats: Record<string, { 
+            absentCount: number; 
+            lateCount: number; 
+            leaveCount: number;
+            allTimeAbsentCount: number;
+            allTimeLateCount: number;
+            allTimeLeaveCount: number;
+        }> = {};
         if (!attendanceHistory || attendanceHistory.length === 0 || !attCourseId) return stats;
 
         for (let i = 0; i < attendanceHistory.length; i++) {
@@ -1175,21 +1194,43 @@ const handleOpenAnalytics = async () => {
             const uid = a.userId;
             let entry = stats[uid];
             if (!entry) {
-                entry = { absentCount: 0, lateCount: 0, leaveCount: 0 };
+                entry = { 
+                    absentCount: 0, 
+                    lateCount: 0, 
+                    leaveCount: 0,
+                    allTimeAbsentCount: 0,
+                    allTimeLateCount: 0,
+                    allTimeLeaveCount: 0
+                };
                 stats[uid] = entry;
             }
+
+            // Totales acumulados históricos
             if (a.status === 'ABSENT') {
-                entry.absentCount++;
+                entry.allTimeAbsentCount++;
             }
             if (a.status === 'LATE' || !!a.arrivalTime) {
-                entry.lateCount++;
+                entry.allTimeLateCount++;
             }
             if (a.status === 'LEAVE_EARLY' || !!a.departureTime) {
-                entry.leaveCount++;
+                entry.allTimeLeaveCount++;
+            }
+
+            // Conteo correspondiente únicamente al rango de inicio y fin del horario actual
+            if (isRecordInCurrentSchedule(a, attCourseId)) {
+                if (a.status === 'ABSENT') {
+                    entry.absentCount++;
+                }
+                if (a.status === 'LATE' || !!a.arrivalTime) {
+                    entry.lateCount++;
+                }
+                if (a.status === 'LEAVE_EARLY' || !!a.departureTime) {
+                    entry.leaveCount++;
+                }
             }
         }
         return stats;
-    }, [attendanceHistory, attCourseId]);
+    }, [attendanceHistory, attCourseId, selectedGroup, scheduleStartDate, scheduleEndDate]);
 
     const filteredStudentsForRemark = useMemo(() => {
         if (!selectedGroup?.students) return [];
@@ -2006,116 +2047,6 @@ const handleOpenAnalytics = async () => {
 
     return (
         <div className="flex flex-col gap-6 max-w-full">
-            {/* HEADER HERO BANNER */}
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="relative rounded-3xl bg-card border border-border/80 p-5 sm:p-6 backdrop-blur-2xl shadow-sm overflow-hidden transition-colors"
-            >
-                {/* Background Theme Glow */}
-                <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
-                <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-primary/5 blur-[90px] rounded-full pointer-events-none" />
-
-                <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-                    {/* Left Section: Greeting, Date & Pill Badge */}
-                    <div className="space-y-1.5">
-                        <div className="flex flex-wrap items-center gap-2.5">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold shadow-2xs">
-                                <Sparkles className="w-3.5 h-3.5 text-primary animate-spin-slow" />
-                                <span>Panel de Instructor</span>
-                            </div>
-                            {displayDate && (
-                                <span className="text-xs text-muted-foreground capitalize font-semibold flex items-center gap-2 bg-muted/60 px-2.5 py-1 rounded-full border border-border/60">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                                    <span>{displayDate}</span>
-                                </span>
-                            )}
-                        </div>
-                        <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                            ¡Hola,{" "}
-                            <span className="bg-gradient-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent">
-                                {teacherName ? formatName(teacherName) : (session?.user?.name ? formatName(session.user.name) : "Instructor")}
-                            </span>
-                            !
-                        </h1>
-                    </div>
-
-                    {/* Right Section: Quick Actions & Group Metadata */}
-                    <div className="flex flex-wrap items-center gap-3">
-                        {/* Quick Module Shortcuts */}
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                                className="h-9 rounded-xl border-border/80 bg-background/80 hover:bg-muted text-foreground font-bold text-xs shadow-2xs gap-1.5 cursor-pointer"
-                            >
-                                <Link href="/dashboard/teacher/schedule">
-                                    <CalendarClock className="w-4 h-4 text-primary" />
-                                    <span className="hidden sm:inline">Mi Horario</span>
-                                </Link>
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                                className="h-9 rounded-xl border-border/80 bg-background/80 hover:bg-muted text-foreground font-bold text-xs shadow-2xs gap-1.5 cursor-pointer"
-                            >
-                                <Link href="/dashboard/teacher/tools">
-                                    <Sparkles className="w-4 h-4 text-primary" />
-                                    <span className="hidden sm:inline">Herramientas</span>
-                                </Link>
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setIsHelpModalOpen(true)}
-                                className="h-9 px-3 rounded-xl border-border/80 bg-background/80 text-foreground hover:bg-primary/10 hover:border-primary/40 hover:text-primary text-xs font-bold shadow-2xs gap-1.5 cursor-pointer"
-                            >
-                                <HelpCircle className="h-4 w-4 text-primary" />
-                                <span className="hidden md:inline">¿Qué puedo hacer acá?</span>
-                            </Button>
-                        </div>
-
-                        {/* Active Group Metadata */}
-                        {selectedGroup && (
-                            <div className="flex flex-wrap items-center gap-2 bg-background/80 dark:bg-card/70 p-2 px-3 rounded-2xl border border-border backdrop-blur-md shadow-xs">
-                                {getGroupPeriodName(selectedGroup) && (
-                                    <Badge variant="secondary" className="text-xs font-bold py-1 px-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 shadow-2xs">
-                                        {getGroupPeriodName(selectedGroup)}
-                                    </Badge>
-                                )}
-                                {getGroupTimelineName(selectedGroup) && (
-                                    <Badge variant="secondary" className="text-xs font-black py-1 px-3 bg-primary/10 text-primary border border-primary/20 rounded-xl shrink-0 flex items-center gap-1.5 shadow-2xs">
-                                        <GitBranch className="w-3.5 h-3.5 text-primary shrink-0" />
-                                        {getGroupTimelineName(selectedGroup)}
-                                    </Badge>
-                                )}
-                                <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border">
-                                    <Users className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                                    {selectedGroup.students?.length || 0} Aprendices
-                                </Badge>
-                                {selectedGroup.environment?.name && (
-                                    <Badge variant="outline" className="text-xs font-bold py-1 px-2.5 bg-background/80 rounded-xl shrink-0 border-border text-foreground flex items-center gap-1.5 shadow-2xs" title={`Ambiente de formación asignado: ${selectedGroup.environment.name}${selectedGroup.environment.location ? ` (${selectedGroup.environment.location})` : ''}`}>
-                                        <Building className="w-3.5 h-3.5 text-primary shrink-0" />
-                                        <span>Ambiente {selectedGroup.environment.name}</span>
-                                    </Badge>
-                                )}
-                                {groupScheduleInfo && (
-                                    <div className="w-full sm:w-auto flex items-center gap-1.5 text-xs bg-muted/60 px-2.5 py-1 rounded-xl border border-border/70 font-medium">
-                                        <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                                        <span className="font-extrabold text-foreground">{groupScheduleInfo.days}</span>
-                                        <span className="text-muted-foreground font-mono text-[11px] truncate">{groupScheduleInfo.time}</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </motion.div>
-
             {/* MAIN WORKSPACE */}
             <Card className="flex-1 w-full min-w-0 border border-border/80 shadow-md rounded-3xl overflow-hidden bg-card">
                 {selectedGroup ? (
@@ -2763,38 +2694,6 @@ const handleOpenAnalytics = async () => {
 
                             {/* TAB 2: ATTENDANCE */}
                             <TabsContent value="attendance" className="m-0 space-y-4 outline-none animate-in fade-in-50 duration-200">
-                                {/* Header Hero Banner */}
-                                <div className="bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 relative overflow-hidden shadow-2xs">
-                                    <ClipboardList className="absolute right-0 top-0 w-64 h-64 text-primary/5 -translate-y-1/4 translate-x-1/4 pointer-events-none" />
-                                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div className="space-y-1">
-                                            <h3 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Control de Asistencia</h3>
-                                            <p className="text-xs text-muted-foreground max-w-2xl">
-                                                Toma diaria y consolidación de asistencia por materia en la ficha <span className="font-extrabold text-foreground">{selectedGroup.name}</span>. Registra asistencias, fallas, tardanzas y justificaciones formativas.
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                                            <span className={`text-[10px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border ${
-                                                limitSettingsActive
-                                                    ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
-                                                    : "bg-primary/10 border-primary/20 text-primary"
-                                            }`}>
-                                                {limitSettingsActive ? (
-                                                    <>
-                                                        <Lock className="w-3.5 h-3.5" />
-                                                        <span>Semanas anteriores restringidas</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Unlock className="w-3.5 h-3.5" />
-                                                        <span>Modificación de historial libre</span>
-                                                    </>
-                                                )}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 {isDateLocked && (
                                     <div className="p-4 rounded-2xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300">
                                         <Lock className="w-4 h-4 shrink-0" />
@@ -2810,7 +2709,7 @@ const handleOpenAnalytics = async () => {
                                 {attMode !== "matrix" && attMode !== "history" && attMode !== "metrics" && (
                                     <div className="flex flex-col gap-2 bg-muted/10 p-4 rounded-2xl border border-border/70 mb-3 w-full shadow-2xs">
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full mb-1">
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex flex-wrap items-center gap-3">
                                                 <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Fecha de Asistencia</Label>
                                                 <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-xl border border-border/70 shadow-2xs">
                                                     <Switch
@@ -2824,6 +2723,23 @@ const handleOpenAnalytics = async () => {
                                                         Solo fecha actual
                                                     </Label>
                                                 </div>
+                                                <span className={`text-[10px] px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border ${
+                                                    limitSettingsActive
+                                                        ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
+                                                        : "bg-primary/10 border-primary/20 text-primary"
+                                                }`}>
+                                                    {limitSettingsActive ? (
+                                                        <>
+                                                            <Lock className="w-3.5 h-3.5" />
+                                                            <span>Semanas anteriores restringidas</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Unlock className="w-3.5 h-3.5" />
+                                                            <span>Modificación de historial libre</span>
+                                                        </>
+                                                    )}
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap gap-1.5 p-1.5 bg-background rounded-xl border border-border/70 shadow-2xs max-h-[120px] overflow-y-auto">
@@ -2999,7 +2915,7 @@ const handleOpenAnalytics = async () => {
                                                 const isAbsent = (rec?.status === "ABSENT") && !isLate && !isLeaveEarly;
                                                 const isPresent = (rec?.status === "PRESENT") && !isLate && !isLeaveEarly;
                                                 
-                                                const { absentCount, lateCount, leaveCount } = studentAttendanceStats[s.id] || { absentCount: 0, lateCount: 0, leaveCount: 0 };
+                                                const { absentCount, lateCount, leaveCount, allTimeAbsentCount } = studentAttendanceStats[s.id] || { absentCount: 0, lateCount: 0, leaveCount: 0, allTimeAbsentCount: 0 };
 
                                                  return (
                                                     <div 
@@ -3056,24 +2972,27 @@ const handleOpenAnalytics = async () => {
                                                                             <span className="text-muted-foreground/35 font-normal">|</span>
                                                                             {absentCount > 0 && (
                                                                                 <span 
-                                                                                    className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center"
-                                                                                    title={`${absentCount} inasistencia${absentCount > 1 ? 's' : ''}`}
+                                                                                    className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
+                                                                                    title={allTimeAbsentCount > absentCount
+                                                                                        ? `${absentCount} inasistencia${absentCount > 1 ? 's' : ''} en el horario actual (${allTimeAbsentCount} en total)`
+                                                                                        : `${absentCount} inasistencia${absentCount > 1 ? 's' : ''} en el horario actual`
+                                                                                    }
                                                                                 >
                                                                                     {absentCount} {absentCount === 1 ? 'Falta' : 'Faltas'}
                                                                                 </span>
                                                                             )}
                                                                             {lateCount > 0 && (
                                                                                 <span 
-                                                                                    className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center"
-                                                                                    title={`${lateCount} llegada${lateCount > 1 ? 's' : ''} tarde`}
+                                                                                    className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
+                                                                                    title={`${lateCount} llegada${lateCount > 1 ? 's' : ''} tarde en el horario actual`}
                                                                                 >
                                                                                     {lateCount} {lateCount === 1 ? 'Tarde' : 'Tardes'}
                                                                                 </span>
                                                                             )}
                                                                             {leaveCount > 0 && (
                                                                                 <span 
-                                                                                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center"
-                                                                                    title={`${leaveCount} retiro${leaveCount > 1 ? 's' : ''} anticipado`}
+                                                                                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
+                                                                                    title={`${leaveCount} retiro${leaveCount > 1 ? 's' : ''} anticipado en el horario actual`}
                                                                                 >
                                                                                     {leaveCount} {leaveCount === 1 ? 'Retiro' : 'Retiros'}
                                                                                 </span>
@@ -3996,7 +3915,7 @@ const handleOpenAnalytics = async () => {
                                             return false;
                                         }
                                         const studentRecords = attendanceHistory.filter((rec: any) => {
-                                            if (rec.courseId !== attCourseId || rec.userId !== student.id || rec.status !== "PRESENT") return false;
+                                            if (rec.courseId !== attCourseId || rec.userId !== student.id || rec.status === "PRESENT") return false;
                                             if (historyScheduleScope === "current") return isRecordInCurrentSchedule(rec, attCourseId);
                                             if (historyScheduleScope === "previous") return !isRecordInCurrentSchedule(rec, attCourseId);
                                             return true;
@@ -4013,7 +3932,7 @@ const handleOpenAnalytics = async () => {
 
                                     const sortedStudentsWithNovedades = [...(studentsWithNovedades || [])].sort((a: any, b: any) => {
                                         const getCount = (stId: string) => attendanceHistory.filter((rec: any) => {
-                                            if (rec.courseId !== attCourseId || rec.userId !== stId || rec.status !== "PRESENT") return false;
+                                            if (rec.courseId !== attCourseId || rec.userId !== stId || rec.status === "PRESENT") return false;
                                             if (historyScheduleScope === "current") return isRecordInCurrentSchedule(rec, attCourseId);
                                             if (historyScheduleScope === "previous") return !isRecordInCurrentSchedule(rec, attCourseId);
                                             return true;
@@ -4240,15 +4159,30 @@ const handleOpenAnalytics = async () => {
                                                                     </div>
 
                                                                     <div className="flex items-center gap-2">
-                                                                        {historyScheduleScope === "all" && previousRecords.length > 0 && (
-                                                                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 font-bold shadow-none px-2.5 py-0.5 rounded-full text-xs">
-                                                                                ⏳ {previousRecords.length} en anteriores
-                                                                            </Badge>
-                                                                        )}
-                                                                        {absentCount > 0 && (
-                                                                            <Badge className="bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
-                                                                                {absentCount} {absentCount === 1 ? "Falta" : "Faltas"}
-                                                                            </Badge>
+                                                                        {historyScheduleScope === "all" ? (
+                                                                            <>
+                                                                                {currentRecords.filter(r => r.status === "ABSENT").length > 0 && (
+                                                                                    <Badge className="bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
+                                                                                        {currentRecords.filter(r => r.status === "ABSENT").length} {currentRecords.filter(r => r.status === "ABSENT").length === 1 ? "Falta (Actual)" : "Faltas (Actual)"}
+                                                                                    </Badge>
+                                                                                )}
+                                                                                {previousRecords.filter(r => r.status === "ABSENT").length > 0 && (
+                                                                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 font-bold shadow-none px-2.5 py-0.5 rounded-full text-xs">
+                                                                                        ⏳ {previousRecords.filter(r => r.status === "ABSENT").length} en anteriores
+                                                                                    </Badge>
+                                                                                )}
+                                                                                {absentCount > 0 && (
+                                                                                    <Badge variant="secondary" className="font-extrabold text-xs px-2.5 py-0.5 rounded-full">
+                                                                                        Total: {absentCount} {absentCount === 1 ? "Falta" : "Faltas"}
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </>
+                                                                        ) : (
+                                                                            absentCount > 0 && (
+                                                                                <Badge className="bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
+                                                                                    {absentCount} {absentCount === 1 ? "Falta" : "Faltas"}
+                                                                                </Badge>
+                                                                            )
                                                                         )}
                                                                         {lateCount > 0 && (
                                                                             <Badge className="bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
@@ -4279,23 +4213,27 @@ const handleOpenAnalytics = async () => {
                                                                             {historyScheduleScope === "all" ? (
                                                                                 <>
                                                                                     {/* Grupo Horario Actual */}
-                                                                                    {currentRecords.length > 0 && (
-                                                                                        <>
-                                                                                            <TableRow className="bg-emerald-500/10 hover:bg-emerald-500/10 border-y border-emerald-500/20">
-                                                                                                <TableCell colSpan={5} className="py-2.5 pl-6">
-                                                                                                    <div className="flex items-center justify-between">
-                                                                                                        <span className="font-extrabold text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-                                                                                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                                                                            📅 Horario Actual (Vigente)
-                                                                                                        </span>
-                                                                                                        <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 text-[10px] font-extrabold px-2 py-0.5">
-                                                                                                            {currentRecords.length} {currentRecords.length === 1 ? 'registro' : 'registros'}
-                                                                                                        </Badge>
-                                                                                                    </div>
-                                                                                                </TableCell>
-                                                                                            </TableRow>
-                                                                                            {currentRecords.map(rec => renderHistoryRow(rec, false))}
-                                                                                        </>
+                                                                                    <TableRow className="bg-emerald-500/10 hover:bg-emerald-500/10 border-y border-emerald-500/20">
+                                                                                        <TableCell colSpan={5} className="py-2.5 pl-6">
+                                                                                            <div className="flex items-center justify-between">
+                                                                                                <span className="font-extrabold text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                                                                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                                                                    📅 Horario Actual (Vigente)
+                                                                                                </span>
+                                                                                                <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 text-[10px] font-extrabold px-2 py-0.5">
+                                                                                                    {currentRecords.length} {currentRecords.length === 1 ? 'registro' : 'registros'}
+                                                                                                </Badge>
+                                                                                            </div>
+                                                                                        </TableCell>
+                                                                                    </TableRow>
+                                                                                    {currentRecords.length > 0 ? (
+                                                                                        currentRecords.map(rec => renderHistoryRow(rec, false))
+                                                                                    ) : (
+                                                                                        <TableRow>
+                                                                                            <TableCell colSpan={5} className="text-center py-2.5 text-xs text-muted-foreground italic bg-muted/5">
+                                                                                                Sin registros de inasistencias ni novedades en el horario actual.
+                                                                                            </TableCell>
+                                                                                        </TableRow>
                                                                                     )}
 
                                                                                     {/* Grupo Horarios Anteriores */}
@@ -5950,14 +5888,50 @@ const handleOpenAnalytics = async () => {
                         <DialogDescription className="text-xs">
                             Detalle de inasistencias y llegadas tarde de <strong>{detailStudent ? formatName(detailStudent.name, detailStudent.profile) : ""}</strong>.
                         </DialogDescription>
+                        {(selectedGroup?.courses?.length || 0) > 1 && (
+                            <div className="flex items-center gap-2 pt-1 text-xs">
+                                <span className="font-semibold text-muted-foreground text-[11px]">Materia:</span>
+                                <div className="inline-flex items-center bg-muted/60 p-0.5 rounded-lg border border-border/50">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailMateriaFilter("current")}
+                                        className={cn(
+                                            "px-2 py-0.5 rounded-md text-[11px] font-bold transition-all truncate max-w-[170px]",
+                                            detailMateriaFilter === "current"
+                                                ? "bg-background text-primary shadow-xs"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                        title={selectedGroup.courses.find((c: any) => c.id === attCourseId)?.title || "Esta Materia"}
+                                    >
+                                        {selectedGroup.courses.find((c: any) => c.id === attCourseId)?.title || "Esta Materia"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailMateriaFilter("all")}
+                                        className={cn(
+                                            "px-2 py-0.5 rounded-md text-[11px] font-bold transition-all",
+                                            detailMateriaFilter === "all"
+                                                ? "bg-background text-primary shadow-xs"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Todas las materias
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </DialogHeader>
 
                     <div className="py-2">
                         {(() => {
                             if (!detailStudent) return null;
-                            const studentHistory = attendanceHistory.filter(a => a.userId === detailStudent.id && a.status !== 'PRESENT');
-                            const currentHistory = studentHistory.filter(a => isRecordInCurrentSchedule(a));
-                            const previousHistory = studentHistory.filter(a => !isRecordInCurrentSchedule(a));
+                            const studentHistory = attendanceHistory.filter(a => {
+                                if (a.userId !== detailStudent.id || a.status === 'PRESENT') return false;
+                                if (detailMateriaFilter === "current" && a.courseId !== attCourseId) return false;
+                                return true;
+                            });
+                            const currentHistory = studentHistory.filter(a => isRecordInCurrentSchedule(a, a.courseId || attCourseId));
+                            const previousHistory = studentHistory.filter(a => !isRecordInCurrentSchedule(a, a.courseId || attCourseId));
 
                             // Registros según el alcance seleccionado
                             const scopedHistory = detailScheduleScope === "current"
@@ -5976,7 +5950,7 @@ const handleOpenAnalytics = async () => {
                                 const isLate = att.status === 'LATE' || !!att.arrivalTime;
                                 const isLeaveEarly = att.status === 'LEAVE_EARLY' || !!att.departureTime;
                                 const isDual = isLate && isLeaveEarly;
-                                const isCurr = isRecordInCurrentSchedule(att);
+                                const isCurr = isRecordInCurrentSchedule(att, att.courseId || attCourseId);
 
                                 const badgeLabel = isAbsent ? "Falta" : isDual ? "Tarde + Retiro" : isLate ? "Tarde" : isLeaveEarly ? "Retiro" : att.status;
                                 const badgeClass = isAbsent 
@@ -5993,7 +5967,7 @@ const handleOpenAnalytics = async () => {
                                             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                                                 <span className="text-xs font-bold text-foreground capitalize truncate">{dateLabel}</span>
                                                 {!isCurr && (
-                                                    <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-[9px] px-1 py-0">
+                                                    <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[9px] px-1.5 py-0 font-bold">
                                                         Horario Anterior
                                                     </Badge>
                                                 )}
@@ -6062,8 +6036,8 @@ const handleOpenAnalytics = async () => {
                                     return items.map(renderRecordCard);
                                 }
 
-                                const curItems = items.filter(a => isRecordInCurrentSchedule(a));
-                                const prevItems = items.filter(a => !isRecordInCurrentSchedule(a));
+                                const curItems = items.filter(a => isRecordInCurrentSchedule(a, a.courseId || attCourseId));
+                                const prevItems = items.filter(a => !isRecordInCurrentSchedule(a, a.courseId || attCourseId));
 
                                 return (
                                     <div className="space-y-4">
@@ -6071,7 +6045,7 @@ const handleOpenAnalytics = async () => {
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between px-1">
                                                 <span className="text-[11px] font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
-                                                    <CalendarClock className="w-3.5 h-3.5" /> Horario Actual
+                                                    <CalendarClock className="w-3.5 h-3.5" /> Horario Actual (Vigente)
                                                 </span>
                                                 <Badge variant="outline" className="text-[10px] px-2 py-0 border-primary/30 text-primary bg-primary/5 font-bold">
                                                     {curItems.length} {curItems.length === 1 ? "registro" : "registros"}
@@ -6087,19 +6061,23 @@ const handleOpenAnalytics = async () => {
                                         </div>
 
                                         {/* Bloque Horarios Anteriores */}
-                                        {prevItems.length > 0 && (
-                                            <div className="space-y-2 pt-2 border-t border-border/60">
-                                                <div className="flex items-center justify-between px-1">
-                                                    <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                                        <History className="w-3.5 h-3.5" /> Horarios Anteriores
-                                                    </span>
-                                                    <Badge variant="outline" className="text-[10px] px-2 py-0 border-muted text-muted-foreground bg-muted/30 font-bold">
-                                                        {prevItems.length} {prevItems.length === 1 ? "registro" : "registros"}
-                                                    </Badge>
-                                                </div>
-                                                {prevItems.map(renderRecordCard)}
+                                        <div className="space-y-2 pt-2 border-t border-border/60">
+                                            <div className="flex items-center justify-between px-1">
+                                                <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                                    <History className="w-3.5 h-3.5" /> Horarios Anteriores (Histórico)
+                                                </span>
+                                                <Badge variant="outline" className="text-[10px] px-2 py-0 border-muted text-muted-foreground bg-muted/30 font-bold">
+                                                    {prevItems.length} {prevItems.length === 1 ? "registro" : "registros"}
+                                                </Badge>
                                             </div>
-                                        )}
+                                            {prevItems.length === 0 ? (
+                                                <div className="text-xs text-muted-foreground italic px-3 py-2 bg-muted/10 rounded-lg border border-dashed text-center">
+                                                    Sin registros en horarios anteriores.
+                                                </div>
+                                            ) : (
+                                                prevItems.map(renderRecordCard)
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             };
