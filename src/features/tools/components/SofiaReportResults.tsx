@@ -24,11 +24,15 @@ import {
     Target,
     X,
     ListFilter,
+    Copy,
+    MousePointerClick,
+    CheckSquare,
 } from "lucide-react";
 
 type EvaluationStatusFilter = "all" | "pending" | "failed" | "all_approved";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -50,7 +54,7 @@ import { generateAndDownloadSofiaPdf } from "../utils/sofiaCorporatePdfExport";
 import { SofiaExportModal } from "./SofiaExportModal";
 
 const FIXED_WIDTHS = [
-    36,  // #
+    48,  // # (con checkbox de selección)
     100, // ID
     130, // Nombres (Flexible minWidth)
     130, // Apellidos (Flexible minWidth)
@@ -76,6 +80,14 @@ function formatFileSize(bytes: number) {
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
+const getRowKey = (row: ReportCell[], index: number): string => {
+    const docVal = row[1]?.value;
+    if (docVal !== undefined && docVal !== null && String(docVal).trim() !== "") {
+        return String(docVal).trim();
+    }
+    return `row-${index}`;
+};
+
 interface SofiaReportResultsProps {
     data: SofiaReportData;
     processedReports?: ProcessedReportItem[];
@@ -94,6 +106,16 @@ export function SofiaReportResults({
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [exportModalFormat, setExportModalFormat] = useState<"excel" | "pdf">("excel");
     const [isExporting, setIsExporting] = useState(false);
+
+    // Multi-row selection with mouse states
+    const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
+    const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+    const [filterOnlySelected, setFilterOnlySelected] = useState<boolean>(false);
+    const [isDragging, setIsDragging] = useState<boolean>(false);
+
+    const isDraggingRef = React.useRef<boolean>(false);
+    const dragStartIndexRef = React.useRef<number | null>(null);
+    const dragIntentRef = React.useRef<"select" | "deselect">("select");
 
     const initialHeaderRow = data.rows[0];
     const isGroupedHeader = initialHeaderRow && initialHeaderRow[0]?.rowSpan === 2;
@@ -127,13 +149,10 @@ export function SofiaReportResults({
             return;
         }
 
-        const isFooter = row.some((c) => {
-            const val = String(c?.value || "").toUpperCase();
-            return (
-                val.includes("RESULTADOS DE APRENDIZAJE") ||
-                val.includes("COMPETENCIAS")
-            );
-        });
+        const firstCellVal = String(row[0]?.value || "").trim().toUpperCase();
+        const isFooter =
+            firstCellVal.includes("RESULTADOS DE APRENDIZAJE") ||
+            firstCellVal.includes("COMPETENCIAS");
         if (isFooter) {
             footerRows.push(row);
             return;
@@ -205,7 +224,7 @@ export function SofiaReportResults({
     const [selectedOutcome, setSelectedOutcome] = useState<string | number>("all");
     const [outcomeOpen, setOutcomeOpen] = useState(false);
 
-    // Reset to first period when a new report/ficha is uploaded
+    // Reset to first period and clear selection when a new report/ficha is uploaded
     const [lastFicha, setLastFicha] = useState(data.ficha);
     if (data.ficha !== lastFicha) {
         setLastFicha(data.ficha);
@@ -214,7 +233,30 @@ export function SofiaReportResults({
         }
         setEvaluationFilter("all");
         setSelectedOutcome("all");
+        setSelectedRowKeys(new Set());
+        setFilterOnlySelected(false);
+        setLastClickedIndex(null);
     }
+
+    // Global listener to complete row drag-selection when releasing mouse anywhere
+    useEffect(() => {
+        const handleGlobalMouseUp = () => {
+            if (isDraggingRef.current) {
+                isDraggingRef.current = false;
+                dragStartIndexRef.current = null;
+                setIsDragging(false);
+            }
+        };
+        window.addEventListener("mouseup", handleGlobalMouseUp);
+        return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+    }, []);
+
+    // Auto-disable filterOnlySelected if all selected rows are removed
+    useEffect(() => {
+        if (selectedRowKeys.size === 0 && filterOnlySelected) {
+            setFilterOnlySelected(false);
+        }
+    }, [selectedRowKeys.size, filterOnlySelected]);
 
     const activePeriod = useMemo(() => {
         if (selectedPeriodId === "all") return null;
@@ -248,7 +290,7 @@ export function SofiaReportResults({
         if (totalRaps <= 0) return [];
 
         const bottomResultsRow = footerRows.find((r) =>
-            r.some((c) => String(c?.value || "").toUpperCase().includes("RESULTADOS DE APRENDIZAJE"))
+            String(r[0]?.value || "").trim().toUpperCase().includes("RESULTADOS DE APRENDIZAJE")
         );
 
         const list: OutcomeOption[] = [];
@@ -451,7 +493,11 @@ export function SofiaReportResults({
     }, [activePeriod, isGroupedHeader, headerRows, selectedOutcome, availableOutcomes]);
 
     const displayBodyRows = useMemo(() => {
-        return filteredBodyRows.map((row) => {
+        const baseRows = filterOnlySelected
+            ? filteredBodyRows.filter((row, idx) => selectedRowKeys.has(getRowKey(row, idx)))
+            : filteredBodyRows;
+
+        return baseRows.map((row) => {
             const fixedCols = row.slice(0, 6);
             if (selectedOutcome !== "all") {
                 const targetCell = row[Number(selectedOutcome)] || { value: "—" };
@@ -467,7 +513,7 @@ export function SofiaReportResults({
             );
             return [...fixedCols, ...evalCols];
         });
-    }, [activePeriod, filteredBodyRows, selectedOutcome]);
+    }, [activePeriod, filteredBodyRows, selectedOutcome, filterOnlySelected, selectedRowKeys]);
 
     const displayFooterRows = useMemo(() => {
         return footerRows.map((fRow) => {
@@ -570,6 +616,7 @@ export function SofiaReportResults({
         setSearchTerm("");
         setSelectedOutcome("all");
         setEvaluationFilter("all");
+        setFilterOnlySelected(false);
     };
 
     // Label for the active period/outcome slice
@@ -625,11 +672,187 @@ export function SofiaReportResults({
         }
     };
 
+    // ── Row Selection Handlers (Mouse Click, Shift Range, Drag) ──
+    const toggleRowSelection = (rowKey: string, rIdx: number) => {
+        setSelectedRowKeys((prev) => {
+            const next = new Set(prev);
+            if (next.has(rowKey)) {
+                next.delete(rowKey);
+            } else {
+                next.add(rowKey);
+            }
+            return next;
+        });
+        setLastClickedIndex(rIdx);
+    };
+
+    const handleRowMouseDown = (rIdx: number, rowKey: string, e: React.MouseEvent) => {
+        if (e.button !== 0) return;
+
+        // Shift + Click -> Range selection
+        if (e.shiftKey && lastClickedIndex !== null) {
+            e.preventDefault();
+            const start = Math.min(lastClickedIndex, rIdx);
+            const end = Math.max(lastClickedIndex, rIdx);
+            setSelectedRowKeys((prev) => {
+                const next = new Set(prev);
+                for (let i = start; i <= end; i++) {
+                    const row = displayBodyRows[i];
+                    if (row) {
+                        next.add(getRowKey(row, i));
+                    }
+                }
+                return next;
+            });
+            setLastClickedIndex(rIdx);
+            return;
+        }
+
+        // Ctrl / Cmd + Click -> Toggle single row without initiating drag
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            toggleRowSelection(rowKey, rIdx);
+            return;
+        }
+
+        // Regular click -> start mouse drag selection
+        isDraggingRef.current = true;
+        dragStartIndexRef.current = rIdx;
+        setIsDragging(true);
+
+        const isCurrentlySelected = selectedRowKeys.has(rowKey);
+        const intent = isCurrentlySelected ? "deselect" : "select";
+        dragIntentRef.current = intent;
+
+        setSelectedRowKeys((prev) => {
+            const next = new Set(prev);
+            if (intent === "select") {
+                next.add(rowKey);
+            } else {
+                next.delete(rowKey);
+            }
+            return next;
+        });
+        setLastClickedIndex(rIdx);
+    };
+
+    const handleRowMouseEnter = (rIdx: number) => {
+        if (!isDraggingRef.current || dragStartIndexRef.current === null) return;
+
+        const start = Math.min(dragStartIndexRef.current, rIdx);
+        const end = Math.max(dragStartIndexRef.current, rIdx);
+        const intent = dragIntentRef.current;
+
+        setSelectedRowKeys((prev) => {
+            const next = new Set(prev);
+            for (let i = start; i <= end; i++) {
+                const row = displayBodyRows[i];
+                if (row) {
+                    const key = getRowKey(row, i);
+                    if (intent === "select") {
+                        next.add(key);
+                    } else {
+                        next.delete(key);
+                    }
+                }
+            }
+            return next;
+        });
+    };
+
+    const handleSelectAllVisible = () => {
+        setSelectedRowKeys((prev) => {
+            const next = new Set(prev);
+            displayBodyRows.forEach((r, idx) => {
+                next.add(getRowKey(r, idx));
+            });
+            return next;
+        });
+    };
+
+    const handleClearSelection = () => {
+        setSelectedRowKeys(new Set());
+        setLastClickedIndex(null);
+        setFilterOnlySelected(false);
+    };
+
+    const handleInvertSelection = () => {
+        setSelectedRowKeys((prev) => {
+            const next = new Set<string>();
+            displayBodyRows.forEach((r, idx) => {
+                const k = getRowKey(r, idx);
+                if (!prev.has(k)) {
+                    next.add(k);
+                }
+            });
+            return next;
+        });
+    };
+
+    const isAllVisibleSelected = useMemo(() => {
+        return (
+            displayBodyRows.length > 0 &&
+            displayBodyRows.every((r, idx) => selectedRowKeys.has(getRowKey(r, idx)))
+        );
+    }, [displayBodyRows, selectedRowKeys]);
+
+    const isSomeVisibleSelected = useMemo(() => {
+        return (
+            displayBodyRows.length > 0 &&
+            displayBodyRows.some((r, idx) => selectedRowKeys.has(getRowKey(r, idx)))
+        );
+    }, [displayBodyRows, selectedRowKeys]);
+
+    const selectedRowsData = useMemo(() => {
+        return filteredBodyRows.filter((row, idx) => selectedRowKeys.has(getRowKey(row, idx)));
+    }, [filteredBodyRows, selectedRowKeys]);
+
+    const handleCopyDocuments = async () => {
+        const docs = selectedRowsData
+            .map((r) => String(r[1]?.value || "").trim())
+            .filter(Boolean);
+        if (docs.length === 0) {
+            toast.info("No hay documentos seleccionados");
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(docs.join("\n"));
+            toast.success(
+                `${docs.length} documento${docs.length > 1 ? "s" : ""} copiado${docs.length > 1 ? "s" : ""} al portapapeles`
+            );
+        } catch {
+            toast.error("Error al copiar al portapapeles");
+        }
+    };
+
+    const handleCopyNames = async () => {
+        const names = selectedRowsData
+            .map((r) => {
+                const name = String(r[2]?.value || "").trim();
+                const surname = String(r[3]?.value || "").trim();
+                return `${name} ${surname}`.trim();
+            })
+            .filter(Boolean);
+        if (names.length === 0) {
+            toast.info("No hay nombres seleccionados");
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(names.join("\n"));
+            toast.success(
+                `${names.length} nombre${names.length > 1 ? "s" : ""} copiado${names.length > 1 ? "s" : ""} al portapapeles`
+            );
+        } catch {
+            toast.error("Error al copiar al portapapeles");
+        }
+    };
+
     const hasActiveFilters =
         Object.keys(activeFilters).length > 0 ||
         searchTerm.trim().length > 0 ||
         selectedOutcome !== "all" ||
-        evaluationFilter !== "all";
+        evaluationFilter !== "all" ||
+        filterOnlySelected;
 
     const currentReportItem = useMemo(() => {
         if (!processedReports || processedReports.length === 0) return null;
@@ -1151,6 +1374,114 @@ export function SofiaReportResults({
                     </div>
                 )}
 
+                {/* Active Row Selection Action Toolbar */}
+                {selectedRowKeys.size > 0 && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="default" className="text-xs px-2 py-0.5 font-bold flex items-center gap-1 shadow-2xs">
+                                <CheckSquare className="w-3.5 h-3.5" />
+                                <span>
+                                    {selectedRowKeys.size} {selectedRowKeys.size === 1 ? "aprendiz seleccionado" : "aprendices seleccionados"}
+                                </span>
+                            </Badge>
+                            <span className="text-[11px] text-muted-foreground">
+                                (de {filteredBodyRows.length} {filterOnlySelected ? "filtrados" : "visibles"})
+                            </span>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center text-muted-foreground hover:text-foreground cursor-pointer">
+                                        <HelpCircle className="w-3 h-3 ml-0.5" />
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs text-xs">
+                                    <p className="font-semibold mb-1">Selección con mouse:</p>
+                                    <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+                                        <li><strong>Clic y arrastrar:</strong> selecciona varias filas continuas.</li>
+                                        <li><strong>Shift + Clic:</strong> selecciona un rango desde la última fila.</li>
+                                        <li><strong>Ctrl / Cmd + Clic:</strong> alterna filas individuales.</li>
+                                    </ul>
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap self-end sm:self-auto">
+                            {/* Toggle Ver solo seleccionados */}
+                            <Button
+                                variant={filterOnlySelected ? "default" : "outline"}
+                                size="sm"
+                                className="h-6.5 text-[11px] gap-1 px-2 shadow-2xs"
+                                onClick={() => setFilterOnlySelected(!filterOnlySelected)}
+                            >
+                                <ListFilter className="w-3 h-3" />
+                                <span>{filterOnlySelected ? "Ver todos" : "Ver solo seleccionados"}</span>
+                            </Button>
+
+                            {/* Invertir */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6.5 text-[11px] gap-1 px-2 shadow-2xs"
+                                onClick={handleInvertSelection}
+                                title="Invertir selección actual"
+                            >
+                                <RotateCcw className="w-3 h-3" />
+                                <span className="hidden md:inline">Invertir</span>
+                            </Button>
+
+                            {/* Copiar Documentos */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6.5 text-[11px] gap-1 px-2 shadow-2xs"
+                                onClick={handleCopyDocuments}
+                                title="Copiar documentos de identidad al portapapeles"
+                            >
+                                <Copy className="w-3 h-3" />
+                                <span>Copiar Docs</span>
+                            </Button>
+
+                            {/* Copiar Nombres */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6.5 text-[11px] gap-1 px-2 shadow-2xs"
+                                onClick={handleCopyNames}
+                                title="Copiar nombres completos al portapapeles"
+                            >
+                                <Copy className="w-3 h-3" />
+                                <span className="hidden md:inline">Copiar Nombres</span>
+                            </Button>
+
+                            {/* Exportar Seleccionados */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6.5 text-[11px] gap-1 px-2 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 shadow-2xs font-semibold"
+                                onClick={() => {
+                                    setFilterOnlySelected(true);
+                                    setExportModalOpen(true);
+                                }}
+                                title="Exportar únicamente aprendices seleccionados"
+                            >
+                                <FileSpreadsheet className="w-3 h-3" />
+                                <span>Exportar ({selectedRowKeys.size})</span>
+                            </Button>
+
+                            {/* Limpiar selección */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6.5 text-[11px] gap-1 px-1.5 text-muted-foreground hover:text-foreground"
+                                onClick={handleClearSelection}
+                                title="Deseleccionar todas las filas"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Limpiar</span>
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Main Table Matrix */}
                 <Card className="border border-border/70 shadow-xs flex-1 overflow-hidden flex flex-col">
                     <CardContent className="p-0 flex-1 overflow-auto max-h-[calc(100vh-210px)]">
@@ -1158,7 +1489,10 @@ export function SofiaReportResults({
                             style={{
                                 minWidth: totalTableMinWidth > 0 ? `${totalTableMinWidth}px` : "100%",
                             }}
-                            className="w-full table-fixed text-left border-collapse text-xs"
+                            className={cn(
+                                "w-full table-fixed text-left border-collapse text-xs",
+                                isDragging && "select-none"
+                            )}
                         >
                             <colgroup>
                                 {FIXED_WIDTHS.map((w, idx) => {
@@ -1266,6 +1600,28 @@ export function SofiaReportResults({
                                                                 {cellValue}
                                                             </span>
                                                         </div>
+                                                    ) : rIdx === 0 && cIdx === 0 ? (
+                                                        <div className="flex items-center justify-center gap-1.5 px-0.5">
+                                                            <Checkbox
+                                                                checked={
+                                                                    isAllVisibleSelected
+                                                                        ? true
+                                                                        : isSomeVisibleSelected
+                                                                        ? "indeterminate"
+                                                                        : false
+                                                                }
+                                                                onCheckedChange={(checked) => {
+                                                                    if (checked === true) {
+                                                                        handleSelectAllVisible();
+                                                                    } else {
+                                                                        handleClearSelection();
+                                                                    }
+                                                                }}
+                                                                className="h-3.5 w-3.5 rounded data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                                                aria-label="Seleccionar todas las filas"
+                                                            />
+                                                            <span className="text-[10px] font-bold">#</span>
+                                                        </div>
                                                     ) : (
                                                         <div className="flex items-center justify-between gap-1">
                                                             <span className="truncate">{cellValue}</span>
@@ -1343,10 +1699,20 @@ export function SofiaReportResults({
                                     </tr>
                                 ) : (
                                     displayBodyRows.map((row, rIdx) => {
+                                        const rowKey = getRowKey(row, rIdx);
+                                        const isSelected = selectedRowKeys.has(rowKey);
+
                                         return (
                                             <tr
                                                 key={`body-row-${rIdx}`}
-                                                className="hover:bg-muted/40 transition-colors"
+                                                onMouseDown={(e) => handleRowMouseDown(rIdx, rowKey, e)}
+                                                onMouseEnter={() => handleRowMouseEnter(rIdx)}
+                                                className={cn(
+                                                    "transition-colors select-none cursor-pointer",
+                                                    isSelected
+                                                        ? "bg-primary/10 dark:bg-primary/20 hover:bg-primary/15"
+                                                        : "hover:bg-muted/40"
+                                                )}
                                             >
                                                 {row.map((cell, cIdx) => {
                                                     const cellVal = cell.value;
@@ -1377,6 +1743,7 @@ export function SofiaReportResults({
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
                                                                         <div
+                                                                            onMouseDown={(e) => e.stopPropagation()}
                                                                             className={cn(
                                                                                 "w-6 h-5 mx-auto rounded flex items-center justify-center font-bold text-[9.5px] cursor-pointer select-none transition-all hover:scale-110",
                                                                                 isA && "text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25",
@@ -1418,7 +1785,8 @@ export function SofiaReportResults({
                                                             }
                                                             className={cn(
                                                                 "py-1 px-2 text-[10.5px] border-r border-border/40 text-foreground",
-                                                                cIdx === 0 && "text-center text-muted-foreground font-semibold",
+                                                                cIdx === 0 && "text-center text-muted-foreground font-semibold px-1",
+                                                                cIdx === 0 && isSelected && "border-l-3 border-l-primary",
                                                                 cIdx === 1 && "font-mono font-bold",
                                                                 cIdx === 5 && (
                                                                     parseFloat(String(cellVal).replace("%", "")) >= 70
@@ -1429,7 +1797,21 @@ export function SofiaReportResults({
                                                                 )
                                                             )}
                                                         >
-                                                            {cIdx === 4 ? (
+                                                            {cIdx === 0 ? (
+                                                                <div className="flex items-center justify-center gap-1 px-0.5">
+                                                                    <Checkbox
+                                                                        checked={isSelected}
+                                                                        onCheckedChange={() => toggleRowSelection(rowKey, rIdx)}
+                                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="h-3.5 w-3.5 rounded data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                                                        aria-label={`Seleccionar fila ${rIdx + 1}`}
+                                                                    />
+                                                                    <span className={cn("text-[10px] font-mono", isSelected ? "font-bold text-primary" : "text-muted-foreground")}>
+                                                                        {cellVal || rIdx + 1}
+                                                                    </span>
+                                                                </div>
+                                                            ) : cIdx === 4 ? (
                                                                 <Badge
                                                                     variant="outline"
                                                                     className={cn(

@@ -38,7 +38,7 @@ import {
     LineChart,
     Line
 } from "recharts";
-import { Users, GraduationCap, UserX, UserCheck, BookOpen, AlertTriangle, CheckCircle2, Clock, Calendar, AlertCircle, Settings, Info, Eye, EyeOff, Trash2, ExternalLink, FileText, FileSpreadsheet, Mail, Loader2, Search, Award, LogOut, History, X } from "lucide-react";
+import { Users, GraduationCap, UserX, UserCheck, BookOpen, AlertTriangle, CheckCircle2, Clock, Calendar, AlertCircle, Settings, Info, Eye, EyeOff, Trash2, ExternalLink, FileText, FileSpreadsheet, Mail, Loader2, Search, Award, LogOut, History, X, Filter } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,7 @@ interface GroupAnalyticsPanelProps {
     } | null;
 }
 
-const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#3b82f6'];
+const COLORS = ['#6ee7b7', '#fda4af', '#fcd34d', '#7dd3fc'];
 
 const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -603,8 +603,8 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
         }
 
         return [
-            { name: "Llamados de Atención", value: attention, fill: '#ef4444' },
-            { name: "Felicitaciones", value: commendation, fill: '#3b82f6' },
+            { name: "Llamados de Atención", value: attention, fill: '#fda4af' },
+            { name: "Felicitaciones", value: commendation, fill: '#7dd3fc' },
         ];
     }, [analyticsData, selectedCourseId]);
 
@@ -1036,165 +1036,35 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                 </Card>
                             )}
 
-                            {/* Ultra-Compact KPI Row */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-                                <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
-                                    <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <div className="p-1.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg shrink-0">
-                                                <Users className="w-3.5 h-3.5" />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Total</span>
-                                        </div>
-                                        <span className="text-lg font-black text-foreground">{analyticsData.students.total}</span>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
-                                    <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <div className="p-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg shrink-0">
-                                                <UserCheck className="w-3.5 h-3.5" />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Activos</span>
-                                        </div>
-                                        <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{analyticsData.students.active}</span>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
-                                    <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <div className="p-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg shrink-0">
-                                                <UserX className="w-3.5 h-3.5" />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">Inactivos</span>
-                                        </div>
-                                        <span className="text-lg font-black text-foreground">{analyticsData.students.banned}</span>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="rounded-xl border border-border/80 bg-card shadow-2xs">
-                                    <CardContent className="py-1.5 px-3 flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            <div className="p-1.5 bg-primary/10 text-primary rounded-lg shrink-0">
-                                                <Clock className="w-3.5 h-3.5" />
-                                            </div>
-                                            <UITooltipProvider>
-                                                <UITooltip>
-                                                    <UITooltipTrigger asChild>
-                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate cursor-help flex items-center gap-0.5">
-                                                            <span>Novedades</span>
-                                                            <Info className="w-2.5 h-2.5 text-muted-foreground/70 shrink-0" />
-                                                        </span>
-                                                    </UITooltipTrigger>
-                                                    <UITooltipContent>
-                                                        <p className="text-xs">Suma total de inasistencias, tardanzas y retiros tempranos registrados.</p>
-                                                    </UITooltipContent>
-                                                </UITooltip>
-                                            </UITooltipProvider>
-                                        </div>
-                                        <span className="text-lg font-black text-primary">{filteredAttendancesCount}</span>
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            {/* ── Ultra-Slim Group Integral Score Bar ── */}
-                            {groupIntegralScore && (
-                                <Card className="bg-card border border-border/80 shadow-2xs rounded-xl overflow-hidden">
-                                    <CardContent className="py-2 px-3.5 flex flex-col md:flex-row items-center gap-3">
-                                        {/* Score Badge */}
-                                        <div className="flex items-center gap-2.5 shrink-0 border-b md:border-b-0 md:border-r border-border/60 pb-2 md:pb-0 md:pr-4 w-full md:w-auto justify-between md:justify-start">
-                                            <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">Puntaje Integral</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className={`text-xl font-black ${groupIntegralScore.color}`}>
-                                                    {groupIntegralScore.score} <span className="text-[10px] text-muted-foreground font-semibold">/ 100</span>
-                                                </span>
-                                                <Badge className={`${groupIntegralScore.bgColor} ${groupIntegralScore.color} border border-current font-extrabold text-[10px] px-2 py-0`}>
-                                                    {groupIntegralScore.label}
-                                                </Badge>
-                                            </div>
-                                        </div>
-
-                                        {/* Breakdown Mini Bars */}
-                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
-                                            {/* Academic */}
-                                            <div className="space-y-0.5">
-                                                <div className="flex items-center justify-between text-[11px]">
-                                                    <span className="font-bold text-foreground flex items-center gap-1">
-                                                        <BookOpen className="w-3 h-3 text-primary" /> Rendimiento
-                                                    </span>
-                                                    <span className="font-extrabold text-primary">{groupIntegralScore.avgAcademic}%</span>
-                                                </div>
-                                                <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-primary rounded-full" style={{ width: `${groupIntegralScore.avgAcademic}%` }} />
-                                                </div>
-                                            </div>
-
-                                            {/* Attendance */}
-                                            <div className="space-y-0.5">
-                                                <div className="flex items-center justify-between text-[11px]">
-                                                    <span className="font-bold text-foreground flex items-center gap-1">
-                                                        <Calendar className="w-3 h-3 text-emerald-500" /> Asistencia
-                                                    </span>
-                                                    <span className="font-extrabold text-emerald-500">{groupIntegralScore.avgAttendance}%</span>
-                                                </div>
-                                                <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${groupIntegralScore.avgAttendance}%` }} />
-                                                </div>
-                                            </div>
-
-                                            {/* Discipline */}
-                                            <div className="space-y-0.5">
-                                                <div className="flex items-center justify-between text-[11px]">
-                                                    <span className="font-bold text-foreground flex items-center gap-1">
-                                                        <AlertTriangle className="w-3 h-3 text-amber-500" /> Disciplina
-                                                    </span>
-                                                    <span className="font-extrabold text-amber-500">{groupIntegralScore.avgDiscipline}%</span>
-                                                </div>
-                                                <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-amber-500 rounded-full" style={{ width: `${groupIntegralScore.avgDiscipline}%` }} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
-
-                            {/* Global Course Selector */}
-                            <Card className="bg-background border shadow-sm">
-                                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="space-y-1">
-                                        <h4 className="font-semibold flex items-center gap-2">
-                                            <BarChart className="w-4 h-4 text-primary" />
-                                            Filtro de Analítica
-                                        </h4>
-                                        <p className="text-xs text-muted-foreground">Selecciona una materia para ver sus gráficos específicos, o "General" para ver el promedio global del grupo.</p>
+                            <Tabs defaultValue="asistencia" className="w-full">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                                    <div className="overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                                        <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 dark:bg-muted/30 rounded-2xl gap-1.5 w-max border border-border/60 shadow-2xs">
+                                            <TabsTrigger value="asistencia" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Asistencia</TabsTrigger>
+                                            <TabsTrigger value="disciplina" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Disciplina</TabsTrigger>
+                                            <TabsTrigger value="mejoramiento" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Planes de Mejoramiento</TabsTrigger>
+                                            <TabsTrigger value="rendimiento" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Rendimiento</TabsTrigger>
+                                        </TabsList>
                                     </div>
-                                    <div className="w-full sm:w-[300px]">
+
+                                    {/* Filtro de Analítica (Materia) */}
+                                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                                        <span className="text-xs font-bold text-muted-foreground items-center gap-1.5 shrink-0 hidden sm:flex">
+                                            <Filter className="w-3.5 h-3.5 text-primary" />
+                                            Filtro:
+                                        </span>
                                         <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                                            <SelectTrigger className="bg-muted/50 border-input">
+                                            <SelectTrigger className="h-9 w-full sm:w-[280px] bg-card border-border/80 shadow-2xs text-xs font-bold rounded-xl">
                                                 <SelectValue placeholder="Seleccionar Materia" />
                                             </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all" className="font-bold">General (Promedios del Grupo)</SelectItem>
+                                            <SelectContent className="rounded-xl shadow-md border-border">
+                                                <SelectItem value="all" className="font-bold text-xs">General (Promedios del Grupo)</SelectItem>
                                                 {analyticsData.coursesList && analyticsData.coursesList.map(c => (
-                                                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                                                    <SelectItem key={c.id} value={c.id} className="text-xs">{c.title}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                </CardContent>
-                            </Card>
-
-                             <Tabs defaultValue="rendimiento" className="w-full mt-6">
-                                <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center mb-6">
-                                    <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 dark:bg-muted/30 rounded-2xl gap-1.5 w-max border border-border/60 shadow-2xs">
-                                        <TabsTrigger value="rendimiento" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Rendimiento</TabsTrigger>
-                                        <TabsTrigger value="asistencia" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Asistencia</TabsTrigger>
-                                        <TabsTrigger value="disciplina" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Disciplina</TabsTrigger>
-                                        <TabsTrigger value="mejoramiento" className="rounded-xl py-2 px-3.5 text-xs font-bold shrink-0 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Planes de Mejoramiento</TabsTrigger>
-                                    </TabsList>
                                 </div>
 
                                 <TabsContent value="rendimiento" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0">
@@ -1331,9 +1201,9 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }} />
                                                 <Bar dataKey="score" name="Puntaje Integral" radius={[0, 4, 4, 0]} maxBarSize={20}>
                                                     {rankedStudentsData.map((entry, index) => {
-                                                        let color = '#ef4444'; // Red (< 60)
-                                                        if (entry.score >= 80) color = '#10b981'; // Green (>= 80)
-                                                        else if (entry.score >= 60) color = '#f59e0b'; // Amber (>= 60)
+                                                        let color = '#fda4af'; // Rose (< 60)
+                                                        if (entry.score >= 80) color = '#6ee7b7'; // Mint (>= 80)
+                                                        else if (entry.score >= 60) color = '#fcd34d'; // Amber (>= 60)
                                                         return <Cell key={`cell-${index}`} fill={color} />;
                                                     })}
                                                 </Bar>
@@ -1398,9 +1268,9 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                         formatter={(value: number) => [value.toFixed(2), "Nota Promedio"]}
                                                         labelFormatter={(label: string, payload: any[]) => payload[0]?.payload?.fullName || label}
                                                     />
-                                                    <Bar dataKey="nota" name="Nota" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                                                    <Bar dataKey="nota" name="Nota" fill="#6ee7b7" radius={[4, 4, 0, 0]} maxBarSize={40}>
                                                         {studentGradesData.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={entry.nota >= 3 ? '#10b981' : entry.nota > 0 ? '#ef4444' : '#d1d5db'} />
+                                                            <Cell key={`cell-${index}`} fill={entry.nota >= 3 ? '#6ee7b7' : entry.nota > 0 ? '#fda4af' : '#d1d5db'} />
                                                         ))}
                                                     </Bar>
                                                 </BarChart>
@@ -1504,9 +1374,9 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                     <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 max-w-[280px]">
                                                                         <p className="font-bold text-sm mb-2">{data.fullName}</p>
                                                                         <div className="flex gap-3 mb-2 flex-wrap">
-                                                                            <span className="text-red-500 font-medium text-xs">Faltas: {data.ausente}</span>
-                                                                            <span className="text-amber-500 font-medium text-xs">Tardes: {data.tarde}</span>
-                                                                            <span className="text-blue-500 font-medium text-xs">Retiros: {data.retiro || 0}</span>
+                                                                            <span className="text-rose-700 dark:text-rose-300 font-medium text-xs">Faltas: {data.ausente}</span>
+                                                                            <span className="text-amber-800 dark:text-amber-300 font-medium text-xs">Tardes: {data.tarde}</span>
+                                                                            <span className="text-sky-800 dark:text-sky-300 font-medium text-xs">Retiros: {data.retiro || 0}</span>
                                                                         </div>
                                                                         {data.details && data.details.length > 0 && (
                                                                             <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
@@ -1517,9 +1387,9 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                                             <span className="font-medium text-slate-800 dark:text-slate-200 block truncate">{d.courseName}</span>
                                                                                             <span className="text-muted-foreground block text-[10px]">Prof: {d.teacherName}</span>
                                                                                             <div className="mt-1 flex gap-2 flex-wrap">
-                                                                                                {d.absent > 0 && <span className="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded">Faltas: {d.absent}</span>}
-                                                                                                {d.late > 0 && <span className="text-[10px] bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">Tardes: {d.late}</span>}
-                                                                                                {d.leaveEarly > 0 && <span className="text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">Retiros: {d.leaveEarly}</span>}
+                                                                                                {d.absent > 0 && <span className="text-[10px] bg-rose-100/70 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200/60 dark:border-rose-800/40 px-1.5 py-0.5 rounded font-bold">Faltas: {d.absent}</span>}
+                                                                                                {d.late > 0 && <span className="text-[10px] bg-amber-100/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40 px-1.5 py-0.5 rounded font-bold">Tardes: {d.late}</span>}
+                                                                                                {d.leaveEarly > 0 && <span className="text-[10px] bg-sky-100/70 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border border-sky-200/60 dark:border-sky-800/40 px-1.5 py-0.5 rounded font-bold">Retiros: {d.leaveEarly}</span>}
                                                                                             </div>
                                                                                         </li>
                                                                                     ))}
@@ -1533,9 +1403,9 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                         }}
                                                     />
                                                     <Legend verticalAlign="top" height={36} />
-                                                    <Bar dataKey="ausente" name="Ausente" stackId="a" fill="#ef4444" radius={[0, 0, 0, 0]} maxBarSize={40} />
-                                                    <Bar dataKey="tarde" name="Llegada Tarde" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} maxBarSize={40} />
-                                                    <Bar dataKey="retiro" name="Retiro Temprano" stackId="a" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                                    <Bar dataKey="ausente" name="Ausente" stackId="a" fill="#fda4af" radius={[0, 0, 0, 0]} maxBarSize={40} />
+                                                    <Bar dataKey="tarde" name="Llegada Tarde" stackId="a" fill="#fcd34d" radius={[0, 0, 0, 0]} maxBarSize={40} />
+                                                    <Bar dataKey="retiro" name="Retiro Temprano" stackId="a" fill="#7dd3fc" radius={[4, 4, 0, 0]} maxBarSize={40} />
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         ) : (
@@ -1604,7 +1474,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                 </div>
                                             ) : (
                                                 <div className="flex flex-col items-center justify-center py-10 text-center space-y-3 rounded-xl border border-dashed bg-muted/5">
-                                                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-full text-emerald-600 dark:text-emerald-400">
+                                                    <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/20 rounded-full text-emerald-800 dark:text-emerald-300">
                                                         <CheckCircle2 className="w-6 h-6" />
                                                     </div>
                                                     <div>
@@ -1623,13 +1493,13 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                  <div className="col-span-1 lg:col-span-2 mt-6">
                                      <Tabs defaultValue="faltas" className="w-full space-y-4">
                                          <TabsList className="flex flex-wrap w-full p-1 bg-muted/60 rounded-xl h-auto gap-1 border">
-                                             <TabsTrigger value="faltas" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-red-600 dark:text-red-400">
+                                             <TabsTrigger value="faltas" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-rose-700 dark:text-rose-300">
                                                  Registro de Inasistencias (Faltas)
                                              </TabsTrigger>
-                                             <TabsTrigger value="tardanzas" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-amber-600 dark:text-amber-400">
+                                             <TabsTrigger value="tardanzas" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-amber-800 dark:text-amber-300">
                                                  Registro de Llegadas Tarde (Tardanzas)
                                              </TabsTrigger>
-                                             <TabsTrigger value="retiros" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-blue-600 dark:text-blue-400">
+                                             <TabsTrigger value="retiros" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-sky-800 dark:text-sky-300">
                                                  Registro de Retiros Tempranos (Retiros)
                                              </TabsTrigger>
                                              <TabsTrigger value="efectiva" className="flex-1 py-2 px-3 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs text-emerald-600 dark:text-emerald-400">
@@ -1660,7 +1530,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                  </div>
                                                                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                                                                      <div 
-                                                                         className="h-full bg-red-500 dark:bg-red-600 rounded-full transition-all duration-500" 
+                                                                         className="h-full bg-rose-300 dark:bg-rose-500 rounded-full transition-all duration-500" 
                                                                          style={{ width: `${absenceRate}%` }}
                                                                      />
                                                                  </div>
@@ -1703,7 +1573,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                              </div>
                                                              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                                                                  <div 
-                                                                     className="h-full bg-amber-500 rounded-full transition-all duration-500" 
+                                                                     className="h-full bg-amber-300 dark:bg-amber-500 rounded-full transition-all duration-500" 
                                                                      style={{ width: `${lateDaysRate}%` }}
                                                                  />
                                                              </div>
@@ -1745,7 +1615,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                              </div>
                                                              <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                                                                  <div 
-                                                                     className="h-full bg-blue-500 rounded-full transition-all duration-500" 
+                                                                     className="h-full bg-sky-300 dark:bg-sky-500 rounded-full transition-all duration-500" 
                                                                      style={{ width: `${leaveEarlyDaysRate}%` }}
                                                                  />
                                                              </div>
@@ -1794,7 +1664,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                  <div className="space-y-1">
                                                                      <div className="h-3 w-full bg-muted rounded-full overflow-hidden flex">
                                                                          <div 
-                                                                             className="h-full bg-emerald-500 dark:bg-emerald-600 transition-all duration-500" 
+                                                                             className="h-full bg-emerald-300 dark:bg-emerald-500 transition-all duration-500" 
                                                                              style={{ width: `${attendanceHoursRate}%` }}
                                                                              title={`Horas Asistidas: ${attendedHours.toFixed(2)} hs`}
                                                                          />

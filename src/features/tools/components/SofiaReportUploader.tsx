@@ -107,13 +107,11 @@ export function SofiaReportUploader() {
                         const isGrouped = allRows[0] && allRows[0][0]?.rowSpan === 2;
                         const hCount = isGrouped ? 2 : 1;
                         const apprenticesCount = allRows.slice(hCount).filter((r) => {
-                            return !r.some((c) => {
-                                const val = String(c?.value || "").toUpperCase();
-                                return (
-                                    val.includes("RESULTADOS DE APRENDIZAJE") ||
-                                    val.includes("COMPETENCIAS")
-                                );
-                            });
+                            const firstCellVal = String(r[0]?.value || "").trim().toUpperCase();
+                            return (
+                                !firstCellVal.includes("RESULTADOS DE APRENDIZAJE") &&
+                                !firstCellVal.includes("COMPETENCIAS")
+                            );
                         }).length;
 
                         newProcessed.push({

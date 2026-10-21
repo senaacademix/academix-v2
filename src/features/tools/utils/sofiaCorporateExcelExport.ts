@@ -216,18 +216,18 @@ export async function exportSofiaReportToCorporateExcel(
 
     // ── 4. FILAS DE APRENDICES (EXCLUYENDO PIE DE PÁGINA) ──
     const isFooterCell = (val: unknown) => {
-        const str = String(val || "").toUpperCase();
+        const str = String(val || "").trim().toUpperCase();
         return str.includes("RESULTADOS DE APRENDIZAJE") || str.includes("COMPETENCIAS");
     };
-    const isFooterRow = (r: typeof rows[0]) => r.some((c) => isFooterCell(c?.value));
+    const isFooterRow = (r: typeof rows[0]) => isFooterCell(r[0]?.value);
 
     // Filtrar estrictamente solo aprendices
     const apprenticeRows = rows.slice(headerRowCount).filter((r) => !isFooterRow(r));
     const bottomResults = rows.find((r) =>
-        r.some((c) => String(c?.value || "").toUpperCase().includes("RESULTADOS DE APRENDIZAJE"))
+        String(r[0]?.value || "").trim().toUpperCase().includes("RESULTADOS DE APRENDIZAJE")
     );
     const bottomCompetencies = rows.find((r) =>
-        r.some((c) => String(c?.value || "").toUpperCase().includes("COMPETENCIAS"))
+        String(r[0]?.value || "").trim().toUpperCase().includes("COMPETENCIAS")
     );
 
     const startApprenticeRowIdx = currentRowIdx;

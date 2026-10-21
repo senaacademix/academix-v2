@@ -43,14 +43,14 @@ export function SofiaReportAnalytics({ data }: SofiaReportAnalyticsProps) {
     const isGroupedHeader = rows[0] && rows[0][0]?.rowSpan === 2;
     const headerRowCount = isGroupedHeader ? 2 : 1;
 
-    // Filter student rows safely (checking all cells for footer mentions)
+    // Filter student rows safely (checking first cell for footer titles)
     const bodyRows = useMemo(() => {
         return rows.filter((row, index) => {
             if (index < headerRowCount) return false;
-            const isFooter = row.some((c) => {
-                const val = String(c?.value || "").toUpperCase();
-                return val.includes("RESULTADOS DE APRENDIZAJE") || val.includes("COMPETENCIAS");
-            });
+            const firstCellVal = String(row[0]?.value || "").trim().toUpperCase();
+            const isFooter =
+                firstCellVal.includes("RESULTADOS DE APRENDIZAJE") ||
+                firstCellVal.includes("COMPETENCIAS");
             return !isFooter;
         });
     }, [rows, headerRowCount]);
@@ -58,7 +58,7 @@ export function SofiaReportAnalytics({ data }: SofiaReportAnalyticsProps) {
     // Outcomes row and count
     const bottomResultsRow = useMemo(() => {
         return rows.find((r) =>
-            r.some((c) => String(c?.value || "").toUpperCase().includes("RESULTADOS DE APRENDIZAJE"))
+            String(r[0]?.value || "").trim().toUpperCase().includes("RESULTADOS DE APRENDIZAJE")
         );
     }, [rows]);
 

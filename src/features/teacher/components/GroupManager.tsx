@@ -406,7 +406,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     };
     
     const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id || "");
-    const [activeTab, setActiveTab] = useState<"students" | "attendance" | "schedule-attendance" | "remarks" | "analytics" | "grades" | "documentation" | "improvement">("students");
+    const [activeTab, setActiveTab] = useState<"students" | "attendance" | "schedule-attendance" | "remarks" | "analytics" | "grades" | "documentation" | "improvement">("attendance");
 
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
@@ -2049,7 +2049,7 @@ const handleOpenAnalytics = async () => {
     return (
         <div className="flex flex-col gap-6 max-w-full">
             {/* MAIN WORKSPACE */}
-            <Card className="flex-1 w-full min-w-0 border border-border/80 shadow-md rounded-3xl overflow-hidden bg-card">
+            <Card className="flex-1 w-full min-w-0 border border-border/80 shadow-md rounded-3xl overflow-hidden bg-card p-0 gap-0">
                 {selectedGroup ? (
                     <Tabs value={activeTab} onValueChange={handleTabChangeAttempt} className="flex-1 flex flex-col h-full min-h-[600px]">
                         <div className="p-3 sm:p-4 border-b bg-muted/20 w-full flex flex-col gap-3">
@@ -2082,94 +2082,81 @@ const handleOpenAnalytics = async () => {
                                 </div>
                             </div>
 
-                            {/* FILA INFERIOR: Pestañas de Navegación Desplazables en Móvil */}
-                            <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center justify-between gap-2 touch-scroll touch-pan-x overscroll-x-contain">
-                                <TabsList className="flex flex-nowrap items-center justify-start h-auto p-1.5 bg-muted/60 dark:bg-muted/30 rounded-2xl gap-1.5 backdrop-blur-md w-max border border-border/60 shadow-2xs">
-                                    {/* ── ESTUDIANTES ── */}
-                                    <TabsTrigger value="students" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
-                                        <span className="flex items-center gap-2 justify-center">
-                                            <Users className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
-                                            <span>Aprendices</span>
-                                        </span>
-                                    </TabsTrigger>
-
+                            {/* FILA INFERIOR: Pestañas de Navegación estilo subrayado plano (Flat Underline) */}
+                            <div className="w-full overflow-x-auto scrollbar-none flex items-center touch-scroll touch-pan-x overscroll-x-contain -mb-px">
+                                <TabsList className="flex flex-nowrap items-center justify-start h-auto p-0 bg-transparent rounded-none gap-0 sm:gap-1 w-max">
                                     {/* ── ASISTENCIA ── */}
-                                    <TabsTrigger value="attendance" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
-                                        <span className="flex items-center gap-2 justify-center">
-                                            <ClipboardList className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
-                                            <span>Asistencia</span>
-                                        </span>
+                                    <TabsTrigger
+                                        value="attendance"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <ClipboardList className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Asistencia</span>
                                     </TabsTrigger>
 
                                     {/* ── ASISTENCIA SEMANAL MULTIGRUPO / HORARIOS ── */}
-                                    <TabsTrigger value="schedule-attendance" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
-                                        <span className="flex items-center gap-2 justify-center">
-                                            <CalendarDays className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
-                                            <span>Asistencia Semanal</span>
-                                        </span>
+                                    <TabsTrigger
+                                        value="schedule-attendance"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <CalendarDays className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Asistencia General</span>
+                                    </TabsTrigger>
+
+                                    {/* ── ESTUDIANTES / APRENDICES ── */}
+                                    <TabsTrigger
+                                        value="students"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <Users className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Aprendices</span>
                                     </TabsTrigger>
 
                                     {/* ── OBSERVACIONES ── */}
-                                    <TabsTrigger value="remarks" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
-                                        <span className="flex items-center gap-2 justify-center">
-                                            <AlertTriangle className="w-4 h-4 text-amber-500 group-data-[state=active]:text-primary transition-colors shrink-0" />
-                                            <span>Observaciones</span>
-                                        </span>
+                                    <TabsTrigger
+                                        value="remarks"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <AlertTriangle className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Observaciones</span>
                                     </TabsTrigger>
 
                                     {/* ── PLANES DE MEJORAMIENTO ── */}
-                                    <TabsTrigger value="improvement" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
-                                        <span className="flex items-center gap-2 justify-center">
-                                            <FileText className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
-                                            <span>Planes de Mejoramiento</span>
-                                        </span>
+                                    <TabsTrigger
+                                        value="improvement"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <FileText className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Planes de Mejoramiento</span>
                                     </TabsTrigger>
 
                                     {/* ── CALIFICACIONES ── */}
-                                    <TabsTrigger value="grades" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
-                                        <span className="flex items-center gap-2 justify-center">
-                                            <GraduationCap className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
-                                            <span>Calificaciones</span>
-                                        </span>
+                                    <TabsTrigger
+                                        value="grades"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <GraduationCap className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Calificaciones</span>
                                     </TabsTrigger>
 
                                     {/* ── DOCUMENTACIÓN ── */}
-                                    <TabsTrigger value="documentation" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
-                                        <span className="flex items-center gap-2 justify-center">
-                                            <BookOpen className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
-                                            <span>Documentación</span>
-                                        </span>
+                                    <TabsTrigger
+                                        value="documentation"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <BookOpen className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Documentación</span>
                                     </TabsTrigger>
 
                                     {/* ── ANALÍTICA ── */}
-                                    <TabsTrigger value="analytics" className="group rounded-xl py-2 px-3.5 text-xs font-extrabold whitespace-nowrap data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/70 border border-transparent text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer">
-                                        <span className="flex items-center gap-2 justify-center">
-                                            <BarChart3 className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
-                                            <span>Analítica</span>
-                                        </span>
+                                    <TabsTrigger
+                                        value="analytics"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <BarChart3 className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Analítica</span>
                                     </TabsTrigger>
                                 </TabsList>
-
-                                <div className="shrink-0 flex items-center pr-1">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setIsHelpModalOpen(true)}
-                                                className="h-9 px-3 rounded-xl border-border/70 bg-background/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all text-xs font-bold gap-1.5 text-muted-foreground shadow-2xs cursor-pointer"
-                                            >
-                                                <HelpCircle className="w-4 h-4 text-primary" />
-                                                <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
-                                                <span className="sm:hidden">Ayuda</span>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
-                                            Guía completa del panel de instructor y pestañas
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </div>
                             </div>
                         </div>
 
@@ -2706,84 +2693,6 @@ const handleOpenAnalytics = async () => {
                                         </div>
                                     </div>
                                 )}
-                                {/* Dedicated Date Selection Bar */}
-                                {attMode !== "matrix" && attMode !== "history" && attMode !== "metrics" && (
-                                    <div className="flex flex-col gap-2 bg-muted/10 p-4 rounded-2xl border border-border/70 mb-3 w-full shadow-2xs">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full mb-1">
-                                            <div className="flex flex-wrap items-center gap-3">
-                                                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Fecha de Asistencia</Label>
-                                                <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-xl border border-border/70 shadow-2xs">
-                                                    <Switch
-                                                        id="hide-other-dates"
-                                                        disabled={isSavingAtt}
-                                                        checked={hideOtherDates}
-                                                        onCheckedChange={setHideOtherDates}
-                                                        className="scale-75 cursor-pointer"
-                                                    />
-                                                    <Label htmlFor="hide-other-dates" className="text-[10px] font-bold text-muted-foreground cursor-pointer select-none">
-                                                        Solo fecha actual
-                                                    </Label>
-                                                </div>
-                                                <span className={`text-[10px] px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border ${
-                                                    limitSettingsActive
-                                                        ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
-                                                        : "bg-primary/10 border-primary/20 text-primary"
-                                                }`}>
-                                                    {limitSettingsActive ? (
-                                                        <>
-                                                            <Lock className="w-3.5 h-3.5" />
-                                                            <span>Semanas anteriores restringidas</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Unlock className="w-3.5 h-3.5" />
-                                                            <span>Modificación de historial libre</span>
-                                                        </>
-                                                    )}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-wrap gap-1.5 p-1.5 bg-background rounded-xl border border-border/70 shadow-2xs max-h-[120px] overflow-y-auto">
-                                            {(() => {
-                                                const validDaysList = getValidClassDaysList();
-                                                const todayStr = getTodayColombianDate();
-                                                const filteredDaysList = hideOtherDates 
-                                                    ? (validDaysList.includes(attDate) ? [attDate] : (validDaysList.length > 0 ? [attDate] : []))
-                                                    : validDaysList;
-
-                                                return filteredDaysList.map((ds) => {
-                                                    const d = new Date(ds + "T12:00:00Z");
-                                                    const dayNamesShort = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-                                                    const label = `${dayNamesShort[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-                                                    const isFuture = ds > todayStr;
-                                                    const isSelected = ds === attDate;
-                                                    const isToday = ds === todayStr;
-
-                                                    return (
-                                                        <Button
-                                                            key={ds}
-                                                            size="sm"
-                                                            variant={isSelected ? "default" : "outline"}
-                                                            disabled={isFuture || isSavingAtt}
-                                                            type="button"
-                                                            onClick={() => handleDateChangeAttempt(ds)}
-                                                            className={`h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-bold transition-all rounded-lg shrink-0 cursor-pointer ${
-                                                                isSelected 
-                                                                    ? "shadow-sm font-extrabold bg-primary text-primary-foreground" 
-                                                                    : isToday
-                                                                        ? "border-primary/40 text-primary hover:bg-primary/10 font-extrabold"
-                                                                        : "text-muted-foreground hover:text-foreground border-border/70"
-                                                            }`}
-                                                            title={isFuture ? "Fecha futura (deshabilitada)" : `Seleccionar ${ds}`}
-                                                        >
-                                                            {label}
-                                                        </Button>
-                                                    );
-                                                });
-                                            })()}
-                                        </div>
-                                    </div>
-                                )}
                                 {/* Header Controls for Attendance — single compact row */}
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-muted/20 p-3 sm:p-4 rounded-2xl border border-border/70 shadow-2xs">
 
@@ -2811,7 +2720,7 @@ const handleOpenAnalytics = async () => {
                                                     {([
                                                         { mode: "list",    icon: <ListTodo className="w-3.5 h-3.5" />, label: "Listado" },
                                                         { mode: "summary", icon: <ClipboardList className="w-3.5 h-3.5" />, label: "Resumen" },
-                                                    ] as const).map(({ mode, icon, label }) => (
+                                                     ] as const).map(({ mode, icon, label }) => (
                                                         <button
                                                             key={mode}
                                                             disabled={isSavingAtt}
@@ -2866,12 +2775,91 @@ const handleOpenAnalytics = async () => {
                                                 className="w-full sm:w-auto h-9 px-3 rounded-xl font-bold text-xs gap-1.5 shrink-0 border-primary/20 hover:bg-primary/5 text-primary shadow-xs"
                                             >
                                                 <Play className="w-3.5 h-3.5" />
-                                                <span className="hidden xs:inline">Llamar por Secuencia</span>
-                                                <span className="xs:hidden">Secuencia</span>
+                                                <span className="hidden sm:inline">Llamar por Secuencia</span>
+                                                <span className="sm:hidden">Secuencia</span>
                                             </Button>
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Dedicated Date Selection Bar */}
+                                {attMode !== "matrix" && attMode !== "history" && attMode !== "metrics" && (
+                                    <div className="flex flex-col gap-2 bg-muted/10 p-4 rounded-2xl border border-border/70 w-full shadow-2xs">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full mb-1">
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Fecha de Asistencia</Label>
+                                                <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-xl border border-border/70 shadow-2xs">
+                                                    <Switch
+                                                        id="hide-other-dates"
+                                                        disabled={isSavingAtt}
+                                                        checked={hideOtherDates}
+                                                        onCheckedChange={setHideOtherDates}
+                                                        className="scale-75 cursor-pointer"
+                                                    />
+                                                    <Label htmlFor="hide-other-dates" className="text-[10px] font-bold text-muted-foreground cursor-pointer select-none">
+                                                        Solo fecha actual
+                                                    </Label>
+                                                </div>
+                                                <span className={`text-[10px] px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border ${
+                                                    limitSettingsActive
+                                                        ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
+                                                        : "bg-primary/10 border-primary/20 text-primary"
+                                                }`}>
+                                                    {limitSettingsActive ? (
+                                                        <>
+                                                            <Lock className="w-3.5 h-3.5" />
+                                                            <span>Semanas anteriores restringidas</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Unlock className="w-3.5 h-3.5" />
+                                                            <span>Modificación de historial libre</span>
+                                                        </>
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5 p-1.5 bg-background rounded-xl border border-border/70 shadow-2xs max-h-[120px] overflow-y-auto">
+                                            {(() => {
+                                                const validDaysList = getValidClassDaysList();
+                                                const todayStr = getTodayColombianDate();
+                                                const filteredDaysList = hideOtherDates 
+                                                    ? (validDaysList.includes(attDate) ? [attDate] : (validDaysList.length > 0 ? [attDate] : []))
+                                                    : validDaysList;
+
+                                                return filteredDaysList.map((ds) => {
+                                                    const d = new Date(ds + "T12:00:00Z");
+                                                    const dayNamesShort = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+                                                    const label = `${dayNamesShort[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+                                                    const isFuture = ds > todayStr;
+                                                    const isSelected = ds === attDate;
+                                                    const isToday = ds === todayStr;
+
+                                                    return (
+                                                        <Button
+                                                            key={ds}
+                                                            size="sm"
+                                                             variant={isSelected ? "default" : "outline"}
+                                                            disabled={isFuture || isSavingAtt}
+                                                            type="button"
+                                                            onClick={() => handleDateChangeAttempt(ds)}
+                                                            className={`h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-bold transition-all rounded-lg shrink-0 cursor-pointer ${
+                                                                isSelected 
+                                                                    ? "shadow-sm font-extrabold bg-primary text-primary-foreground" 
+                                                                    : isToday
+                                                                        ? "border-primary/40 text-primary hover:bg-primary/10 font-extrabold"
+                                                                        : "text-muted-foreground hover:text-foreground border-border/70"
+                                                            }`}
+                                                            title={isFuture ? "Fecha futura (deshabilitada)" : `Seleccionar ${ds}`}
+                                                        >
+                                                            {label}
+                                                        </Button>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {!isCurrentDateValid && (attMode === "list" || attMode === "summary") ? (
                                     <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-amber-300 bg-amber-500/5 dark:bg-amber-500/10 rounded-2xl text-center space-y-4">
@@ -2889,23 +2877,20 @@ const handleOpenAnalytics = async () => {
                                     // MODE 1: LIST VIEW
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-center sm:justify-end mb-2 w-full">
-                                            <span className="text-xs font-bold flex items-center justify-center gap-1.5 flex-wrap">
-                                                <span className="text-emerald-600 dark:text-emerald-400">
+                                            <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
+                                                <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100/70 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
                                                     {Object.values(attRecords).filter(r => r.status === "PRESENT" && !r.arrivalTime && !r.departureTime).length} Presentes
                                                 </span>
-                                                <span className="text-muted-foreground/35">|</span>
-                                                <span className="text-red-600 dark:text-red-400">
+                                                <span className="px-2.5 py-0.5 rounded-lg bg-rose-100/70 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/40">
                                                     {Object.values(attRecords).filter(r => r.status === "ABSENT").length} Faltas
                                                 </span>
-                                                <span className="text-muted-foreground/35">|</span>
-                                                <span className="text-amber-600 dark:text-amber-400">
+                                                <span className="px-2.5 py-0.5 rounded-lg bg-amber-100/70 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
                                                     {Object.values(attRecords).filter(r => r.status === "LATE" || !!r.arrivalTime).length} Tardes
                                                 </span>
-                                                <span className="text-muted-foreground/35">|</span>
-                                                <span className="text-blue-600 dark:text-blue-400">
+                                                <span className="px-2.5 py-0.5 rounded-lg bg-sky-100/70 text-sky-900 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/40">
                                                     {Object.values(attRecords).filter(r => r.status === "LEAVE_EARLY" || !!r.departureTime).length} Retiros
                                                 </span>
-                                            </span>
+                                            </div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                             {filteredStudents.map((s: any) => {
@@ -2923,15 +2908,15 @@ const handleOpenAnalytics = async () => {
                                                         key={s.id} 
                                                         className={`p-2.5 sm:p-3.5 rounded-xl border transition-all duration-200 shadow-xs ${
                                                             isDualLateAndLeave
-                                                                ? 'bg-gradient-to-r from-amber-500/10 via-background to-blue-500/10 border-amber-400 dark:border-amber-600 shadow-amber-500/5'
+                                                                ? 'bg-gradient-to-r from-amber-50/50 via-background to-sky-50/50 dark:from-amber-950/20 dark:via-background dark:to-sky-950/20 border-amber-300/80 dark:border-amber-700/60 shadow-amber-500/5'
                                                                 : isAbsent 
-                                                                    ? 'bg-red-50/70 border-red-300 dark:bg-red-950/20 dark:border-red-900/60' 
+                                                                    ? 'bg-rose-50/40 border-rose-200/70 dark:bg-rose-950/15 dark:border-rose-900/40' 
                                                                     : isLate 
-                                                                        ? 'bg-amber-50/70 border-amber-300 dark:bg-amber-950/20 dark:border-amber-900/60' 
+                                                                        ? 'bg-amber-50/40 border-amber-200/70 dark:bg-amber-950/15 dark:border-amber-900/40' 
                                                                         : isLeaveEarly
-                                                                            ? 'bg-blue-50/70 border-blue-300 dark:bg-blue-950/20 dark:border-blue-900/60'
+                                                                            ? 'bg-sky-50/40 border-sky-200/70 dark:bg-sky-950/15 dark:border-sky-900/40'
                                                                             : isPresent
-                                                                                ? 'bg-emerald-50/65 border-emerald-300 dark:bg-emerald-950/25 dark:border-emerald-900/65'
+                                                                                ? 'bg-emerald-50/40 border-emerald-200/70 dark:bg-emerald-950/15 dark:border-emerald-900/40'
                                                                                 : 'bg-muted/15 border-muted/70 hover:border-muted-foreground/30 dark:bg-muted/10 dark:border-muted/30 dark:hover:border-muted/50 border-dashed'
                                                         }`}
                                                     >
@@ -2943,13 +2928,13 @@ const handleOpenAnalytics = async () => {
                                                                         isDualLateAndLeave
                                                                             ? 'text-foreground'
                                                                             : isAbsent 
-                                                                                ? 'text-red-900 dark:text-red-200' 
+                                                                                ? 'text-rose-950 dark:text-rose-200' 
                                                                                 : isLate 
-                                                                                    ? 'text-amber-900 dark:text-amber-200' 
+                                                                                    ? 'text-amber-950 dark:text-amber-200' 
                                                                                     : isLeaveEarly
-                                                                                        ? 'text-blue-900 dark:text-blue-200'
+                                                                                        ? 'text-sky-950 dark:text-sky-200'
                                                                                         : isPresent
-                                                                                            ? 'text-emerald-900 dark:text-emerald-200'
+                                                                                            ? 'text-emerald-950 dark:text-emerald-200'
                                                                                             : 'text-foreground'
                                                                     }`}
                                                                 >
@@ -2958,7 +2943,7 @@ const handleOpenAnalytics = async () => {
                                                                         <StudentNovedadBadge novedad={s.profile?.novedad} color={s.profile?.novedadColor} />
                                                                         <StudentVoceroBadge size="sm" role={s.id === selectedGroup?.voceroPrincipalId ? "PRINCIPAL" : s.id === selectedGroup?.voceroSuplenteId ? "SUPLENTE" : null} />
                                                                         {isDualLateAndLeave && (
-                                                                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60">
+                                                                            <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60">
                                                                                 Tarde + Retiro
                                                                             </span>
                                                                         )}
@@ -2973,7 +2958,7 @@ const handleOpenAnalytics = async () => {
                                                                             <span className="text-muted-foreground/35 font-normal">|</span>
                                                                             {absentCount > 0 && (
                                                                                 <span 
-                                                                                    className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
+                                                                                    className="text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-100/70 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/40 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
                                                                                     title={allTimeAbsentCount > absentCount
                                                                                         ? `${absentCount} inasistencia${absentCount > 1 ? 's' : ''} en el horario actual (${allTimeAbsentCount} en total)`
                                                                                         : `${absentCount} inasistencia${absentCount > 1 ? 's' : ''} en el horario actual`
@@ -2984,7 +2969,7 @@ const handleOpenAnalytics = async () => {
                                                                             )}
                                                                             {lateCount > 0 && (
                                                                                 <span 
-                                                                                    className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
+                                                                                    className="text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
                                                                                     title={`${lateCount} llegada${lateCount > 1 ? 's' : ''} tarde en el horario actual`}
                                                                                 >
                                                                                     {lateCount} {lateCount === 1 ? 'Tarde' : 'Tardes'}
@@ -2992,7 +2977,7 @@ const handleOpenAnalytics = async () => {
                                                                             )}
                                                                             {leaveCount > 0 && (
                                                                                 <span 
-                                                                                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
+                                                                                    className="text-[10px] font-bold text-sky-800 dark:text-sky-300 bg-sky-100/70 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/40 px-1.5 py-0.2 rounded-md inline-flex items-center cursor-help"
                                                                                     title={`${leaveCount} retiro${leaveCount > 1 ? 's' : ''} anticipado en el horario actual`}
                                                                                 >
                                                                                     {leaveCount} {leaveCount === 1 ? 'Retiro' : 'Retiros'}
@@ -3020,56 +3005,63 @@ const handleOpenAnalytics = async () => {
 
                                                         {/* Quick Actions Row: Stacked on mobile for complete text, horizontal on tablet/desktop */}
                                                         <div className="grid grid-cols-4 gap-1 sm:gap-1.5 w-full">
+                                                            {/* PRESENTE */}
                                                             <Button 
                                                                 size="sm"
                                                                 disabled={isSavingAtt}
                                                                 variant="ghost"
                                                                 className={`h-11 sm:h-8.5 px-0.5 sm:px-1.5 flex-col sm:flex-row gap-0.5 sm:gap-1.5 text-[9.5px] sm:text-xs rounded-xl transition-all border ${
                                                                     isPresent 
-                                                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-xs font-black' 
-                                                                        : 'bg-background text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 hover:border-emerald-300 border-border/70 font-bold'
+                                                                        ? 'bg-emerald-100 hover:bg-emerald-200/80 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60 shadow-xs font-black ring-1 ring-emerald-400/25' 
+                                                                        : 'bg-background text-muted-foreground hover:text-emerald-700 hover:bg-emerald-50/70 hover:border-emerald-200 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/30 dark:hover:border-emerald-800/40 border-border/70 font-bold'
                                                                 }`}
                                                                 onClick={() => setStudentAttendance(s.id, isPresent ? "UNMARKED" : "PRESENT")}
                                                             >
                                                                 <UserCheck className="size-3.5 shrink-0" />
                                                                 <span>Presente</span>
                                                             </Button>
+
+                                                            {/* FALTA */}
                                                             <Button 
                                                                 size="sm"
                                                                 disabled={isSavingAtt}
                                                                 variant="ghost"
                                                                 className={`h-11 sm:h-8.5 px-0.5 sm:px-1.5 flex-col sm:flex-row gap-0.5 sm:gap-1.5 text-[9.5px] sm:text-xs rounded-xl transition-all border ${
                                                                     isAbsent 
-                                                                        ? 'bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-xs font-black' 
-                                                                        : 'bg-background text-muted-foreground hover:text-red-600 hover:bg-red-500/10 hover:border-red-300 border-border/70 font-bold'
+                                                                        ? 'bg-rose-100 hover:bg-rose-200/80 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60 shadow-xs font-black ring-1 ring-rose-400/25' 
+                                                                        : 'bg-background text-muted-foreground hover:text-rose-700 hover:bg-rose-50/70 hover:border-rose-200 dark:hover:text-rose-300 dark:hover:bg-rose-950/30 dark:hover:border-rose-800/40 border-border/70 font-bold'
                                                                 }`}
                                                                 onClick={() => setStudentAttendance(s.id, isAbsent ? "UNMARKED" : "ABSENT")}
                                                             >
                                                                 <UserX className="size-3.5 shrink-0" />
                                                                 <span>Falta</span>
                                                             </Button>
+
+                                                            {/* TARDE */}
                                                             <Button 
                                                                 size="sm"
                                                                 disabled={isSavingAtt}
                                                                 variant="ghost"
                                                                 className={`h-11 sm:h-8.5 px-0.5 sm:px-1.5 flex-col sm:flex-row gap-0.5 sm:gap-1.5 text-[9.5px] sm:text-xs rounded-xl transition-all border ${
                                                                     isLate 
-                                                                        ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-xs font-black' 
-                                                                        : 'bg-background text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10 hover:border-amber-300 border-border/70 font-bold'
+                                                                        ? 'bg-amber-100 hover:bg-amber-200/80 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700/60 shadow-xs font-black ring-1 ring-amber-400/25' 
+                                                                        : 'bg-background text-muted-foreground hover:text-amber-800 hover:bg-amber-50/70 hover:border-amber-200 dark:hover:text-amber-300 dark:hover:bg-amber-950/30 dark:hover:border-amber-800/40 border-border/70 font-bold'
                                                                 }`}
                                                                 onClick={() => toggleLateOrLeaveEarly(s.id, "LATE")}
                                                             >
                                                                 <Clock className="size-3.5 shrink-0" />
                                                                 <span>Tarde</span>
                                                             </Button>
+
+                                                            {/* RETIRO */}
                                                             <Button 
                                                                 size="sm"
                                                                 disabled={isSavingAtt}
                                                                 variant="ghost"
                                                                 className={`h-11 sm:h-8.5 px-0.5 sm:px-1.5 flex-col sm:flex-row gap-0.5 sm:gap-1.5 text-[9.5px] sm:text-xs rounded-xl transition-all border ${
                                                                     isLeaveEarly 
-                                                                        ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600 shadow-xs font-black' 
-                                                                        : 'bg-background text-muted-foreground hover:text-blue-600 hover:bg-blue-500/10 hover:border-blue-300 border-border/70 font-bold'
+                                                                        ? 'bg-sky-100 hover:bg-sky-200/80 text-sky-900 border-sky-300 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-700/60 shadow-xs font-black ring-1 ring-sky-400/25' 
+                                                                        : 'bg-background text-muted-foreground hover:text-sky-800 hover:bg-sky-50/70 hover:border-sky-200 dark:hover:text-sky-300 dark:hover:bg-sky-950/30 dark:hover:border-sky-800/40 border-border/70 font-bold'
                                                                 }`}
                                                                 onClick={() => toggleLateOrLeaveEarly(s.id, "LEAVE_EARLY")}
                                                             >
@@ -3177,8 +3169,8 @@ const handleOpenAnalytics = async () => {
                                 ) : attMode === "summary" ? (
                                     // MODE 2: SUMMARY VIEW (Resumen)
                                     <div className="space-y-4">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 w-fit">
                                                 <ClipboardList className="w-3.5 h-3.5 mr-1" />
                                                 Resumen de Inasistencias y Tardanzas de Hoy
                                             </Badge>
@@ -3189,7 +3181,7 @@ const handleOpenAnalytics = async () => {
 
                                         {Object.values(attRecords).filter((r: any) => r.status === "ABSENT" || r.status === "LATE" || r.status === "LEAVE_EARLY").length === 0 ? (
                                             <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 rounded-2xl border border-dashed bg-card shadow-sm">
-                                                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-full text-emerald-600 dark:text-emerald-400">
+                                                <div className="p-3 bg-emerald-100/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 rounded-full text-emerald-700 dark:text-emerald-300">
                                                     <CheckSquare className="w-8 h-8" />
                                                 </div>
                                                 <div className="space-y-1">
@@ -3247,12 +3239,12 @@ const handleOpenAnalytics = async () => {
                                                                         <TableCell className="text-center">
                                                                             <Badge variant="outline" className={`font-bold text-xs ${
                                                                                 isAbsent 
-                                                                                    ? 'text-red-600 border-red-200 bg-red-50 dark:bg-red-950/20' 
+                                                                                    ? 'text-rose-800 border-rose-300 bg-rose-100/70 dark:text-rose-200 dark:border-rose-700/60 dark:bg-rose-950/60' 
                                                                                     : isDualLateAndLeave
-                                                                                        ? 'text-purple-600 border-purple-200 bg-purple-50 dark:bg-purple-950/20'
+                                                                                        ? 'text-indigo-800 border-indigo-300 bg-indigo-100/70 dark:text-indigo-200 dark:border-indigo-700/60 dark:bg-indigo-950/60'
                                                                                         : isLate 
-                                                                                            ? 'text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/20'
-                                                                                            : 'text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/20'
+                                                                                            ? 'text-amber-900 border-amber-300 bg-amber-100/70 dark:text-amber-200 dark:border-amber-700/60 dark:bg-amber-950/60'
+                                                                                            : 'text-sky-900 border-sky-300 bg-sky-100/70 dark:text-sky-200 dark:border-sky-700/60 dark:bg-sky-950/60'
                                                                             }`}>
                                                                                 {isAbsent ? "Inasistencia" : isDualLateAndLeave ? "Tarde + Retiro" : isLate ? "Llegada Tarde" : "Retiro Temprano"}
                                                                             </Badge>
@@ -3298,10 +3290,10 @@ const handleOpenAnalytics = async () => {
                                                                                         )}
                                                                                         {isLeaveEarly && (
                                                                                             <div className="flex items-center gap-1.5">
-                                                                                                <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">Retiro:</span>
+                                                                                                <span className="text-[10px] font-bold text-sky-900 dark:text-sky-300">Retiro:</span>
                                                                                                 <select
                                                                                                     disabled={isSavingAtt}
-                                                                                                    className="h-6 w-[95px] rounded-md border border-blue-300 dark:border-blue-900/60 bg-white dark:bg-black text-[10px] font-bold text-blue-900 dark:text-blue-200 px-1 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                                                    className="h-6 w-[95px] rounded-md border border-sky-300 dark:border-sky-900/60 bg-white dark:bg-black text-[10px] font-bold text-sky-900 dark:text-sky-200 px-1 outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                                                                                     value={rec.departureTime || ""}
                                                                                                     onChange={e => updateLeaveTime(s.id, e.target.value)}
                                                                                                 >
@@ -3315,13 +3307,13 @@ const handleOpenAnalytics = async () => {
                                                                                                         </option>
                                                                                                     ))}
                                                                                                 </select>
-                                                                                                <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400">
+                                                                                                <span className="text-[9px] font-bold text-sky-800 dark:text-sky-300">
                                                                                                     {lostInfo.leaveLostHours.toFixed(1)} h
                                                                                                 </span>
                                                                                             </div>
                                                                                         )}
                                                                                         {isDualLateAndLeave && (
-                                                                                            <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">
+                                                                                            <span className="text-[9px] font-black text-indigo-800 dark:text-indigo-300">
                                                                                                 Total perdido: {lostInfo.totalLostHours.toFixed(1)} hrs
                                                                                             </span>
                                                                                         )}
@@ -3335,7 +3327,7 @@ const handleOpenAnalytics = async () => {
                                                                                 variant="ghost" 
                                                                                 disabled={isSavingAtt}
                                                                                 onClick={() => setStudentAttendance(s.id, "PRESENT")}
-                                                                                className="h-7 px-2.5 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-bold"
+                                                                                className="h-7 px-2.5 text-xs text-emerald-800 dark:text-emerald-200 bg-emerald-100/70 hover:bg-emerald-200/80 border border-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-700/60 font-bold rounded-lg transition-all"
                                                                             >
                                                                                 Marcar Presente
                                                                             </Button>
@@ -3563,19 +3555,29 @@ const handleOpenAnalytics = async () => {
                                     };
 
                                     return (
-                                        <div className="space-y-6">
-                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                        <Tabs defaultValue="faltas" className="space-y-6 w-full">
+                                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                                                 <div>
                                                     <h3 className="text-lg font-bold">Resumen Analítico</h3>
                                                     <p className="text-sm text-muted-foreground">Estadísticas calculadas para la materia seleccionada</p>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <Button variant="outline" size="sm" onClick={exportMetricsExcel}>
-                                                        <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" /> Excel
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" onClick={exportMetricsPDF}>
-                                                        <FileDown className="w-4 h-4 mr-2 text-red-600" /> PDF
-                                                    </Button>
+                                                <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                                                    <div className="w-full sm:w-auto overflow-x-auto scrollbar-none touch-pan-x pb-0.5">
+                                                        <TabsList className="h-9 p-1 bg-muted/60 dark:bg-muted/30 rounded-xl border border-border/60 shadow-2xs flex items-center w-max">
+                                                            <TabsTrigger value="faltas" className="h-7 px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Faltas</TabsTrigger>
+                                                            <TabsTrigger value="tardanzas" className="h-7 px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Tardanzas</TabsTrigger>
+                                                            <TabsTrigger value="retiros" className="h-7 px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Retiros</TabsTrigger>
+                                                            <TabsTrigger value="horas" className="h-7 px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Carga Horaria</TabsTrigger>
+                                                        </TabsList>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Button variant="outline" size="sm" onClick={exportMetricsExcel} className="h-9">
+                                                            <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" /> Excel
+                                                        </Button>
+                                                        <Button variant="outline" size="sm" onClick={exportMetricsPDF} className="h-9">
+                                                            <FileDown className="w-4 h-4 mr-2 text-red-600" /> PDF
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             {/* KPI Grid */}
@@ -3590,14 +3592,14 @@ const handleOpenAnalytics = async () => {
                                                 <div className="bg-card border rounded-2xl p-4 flex flex-col justify-between shadow-sm">
                                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Asistencia Efectiva Promedio</span>
                                                     <div className="mt-2 flex flex-col items-start gap-0.5">
-                                                        <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{avgAttendanceHours.toFixed(1)}%</span>
+                                                        <span className="text-3xl font-black text-emerald-700 dark:text-emerald-300">{avgAttendanceHours.toFixed(1)}%</span>
                                                         <span className="text-[10px] font-bold text-muted-foreground">({avgAttendanceDays.toFixed(1)}% por asistencia de días)</span>
                                                     </div>
                                                 </div>
                                                 <div className="bg-card border rounded-2xl p-4 flex flex-col justify-between shadow-sm">
                                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Inasistencias (Faltas)</span>
                                                     <div className="mt-2 flex flex-col items-start gap-0.5">
-                                                        <span className="text-3xl font-black text-red-600 dark:text-red-400">
+                                                        <span className="text-3xl font-black text-rose-700 dark:text-rose-400">
                                                             {studentMetrics.reduce((acc: number, m: any) => acc + m.absentCount, 0)}
                                                         </span>
                                                         <span className="text-[10px] font-bold text-muted-foreground">
@@ -3608,22 +3610,14 @@ const handleOpenAnalytics = async () => {
                                                 <div className="bg-card border rounded-2xl p-4 flex flex-col justify-between shadow-sm">
                                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pérdida (Tardes y Retiros)</span>
                                                     <div className="mt-2 flex flex-col items-start gap-0.5">
-                                                        <span className="text-3xl font-black text-amber-600 dark:text-amber-400">{(avgLateHours + avgLeaveHours).toFixed(2)}%</span>
+                                                        <span className="text-3xl font-black text-amber-700 dark:text-amber-400">{(avgLateHours + avgLeaveHours).toFixed(2)}%</span>
                                                         <span className="text-[10px] font-bold text-muted-foreground">({avgLateHours.toFixed(1)}% Tardes / {avgLeaveHours.toFixed(1)}% Retiros)</span>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Stacked Full-Width Charts Section Organized by Tabs */}
-                                            <Tabs defaultValue="faltas" className="w-full mt-6">
-                                                <TabsList className="grid w-full sm:w-[600px] grid-cols-4 mb-6 mx-auto bg-muted/60 dark:bg-muted/30 p-1.5 rounded-2xl border border-border/60 shadow-2xs">
-                                                    <TabsTrigger value="faltas" className="rounded-xl text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Faltas</TabsTrigger>
-                                                    <TabsTrigger value="tardanzas" className="rounded-xl text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Tardanzas</TabsTrigger>
-                                                    <TabsTrigger value="retiros" className="rounded-xl text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Retiros</TabsTrigger>
-                                                    <TabsTrigger value="horas" className="rounded-xl text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Carga Horaria</TabsTrigger>
-                                                </TabsList>
-
-                                                <TabsContent value="faltas" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0">
+                                            <TabsContent value="faltas" className="space-y-6 focus-visible:outline-none focus-visible:ring-0 mt-0">
                                                 {/* CHART 1: ABSENCES (FALTAS) */}
                                                 <div className="bg-card border rounded-2xl p-5 shadow-sm space-y-4 w-full">
                                                     <div>
@@ -3638,13 +3632,13 @@ const handleOpenAnalytics = async () => {
                                                                  <div key={student.id} className="space-y-1.5">
                                                                      <div className="flex items-center justify-between text-xs font-bold">
                                                                          <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                         <span className="text-red-600 shrink-0 font-extrabold">
+                                                                         <span className="text-rose-700 dark:text-rose-300 shrink-0 font-extrabold">
                                                                              {absentCount} {absentCount === 1 ? "Falta" : "Faltas"} / {totalClassDays} días ({absenceRate.toFixed(1)}%)
                                                                          </span>
                                                                      </div>
                                                                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                                                                          <div 
-                                                                             className="h-full bg-red-500 dark:bg-red-600 rounded-full transition-all duration-500" 
+                                                                             className="h-full bg-rose-400 dark:bg-rose-500 rounded-full transition-all duration-500" 
                                                                              style={{ width: `${absenceRate}%` }}
                                                                          />
                                                                      </div>
@@ -3669,13 +3663,13 @@ const handleOpenAnalytics = async () => {
                                                              <div key={student.id} className="space-y-1.5">
                                                                  <div className="flex items-center justify-between text-xs font-bold">
                                                                      <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                     <span className="text-amber-600 dark:text-amber-400 shrink-0 font-extrabold">
+                                                                     <span className="text-amber-700 dark:text-amber-300 shrink-0 font-extrabold">
                                                                          {lateCount} {lateCount === 1 ? "Tarde" : "Tardes"} / {totalClassDays} días ({lateDaysRate.toFixed(1)}%)
                                                                      </span>
                                                                  </div>
                                                                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                                                                      <div 
-                                                                         className="h-full bg-amber-500 rounded-full transition-all duration-500" 
+                                                                         className="h-full bg-amber-400 dark:bg-amber-500 rounded-full transition-all duration-500" 
                                                                          style={{ width: `${lateDaysRate}%` }}
                                                                      />
                                                                  </div>
@@ -3701,13 +3695,13 @@ const handleOpenAnalytics = async () => {
                                                                  <div key={student.id} className="space-y-1.5">
                                                                      <div className="flex items-center justify-between text-xs font-bold">
                                                                          <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                         <span className="text-blue-600 dark:text-blue-400 shrink-0 font-extrabold">
+                                                                         <span className="text-sky-700 dark:text-sky-300 shrink-0 font-extrabold">
                                                                              {leaveCount} {leaveCount === 1 ? "Retiro" : "Retiros"} / {totalClassDays} días ({leaveDaysRate.toFixed(1)}%)
                                                                          </span>
                                                                      </div>
                                                                      <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                                                                          <div 
-                                                                             className="h-full bg-blue-500 rounded-full transition-all duration-500" 
+                                                                             className="h-full bg-sky-400 dark:bg-sky-500 rounded-full transition-all duration-500" 
                                                                              style={{ width: `${leaveDaysRate}%` }}
                                                                          />
                                                                      </div>
@@ -3735,9 +3729,9 @@ const handleOpenAnalytics = async () => {
                                                                       <div className="flex flex-wrap items-center justify-between text-xs font-bold gap-2">
                                                                           <span className="truncate text-foreground max-w-[280px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
                                                                           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-muted-foreground">
-                                                                              <span className="text-emerald-600 dark:text-emerald-400">Asistidas: {attendedHours.toFixed(2)} hs</span>
-                                                                              <span className="text-red-500">Perdidas: {lostHours.toFixed(2)} hs</span>
-                                                                              <span className="text-blue-600 dark:text-blue-400 font-extrabold">Efectiva: {attendanceHoursRate.toFixed(1)}%</span>
+                                                                              <span className="text-emerald-700 dark:text-emerald-300">Asistidas: {attendedHours.toFixed(2)} hs</span>
+                                                                              <span className="text-rose-700 dark:text-rose-400">Perdidas: {lostHours.toFixed(2)} hs</span>
+                                                                              <span className="text-sky-700 dark:text-sky-300 font-extrabold">Efectiva: {attendanceHoursRate.toFixed(1)}%</span>
                                                                           </div>
                                                                       </div>
                                                                       
@@ -3746,14 +3740,14 @@ const handleOpenAnalytics = async () => {
                                                                           <div className="h-3 w-full bg-muted rounded-full overflow-hidden flex">
                                                                               {/* Attended hours bar */}
                                                                               <div 
-                                                                                  className="h-full bg-emerald-500 dark:bg-emerald-600 transition-all duration-500" 
+                                                                                  className="h-full bg-emerald-300 dark:bg-emerald-500 transition-all duration-500" 
                                                                                   style={{ width: `${attendanceHoursRate}%` }}
                                                                                   title={`Horas Asistidas: ${attendedHours.toFixed(2)} hs`}
                                                                               />
                                                                               {/* Absent hours bar (red) */}
                                                                               {absentHours > 0 && (
                                                                                   <div 
-                                                                                      className="h-full bg-red-500 dark:bg-red-600 transition-all duration-500" 
+                                                                                      className="h-full bg-rose-300 dark:bg-rose-500 transition-all duration-500" 
                                                                                       style={{ width: `${(absentHours / totalScheduledHours) * 100}%` }}
                                                                                       title={`Horas de Faltas: ${absentHours.toFixed(2)} hs`}
                                                                                   />
@@ -3761,7 +3755,7 @@ const handleOpenAnalytics = async () => {
                                                                               {/* Late hours bar (orange) */}
                                                                               {lateHours > 0 && (
                                                                                   <div 
-                                                                                      className="h-full bg-amber-500 dark:bg-amber-500 transition-all duration-500" 
+                                                                                      className="h-full bg-amber-300 dark:bg-amber-500 transition-all duration-500" 
                                                                                       style={{ width: `${(lateHours / totalScheduledHours) * 100}%` }}
                                                                                       title={`Horas de Tardanzas: ${lateHours.toFixed(2)} hs`}
                                                                                   />
@@ -3769,7 +3763,7 @@ const handleOpenAnalytics = async () => {
                                                                               {/* Leave hours bar (blue) */}
                                                                               {leaveHours > 0 && (
                                                                                   <div 
-                                                                                      className="h-full bg-blue-500 dark:bg-blue-600 transition-all duration-500" 
+                                                                                      className="h-full bg-sky-300 dark:bg-sky-500 transition-all duration-500" 
                                                                                       style={{ width: `${(leaveHours / totalScheduledHours) * 100}%` }}
                                                                                       title={`Horas de Retiros: ${leaveHours.toFixed(2)} hs`}
                                                                                   />
@@ -3788,7 +3782,6 @@ const handleOpenAnalytics = async () => {
                                                     </div>
                                                 </div>
                                                 </TabsContent>
-                                            </Tabs>
 
                                             {/* HIDDEN PRINT VIEW FOR PDF EXPORT - Contains all 3 charts un-tabbed with inline styles to prevent CSS parsing errors */}
                                             <div ref={printMetricsRef} style={{ display: 'none', width: '800px', padding: '32px', backgroundColor: '#ffffff', color: '#0f172a' }}>
@@ -3907,7 +3900,7 @@ const handleOpenAnalytics = async () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </Tabs>
                                     );
                                 })() : attMode === "history" ? (() => {
                                     // MODE 4: HISTORIAL VIEW
@@ -4064,21 +4057,21 @@ const handleOpenAnalytics = async () => {
                                                                     <TableCell className="text-center py-3">
                                                                         <Badge variant="outline" className={`font-bold text-[10px] uppercase px-2 py-0.5 rounded-md ${
                                                                             isAbsent 
-                                                                                ? 'text-red-600 border-red-200 bg-red-50 dark:bg-red-950/20' 
+                                                                                ? 'text-rose-800 border-rose-300 bg-rose-100/70 dark:text-rose-200 dark:border-rose-700/60 dark:bg-rose-950/60' 
                                                                                 : isLate
-                                                                                    ? 'text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/20'
-                                                                                    : 'text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/20'
+                                                                                    ? 'text-amber-900 border-amber-300 bg-amber-100/70 dark:text-amber-200 dark:border-amber-700/60 dark:bg-amber-950/60'
+                                                                                    : 'text-sky-900 border-sky-300 bg-sky-100/70 dark:text-sky-200 dark:border-sky-700/60 dark:bg-sky-950/60'
                                                                         }`}>
                                                                             {isAbsent ? "Falta" : isLate ? "Tarde" : "Retiro"}
                                                                         </Badge>
                                                                     </TableCell>
                                                                     <TableCell className="text-center text-xs py-3 font-medium text-foreground/70">
                                                                          {isLate && rec.arrivalTime ? (
-                                                                             <span className="font-mono bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded text-[11px] border border-amber-500/20">
+                                                                             <span className="font-mono bg-amber-100/70 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300 px-2 py-0.5 rounded text-[11px] border border-amber-200/60 dark:border-amber-800/40">
                                                                                  {formatTime12h(rec.arrivalTime)}
                                                                              </span>
                                                                          ) : isLeaveEarly && rec.departureTime ? (
-                                                                             <span className="font-mono bg-blue-500/10 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded text-[11px] border border-blue-500/20">
+                                                                             <span className="font-mono bg-sky-100/70 text-sky-900 dark:bg-sky-950/40 dark:text-sky-300 px-2 py-0.5 rounded text-[11px] border border-sky-200/60 dark:border-sky-800/40">
                                                                                  {formatTime12h(rec.departureTime)}
                                                                              </span>
                                                                          ) : (
@@ -4163,7 +4156,7 @@ const handleOpenAnalytics = async () => {
                                                                         {historyScheduleScope === "all" ? (
                                                                             <>
                                                                                 {currentRecords.filter(r => r.status === "ABSENT").length > 0 && (
-                                                                                    <Badge className="bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
+                                                                                    <Badge className="bg-rose-100/70 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200/60 dark:border-rose-800/40 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
                                                                                         {currentRecords.filter(r => r.status === "ABSENT").length} {currentRecords.filter(r => r.status === "ABSENT").length === 1 ? "Falta (Actual)" : "Faltas (Actual)"}
                                                                                     </Badge>
                                                                                 )}
@@ -4180,18 +4173,18 @@ const handleOpenAnalytics = async () => {
                                                                             </>
                                                                         ) : (
                                                                             absentCount > 0 && (
-                                                                                <Badge className="bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
+                                                                                <Badge className="bg-rose-100/70 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200/60 dark:border-rose-800/40 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
                                                                                     {absentCount} {absentCount === 1 ? "Falta" : "Faltas"}
                                                                                 </Badge>
                                                                             )
                                                                         )}
                                                                         {lateCount > 0 && (
-                                                                            <Badge className="bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
+                                                                            <Badge className="bg-amber-100/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
                                                                                 {lateCount} {lateCount === 1 ? "Llegada Tarde" : "Llegadas Tardes"}
                                                                             </Badge>
                                                                         )}
                                                                         {leaveEarlyCount > 0 && (
-                                                                            <Badge className="bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
+                                                                            <Badge className="bg-sky-100/70 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border border-sky-200/60 dark:border-sky-800/40 font-extrabold shadow-none px-2.5 py-0.5 rounded-full text-xs">
                                                                                 {leaveEarlyCount} {leaveEarlyCount === 1 ? "Retiro" : "Retiros"}
                                                                             </Badge>
                                                                         )}
@@ -4383,27 +4376,27 @@ const handleOpenAnalytics = async () => {
 
                                     const statusCell = (record: { status: string; justification?: string; arrivalTime?: string; departureTime?: string } | undefined) => {
                                         if (!record || record.status === "PRESENT") return (
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">P</span>
+                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black bg-emerald-100/70 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60 shadow-2xs">P</span>
                                         );
                                         if (record.justification) return (
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">E</span>
+                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black bg-indigo-100/70 text-indigo-800 border border-indigo-200/60 dark:bg-indigo-950/60 dark:text-indigo-200 dark:border-indigo-700/60 shadow-2xs">E</span>
                                         );
                                         if ((record.status === "LATE" || record.status === "LEAVE_EARLY") && record.arrivalTime && record.departureTime) {
                                             return (
-                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700">T+R</span>
+                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[10px] font-black bg-amber-100/70 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700/60 shadow-2xs">T+R</span>
                                             );
                                         }
                                         if (record.status === "LATE") return (
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">T</span>
+                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black bg-amber-100/70 text-amber-900 border border-amber-200/60 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700/60 shadow-2xs">T</span>
                                         );
                                         if (record.status === "LEAVE_EARLY") return (
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">R</span>
+                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black bg-sky-100/70 text-sky-900 border border-sky-200/60 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-700/60 shadow-2xs">R</span>
                                         );
                                         if (record.status === "ABSENT") return (
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">F</span>
+                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black bg-rose-100/70 text-rose-800 border border-rose-200/60 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60 shadow-2xs">F</span>
                                         );
                                         return (
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-black bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">E</span>
+                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black bg-indigo-100/70 text-indigo-800 border border-indigo-200/60 dark:bg-indigo-950/60 dark:text-indigo-200 dark:border-indigo-700/60 shadow-2xs">E</span>
                                         );
                                     };
 
@@ -4433,16 +4426,18 @@ const handleOpenAnalytics = async () => {
                                                 <div className="flex flex-wrap items-center gap-3 px-1 mb-3">
                                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest shrink-0">Leyenda:</span>
                                                     <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
-                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-emerald-100 text-emerald-700">P</span> Presente
+                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-emerald-100/70 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60">P</span> Presente
                                                     </span>
                                                     <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
-                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-amber-100 text-amber-700">T</span> Tarde
+                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-amber-100/70 text-amber-900 border border-amber-200/60 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700/60">T</span> Tarde
                                                     </span>
                                                     <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
-                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-red-100 text-red-700">F</span> Falta
+                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-rose-100/70 text-rose-800 border border-rose-200/60 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60">F</span> Falta</span>
+                                                    <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
+                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-sky-100/70 text-sky-900 border border-sky-200/60 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-700/60">R</span> Retiro
                                                     </span>
                                                     <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
-                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-blue-100 text-blue-700">E</span> Excusa
+                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-indigo-100/70 text-indigo-800 border border-indigo-200/60 dark:bg-indigo-950/60 dark:text-indigo-200 dark:border-indigo-700/60">E</span> Excusa
                                                     </span>
 
                                                     {/* Quick selection day filters */}
@@ -4574,11 +4569,11 @@ const handleOpenAnalytics = async () => {
                                                                             <td className={`sm:sticky sm:right-0 z-10 px-3 py-2 text-center border-l border-border/40 border-b transition-colors ${
                                                                                 i % 2 === 0 ? "bg-background" : "bg-neutral-50 dark:bg-zinc-900"
                                                                             } group-hover/row:bg-muted`}>
-                                                                                <span className="font-black text-red-600">{absences}</span>
+                                                                                <span className="font-black text-rose-700 dark:text-rose-400">{absences}</span>
                                                                                 <span className="text-muted-foreground mx-1">/</span>
-                                                                                <span className="font-black text-amber-600">{lates}</span>
+                                                                                <span className="font-black text-amber-700 dark:text-amber-400">{lates}</span>
                                                                                 <span className="text-muted-foreground mx-1">/</span>
-                                                                                <span className="font-black text-blue-600">{leaves}</span>
+                                                                                <span className="font-black text-sky-700 dark:text-sky-400">{leaves}</span>
                                                                             </td>
                                                                         </tr>
                                                                     );
@@ -5034,7 +5029,7 @@ const handleOpenAnalytics = async () => {
                                                                             <Button
                                                                                 variant="ghost"
                                                                                 size="icon"
-                                                                                className="w-7 h-7 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-all opacity-0 group-hover/remark:opacity-100 cursor-pointer shrink-0"
+                                                                                className="w-7 h-7 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-all opacity-100 sm:opacity-0 sm:group-hover/remark:opacity-100 cursor-pointer shrink-0"
                                                                                 onClick={() => handleDeleteRemark(rem.id)}
                                                                                 title="Retirar observación"
                                                                             >
@@ -6437,12 +6432,12 @@ const handleOpenAnalytics = async () => {
                                              {rec && (
                                                  <Badge className={`text-xs font-black px-4 py-1.5 shadow-sm ${
                                                      isAbsent 
-                                                         ? 'bg-red-500 hover:bg-red-600 text-white' 
+                                                         ? 'bg-rose-100 hover:bg-rose-200/80 text-rose-800 border border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60' 
                                                          : isLate 
-                                                             ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                                             ? 'bg-amber-100 hover:bg-amber-200/80 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700/60'
                                                              : isLeaveEarly
-                                                                 ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                                                                 : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                                 ? 'bg-sky-100 hover:bg-sky-200/80 text-sky-900 border border-sky-300 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-700/60'
+                                                                 : 'bg-emerald-100 hover:bg-emerald-200/80 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60'
                                                  }`}>
                                                      {isAbsent ? 'Falta Marcada' : isLate ? 'Llegada Tarde Marcada' : isLeaveEarly ? 'Retiro Temprano Marcado' : 'Presente Marcado'}
                                                  </Badge>
@@ -6453,17 +6448,17 @@ const handleOpenAnalytics = async () => {
                                          <div className="mt-6 p-4 rounded-2xl bg-muted/30 border border-border/60 w-full max-w-sm flex justify-around shrink-0">
                                              <div className="text-center">
                                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Inasistencias</p>
-                                                 <p className="text-3xl font-black text-red-600 dark:text-red-400">{absentCount}</p>
+                                                 <p className="text-3xl font-black text-rose-700 dark:text-rose-300">{absentCount}</p>
                                              </div>
                                              <div className="w-px bg-border/60" />
                                              <div className="text-center">
                                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Retrasos</p>
-                                                 <p className="text-3xl font-black text-amber-600 dark:text-amber-400">{lateCount}</p>
+                                                 <p className="text-3xl font-black text-amber-800 dark:text-amber-300">{lateCount}</p>
                                              </div>
                                              <div className="w-px bg-border/60" />
                                              <div className="text-center">
                                                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Retiros</p>
-                                                 <p className="text-3xl font-black text-blue-600 dark:text-blue-400">{leaveCount}</p>
+                                                 <p className="text-3xl font-black text-sky-800 dark:text-sky-300">{leaveCount}</p>
                                              </div>
                                          </div>
 
@@ -6511,12 +6506,12 @@ const handleOpenAnalytics = async () => {
                                                     initial={{ opacity: 0, y: 10 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, y: 10 }}
-                                                    className="mt-6 w-full max-w-xs shrink-0 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex flex-col items-center gap-2"
+                                                    className="mt-6 w-full max-w-xs shrink-0 bg-sky-500/10 border border-sky-500/20 rounded-xl p-3 flex flex-col items-center gap-2"
                                                 >
-                                                    <Label className="text-xs font-bold text-blue-700 dark:text-blue-400">HORA DE RETIRO</Label>
+                                                    <Label className="text-xs font-bold text-sky-800 dark:text-sky-300">HORA DE RETIRO</Label>
                                                     <select 
                                                         disabled={isSavingAtt}
-                                                        className="h-10 w-40 rounded-lg border border-blue-300 dark:border-blue-900 bg-background text-base font-bold text-center text-blue-900 dark:text-blue-200 px-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                                        className="h-10 w-40 rounded-lg border border-sky-300 dark:border-sky-800 bg-background text-base font-bold text-center text-sky-900 dark:text-sky-200 px-2 outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
                                                         value={rec?.departureTime || ""}
                                                         onChange={e => updateLeaveTime(currentStudent.id, e.target.value)} 
                                                     >
@@ -6536,7 +6531,7 @@ const handleOpenAnalytics = async () => {
                                                             rec.departureTime
                                                         );
                                                         return (
-                                                            <p className="text-[11px] text-blue-600 dark:text-blue-400 font-bold">
+                                                            <p className="text-[11px] text-sky-700 dark:text-sky-300 font-bold">
                                                                 Horas perdidas: {lost.leaveLostHours.toFixed(1)} hs
                                                             </p>
                                                         );
@@ -6555,8 +6550,8 @@ const handleOpenAnalytics = async () => {
                                                  disabled={isSavingAtt}
                                                  className={`flex-1 h-20 rounded-2xl font-black text-lg transition-all border-2 ${
                                                      isAbsent 
-                                                         ? 'bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-md' 
-                                                         : 'border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20'
+                                                         ? 'bg-rose-100 hover:bg-rose-200/90 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60 shadow-sm ring-2 ring-rose-400/30' 
+                                                         : 'border-rose-200/80 text-rose-700 dark:text-rose-300 hover:bg-rose-50/70 dark:border-rose-800/40 dark:hover:bg-rose-950/30'
                                                  }`}
                                                  onClick={() => { 
                                                      setStudentAttendance(currentStudent.id, isAbsent ? "UNMARKED" : "ABSENT"); 
@@ -6571,10 +6566,10 @@ const handleOpenAnalytics = async () => {
                                              <Button 
                                                  size="lg" 
                                                  disabled={isSavingAtt}
-                                                 className={`flex-1 h-20 rounded-2xl font-black text-lg text-white shadow-md flex items-center justify-center gap-2 transition-all ${
+                                                 className={`flex-1 h-20 rounded-2xl font-black text-lg shadow-sm flex items-center justify-center gap-2 transition-all border-2 ${
                                                      isPresent 
-                                                         ? 'bg-emerald-700 hover:bg-emerald-800' 
-                                                         : 'bg-emerald-600 hover:bg-emerald-700'
+                                                         ? 'bg-emerald-200 hover:bg-emerald-300/80 text-emerald-900 border-emerald-400 dark:bg-emerald-900/60 dark:text-emerald-100 dark:border-emerald-600 ring-2 ring-emerald-400/30' 
+                                                         : 'bg-emerald-100 hover:bg-emerald-200/80 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60'
                                                  }`}
                                                  onClick={() => { 
                                                      setStudentAttendance(currentStudent.id, "PRESENT"); 

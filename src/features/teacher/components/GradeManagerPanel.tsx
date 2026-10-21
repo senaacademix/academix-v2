@@ -563,7 +563,7 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
           No hay actividades creadas en esta materia.
         </div>
       ) : (
-        <Card className="w-full min-w-0 border border-border/70 shadow-2xs rounded-2xl overflow-hidden bg-card">
+        <Card className="w-full min-w-0 border border-border/70 shadow-2xs rounded-2xl overflow-hidden bg-card p-0 gap-0">
           <div className="w-full overflow-x-auto">
             <Table className="min-w-[800px]">
               <TableHeader className="bg-muted/50 backdrop-blur-md sticky top-0 z-30">

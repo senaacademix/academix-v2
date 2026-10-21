@@ -243,13 +243,13 @@ export const SofiaCorporatePdfDocument: React.FC<{
     // Separate student rows from header and footers
     const apprenticeRows = rows.filter((row, idx) => {
         if (idx < headerRowCount) return false;
-        const val = String(row[0]?.value || "");
+        const val = String(row[0]?.value || "").toUpperCase();
         return !val.includes("RESULTADOS DE APRENDIZAJE") && !val.includes("COMPETENCIAS");
     });
 
     // Outcomes row
     const bottomResultsRow = rows.find((r) =>
-        String(r[0]?.value || "").includes("RESULTADOS DE APRENDIZAJE")
+        String(r[0]?.value || "").toUpperCase().includes("RESULTADOS DE APRENDIZAJE")
     );
     const outcomesList = bottomResultsRow ? bottomResultsRow.slice(6).map((c) => String(c.value)) : [];
 

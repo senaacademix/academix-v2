@@ -28,12 +28,15 @@ import {
     Check,
     X,
     Clock3,
-    CalendarRange
+    CalendarRange,
+    Maximize2,
+    Minimize2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatName, cn } from "@/lib/utils";
@@ -112,6 +115,60 @@ export function GroupScheduleAttendanceView({
     // Filtros de búsqueda
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "WITH_ABSENCES" | "WITH_LATES" | "PERFECT">("ALL");
+
+    // Encabezado compacto (solo días abreviados con tooltip de shadcn)
+    const [compactHeaders, setCompactHeaders] = useState<boolean>(() => {
+        if (typeof window !== "undefined") {
+            try {
+                return localStorage.getItem("attendance_compact_headers") === "true";
+            } catch {
+                return false;
+            }
+        }
+        return false;
+    });
+
+    // Pantalla completa
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const fullscreenContainerRef = React.useRef<HTMLDivElement>(null);
+
+    const toggleFullscreen = useCallback(() => {
+        if (!document.fullscreenElement) {
+            if (fullscreenContainerRef.current?.requestFullscreen) {
+                fullscreenContainerRef.current.requestFullscreen().catch(() => {
+                    setIsFullscreen(true);
+                });
+            } else {
+                setIsFullscreen(true);
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+            }
+            setIsFullscreen(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleFsChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener("fullscreenchange", handleFsChange);
+        return () => document.removeEventListener("fullscreenchange", handleFsChange);
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape" && isFullscreen) {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(() => {});
+                }
+                setIsFullscreen(false);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isFullscreen]);
 
     // =========================================================================
     // 1. PETICIÓN A LA BASE DE DATOS (SOLO AL ABRIR ESTA PESTAÑA)
@@ -923,140 +980,15 @@ export function GroupScheduleAttendanceView({
 
     return (
         <TooltipProvider>
-            <div className="w-full space-y-5 animate-in fade-in-50 duration-200">
-                
-                {/* ── HERO BANNER: TÍTULO Y CONTROL GENERAL ── */}
-                <div className="bg-gradient-to-br from-primary/10 via-background to-primary/5 border border-primary/20 rounded-3xl p-5 sm:p-6 relative overflow-hidden shadow-xs">
-                    <CalendarDays className="absolute right-0 top-0 w-64 h-64 text-primary/5 -translate-y-1/4 translate-x-1/4 pointer-events-none" />
-                    
-                    <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <div className="space-y-1.5 max-w-2xl">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="outline" className="text-xs font-black py-0.5 px-2.5 bg-primary/15 text-primary border-primary/30 rounded-xl">
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    Malla Semanal &amp; Mensual
-                                </Badge>
-                                <span className="text-xs font-bold text-muted-foreground">
-                                    Ficha Activa: <strong className="text-foreground">{groupData.group.name}</strong>
-                                </span>
-                            </div>
-                            <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                                {viewMode === "week" ? "Sábana Semanal de Asistencia" : "Sábana Mensual de Asistencia"}
-                            </h2>
-                            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                                Supervisa el registro de asistencia de todos los aprendices para cada día de la semana o mes completo y con todos los instructores a cargo, organizado por períodos de horario.
-                            </p>
-                        </div>
-
-                        {/* Controles de Acción Rápida */}
-                        <div className="flex flex-wrap items-center gap-2 shrink-0">
-                            {/* ALTERNADOR DE VISTA: SEMANA / MES */}
-                            <div className="flex items-center gap-1 bg-background/90 dark:bg-card/90 p-1 rounded-2xl border border-border/80 shadow-2xs">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={viewMode === "week" ? "default" : "ghost"}
-                                    onClick={() => setViewMode("week")}
-                                    className={cn(
-                                        "h-8 px-3 text-xs font-black rounded-xl transition-all gap-1.5",
-                                        viewMode === "week"
-                                            ? "bg-primary text-primary-foreground shadow-xs"
-                                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                    )}
-                                >
-                                    <Calendar className="w-3.5 h-3.5" />
-                                    <span>Semana</span>
-                                </Button>
-
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={viewMode === "month" ? "default" : "ghost"}
-                                    onClick={() => setViewMode("month")}
-                                    className={cn(
-                                        "h-8 px-3 text-xs font-black rounded-xl transition-all gap-1.5",
-                                        viewMode === "month"
-                                            ? "bg-primary text-primary-foreground shadow-xs"
-                                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                    )}
-                                >
-                                    <CalendarRange className="w-3.5 h-3.5" />
-                                    <span>Mes</span>
-                                </Button>
-                            </div>
-
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleRefresh}
-                                disabled={isLoading}
-                                className="h-9 px-3 rounded-xl border-border bg-background/80 hover:bg-muted text-xs font-bold gap-1.5 shadow-2xs"
-                                title="Actualizar datos desde la base de datos"
-                            >
-                                <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin text-primary")} />
-                                <span>{isLoading ? "Consultando..." : "Actualizar"}</span>
-                            </Button>
-
-                            <Button
-                                type="button"
-                                variant="default"
-                                size="sm"
-                                onClick={handleExportExcel}
-                                className="h-9 px-3.5 rounded-xl text-xs font-black gap-2 shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
-                            >
-                                <FileSpreadsheet className="w-4 h-4" />
-                                <span>Exportar {viewMode === "month" ? "Mes" : "Semana"}</span>
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Resumen de Métricas del Período Activo */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5 pt-4 border-t border-border/60">
-                        <div className="bg-background/80 dark:bg-card/80 p-2.5 px-3 rounded-2xl border border-border/70 backdrop-blur-sm">
-                            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider block">
-                                Aprendices
-                            </span>
-                            <span className="text-base sm:text-lg font-black text-foreground">
-                                {groupData.students.length}
-                            </span>
-                        </div>
-
-                        <div className="bg-background/80 dark:bg-card/80 p-2.5 px-3 rounded-2xl border border-border/70 backdrop-blur-sm">
-                            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider block">
-                                Instructores en {viewMode === "month" ? "el Mes" : "la Semana"}
-                            </span>
-                            <span className="text-base sm:text-lg font-black text-primary">
-                                {globalStats.instructorsCount}
-                            </span>
-                        </div>
-
-                        <div className="bg-background/80 dark:bg-card/80 p-2.5 px-3 rounded-2xl border border-border/70 backdrop-blur-sm">
-                            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider block">
-                                Asistencia Promedio
-                            </span>
-                            <span className={cn(
-                                "text-base sm:text-lg font-black",
-                                globalStats.avgAttendance >= 85 ? "text-emerald-600 dark:text-emerald-400" :
-                                globalStats.avgAttendance >= 70 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"
-                            )}>
-                                {globalStats.avgAttendance}%
-                            </span>
-                        </div>
-
-                        <div className="bg-background/80 dark:bg-card/80 p-2.5 px-3 rounded-2xl border border-border/70 backdrop-blur-sm">
-                            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider block">
-                                Inasistencias Totales
-                            </span>
-                            <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">
-                                {globalStats.totalAbsences}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* ── AGRUPACIÓN POR HORARIO ACTUAL Y HORARIOS ANTERIORES ── */}
-                <div className="bg-card border border-border/80 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div 
+                ref={fullscreenContainerRef}
+                className={cn(
+                    "w-full space-y-5 animate-in fade-in-50 duration-200 transition-all",
+                    isFullscreen && "fixed inset-0 z-50 bg-background text-foreground p-4 sm:p-6 overflow-y-auto h-screen w-screen m-0"
+                )}
+            >
+                {/* ── AGRUPACIÓN POR HORARIO ACTUAL Y CONTROLES DE VISTA / EXPORTACIÓN ── */}
+                <div className="bg-card border border-border/80 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-black uppercase text-muted-foreground flex items-center gap-1.5 mr-1">
                             <Layers className="w-3.5 h-3.5 text-primary" />
@@ -1123,18 +1055,111 @@ export function GroupScheduleAttendanceView({
                                 )}
                             </div>
                         )}
+
+                        {/* Rango de Fechas del Horario Seleccionado */}
+                        {activeSchedule && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1.5 shrink-0 bg-muted/40 px-3 py-1.5 rounded-xl border border-border/60">
+                                <Clock className="w-3.5 h-3.5 text-primary" />
+                                <span>Vigencia:</span>
+                                <strong className="text-foreground">
+                                    {formatCalendarDate(activeSchedule.startDate, "d MMM yyyy")} al {formatCalendarDate(activeSchedule.endDate, "d MMM yyyy")}
+                                </strong>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Rango de Fechas del Horario Seleccionado */}
-                    {activeSchedule && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-1.5 shrink-0 bg-muted/40 px-3 py-1.5 rounded-xl border border-border/60">
-                            <Clock className="w-3.5 h-3.5 text-primary" />
-                            <span>Vigencia:</span>
-                            <strong className="text-foreground">
-                                {formatCalendarDate(activeSchedule.startDate, "d MMM yyyy")} al {formatCalendarDate(activeSchedule.endDate, "d MMM yyyy")}
-                            </strong>
+                    {/* Controles de Acción Rápida (Semana/Mes, Actualizar, Exportar) */}
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-start sm:justify-end">
+                        {/* ALTERNADOR DE VISTA: SEMANA / MES */}
+                        <div className="flex items-center gap-1 bg-background/90 dark:bg-card/90 p-1 rounded-2xl border border-border/80 shadow-2xs">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={viewMode === "week" ? "default" : "ghost"}
+                                onClick={() => setViewMode("week")}
+                                className={cn(
+                                    "h-8 px-3 text-xs font-black rounded-xl transition-all gap-1.5",
+                                    viewMode === "week"
+                                        ? "bg-primary text-primary-foreground shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                )}
+                            >
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>Semana</span>
+                            </Button>
+
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={viewMode === "month" ? "default" : "ghost"}
+                                onClick={() => setViewMode("month")}
+                                className={cn(
+                                    "h-8 px-3 text-xs font-black rounded-xl transition-all gap-1.5",
+                                    viewMode === "month"
+                                        ? "bg-primary text-primary-foreground shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                )}
+                            >
+                                <CalendarRange className="w-3.5 h-3.5" />
+                                <span>Mes</span>
+                            </Button>
                         </div>
-                    )}
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRefresh}
+                            disabled={isLoading}
+                            className="h-8 px-3 rounded-xl border-border bg-background/80 hover:bg-muted text-xs font-bold gap-1.5 shadow-2xs cursor-pointer"
+                            title="Actualizar datos desde la base de datos"
+                        >
+                            <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin text-primary")} />
+                            <span>{isLoading ? "Consultando..." : "Actualizar"}</span>
+                        </Button>
+
+                        <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            onClick={handleExportExcel}
+                            className="h-8 px-3.5 rounded-xl text-xs font-black gap-2 shadow-xs bg-emerald-100 hover:bg-emerald-200/90 text-emerald-900 border border-emerald-300/80 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60 cursor-pointer transition-all"
+                        >
+                            <FileSpreadsheet className="w-4 h-4" />
+                            <span>Exportar {viewMode === "month" ? "Mes" : "Semana"}</span>
+                        </Button>
+
+                        {/* Botón de Pantalla Completa */}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={toggleFullscreen}
+                                    className={cn(
+                                        "h-8 px-3 rounded-xl border-border bg-background/80 hover:bg-muted text-xs font-bold gap-1.5 shadow-2xs cursor-pointer transition-all",
+                                        isFullscreen && "bg-primary text-primary-foreground hover:bg-primary/90 border-primary shadow-xs"
+                                    )}
+                                >
+                                    {isFullscreen ? (
+                                        <>
+                                            <Minimize2 className="w-3.5 h-3.5" />
+                                            <span>Restaurar</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Maximize2 className="w-3.5 h-3.5 text-primary" />
+                                            <span>Pantalla Completa</span>
+                                        </>
+                                    )}
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs">
+                                {isFullscreen ? "Salir de pantalla completa (Esc)" : "Ampliar vista de asistencia a pantalla completa"}
+                            </TooltipContent>
+                        </Tooltip>
+                    </div>
                 </div>
 
                 {/* ── BARRA DE NAVEGACIÓN TEMPORAL (SEMANAL O MENSUAL) ── */}
@@ -1269,8 +1294,8 @@ export function GroupScheduleAttendanceView({
                         </div>
                     )}
 
-                    {/* Barra de Búsqueda y Filtro de Estado */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+                    {/* Barra de Búsqueda, Filtro de Estado y Switch de Encabezado Compacto */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto flex-wrap">
                         <div className="relative w-full sm:w-56">
                             <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             <Input
@@ -1297,11 +1322,33 @@ export function GroupScheduleAttendanceView({
                                 <SelectItem value="PERFECT" className="text-xs">100% Asistencia</SelectItem>
                             </SelectContent>
                         </Select>
+
+                        {/* Switch para Encabezado Compacto (Días abreviados) */}
+                        <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-xl border border-border/80 shadow-2xs h-8 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+                            <Switch
+                                id="compact-headers-switch"
+                                checked={compactHeaders}
+                                onCheckedChange={(checked) => {
+                                    setCompactHeaders(checked);
+                                    try {
+                                        localStorage.setItem("attendance_compact_headers", String(checked));
+                                    } catch {}
+                                }}
+                                className="scale-75 cursor-pointer data-[state=checked]:bg-primary"
+                            />
+                            <label
+                                htmlFor="compact-headers-switch"
+                                className="text-[11px] font-bold text-muted-foreground cursor-pointer select-none whitespace-nowrap"
+                                title="Oculta materias e instructores de la cabecera y deja solo los nombres de los días abreviados con tooltip"
+                            >
+                                Días abreviados
+                            </label>
+                        </div>
                     </div>
                 </div>
 
                 {/* ── TABLA PRINCIPAL: SÁBANA MULTIGRUPO (SEMANAL O MENSUAL) ── */}
-                <Card className="border border-border/80 shadow-md rounded-3xl overflow-hidden bg-card">
+                <Card className="border border-border/80 shadow-md rounded-3xl overflow-hidden bg-card p-0 gap-0">
                     {/* Indicador de ayuda táctil en móviles */}
                     <div className="md:hidden px-3.5 py-2 bg-primary/5 border-b border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1 font-medium text-foreground">
@@ -1318,143 +1365,257 @@ export function GroupScheduleAttendanceView({
                         <div className="overflow-x-auto w-full max-w-full touch-pan-x scrollbar-thin">
                             <table className="w-full border-collapse text-left text-xs">
                                 <thead>
-                                    {/* Fila 1: Encabezados superiores */}
-                                    <tr className="bg-muted border-b border-border/80">
-                                        <th 
-                                            rowSpan={2} 
-                                            className="p-2 sm:p-3 text-left font-black text-muted-foreground uppercase text-[11px] border-r border-border/60 min-w-[160px] md:min-w-[220px] bg-muted md:sticky md:left-0 md:z-20 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="w-5 sm:w-6 text-center font-mono text-[10px] text-muted-foreground/80 shrink-0">#</span>
-                                                <span className="font-black text-foreground">Aprendiz</span>
-                                            </div>
-                                        </th>
-
-                                        {/* Columnas de sesiones (semanales o mensuales) */}
-                                        {viewMode === "week" ? (
-                                            currentWeek?.days.map(day => {
-                                                const daySessions = weekClassesByDay.get(day.dayOfWeekKey) || [];
-                                                const colSpan = Math.max(1, daySessions.length);
-
-                                                return (
-                                                    <th
-                                                        key={day.dayOfWeekKey}
-                                                        colSpan={colSpan}
-                                                        className={cn(
-                                                            "p-2 text-center font-black text-xs border-r border-border/60 uppercase tracking-wide",
-                                                            day.dateStr === getTodayColombianDate()
-                                                                ? "bg-primary/15 text-primary border-primary/30"
-                                                                : "text-foreground"
-                                                        )}
-                                                    >
-                                                        <div className="flex items-center justify-center gap-1.5">
-                                                            <span>{day.dayName}</span>
-                                                            <span className="font-mono text-[11px] font-bold text-muted-foreground">
-                                                                {day.formattedDate}
-                                                            </span>
-                                                            {day.dateStr === getTodayColombianDate() && (
-                                                                <span className="inline-block w-2 h-2 rounded-full bg-primary animate-ping" />
-                                                            )}
-                                                        </div>
-                                                    </th>
-                                                );
-                                            })
-                                        ) : (
-                                            /* MODO MES: encabezado agrupador */
-                                            <th
-                                                colSpan={Math.max(1, allMonthSessions.length)}
-                                                className="p-2.5 text-center font-black text-xs border-r border-border/60 uppercase tracking-wide bg-primary/10 text-primary"
+                                    {compactHeaders ? (
+                                        /* ── MODO COMPACTO: SOLO DÍAS ABREVIADOS CON TOOLTIP DE SHADCN ── */
+                                        <tr className="bg-muted border-b border-border/80">
+                                            <th 
+                                                className="p-2 sm:p-2.5 text-left font-black text-muted-foreground uppercase text-[11px] border-r border-border/60 min-w-[160px] md:min-w-[220px] bg-muted md:sticky md:left-0 md:z-20 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"
                                             >
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <CalendarRange className="w-4 h-4 text-primary" />
-                                                    <span>CLASES Y SESIONES DEL MES: {selectedMonth?.label}</span>
-                                                    <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/20 text-primary font-mono">
-                                                        {allMonthSessions.length} Sesiones
-                                                    </Badge>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-5 sm:w-6 text-center font-mono text-[10px] text-muted-foreground/80 shrink-0">#</span>
+                                                    <span className="font-black text-foreground">Aprendiz</span>
                                                 </div>
                                             </th>
-                                        )}
 
-                                        {/* Columnas de Resumen */}
-                                        <th 
-                                            rowSpan={2} 
-                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
-                                        >
-                                            Asist.
-                                        </th>
-                                        <th 
-                                            rowSpan={2} 
-                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
-                                        >
-                                            Fallas
-                                        </th>
-                                        <th 
-                                            rowSpan={2} 
-                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
-                                        >
-                                            Tardes
-                                        </th>
-                                        <th 
-                                            rowSpan={2} 
-                                            className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-20 bg-muted/60"
-                                        >
-                                            % Cumpl.
-                                        </th>
-                                    </tr>
+                                            {activeSessions.length === 0 ? (
+                                                <th className="p-3 text-center text-muted-foreground italic font-normal">
+                                                    No hay sesiones programadas en este período.
+                                                </th>
+                                            ) : (
+                                                activeSessions.map((session, sIdx) => {
+                                                    const isEmpty = session.courseId.startsWith("empty-");
+                                                    const isToday = session.dayMeta.dateStr === getTodayColombianDate();
+                                                    const dayShort = session.dayMeta.shortDay || DAY_LABELS[session.dayOfWeekKey]?.short || "";
+                                                    const dateFormatted = session.dayMeta.formattedDate || "";
 
-                                    {/* Fila 2: Materias e Instructores de cada sesión */}
-                                    <tr className="bg-muted/80 border-b border-border/80">
-                                        {activeSessions.length === 0 ? (
-                                            <th className="p-3 text-center text-muted-foreground italic font-normal">
-                                                No hay sesiones programadas en este período.
+                                                    return (
+                                                        <th
+                                                            key={`compact_${session.dayOfWeekKey}_${session.dateStr}_${sIdx}`}
+                                                            className={cn(
+                                                                "p-1.5 sm:p-2 text-center border-r border-border/60 align-middle min-w-[65px] sm:min-w-[85px] transition-colors select-none",
+                                                                isToday ? "bg-primary/15 text-primary border-primary/30" : "bg-muted hover:bg-muted/80 text-foreground"
+                                                            )}
+                                                        >
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className="flex flex-col items-center justify-center cursor-pointer group py-0.5">
+                                                                        <div className="flex items-center justify-center gap-1">
+                                                                            <span className={cn(
+                                                                                "font-black text-xs uppercase tracking-tight",
+                                                                                isToday ? "text-primary font-black" : "text-foreground group-hover:text-primary transition-colors"
+                                                                            )}>
+                                                                                {dayShort}
+                                                                            </span>
+                                                                            {isToday && (
+                                                                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                                                                            )}
+                                                                        </div>
+                                                                        <span className={cn(
+                                                                            "font-mono text-[10px] font-bold leading-none mt-0.5",
+                                                                            isToday ? "text-primary/90" : "text-muted-foreground"
+                                                                        )}>
+                                                                            {dateFormatted}
+                                                                        </span>
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="top" className="p-3 max-w-xs space-y-2 bg-popover text-popover-foreground border border-border shadow-xl rounded-xl z-50 text-left">
+                                                                    <div className="font-extrabold text-xs text-foreground flex items-center gap-1.5 border-b border-border/60 pb-1.5">
+                                                                        <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                                        <span>{session.dayMeta.dayName || dayShort}, {dateFormatted}</span>
+                                                                        {isToday && (
+                                                                            <Badge variant="secondary" className="text-[9px] py-0 px-1.5 bg-primary/20 text-primary ml-auto font-bold">
+                                                                                Hoy
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    {isEmpty ? (
+                                                                        <div className="text-xs text-muted-foreground italic py-1">
+                                                                            Sin sesiones programadas este día.
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="space-y-1.5 text-xs">
+                                                                            <div className="font-bold text-foreground flex items-start gap-1.5">
+                                                                                <BookOpen className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                                                                                <span className="leading-snug">{session.courseTitle}</span>
+                                                                            </div>
+                                                                            <div className="text-muted-foreground flex items-center gap-1.5">
+                                                                                <GraduationCap className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                                                                <span>Instructor: <strong className="text-foreground">{session.teacherName}</strong></span>
+                                                                            </div>
+                                                                            <div className="text-muted-foreground flex items-center gap-1.5 font-mono text-[11px]">
+                                                                                <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                                                                <span>{session.startTime} - {session.endTime}</span>
+                                                                            </div>
+                                                                            {session.environmentName && (
+                                                                                <div className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+                                                                                    <Building className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                                                                    <span>Ambiente: <strong className="text-foreground">{session.environmentName}</strong></span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </th>
+                                                    );
+                                                })
+                                            )}
+
+                                            {/* Columnas de Resumen */}
+                                            <th className="p-1.5 sm:p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60">
+                                                Asist.
                                             </th>
-                                        ) : (
-                                            activeSessions.map((session, sIdx) => {
-                                                const isEmpty = session.courseId.startsWith("empty-");
+                                            <th className="p-1.5 sm:p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60">
+                                                Fallas
+                                            </th>
+                                            <th className="p-1.5 sm:p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60">
+                                                Tardes
+                                            </th>
+                                            <th className="p-1.5 sm:p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-20 bg-muted/60">
+                                                % Cumpl.
+                                            </th>
+                                        </tr>
+                                    ) : (
+                                        /* ── MODO COMPLETO: 2 FILAS CON DÍAS Y MATERIAS DETALLADAS ── */
+                                        <>
+                                            <tr className="bg-muted border-b border-border/80">
+                                                <th 
+                                                    rowSpan={2} 
+                                                    className="p-2 sm:p-3 text-left font-black text-muted-foreground uppercase text-[11px] border-r border-border/60 min-w-[160px] md:min-w-[220px] bg-muted md:sticky md:left-0 md:z-20 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-5 sm:w-6 text-center font-mono text-[10px] text-muted-foreground/80 shrink-0">#</span>
+                                                        <span className="font-black text-foreground">Aprendiz</span>
+                                                    </div>
+                                                </th>
 
-                                                return (
+                                                {/* Columnas de sesiones (semanales o mensuales) */}
+                                                {viewMode === "week" ? (
+                                                    currentWeek?.days.map(day => {
+                                                        const daySessions = weekClassesByDay.get(day.dayOfWeekKey) || [];
+                                                        const colSpan = Math.max(1, daySessions.length);
+
+                                                        return (
+                                                            <th
+                                                                key={day.dayOfWeekKey}
+                                                                colSpan={colSpan}
+                                                                className={cn(
+                                                                    "p-2 text-center font-black text-xs border-r border-border/60 uppercase tracking-wide",
+                                                                    day.dateStr === getTodayColombianDate()
+                                                                        ? "bg-primary/15 text-primary border-primary/30"
+                                                                        : "text-foreground"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center justify-center gap-1.5">
+                                                                    <span>{day.dayName}</span>
+                                                                    <span className="font-mono text-[11px] font-bold text-muted-foreground">
+                                                                        {day.formattedDate}
+                                                                    </span>
+                                                                    {day.dateStr === getTodayColombianDate() && (
+                                                                        <span className="inline-block w-2 h-2 rounded-full bg-primary animate-ping" />
+                                                                    )}
+                                                                </div>
+                                                            </th>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    /* MODO MES: encabezado agrupador */
                                                     <th
-                                                        key={`${session.dayOfWeekKey}_${session.dateStr}_${sIdx}`}
-                                                        className={cn(
-                                                            "p-2 sm:p-2.5 border-r border-border/60 text-center align-top min-w-[150px] sm:min-w-[185px]",
-                                                            session.dayMeta.dateStr === getTodayColombianDate() && "bg-primary/5"
-                                                        )}
+                                                        colSpan={Math.max(1, allMonthSessions.length)}
+                                                        className="p-2.5 text-center font-black text-xs border-r border-border/60 uppercase tracking-wide bg-primary/10 text-primary"
                                                     >
-                                                        {isEmpty ? (
-                                                            <span className="text-[11px] font-semibold text-muted-foreground/60 italic">
-                                                                Sin sesiones
-                                                            </span>
-                                                        ) : (
-                                                            <div className="space-y-1">
-                                                                {/* En vista mensual, destacar el día y la fecha de cada columna */}
-                                                                {viewMode === "month" && (
-                                                                    <div className="text-[10px] font-black uppercase text-primary/80 flex items-center justify-center gap-1 border-b border-border/50 pb-1">
-                                                                        <span>{session.dayMeta.shortDay}</span>
-                                                                        <span>{session.dayMeta.formattedDate}</span>
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <CalendarRange className="w-4 h-4 text-primary" />
+                                                            <span>CLASES Y SESIONES DEL MES: {selectedMonth?.label}</span>
+                                                            <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/20 text-primary font-mono">
+                                                                {allMonthSessions.length} Sesiones
+                                                            </Badge>
+                                                        </div>
+                                                    </th>
+                                                )}
+
+                                                {/* Columnas de Resumen */}
+                                                <th 
+                                                    rowSpan={2} 
+                                                    className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
+                                                >
+                                                    Asist.
+                                                </th>
+                                                <th 
+                                                    rowSpan={2} 
+                                                    className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
+                                                >
+                                                    Fallas
+                                                </th>
+                                                <th 
+                                                    rowSpan={2} 
+                                                    className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-16 bg-muted/60"
+                                                >
+                                                    Tardes
+                                                </th>
+                                                <th 
+                                                    rowSpan={2} 
+                                                    className="p-2 text-center font-black text-muted-foreground uppercase text-[11px] border-l border-border/60 w-20 bg-muted/60"
+                                                >
+                                                    % Cumpl.
+                                                </th>
+                                            </tr>
+
+                                            {/* Fila 2: Materias e Instructores de cada sesión */}
+                                            <tr className="bg-muted/80 border-b border-border/80">
+                                                {activeSessions.length === 0 ? (
+                                                    <th className="p-3 text-center text-muted-foreground italic font-normal">
+                                                        No hay sesiones programadas en este período.
+                                                    </th>
+                                                ) : (
+                                                    activeSessions.map((session, sIdx) => {
+                                                        const isEmpty = session.courseId.startsWith("empty-");
+
+                                                        return (
+                                                            <th
+                                                                key={`${session.dayOfWeekKey}_${session.dateStr}_${sIdx}`}
+                                                                className={cn(
+                                                                    "p-2 sm:p-2.5 border-r border-border/60 text-center align-top min-w-[150px] sm:min-w-[185px]",
+                                                                    session.dayMeta.dateStr === getTodayColombianDate() && "bg-primary/5"
+                                                                )}
+                                                            >
+                                                                {isEmpty ? (
+                                                                    <span className="text-[11px] font-semibold text-muted-foreground/60 italic">
+                                                                        Sin sesiones
+                                                                    </span>
+                                                                ) : (
+                                                                    <div className="space-y-1">
+                                                                        {/* En vista mensual, destacar el día y la fecha de cada columna */}
+                                                                        {viewMode === "month" && (
+                                                                            <div className="text-[10px] font-black uppercase text-primary/80 flex items-center justify-center gap-1 border-b border-border/50 pb-1">
+                                                                                <span>{session.dayMeta.shortDay}</span>
+                                                                                <span>{session.dayMeta.formattedDate}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        <span 
+                                                                            className="font-bold text-foreground text-[11px] sm:text-xs line-clamp-2 block leading-snug"
+                                                                            title={session.courseTitle}
+                                                                        >
+                                                                            {session.courseTitle}
+                                                                        </span>
+                                                                        <div className="flex items-center justify-center gap-1 text-[10px] sm:text-[11px] text-primary font-semibold">
+                                                                            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                                                                            <span className="line-clamp-1 break-words" title={`Instructor: ${session.teacherName}`}>
+                                                                                {session.teacherName}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="text-[9px] sm:text-[10px] font-mono text-muted-foreground">
+                                                                            {session.startTime} - {session.endTime}
+                                                                        </div>
                                                                     </div>
                                                                 )}
-                                                                <span 
-                                                                    className="font-bold text-foreground text-[11px] sm:text-xs line-clamp-2 block leading-snug"
-                                                                    title={session.courseTitle}
-                                                                >
-                                                                    {session.courseTitle}
-                                                                </span>
-                                                                <div className="flex items-center justify-center gap-1 text-[10px] sm:text-[11px] text-primary font-semibold">
-                                                                    <GraduationCap className="w-3.5 h-3.5 shrink-0" />
-                                                                    <span className="line-clamp-1 break-words" title={`Instructor: ${session.teacherName}`}>
-                                                                        {session.teacherName}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="text-[9px] sm:text-[10px] font-mono text-muted-foreground">
-                                                                    {session.startTime} - {session.endTime}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </th>
-                                                );
-                                            })
-                                        )}
-                                    </tr>
+                                                            </th>
+                                                        );
+                                                    })
+                                                )}
+                                            </tr>
+                                        </>
+                                    )}
                                 </thead>
 
                                 <tbody className="divide-y divide-border/60">
@@ -1540,19 +1701,19 @@ export function GroupScheduleAttendanceView({
                                                 )}
 
                                                 {/* Estadísticas de la fila */}
-                                                <td className="p-2 text-center font-bold text-emerald-600 dark:text-emerald-400 border-l border-border/60 bg-muted/10">
+                                                <td className="p-2 text-center font-bold text-emerald-700 dark:text-emerald-300 border-l border-border/60 bg-muted/10 font-bold">
                                                     {st.stats.presentCount}
                                                 </td>
-                                                <td className="p-2 text-center font-bold text-rose-600 dark:text-rose-400 border-l border-border/60 bg-muted/10">
+                                                <td className="p-2 text-center font-bold text-rose-700 dark:text-rose-300 border-l border-border/60 bg-muted/10 font-bold">
                                                     {st.stats.absentCount > 0 ? (
-                                                        <span className="px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-700 dark:text-rose-300">
+                                                        <span className="px-1.5 py-0.5 rounded-md bg-rose-100/70 text-rose-800 border border-rose-200/60 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60">
                                                             {st.stats.absentCount}
                                                         </span>
                                                     ) : "0"}
                                                 </td>
-                                                <td className="p-2 text-center font-bold text-amber-600 dark:text-amber-400 border-l border-border/60 bg-muted/10">
+                                                <td className="p-2 text-center font-bold text-amber-800 dark:text-amber-300 border-l border-border/60 bg-muted/10 font-bold">
                                                     {st.stats.lateCount > 0 ? (
-                                                        <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                                                        <span className="px-1.5 py-0.5 rounded-md bg-amber-100/70 text-amber-900 border border-amber-200/60 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700/60">
                                                             {st.stats.lateCount}
                                                         </span>
                                                     ) : "0"}
@@ -1580,28 +1741,28 @@ export function GroupScheduleAttendanceView({
                     <div className="flex flex-wrap items-center gap-3">
                         <span className="font-extrabold text-foreground mr-1">Convenciones:</span>
                         <div className="flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-black flex items-center justify-center text-[10px]">
+                            <span className="w-5 h-5 rounded-md bg-emerald-100/70 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60 font-black flex items-center justify-center text-[10px]">
                                 P
                             </span>
                             <span className="text-muted-foreground">Presente</span>
                         </div>
 
                         <div className="flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-md bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-black flex items-center justify-center text-[10px]">
+                            <span className="w-5 h-5 rounded-md bg-rose-100/70 text-rose-800 border border-rose-200/60 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60 font-black flex items-center justify-center text-[10px]">
                                 A
                             </span>
                             <span className="text-muted-foreground">Falla</span>
                         </div>
 
                         <div className="flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-black flex items-center justify-center text-[10px]">
+                            <span className="w-5 h-5 rounded-md bg-amber-100/70 text-amber-900 border border-amber-200/60 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700/60 font-black flex items-center justify-center text-[10px]">
                                 R
                             </span>
                             <span className="text-muted-foreground">Retardo</span>
                         </div>
 
                         <div className="flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black flex items-center justify-center text-[10px]">
+                            <span className="w-5 h-5 rounded-md bg-sky-100/70 text-sky-900 border border-sky-200/60 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-700/60 font-black flex items-center justify-center text-[10px]">
                                 S
                             </span>
                             <span className="text-muted-foreground">Retiro Anticipado</span>
@@ -1664,7 +1825,7 @@ function AttendanceStatusCell({
         return (
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 shadow-2xs hover:scale-110 transition-transform cursor-pointer">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-black bg-emerald-100/70 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60 shadow-2xs hover:scale-110 transition-transform cursor-pointer">
                         P
                     </span>
                 </TooltipTrigger>
@@ -1690,8 +1851,8 @@ function AttendanceStatusCell({
                     <span className={cn(
                         "inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-black shadow-2xs hover:scale-110 transition-transform cursor-pointer",
                         hasJustification 
-                            ? "bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300"
-                            : "bg-rose-600 text-white dark:bg-rose-600"
+                            ? "bg-rose-100/70 text-rose-800 border border-rose-200/60 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60"
+                            : "bg-rose-100 hover:bg-rose-200/80 text-rose-800 border border-rose-300 dark:bg-rose-950/60 dark:text-rose-200 dark:border-rose-700/60 font-black ring-1 ring-rose-400/25"
                     )}>
                         {hasJustification ? "AJ" : "A"}
                     </span>
@@ -1719,7 +1880,7 @@ function AttendanceStatusCell({
         return (
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 shadow-2xs hover:scale-110 transition-transform cursor-pointer">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-black bg-amber-100/70 text-amber-900 border border-amber-200/60 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-700/60 shadow-2xs hover:scale-110 transition-transform cursor-pointer">
                         R
                     </span>
                 </TooltipTrigger>
@@ -1746,7 +1907,7 @@ function AttendanceStatusCell({
         return (
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 shadow-2xs hover:scale-110 transition-transform cursor-pointer">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-black bg-sky-100/70 text-sky-900 border border-sky-200/60 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-700/60 shadow-2xs hover:scale-110 transition-transform cursor-pointer">
                         S
                     </span>
                 </TooltipTrigger>

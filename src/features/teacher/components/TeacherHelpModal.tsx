@@ -110,7 +110,7 @@ const TEACHER_TABS_HELP_CONFIG: Record<TeacherTabKey, TabHelpConfig> = {
 
   "schedule-attendance": {
     key: "schedule-attendance",
-    tabLabel: "Asistencia Semanal",
+    tabLabel: "Asistencia General",
     title: "Sábana Semanal de Asistencia Multigrupo",
     badge: "Módulo: Malla Semanal",
     badgeColor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
