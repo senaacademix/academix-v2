@@ -1362,7 +1362,15 @@ export function GroupScheduleAttendanceView({
                     </div>
 
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto w-full max-w-full touch-pan-x scrollbar-thin">
+                        <div 
+                            className="overflow-x-auto overflow-y-hidden w-full max-w-full overscroll-x-contain overscroll-y-auto scrollbar-thin"
+                            style={{ 
+                                WebkitOverflowScrolling: "touch", 
+                                touchAction: "pan-x pan-y",
+                                overscrollBehaviorX: "contain",
+                                overscrollBehaviorY: "auto"
+                            }}
+                        >
                             <table className="w-full border-collapse text-left text-xs">
                                 <thead>
                                     {compactHeaders ? (

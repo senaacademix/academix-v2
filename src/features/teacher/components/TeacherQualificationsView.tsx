@@ -338,28 +338,32 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
         <div className="space-y-6">
             {/* Academic Schedule & Area Scope Selector */}
             {(!isAdminMode || qualPrograms.length > 1) && (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-card/80 backdrop-blur-md border border-border/80 rounded-2xl shadow-2xs">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 p-3.5 sm:p-4 bg-card/80 backdrop-blur-md border border-border/80 rounded-2xl shadow-2xs w-full min-w-0">
+                    <div className="flex items-start sm:items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
+                        <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5 sm:mt-0">
                             <BookOpen className="w-4 h-4" />
                         </div>
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Materias Habilitadas por Horario / Trimestre</p>
+                        <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+                                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground">
+                                    Materias Habilitadas por Horario
+                                </span>
                                 {qualPrograms.length === 1 && (
-                                    <Badge variant="outline" className="text-[10px] font-extrabold bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400 py-0 px-2 h-4.5 shrink-0">
+                                    <Badge variant="outline" className="text-[10px] font-extrabold bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400 py-0.5 px-2 h-auto max-w-full sm:max-w-[260px] truncate">
                                         {qualPrograms[0].name}
                                     </Badge>
                                 )}
                             </div>
-                            <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar las materias específicas del instructor.</p>
+                            <p className="text-xs text-muted-foreground font-medium leading-relaxed break-words">
+                                Selecciona el horario institucional para consultar y configurar las materias específicas del instructor.
+                            </p>
                         </div>
                     </div>
-                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
+                    <div className="grid grid-cols-1 sm:flex sm:flex-row items-center gap-2 w-full sm:w-auto shrink-0">
                         {/* Selector de Programa de Formación (si el instructor tiene más de 1 programa asignado) */}
                         {qualPrograms.length > 1 && (
                             <Select value={effectiveProgramId} onValueChange={(val) => { setSelectedProgramId(val); }}>
-                                <SelectTrigger className="w-full sm:w-[180px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
+                                <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
                                     <GraduationCap className="w-3.5 h-3.5 text-primary mr-1 shrink-0" />
                                     <SelectValue placeholder="Programa..." />
                                 </SelectTrigger>
@@ -375,7 +379,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
 
                         {/* Filtro por Año (por defecto año actual) */}
                         <Select value={selectedYear} onValueChange={handleYearChange}>
-                            <SelectTrigger className="w-[145px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0 px-2.5 gap-1.5">
+                            <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0 px-2.5 gap-1.5">
                                 <Calendar className="w-3.5 h-3.5 text-primary mr-1 shrink-0" />
                                 <SelectValue placeholder="Año" />
                             </SelectTrigger>
@@ -393,7 +397,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
 
                         {/* Selector de Horario */}
                         <Select value={selectedScheduleId} onValueChange={(val) => { setSelectedScheduleId(val); loadQualifications(val); }}>
-                            <SelectTrigger className="w-full sm:w-[250px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
+                            <SelectTrigger className="w-full sm:w-[250px] h-9 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
                                 <SelectValue placeholder="Seleccionar Horario..." />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl text-xs">
@@ -418,30 +422,32 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
             {(() => {
                 const activeScheduleName = schedules.find(s => s.id === selectedScheduleId)?.name;
                 return locked ? (
-                    <div className="flex items-start gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
-                        <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
-                                <span>Materias Publicadas y Bloqueadas</span>
-                                {activeScheduleName && (
-                                    <span className="font-mono text-[11px] font-bold text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30">
-                                        Horario: {activeScheduleName}
-                                    </span>
-                                )}
-                            </p>
-                            <p className="text-xs opacity-90 mt-0.5">
-                                {isAdminMode 
-                                    ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Instructor"
-                                        ? `Las materias fueron guardadas y bloqueadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()} para este horario. Desbloquea para permitir o realizar cambios.`
-                                        : "El instructor ha publicado sus materias para este horario y no puede editarlas.")
-                                    : "Las materias que dictas están registradas y bloqueadas para este horario institucional. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
-                            </p>
-                            {lastModifiedBy && (
-                                <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-block">
-                                    Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, targetTeacherId)}) 
-                                    {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 w-full min-w-0">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
+                                    <span>Materias Publicadas y Bloqueadas</span>
+                                    {activeScheduleName && (
+                                        <span className="font-mono text-[11px] font-bold text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30">
+                                            Horario: {activeScheduleName}
+                                        </span>
+                                    )}
                                 </p>
-                            )}
+                                <p className="text-xs opacity-90 mt-0.5 leading-relaxed break-words">
+                                    {isAdminMode 
+                                        ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Instructor"
+                                            ? `Las materias fueron guardadas y bloqueadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()} para este horario. Desbloquea para permitir o realizar cambios.`
+                                            : "El instructor ha publicado sus materias para este horario y no puede editarlas.")
+                                        : "Las materias que dictas están registradas y bloqueadas para este horario institucional. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
+                                </p>
+                                {lastModifiedBy && (
+                                    <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-flex flex-wrap items-center gap-1 max-w-full break-words">
+                                        Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, targetTeacherId)}) 
+                                        {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                         {isAdminMode && (
                             <Button 
@@ -467,7 +473,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                         </span>
                                     )}
                                 </p>
-                                <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
+                                <p className="text-xs opacity-90 mt-0.5 leading-relaxed break-words">
                                     {isAdminMode
                                         ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, targetTeacherId) !== "Instructor"
                                             ? `Las materias fueron editadas por el ${getAuthorRoleLabel(lastModifiedBy, targetTeacherId).toLowerCase()} y permanecen en modo borrador para este horario.`
@@ -475,7 +481,7 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
                                         : "Puedes configurar qué materias de tu programa estás en capacidad de dictar para este horario. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
                                 </p>
                                 {lastModifiedBy && (
-                                    <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-block">
+                                    <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-flex flex-wrap items-center gap-1 max-w-full break-words">
                                         Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, targetTeacherId)}) 
                                         {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                                     </p>

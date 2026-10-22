@@ -80,35 +80,46 @@ const getSchedulePeriodStyles = (startTimeStr: string, endTimeStr?: string) => {
     if (touchesAfternoon) periods.push("Tarde");
     if (touchesNight) periods.push("Noche");
 
-    let gradient = "from-sky-500/10 via-sky-500/5 to-transparent dark:from-sky-500/15 dark:to-transparent border-sky-500/20 dark:border-sky-500/30";
-    let text = "text-sky-700 dark:text-sky-300";
+    let cardBg = "bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-transparent border-sky-500/30 dark:border-sky-500/40 hover:border-sky-500/50";
+    let badge = "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30";
+    let icon = <Cloud className="w-3.5 h-3.5 text-sky-500 shrink-0" />;
 
     if (periods.length >= 3) {
-        gradient = "from-sky-500/10 via-amber-500/10 to-purple-500/10 dark:from-sky-500/15 dark:via-amber-500/10 dark:to-purple-500/15 border-primary/30";
-        text = "text-foreground";
+        cardBg = "bg-gradient-to-br from-sky-500/10 via-amber-500/10 to-purple-500/10 border-primary/30 hover:border-primary/50";
+        badge = "bg-primary/15 text-primary border-primary/30";
+        icon = <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
     } else if (touchesMorning && touchesAfternoon) {
-        gradient = "from-sky-500/10 via-amber-500/10 to-transparent dark:from-sky-500/15 dark:via-amber-500/10 dark:to-transparent border-amber-500/30";
-        text = "text-amber-800 dark:text-amber-200";
+        cardBg = "bg-gradient-to-br from-sky-500/10 via-amber-500/10 to-transparent border-amber-500/30 hover:border-amber-500/50";
+        badge = "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30";
+        icon = <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
     } else if (touchesAfternoon && touchesNight) {
-        gradient = "from-amber-500/10 via-purple-500/10 to-transparent dark:from-amber-500/15 dark:via-purple-500/10 dark:to-transparent border-purple-500/30";
-        text = "text-purple-800 dark:text-purple-200";
+        cardBg = "bg-gradient-to-br from-amber-500/10 via-purple-500/10 to-transparent border-purple-500/30 hover:border-purple-500/50";
+        badge = "bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/30";
+        icon = <Moon className="w-3.5 h-3.5 text-purple-500 shrink-0" />;
     } else if (touchesMorning && touchesNight) {
-        gradient = "from-sky-500/10 via-purple-500/10 to-transparent border-indigo-500/30";
-        text = "text-indigo-800 dark:text-indigo-200";
+        cardBg = "bg-gradient-to-br from-sky-500/10 via-purple-500/10 to-transparent border-indigo-500/30 hover:border-indigo-500/50";
+        badge = "bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border-indigo-500/30";
+        icon = <Moon className="w-3.5 h-3.5 text-indigo-500 shrink-0" />;
     } else if (touchesMorning) {
-        gradient = "from-sky-500/10 via-sky-500/5 to-transparent dark:from-sky-500/15 dark:to-transparent border-sky-500/20 dark:border-sky-500/30";
-        text = "text-sky-700 dark:text-sky-300";
+        cardBg = "bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-transparent border-sky-500/30 dark:border-sky-500/40 hover:border-sky-500/50";
+        badge = "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30";
+        icon = <Cloud className="w-3.5 h-3.5 text-sky-500 shrink-0" />;
     } else if (touchesAfternoon) {
-        gradient = "from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-500/15 dark:to-transparent border-amber-500/20 dark:border-amber-500/30";
-        text = "text-amber-700 dark:text-amber-300";
+        cardBg = "bg-gradient-to-br from-amber-500/15 via-orange-500/5 to-transparent border-amber-500/30 dark:border-amber-500/40 hover:border-amber-500/50";
+        badge = "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30";
+        icon = <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
     } else {
-        gradient = "from-indigo-500/10 via-indigo-500/5 to-transparent dark:from-indigo-500/15 dark:to-transparent border-indigo-500/20 dark:border-indigo-500/30";
-        text = "text-indigo-700 dark:text-indigo-300";
+        cardBg = "bg-gradient-to-br from-purple-500/15 via-indigo-500/5 to-transparent border-purple-500/30 dark:border-purple-500/40 hover:border-purple-500/50";
+        badge = "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30";
+        icon = <Moon className="w-3.5 h-3.5 text-purple-500 shrink-0" />;
     }
 
     return {
-        gradient,
-        text,
+        cardBg,
+        badge,
+        icon,
+        gradient: cardBg,
+        text: "text-foreground",
         touchesMorning,
         touchesAfternoon,
         touchesNight,
@@ -534,27 +545,31 @@ export function TeacherAvailabilityView({
         <div className="space-y-6">
             {/* Academic Schedule Scope Selector (Only in standalone teacher mode) */}
             {!isAdminMode && (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-card/80 backdrop-blur-md border border-border/80 rounded-2xl shadow-2xs">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 p-3.5 sm:p-4 bg-card/80 backdrop-blur-md border border-border/80 rounded-2xl shadow-2xs w-full min-w-0">
+                    <div className="flex items-start sm:items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
+                        <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5 sm:mt-0">
                             <Calendar className="w-4 h-4" />
                         </div>
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Disponibilidad por Horario / Trimestre</p>
+                        <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+                                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-muted-foreground">
+                                    Disponibilidad por Horario
+                                </span>
                                 {teacherPrograms.length > 0 && (
-                                    <Badge variant="outline" className="text-[10px] font-extrabold bg-primary/10 border-primary/20 text-primary py-0 px-2 h-4.5 shrink-0">
+                                    <Badge variant="outline" className="text-[10px] font-extrabold bg-primary/10 border-primary/20 text-primary py-0.5 px-2 h-auto max-w-full sm:max-w-[260px] truncate">
                                         {teacherPrograms.map(p => p.name).join(", ")}
                                     </Badge>
                                 )}
                             </div>
-                            <p className="text-xs text-foreground font-medium truncate">Selecciona el horario institucional para consultar y configurar la disponibilidad específica del instructor.</p>
+                            <p className="text-xs text-muted-foreground font-medium leading-relaxed break-words">
+                                Selecciona el horario institucional para consultar y configurar la disponibilidad del instructor.
+                            </p>
                         </div>
                     </div>
-                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0">
+                    <div className="grid grid-cols-1 sm:flex sm:flex-row items-center gap-2 w-full sm:w-auto shrink-0">
                         {/* Filtro por Año (por defecto año actual) */}
                         <Select value={selectedYear} onValueChange={handleYearChange}>
-                            <SelectTrigger className="w-[145px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0 px-2.5 gap-1.5">
+                            <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs font-bold bg-background border-border/80 rounded-xl px-2.5 gap-1.5">
                                 <Calendar className="w-3.5 h-3.5 text-primary mr-1 shrink-0" />
                                 <SelectValue placeholder="Año" />
                             </SelectTrigger>
@@ -572,7 +587,7 @@ export function TeacherAvailabilityView({
 
                         {/* Selector de Horario */}
                         <Select value={selectedScheduleId} onValueChange={(val) => { setSelectedScheduleId(val); loadAvailability(val); }}>
-                            <SelectTrigger className="w-full sm:w-[250px] h-8.5 text-xs font-bold bg-background border-border/80 rounded-xl shrink-0">
+                            <SelectTrigger className="w-full sm:w-[250px] h-9 text-xs font-bold bg-background border-border/80 rounded-xl">
                                 <SelectValue placeholder="Seleccionar Horario..." />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl text-xs">
@@ -595,10 +610,10 @@ export function TeacherAvailabilityView({
 
             {/* Status alerts */}
             {locked ? (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
-                    <div className="flex items-start gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 w-full min-w-0">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
                         <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
-                        <div>
+                        <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
                                 <span>Disponibilidad Publicada y Bloqueada</span>
                                 {activeScheduleName && (
@@ -607,7 +622,7 @@ export function TeacherAvailabilityView({
                                     </span>
                                 )}
                             </p>
-                            <p className="text-xs opacity-90 mt-0.5">
+                            <p className="text-xs opacity-90 mt-0.5 leading-relaxed break-words">
                                 {isAdminMode 
                                     ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Instructor"
                                         ? `La disponibilidad fue guardada y bloqueada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()} para este horario. Desbloquea para permitir o realizar cambios.`
@@ -615,7 +630,7 @@ export function TeacherAvailabilityView({
                                     : "Tu disponibilidad horaria semanal está registrada y bloqueada para este horario. Si necesitas realizar alguna modificación, por favor ponte en contacto con el administrador de la institución para que proceda a desbloquear tu perfil."}
                             </p>
                             {lastModifiedBy && (
-                                <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-block">
+                                <p className="text-[11px] mt-2 font-medium bg-emerald-600/10 border border-emerald-600/20 px-2 py-1 rounded-md inline-flex flex-wrap items-center gap-1 max-w-full break-words">
                                     Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, teacherId)}) 
                                     {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                                 </p>
@@ -634,7 +649,7 @@ export function TeacherAvailabilityView({
                     )}
                 </div>
             ) : (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-300 min-w-0">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                         <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
@@ -646,7 +661,7 @@ export function TeacherAvailabilityView({
                                     </span>
                                 )}
                             </p>
-                            <p className="text-xs opacity-90 mt-0.5 leading-relaxed">
+                            <p className="text-xs opacity-90 mt-0.5 leading-relaxed break-words">
                                 {isAdminMode 
                                     ? (lastModifiedBy && getAuthorRoleLabel(lastModifiedBy, teacherId) !== "Instructor"
                                         ? `La disponibilidad fue editada por el ${getAuthorRoleLabel(lastModifiedBy, teacherId).toLowerCase()} y permanece en modo borrador para este horario.`
@@ -654,7 +669,7 @@ export function TeacherAvailabilityView({
                                     : "Puedes configurar y modificar tus horas de disponibilidad para este horario institucional. Recuerda hacer clic en **Publicar** para enviarla de forma oficial; esto bloqueará tus cambios para edición."}
                             </p>
                             {lastModifiedBy && (
-                                <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-block">
+                                <p className="text-[11px] mt-2 font-medium bg-amber-600/10 border border-amber-600/20 px-2 py-1 rounded-md inline-flex flex-wrap items-center gap-1 max-w-full break-words">
                                     Última modificación: <span className="font-bold">{lastModifiedBy.name}</span> ({getAuthorRoleLabel(lastModifiedBy, teacherId)}) 
                                     {updatedAt && ` - ${updatedAt.toLocaleDateString()} ${updatedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`}
                                 </p>
@@ -714,27 +729,83 @@ export function TeacherAvailabilityView({
             )}
 
             {/* Availability Days Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
                 {DAYS_OF_WEEK_ORDERED.map(({ value: day, label: dayName }) => {
                     const daySlots = slots.filter(s => s.dayOfWeek === day);
+                    const totalDayMinutes = daySlots.reduce((acc, s) => {
+                        const [sh, sm] = s.startTime.split(":").map(Number);
+                        const [eh, em] = s.endTime.split(":").map(Number);
+                        return acc + Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+                    }, 0);
+                    const totalDayHours = (totalDayMinutes / 60).toFixed(1).replace(".0", "");
+                    const hasSlots = daySlots.length > 0;
 
                     return (
-                        <Card key={day} className="border-none shadow-sm flex flex-col justify-between overflow-hidden bg-background">
-                            <CardHeader className="bg-muted/10 pb-3">
-                                <CardTitle className="text-sm font-bold flex items-center justify-between">
-                                    <span>{dayName}</span>
-                                    <Badge variant="outline" className="text-[10px] font-normal py-0">
-                                        {daySlots.length} {daySlots.length === 1 ? "ranura" : "ranuras"}
+                        <div 
+                            key={day} 
+                            className={cn(
+                                "relative rounded-3xl border bg-card/95 dark:bg-card/70 backdrop-blur-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group shadow-sm hover:shadow-md",
+                                hasSlots 
+                                    ? "border-border/80 hover:border-primary/50" 
+                                    : "border-border/60 hover:border-border"
+                            )}
+                        >
+                            {/* Top decorative gradient bar */}
+                            <div className={cn(
+                                "h-1.5 w-full transition-all",
+                                hasSlots
+                                    ? "bg-gradient-to-r from-primary via-primary/80 to-primary/40"
+                                    : "bg-muted/60"
+                            )} />
+
+                            {/* Header */}
+                            <div className="p-4 sm:p-5 border-b border-border/50 bg-muted/20 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className={cn(
+                                        "w-8 h-8 rounded-xl flex items-center justify-center font-extrabold text-xs shadow-2xs border shrink-0",
+                                        hasSlots
+                                            ? "bg-primary/10 text-primary border-primary/25"
+                                            : "bg-muted text-muted-foreground border-border/60"
+                                    )}>
+                                        <Calendar className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-extrabold text-foreground tracking-tight leading-none">
+                                            {dayName}
+                                        </h3>
+                                        <p className="text-[10px] text-muted-foreground font-semibold mt-1">
+                                            {hasSlots ? `${daySlots.length} ${daySlots.length === 1 ? "franja registrada" : "franjas registradas"}` : "Sin disponibilidad"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {hasSlots ? (
+                                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 border border-primary/25 text-primary text-xs font-black shadow-2xs">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        <span>{totalDayHours}h</span>
+                                    </div>
+                                ) : (
+                                    <Badge variant="outline" className="text-[10px] text-muted-foreground/80 font-bold border-border/60 px-2 py-0.5 rounded-xl bg-background/50">
+                                        Libre
                                     </Badge>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-4 flex-1 flex flex-col justify-between gap-4">
+                                )}
+                            </div>
+
+                            <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-4">
                                 {/* Slots list */}
-                                <div className="space-y-2 flex-1">
+                                <div className="space-y-2.5 flex-1">
                                     {daySlots.length === 0 ? (
-                                        <p className="text-[11px] text-muted-foreground italic text-center py-6">Sin disponibilidad registrada.</p>
+                                        <div className="py-8 px-4 text-center rounded-2xl border-2 border-dashed border-border/50 bg-muted/10 flex flex-col items-center justify-center gap-2 select-none my-1">
+                                            <div className="w-9 h-9 rounded-2xl bg-muted/40 border border-border/60 flex items-center justify-center text-muted-foreground/60">
+                                                <Clock className="w-4 h-4" />
+                                            </div>
+                                            <p className="text-xs font-bold text-foreground/80">Sin franjas registradas</p>
+                                            <p className="text-[10px] text-muted-foreground max-w-[190px]">
+                                                {locked ? "No se programó disponibilidad para este día." : "Añade los horarios en los que puedes dictar clases."}
+                                            </p>
+                                        </div>
                                     ) : (
-                                        <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                                        <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1 scrollbar-thin">
                                             {slots.map((slot, index) => {
                                                 if (slot.dayOfWeek !== day) return null;
                                                 
@@ -744,16 +815,20 @@ export function TeacherAvailabilityView({
                                                     return (
                                                         <div 
                                                             key={index} 
-                                                            className="flex flex-col gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20 text-xs font-medium"
+                                                            className="flex flex-col gap-2.5 p-3 rounded-2xl bg-primary/5 border border-primary/25 text-xs font-medium shadow-sm animate-in fade-in-50"
                                                         >
+                                                            <div className="text-[11px] font-extrabold text-primary flex items-center gap-1.5">
+                                                                <Edit2 className="w-3.5 h-3.5" />
+                                                                <span>Modificar horario</span>
+                                                            </div>
                                                             <div className="grid grid-cols-2 gap-2">
                                                                 <div className="space-y-1">
-                                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase flex items-center gap-1">
+                                                                    <span className="text-[9px] text-muted-foreground font-extrabold uppercase flex items-center gap-1">
                                                                         <Clock className="w-3 h-3 text-primary" /> Inicio
                                                                     </span>
-                                                                    <div className="flex items-center bg-background px-2 py-1 rounded-lg border border-input h-7">
+                                                                    <div className="flex items-center bg-background px-2.5 py-1.5 rounded-xl border border-input h-8 shadow-2xs">
                                                                         <select 
-                                                                            className="bg-transparent font-mono text-xs font-semibold text-foreground focus:outline-none w-full cursor-pointer"
+                                                                            className="bg-transparent font-mono text-xs font-bold text-foreground focus:outline-none w-full cursor-pointer"
                                                                             value={editStartTime}
                                                                             onChange={(e) => setEditStartTime(e.target.value)}
                                                                         >
@@ -766,12 +841,12 @@ export function TeacherAvailabilityView({
                                                                     </div>
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <span className="text-[9px] text-muted-foreground font-bold uppercase flex items-center gap-1">
+                                                                    <span className="text-[9px] text-muted-foreground font-extrabold uppercase flex items-center gap-1">
                                                                         <Clock className="w-3 h-3 text-primary" /> Fin
                                                                     </span>
-                                                                    <div className="flex items-center bg-background px-2 py-1 rounded-lg border border-input h-7">
+                                                                    <div className="flex items-center bg-background px-2.5 py-1.5 rounded-xl border border-input h-8 shadow-2xs">
                                                                         <select 
-                                                                            className="bg-transparent font-mono text-xs font-semibold text-foreground focus:outline-none w-full cursor-pointer"
+                                                                            className="bg-transparent font-mono text-xs font-bold text-foreground focus:outline-none w-full cursor-pointer"
                                                                             value={editEndTime}
                                                                             onChange={(e) => setEditEndTime(e.target.value)}
                                                                         >
@@ -784,11 +859,11 @@ export function TeacherAvailabilityView({
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex justify-end gap-1.5 border-t border-muted/20 pt-1.5 mt-0.5">
+                                                            <div className="flex justify-end gap-1.5 border-t border-border/40 pt-2 mt-0.5">
                                                                 <Button 
                                                                     size="sm" 
                                                                     variant="ghost" 
-                                                                    className="h-6 px-2 text-[10px] text-muted-foreground hover:bg-muted"
+                                                                    className="h-7 px-2.5 text-xs rounded-xl font-bold text-muted-foreground hover:bg-muted cursor-pointer"
                                                                     onClick={handleCancelEdit}
                                                                 >
                                                                     <X className="w-3 h-3 mr-1" /> Cancelar
@@ -796,16 +871,16 @@ export function TeacherAvailabilityView({
                                                                 <Button 
                                                                     size="sm" 
                                                                     disabled={isPending}
-                                                                    className="h-6 px-2 text-[10px] bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                                                    className="h-7 px-3 text-xs rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 cursor-pointer shadow-xs"
                                                                     onClick={() => handleSaveEdit(index)}
                                                                 >
                                                                     {isPending ? (
                                                                         <>
-                                                                            <div className="w-3 h-3 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-1" /> Guardando...
+                                                                            <div className="w-3 h-3 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin mr-1.5" /> Guardando...
                                                                         </>
                                                                     ) : (
                                                                         <>
-                                                                            <Check className="w-3 h-3 mr-1" /> Guardar
+                                                                            <Check className="w-3.5 h-3.5 mr-1" /> Guardar
                                                                         </>
                                                                     )}
                                                                 </Button>
@@ -824,112 +899,112 @@ export function TeacherAvailabilityView({
                                                 return (
                                                     <div 
                                                         key={index} 
-                                                        className={`bg-gradient-to-br flex items-center justify-between p-2 rounded-lg border text-xs font-medium group transition-all duration-200 ${styles.gradient}`}
+                                                        className={cn(
+                                                            "relative rounded-2xl border p-3 sm:p-3.5 transition-all duration-200 flex flex-col gap-2 group shadow-2xs hover:shadow-xs",
+                                                            styles.cardBg
+                                                        )}
                                                     >
-                                                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                        {/* Top meta row: Shift Pill + Configured By + Actions */}
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                {/* Shift Pill with appropriate icon */}
+                                                                <span className={cn(
+                                                                    "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black border shadow-2xs",
+                                                                    styles.badge
+                                                                )}>
+                                                                    {styles.icon}
+                                                                    <span>{styles.label}</span>
+                                                                </span>
+
+                                                                {/* Author Role Badge with Tooltip */}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Badge 
+                                                                            variant="outline" 
+                                                                            className={cn(
+                                                                                "text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 cursor-help transition-transform hover:scale-105 shadow-2xs",
+                                                                                isProf 
+                                                                                    ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
+                                                                                    : authorRoleLabel === "Gestor"
+                                                                                    ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
+                                                                                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                                                                            )}
+                                                                        >
+                                                                            <User className="w-2.5 h-2.5 mr-1 inline" />
+                                                                            {authorRoleLabel}
+                                                                        </Badge>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent className="text-xs font-semibold rounded-xl p-2">
+                                                                        <p>Configurado por: <strong>{authorName}</strong> ({authorRoleLabel})</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </div>
+
+                                                            {/* Action buttons (Edit & Delete) */}
                                                             <div className="flex items-center gap-1 shrink-0">
-                                                                {styles.touchesMorning && (
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <span className="text-sky-500 dark:text-sky-400 cursor-help inline-flex">
-                                                                                <Cloud className="w-3.5 h-3.5 shrink-0" />
-                                                                            </span>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent side="top" className="text-[10px] py-0.5 px-1.5">Jornada Mañana</TooltipContent>
-                                                                    </Tooltip>
-                                                                )}
-                                                                {styles.touchesAfternoon && (
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <span className="text-amber-500 dark:text-amber-400 cursor-help inline-flex">
-                                                                                <Sun className="w-3.5 h-3.5 shrink-0" />
-                                                                            </span>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent side="top" className="text-[10px] py-0.5 px-1.5">Jornada Tarde</TooltipContent>
-                                                                    </Tooltip>
-                                                                )}
-                                                                {styles.touchesNight && (
-                                                                    <Tooltip>
-                                                                        <TooltipTrigger asChild>
-                                                                            <span className="text-purple-600 dark:text-purple-400 cursor-help inline-flex">
-                                                                                <Moon className="w-3.5 h-3.5 shrink-0" />
-                                                                            </span>
-                                                                        </TooltipTrigger>
-                                                                        <TooltipContent side="top" className="text-[10px] py-0.5 px-1.5">Jornada Noche</TooltipContent>
-                                                                    </Tooltip>
-                                                                )}
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon"
+                                                                            disabled={locked}
+                                                                            onClick={() => handleStartEdit(index, slot)}
+                                                                            className={cn(
+                                                                                "h-7 w-7 rounded-xl transition-all",
+                                                                                locked 
+                                                                                    ? "opacity-30 cursor-not-allowed text-muted-foreground" 
+                                                                                    : "cursor-pointer hover:bg-primary/10 hover:text-primary text-muted-foreground shadow-2xs"
+                                                                            )}
+                                                                        >
+                                                                            <Edit2 className="w-3.5 h-3.5" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="top" className="text-xs rounded-xl">
+                                                                        <p>{locked ? "Disponibilidad bloqueada. Desbloquea para editar." : "Editar franja"}</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon"
+                                                                            disabled={locked}
+                                                                            onClick={() => handleRemoveSlot(index)}
+                                                                            className={cn(
+                                                                                "h-7 w-7 rounded-xl transition-all",
+                                                                                locked 
+                                                                                    ? "opacity-30 cursor-not-allowed text-muted-foreground" 
+                                                                                    : "cursor-pointer text-destructive/70 hover:text-destructive hover:bg-destructive/10 shadow-2xs"
+                                                                            )}
+                                                                        >
+                                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="top" className="text-xs rounded-xl">
+                                                                        <p>{locked ? "Disponibilidad bloqueada. Desbloquea para eliminar." : "Eliminar franja"}</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
                                                             </div>
-                                                            <div className={`flex items-center gap-1.5 ${styles.text} min-w-0 truncate`}>
-                                                                <span className="font-mono font-bold tracking-tight shrink-0">{slot.startTime} – {slot.endTime}</span>
-                                                                <span className="text-[10px] opacity-75 font-normal shrink-0">({formatDuration(slot.startTime, slot.endTime)})</span>
-                                                                <span className="text-[10px] opacity-60 truncate">· {styles.label}</span>
-                                                            </div>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Badge 
-                                                                        variant="outline" 
-                                                                        className={`text-[9px] font-bold px-1.5 py-0 rounded shrink-0 cursor-help ${
-                                                                            isProf 
-                                                                                ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300" 
-                                                                                : authorRoleLabel === "Gestor"
-                                                                                ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300"
-                                                                                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
-                                                                        }`}
-                                                                    >
-                                                                        <User className="w-2.5 h-2.5 mr-0.5 inline" />
-                                                                        {authorRoleLabel}
-                                                                    </Badge>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent className="text-xs font-semibold">
-                                                                    <p>Configurado por: <strong>{authorName}</strong> ({authorRoleLabel})</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
                                                         </div>
 
-                                                        <div className="flex items-center gap-0.5 shrink-0 ml-1">
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="icon"
-                                                                        disabled={locked}
-                                                                        onClick={() => handleStartEdit(index, slot)}
-                                                                        className={cn(
-                                                                            "h-6 w-6 rounded-md transition-colors",
-                                                                            locked 
-                                                                                ? "opacity-35 cursor-not-allowed text-muted-foreground" 
-                                                                                : `cursor-pointer hover:bg-black/10 dark:hover:bg-white/15 ${styles.text}`
-                                                                        )}
-                                                                    >
-                                                                        <Edit2 className="w-3 h-3" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="top">
-                                                                    <p>{locked ? "Disponibilidad bloqueada. Desbloquea para editar." : "Editar ranura"}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
+                                                        {/* Main time display row */}
+                                                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1.5 border-t border-border/30">
+                                                            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 font-mono min-w-0">
+                                                                <span className="text-sm sm:text-base font-black text-foreground tracking-tight">
+                                                                    {slot.startTime} – {slot.endTime}
+                                                                </span>
+                                                                <span className="text-[11px] font-sans font-semibold text-muted-foreground">
+                                                                    ({toFormat12h(slot.startTime)} - {toFormat12h(slot.endTime)})
+                                                                </span>
+                                                            </div>
 
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="icon"
-                                                                        disabled={locked}
-                                                                        onClick={() => handleRemoveSlot(index)}
-                                                                        className={cn(
-                                                                            "h-6 w-6 rounded-md transition-colors",
-                                                                            locked 
-                                                                                ? "opacity-35 cursor-not-allowed text-muted-foreground" 
-                                                                                : "cursor-pointer text-destructive/80 hover:text-destructive hover:bg-destructive/15"
-                                                                        )}
-                                                                    >
-                                                                        <Trash2 className="w-3 h-3" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="top">
-                                                                    <p>{locked ? "Disponibilidad bloqueada. Desbloquea para eliminar." : "Eliminar ranura"}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
+                                                            <div className="shrink-0 flex items-center gap-1">
+                                                                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-lg bg-background/80 dark:bg-background/60 border border-border/70 text-foreground shadow-2xs">
+                                                                    <Clock className="w-3 h-3 text-primary shrink-0" />
+                                                                    {formatDuration(slot.startTime, slot.endTime)}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -938,15 +1013,15 @@ export function TeacherAvailabilityView({
                                     )}
                                 </div>
 
-                                {/* Form to add slots */}
+                                {/* Form to add slots or locked indicator */}
                                 {!locked ? (
-                                    <div className="border-t border-muted/40 pt-3 space-y-2 mt-2">
+                                    <div className="border-t border-border/50 pt-3.5 space-y-3 mt-1">
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="space-y-1">
-                                                <Label htmlFor={`start-${day}`} className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                <Label htmlFor={`start-${day}`} className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                                                     <Clock className="w-3 h-3 text-primary" /> Inicio
                                                 </Label>
-                                                <div className="flex items-center bg-background px-2.5 py-1.5 rounded-lg border border-input shadow-2xs hover:border-primary/50 transition-colors">
+                                                <div className="flex items-center bg-background px-2.5 py-1.5 rounded-xl border border-input shadow-2xs hover:border-primary/50 focus-within:border-primary transition-colors">
                                                     <select 
                                                         id={`start-${day}`}
                                                         className="bg-transparent font-mono text-xs font-bold text-foreground focus:outline-none w-full cursor-pointer"
@@ -962,10 +1037,10 @@ export function TeacherAvailabilityView({
                                                 </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <Label htmlFor={`end-${day}`} className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                                                <Label htmlFor={`end-${day}`} className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                                                     <Clock className="w-3 h-3 text-primary" /> Fin
                                                 </Label>
-                                                <div className="flex items-center bg-background px-2.5 py-1.5 rounded-lg border border-input shadow-2xs hover:border-primary/50 transition-colors">
+                                                <div className="flex items-center bg-background px-2.5 py-1.5 rounded-xl border border-input shadow-2xs hover:border-primary/50 focus-within:border-primary transition-colors">
                                                     <select 
                                                         id={`end-${day}`}
                                                         className="bg-transparent font-mono text-xs font-bold text-foreground focus:outline-none w-full cursor-pointer"
@@ -984,23 +1059,24 @@ export function TeacherAvailabilityView({
                                         <Button 
                                             size="sm"
                                             variant="outline" 
-                                            className="w-full h-8 text-[11px] font-semibold border-dashed border-primary/30 text-primary hover:bg-primary/5 hover:border-primary/50 cursor-pointer"
+                                            className="w-full h-9 text-xs font-bold rounded-xl border-dashed border-primary/40 text-primary bg-primary/5 hover:bg-primary/10 hover:border-primary/60 cursor-pointer shadow-2xs transition-all gap-1.5"
                                             onClick={() => handleAddSlot(day)}
                                         >
-                                            <Plus className="w-3.5 h-3.5 mr-1" /> Añadir Horario
+                                            <Plus className="w-4 h-4" /> Añadir Franja Horaria
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="border-t border-muted/30 pt-2.5 mt-2 flex items-center justify-center gap-1.5 text-muted-foreground/60 text-[11px] font-medium py-1 select-none">
-                                        <Lock className="w-3 h-3" />
+                                    <div className="border-t border-border/50 pt-3 mt-1 flex items-center justify-center gap-1.5 text-muted-foreground text-xs font-semibold py-2 bg-muted/30 rounded-2xl border border-border/40 select-none shadow-2xs">
+                                        <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                                         <span>Disponibilidad bloqueada</span>
                                     </div>
                                 )}
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
                     );
                 })}
             </div>
         </div>
     );
 }
+

@@ -1,12 +1,14 @@
-const CACHE_NAME = "academix-cache-v1";
-const OFFLINE_URL = "/dashboard/help"; // Fallback URL for offline view
+const CACHE_NAME = "academix-pwa-v2";
+const OFFLINE_URL = "/";
 
 const ASSETS_TO_CACHE = [
   "/",
   "/dashboard",
-  "/dashboard/help",
   "/logo.png",
-  "/icon.png",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-maskable-192.png",
+  "/icon-maskable-512.png",
   "/manifest.json"
 ];
 
@@ -14,8 +16,10 @@ const ASSETS_TO_CACHE = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log("[Service Worker] Caching app shell");
-      return cache.addAll(ASSETS_TO_CACHE);
+      console.log("[Service Worker] Caching app shell assets");
+      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
+        console.warn("[Service Worker] Cache addAll warning:", err);
+      });
     })
   );
   self.skipWaiting();
@@ -28,7 +32,7 @@ self.addEventListener("activate", (event) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
-            console.log("[Service Worker] Clearing old cache", cache);
+            console.log("[Service Worker] Clearing old cache:", cache);
             return caches.delete(cache);
           }
         })
@@ -40,18 +44,17 @@ self.addEventListener("activate", (event) => {
 
 // Fetch Event: Network First, Fallback to Cache
 self.addEventListener("fetch", (event) => {
-  // Only handle GET requests
   if (event.request.method !== "GET") return;
 
-  // Avoid intercepting auth requests or API calls
-  if (event.request.url.includes("/api/auth") || event.request.url.includes("/signin")) {
+  const url = event.request.url;
+  // Do not intercept auth, API calls, or chrome-extension URLs
+  if (url.includes("/api/") || url.includes("/_next/data") || !url.startsWith("http")) {
     return;
   }
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful requests dynamically
         if (response.status === 200 && response.type === "basic") {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -61,17 +64,14 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => {
-        // Fallback to cache if network is down
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // If offline and request is document/page, redirect to help fallback
-          if (event.request.headers.get("accept").includes("text/html")) {
+          if (event.request.headers.get("accept")?.includes("text/html")) {
             return caches.match(OFFLINE_URL);
           }
         });
       })
   );
 });
-

@@ -62,7 +62,7 @@ export function NavMain({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isMobile, setOpenMobile, state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const isCollapsed = !isMobile && state === "collapsed";
 
   const handleLinkClick = () => {
     if (isMobile) {

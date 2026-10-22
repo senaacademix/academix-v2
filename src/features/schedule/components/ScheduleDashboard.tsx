@@ -5,15 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduleView } from "./ScheduleView";
 import { TeacherAvailabilityView } from "./TeacherAvailabilityView";
 import { TeacherQualificationsView } from "@/features/teacher/components/TeacherQualificationsView";
-import { Calendar, Clock, BookOpen, HelpCircle } from "lucide-react";
+import { Calendar, Clock, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { TeacherHelpModal } from "@/features/teacher/components/TeacherHelpModal";
 
 export function ScheduleDashboard() {
   const [activeTab, setActiveTab] = useState("calendar");
-  const [helpOpen, setHelpOpen] = useState(false);
 
   return (
     <>
@@ -53,29 +49,6 @@ export function ScheduleDashboard() {
               </span>
             </TabsTrigger>
           </TabsList>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setHelpOpen(true)}
-                className="h-10 px-3.5 rounded-2xl border-border/70 bg-card hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all text-xs font-bold gap-1.5 text-muted-foreground shadow-2xs cursor-pointer"
-              >
-                <HelpCircle className="w-4 h-4 text-primary" />
-                <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
-                <span className="sm:hidden">Ayuda</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              align="end"
-              className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl"
-            >
-              Guía de horarios, disponibilidad y asignaturas
-            </TooltipContent>
-          </Tooltip>
         </div>
 
         <TabsContent value="calendar" className="space-y-6 mt-0">
@@ -96,12 +69,6 @@ export function ScheduleDashboard() {
           </motion.div>
         </TabsContent>
       </Tabs>
-
-      <TeacherHelpModal
-        open={helpOpen}
-        onOpenChange={setHelpOpen}
-        initialTab="schedule"
-      />
     </>
   );
 }

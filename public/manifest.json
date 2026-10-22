@@ -1,24 +1,45 @@
 {
-  "name": "AcademiX",
+  "name": "AcademiX - Plataforma Educativa",
   "short_name": "AcademiX",
-  "description": "Plataforma inteligente de gestión de horarios y planeación académica.",
+  "description": "Plataforma inteligente de gestión de horarios, asistencia y planeación académica institucional.",
+  "id": "/",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#10b981",
   "orientation": "portrait-primary",
+  "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/icon-192.png",
       "type": "image/png",
-      "sizes": "any",
+      "sizes": "192x192",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     },
     {
       "src": "/logo.png",
       "type": "image/png",
-      "sizes": "any",
-      "purpose": "maskable"
+      "sizes": "200x200",
+      "purpose": "any"
     }
   ]
 }

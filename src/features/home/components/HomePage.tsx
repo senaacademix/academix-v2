@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { getSettingsAction } from "@/features/admin/actions/settingsActions";
 import { authClient } from "@/lib/auth-client";
 import { getRoleFromUser } from "@/features/auth/services/authService";
@@ -27,10 +28,16 @@ import {
   BarChart3,
   Megaphone,
   Settings2,
-  ArrowRight
+  ArrowRight,
+  Zap,
+  Smartphone,
+  Shield,
+  Clock,
+  ExternalLink
 } from "lucide-react";
 
 import { PageTransition } from "@/components/ui/animated-container";
+import { Badge } from "@/components/ui/badge";
 
 interface HomePageProps {
   initialUserName?: string;
@@ -92,149 +99,192 @@ export default function HomePage({
         return {
           label: "Administrador Central",
           icon: ShieldCheck,
+          tag: "Gobierno y Control",
           message:
-            "Bienvenido al panel central de AcademiX. Lideras el gobierno del sistema, la administración de usuarios y el aseguramiento continuo de la calidad formativa.",
+            "Lideras el gobierno del sistema, la administración de usuarios y el aseguramiento continuo de la calidad formativa.",
         };
       case "gestor":
         return {
           label: "Gestor Curricular",
           icon: Layers,
+          tag: "Planeación Curricular",
           message:
-            "Bienvenido a tu panel de gestión curricular. Coordinas la articulación de fichas, competencias y asignación de ambientes de formación en tu área.",
+            "Coordinas la articulación de fichas, competencias y asignación de ambientes de formación en tu área.",
         };
       case "observer":
         return {
           label: "Observador Institucional",
           icon: Eye,
+          tag: "Auditoría Formativa",
           message:
-            "Bienvenido a la plataforma de auditoría formativa. Supervisas la trazabilidad de procesos, mallas horarias y métricas del centro.",
+            "Supervisas la trazabilidad de procesos, mallas horarias y métricas académicas del centro de formación.",
         };
       case "student":
         return {
           label: "Aprendiz en Formación",
           icon: BookOpen,
+          tag: "Formación Técnica",
           message:
-            "¡Te damos la más cordial bienvenida a tu centro formativo! Construye tus competencias con dedicación, aprovecha cada ambiente y avanza con éxito hacia tu certificación.",
+            "Construye tus competencias con dedicación, consulta tus horarios, asiste puntualmente y avanza hacia tu certificación.",
         };
       case "teacher":
       default:
         return {
-          label: "Instructor / Docente",
+          label: "Instructor Docente",
           icon: GraduationCap,
+          tag: "Docencia y Formación",
           message:
-            "Te damos la bienvenida al portal docente. Tu compromiso y vocación pedagógica guían el talento de nuestros aprendices hacia la excelencia técnica y humana.",
+            "Tu vocación pedagógica guía a nuestros aprendices. Administra tus grupos, registra asistencias y consulta tu horario semanal.",
         };
     }
   }, [role]);
 
-  // Opciones de navegación correspondientes a la barra lateral izquierda de cada rol
+  // Opciones de navegación enriquecidas con descripciones para cada rol
   const navigationOptions = useMemo(() => {
     switch (role) {
       case "admin":
         return [
           {
             title: "Panel de Control",
+            description: "Métricas institucionales, auditoría y resumen general de la plataforma.",
             url: "/dashboard/admin",
             icon: BarChart3,
+            badge: "Métricas",
           },
           {
             title: "Gestión de Usuarios",
+            description: "Administra instructores, aprendices, roles y permisos de acceso al centro.",
             url: "/dashboard/admin/users",
             icon: Users,
+            badge: "Usuarios",
           },
           {
             title: "Áreas de Formación",
+            description: "Estructura de programas curriculares, competencias y trimestres académicos.",
             url: "/dashboard/admin/courses",
             icon: BookOpen,
+            badge: "Curricular",
           },
           {
             title: "Blog de Anuncios",
+            description: "Publica y comunica noticias institucionales clave a la comunidad académica.",
             url: "/dashboard/admin/announcements",
             icon: Megaphone,
+            badge: "Noticias",
           },
           {
             title: "Configuración",
+            description: "Ajustes globales del sistema, límites de acceso y personalización.",
             url: "/dashboard/admin/settings",
             icon: Settings2,
+            badge: "Sistema",
           },
         ];
       case "gestor":
         return [
           {
             title: "Panel del Área",
+            description: "Resumen de fichas activas, ocupación de ambientes y métricas del área formativa.",
             url: effectiveGestorProgramId ? `/dashboard/gestor?programId=${effectiveGestorProgramId}` : "/dashboard/gestor",
             icon: BarChart3,
+            badge: "Área",
           },
           {
             title: "Gestión de Aprendices",
+            description: "Control de matrículas, seguimiento formativo y novedades de aprendices.",
             url: effectiveGestorProgramId ? `/dashboard/gestor/users?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/users",
             icon: GraduationCap,
+            badge: "Fichas",
           },
           {
             title: "Estructura Curricular",
+            description: "Malla formativa, resultados de aprendizaje y distribución de competencias.",
             url: effectiveGestorProgramId ? `/dashboard/gestor/courses?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/courses",
             icon: BookOpen,
+            badge: "Malla",
           },
           {
             title: "Programación Horaria",
+            description: "Diseño, asignación y ajuste de franjas horarias y ambientes de aprendizaje.",
             url: effectiveGestorProgramId ? `/dashboard/gestor/schedules?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/schedules",
             icon: CalendarClock,
+            badge: "Horarios",
           },
           {
             title: "Asistencia Semanal",
+            description: "Monitoreo consolidado de asistencia por ficha, instructor y período.",
             url: effectiveGestorProgramId ? `/dashboard/gestor/attendance?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/attendance",
             icon: CalendarDays,
+            badge: "Asistencia",
           },
           {
             title: "Herramientas",
+            description: "Utilidades de exportación masiva, reportes PDF y optimización de ambientes.",
             url: effectiveGestorProgramId ? `/dashboard/gestor/tools?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/tools",
             icon: Wrench,
+            badge: "Utilidades",
           },
         ];
       case "observer":
         return [
           {
             title: "Panel de Supervisión",
+            description: "Auditoría en tiempo real de fichas, horas dictadas y cumplimiento formativo.",
             url: effectiveGestorProgramId ? `/dashboard/admin?programId=${effectiveGestorProgramId}` : "/dashboard/admin",
             icon: BarChart3,
+            badge: "Auditoría",
           },
           {
             title: "Programas y Fichas",
+            description: "Supervisión de planes formativos y distribución de grupos en formación.",
             url: effectiveGestorProgramId ? `/dashboard/admin/courses?programId=${effectiveGestorProgramId}` : "/dashboard/admin/courses",
             icon: BookOpen,
+            badge: "Programas",
           },
           {
             title: "Programación Horaria",
+            description: "Monitoreo de mallas horarias institucionales y ocupación de ambientes.",
             url: effectiveGestorProgramId ? `/dashboard/admin/schedules?programId=${effectiveGestorProgramId}` : "/dashboard/admin/schedules",
             icon: CalendarClock,
+            badge: "Mallas",
           },
           {
             title: "Asistencia Semanal",
+            description: "Trazabilidad de asistencia y novedades formativas consolidadas.",
             url: effectiveGestorProgramId ? `/dashboard/gestor/attendance?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/attendance",
             icon: CalendarDays,
+            badge: "Registros",
           },
         ];
       case "student":
         return [
           {
             title: "Mis Materias",
+            description: "Accede a tus asignaturas matriculadas, competencias activas y datos del instructor.",
             url: "/dashboard/student",
             icon: BookOpen,
+            badge: "Asignaturas",
           },
           {
             title: "Registro Académico",
+            description: "Consulta tus calificaciones, inasistencias acumuladas y novedades oficiales.",
             url: "/dashboard/student/records",
             icon: ClipboardList,
+            badge: "Notas",
           },
           {
             title: "Programación Horaria",
+            description: "Horario de clases en tiempo real, ambientes asignados y eventos del trimestre.",
             url: "/dashboard/student/schedule",
             icon: CalendarClock,
+            badge: "Mi Horario",
           },
           {
             title: "Elección de Vocero",
+            description: "Participa activamente en las votaciones y procesos democráticos de tu ficha.",
             url: "/dashboard/student/elections",
             icon: Award,
+            badge: "Democracia",
           },
         ];
       case "teacher":
@@ -242,18 +292,24 @@ export default function HomePage({
         return [
           {
             title: "Mis Grupos y Fichas",
+            description: "Gestiona asistencias por sesión, seguimiento pedagógico y evaluación de aprendices.",
             url: "/dashboard/teacher",
             icon: Users,
+            badge: "Grupos",
           },
           {
             title: "Programación Horaria",
+            description: "Visualiza tu horario institucional semanal, novedades y disponibilidad de jornada.",
             url: "/dashboard/teacher/schedule",
             icon: CalendarClock,
+            badge: "Horario",
           },
           {
-            title: "Herramientas",
+            title: "Herramientas Docentes",
+            description: "Generador de reportes pedagógicos, certificados y utilidades académicas.",
             url: "/dashboard/teacher/tools",
             icon: Wrench,
+            badge: "Utilidades",
           },
         ];
     }
@@ -263,83 +319,188 @@ export default function HomePage({
   const institutionName = settings.institutionName || "SERVICIO NACIONAL DE APRENDIZAJE — SENA";
 
   return (
-    <PageTransition className="w-full flex-1 flex flex-col items-center justify-center min-h-[calc(100vh-6rem)] my-auto overflow-hidden">
-      <div className="relative w-full max-w-4xl mx-auto px-4 py-8 text-center flex flex-col items-center justify-center my-auto">
-        {/* Luz ambiental difusa usando el color primario del tema actual */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[540px] h-[340px] sm:h-[420px] bg-primary/10 blur-[130px] rounded-full pointer-events-none -z-10" />
+    <PageTransition className="w-full flex-1 flex flex-col py-3 sm:py-6 max-w-6xl mx-auto space-y-6 sm:space-y-8">
+      {/* ── SECCIÓN HERO DE BIENVENIDA ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative overflow-hidden rounded-3xl border border-border/80 bg-card/85 dark:bg-card/65 backdrop-blur-2xl p-6 sm:p-8 md:p-10 shadow-sm"
+      >
+        {/* Luces difusas de fondo */}
+        <div className="absolute top-0 right-0 w-80 sm:w-96 h-80 sm:h-96 bg-primary/15 blur-[100px] rounded-full pointer-events-none -z-10" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none -z-10" />
 
-        {/* Insignia de contexto y fecha */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-xs font-bold backdrop-blur-md shadow-2xs"
-        >
-          <RoleIcon className="w-3.5 h-3.5" />
-          <span>Panel de {roleInfo.label}</span>
-          <span className="w-1 h-1 rounded-full bg-primary/40 mx-0.5" />
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[11px] font-medium text-foreground/80" suppressHydrationWarning>
-            {displayDate}
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-3 max-w-2xl">
+            {/* Badges superiores: Rol + Fecha + Conexión */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-xs font-black shadow-2xs">
+                <RoleIcon className="w-3.5 h-3.5" />
+                <span>{roleInfo.label}</span>
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/80 bg-background/70 text-foreground/80 text-xs font-semibold backdrop-blur-md">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span suppressHydrationWarning>{displayDate}</span>
+              </div>
+
+              <Badge variant="outline" className="hidden xs:inline-flex text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground border-border/60">
+                PWA Activa
+              </Badge>
+            </div>
+
+            {/* Nombre institucional */}
+            <p className="text-[11px] sm:text-xs font-black tracking-widest text-primary uppercase">
+              {institutionName}
+            </p>
+
+            {/* Saludo Principal */}
+            <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight leading-[1.1] text-balance">
+              {timeGreeting},{" "}
+              <span className="bg-gradient-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent">
+                {userName ? formatName(userName) : roleInfo.label}
+              </span>
+            </h1>
+
+            {/* Mensaje de bienvenida */}
+            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed font-normal">
+              {roleInfo.message}
+            </p>
+          </div>
+
+          {/* Sello de Marca AcademiX / PWA */}
+          <div className="hidden lg:flex flex-col items-center justify-center p-5 rounded-3xl bg-background/50 border border-border/70 shadow-xs shrink-0 w-48 text-center space-y-2.5">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 p-2 flex items-center justify-center shadow-md shadow-primary/10">
+              <Image
+                src="/logo.png"
+                alt="Logo AcademiX"
+                width={48}
+                height={48}
+                className="object-contain aspect-square"
+                priority
+              />
+            </div>
+            <div>
+              <p className="text-sm font-black text-foreground tracking-tight">Academi<span className="text-primary">X</span></p>
+              <p className="text-[10px] text-muted-foreground font-semibold">Plataforma PWA</p>
+            </div>
+            <div className="w-full pt-1.5 border-t border-border/50 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Sincronizada</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── CUADRÍCULA MODULAR DE SERVICIOS / ACCESOS DIRECTOS ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3 px-1">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-xl bg-primary/10 text-primary">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <h2 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
+              Módulos y Accesos Directos
+            </h2>
+          </div>
+          <span className="text-xs font-semibold text-muted-foreground">
+            {navigationOptions.length} accesos disponibles
           </span>
-        </motion.div>
+        </div>
 
-        {/* Nombre Institucional */}
-        <motion.p
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.05 }}
-          className="mt-6 text-xs sm:text-sm font-black tracking-widest text-primary uppercase"
-        >
-          {institutionName}
-        </motion.p>
-
-        {/* Gran Título de Bienvenida */}
-        <motion.h1
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.1 }}
-          className="mt-3 text-4xl sm:text-6xl font-black text-foreground tracking-tight leading-[1.1] text-balance"
-        >
-          {timeGreeting},{" "}
-          <span className="bg-gradient-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent">
-            {userName ? formatName(userName) : roleInfo.label}
-          </span>
-        </motion.h1>
-
-        {/* Mensaje Editorial de Bienvenida */}
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.15 }}
-          className="mt-5 text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed text-pretty font-normal"
-        >
-          {roleInfo.message}
-        </motion.p>
-
-        {/* Botones de navegación a las opciones de la barra lateral de cada rol */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.2 }}
-          className="mt-8 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 text-xs font-semibold"
-        >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4.5">
           {navigationOptions.map((opt, idx) => {
             const Icon = opt.icon;
             return (
-              <Link
-                key={idx}
-                href={opt.url}
-                className="group inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border/80 bg-card/70 hover:bg-primary hover:text-primary-foreground hover:border-primary/80 backdrop-blur-sm text-foreground shadow-2xs hover:shadow-md hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer"
+              <motion.div
+                key={opt.title}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.05 * idx }}
               >
-                <Icon className="w-3.5 h-3.5 text-primary group-hover:text-primary-foreground transition-colors shrink-0" />
-                <span className="font-semibold">{opt.title}</span>
-                <ArrowRight className="w-3 h-3 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
-              </Link>
+                <Link
+                  href={opt.url}
+                  className="group relative rounded-3xl border border-border/80 bg-card/85 dark:bg-card/65 hover:bg-card hover:border-primary/50 backdrop-blur-xl p-5 shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between gap-4 h-full cursor-pointer hover:-translate-y-0.5"
+                >
+                  {/* Top: Icon + Badge */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300">
+                      <Icon className="w-5 h-5 transition-transform" />
+                    </div>
+
+                    <Badge variant="outline" className="text-[10px] font-extrabold uppercase tracking-wider bg-background/60 border-border/70 text-muted-foreground group-hover:border-primary/30 group-hover:text-primary transition-colors py-0.5 px-2">
+                      {opt.badge}
+                    </Badge>
+                  </div>
+
+                  {/* Middle: Title & Description */}
+                  <div className="space-y-1.5 flex-1">
+                    <h3 className="text-base font-extrabold text-foreground tracking-tight group-hover:text-primary transition-colors flex items-center gap-1.5">
+                      <span>{opt.title}</span>
+                    </h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                      {opt.description}
+                    </p>
+                  </div>
+
+                  {/* Bottom: Action link */}
+                  <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs font-bold text-primary">
+                    <span className="text-[11px] font-black uppercase tracking-wider opacity-80 group-hover:opacity-100">
+                      Ingresar
+                    </span>
+                    <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+                  </div>
+                </Link>
+              </motion.div>
             );
           })}
-        </motion.div>
+        </div>
       </div>
+
+      {/* ── STRIP DE BENEFICIOS PWA ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.25 }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2"
+      >
+        <div className="flex items-start gap-3.5 p-4 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
+            <Zap className="w-4 h-4" />
+          </div>
+          <div>
+            <h4 className="text-xs font-extrabold text-foreground">Acceso Ultrarrápido</h4>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+              Caché inteligente del Service Worker para consultar horarios de forma instantánea.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3.5 p-4 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
+            <Smartphone className="w-4 h-4" />
+          </div>
+          <div>
+            <h4 className="text-xs font-extrabold text-foreground">Instalable como App</h4>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+              Ábrela directamente desde la pantalla de inicio de tu teléfono en pantalla completa.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3.5 p-4 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
+            <Shield className="w-4 h-4" />
+          </div>
+          <div>
+            <h4 className="text-xs font-extrabold text-foreground">Seguridad Institucional</h4>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+              Autenticación blindada, sincronización continua y permisos asignados por rol.
+            </p>
+          </div>
+        </div>
+      </motion.div>
     </PageTransition>
   );
 }

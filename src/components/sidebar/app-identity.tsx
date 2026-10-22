@@ -36,8 +36,8 @@ export function AppIdentity() {
   };
 
   const badgeInfo = getRoleBadge();
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const { state, isMobile } = useSidebar();
+  const isCollapsed = !isMobile && state === "collapsed";
 
   return (
     <SidebarMenu className="group-data-[collapsible=icon]:items-center">
@@ -69,7 +69,7 @@ export function AppIdentity() {
             </div>
 
             {!isCollapsed && (
-              isMounted && !isPending ? (
+              isMounted ? (
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[17px] font-extrabold tracking-tight text-sidebar-foreground leading-tight">
                     Academi<span className="text-primary">X</span>
