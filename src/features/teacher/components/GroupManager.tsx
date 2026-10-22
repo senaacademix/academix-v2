@@ -95,6 +95,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatName, cn } from "@/lib/utils";
+import { resolveAttendanceStatusStyle } from "@/lib/attendanceStatusStyles";
 import { formatCalendarDate, fromUTC, getTodayColombianDate, toCalendarYMD, isScheduleCurrent } from "@/lib/dateUtils";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
@@ -3636,9 +3637,9 @@ const handleOpenAnalytics = async () => {
                                                                              {absentCount} {absentCount === 1 ? "Falta" : "Faltas"} / {totalClassDays} días ({absenceRate.toFixed(1)}%)
                                                                          </span>
                                                                      </div>
-                                                                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                                     <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                          <div 
-                                                                             className="h-full bg-rose-400 dark:bg-rose-500 rounded-full transition-all duration-500" 
+                                                                             className="h-full bg-rose-200 dark:bg-rose-600/70 rounded-full transition-all duration-500" 
                                                                              style={{ width: `${absenceRate}%` }}
                                                                          />
                                                                      </div>
@@ -3667,9 +3668,9 @@ const handleOpenAnalytics = async () => {
                                                                          {lateCount} {lateCount === 1 ? "Tarde" : "Tardes"} / {totalClassDays} días ({lateDaysRate.toFixed(1)}%)
                                                                      </span>
                                                                  </div>
-                                                                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                                 <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                      <div 
-                                                                         className="h-full bg-amber-400 dark:bg-amber-500 rounded-full transition-all duration-500" 
+                                                                         className="h-full bg-amber-200 dark:bg-amber-600/70 rounded-full transition-all duration-500" 
                                                                          style={{ width: `${lateDaysRate}%` }}
                                                                      />
                                                                  </div>
@@ -3699,9 +3700,9 @@ const handleOpenAnalytics = async () => {
                                                                              {leaveCount} {leaveCount === 1 ? "Retiro" : "Retiros"} / {totalClassDays} días ({leaveDaysRate.toFixed(1)}%)
                                                                          </span>
                                                                      </div>
-                                                                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                                     <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                          <div 
-                                                                             className="h-full bg-sky-400 dark:bg-sky-500 rounded-full transition-all duration-500" 
+                                                                             className="h-full bg-sky-200 dark:bg-sky-600/70 rounded-full transition-all duration-500" 
                                                                              style={{ width: `${leaveDaysRate}%` }}
                                                                          />
                                                                      </div>
@@ -3718,6 +3719,25 @@ const handleOpenAnalytics = async () => {
                                                     <div>
                                                         <h3 className="text-base font-black text-foreground">Carga Horaria y Asistencia Efectiva (Horas Asistidas vs. Perdidas)</h3>
                                                         <p className="text-xs text-muted-foreground mt-0.5">Muestra la cantidad de horas acumuladas entre faltas y tardanzas, la diferencia (horas asistidas) y el porcentaje de asistencia efectiva con respecto a las horas totales.</p>
+                                                        
+                                                        <div className="flex flex-wrap items-center gap-3 pt-3 text-xs">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-200 dark:bg-emerald-500/80 border border-emerald-400/40"></span>
+                                                                <span className="text-muted-foreground font-semibold">Horas Asistidas</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-rose-200 dark:bg-rose-500/80 border border-rose-400/40"></span>
+                                                                <span className="text-muted-foreground font-semibold">Faltas</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-amber-200 dark:bg-amber-500/80 border border-amber-400/40"></span>
+                                                                <span className="text-muted-foreground font-semibold">Tardanzas</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-sky-200 dark:bg-sky-500/80 border border-sky-400/40"></span>
+                                                                <span className="text-muted-foreground font-semibold">Retiros</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
 
                                                     <div className="space-y-5">
@@ -3728,42 +3748,53 @@ const handleOpenAnalytics = async () => {
                                                                   <div key={student.id} className="space-y-2 border-b border-border/30 pb-3 last:border-0 last:pb-0">
                                                                       <div className="flex flex-wrap items-center justify-between text-xs font-bold gap-2">
                                                                           <span className="truncate text-foreground max-w-[280px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-muted-foreground">
-                                                                              <span className="text-emerald-700 dark:text-emerald-300">Asistidas: {attendedHours.toFixed(2)} hs</span>
-                                                                              <span className="text-rose-700 dark:text-rose-400">Perdidas: {lostHours.toFixed(2)} hs</span>
-                                                                              <span className="text-sky-700 dark:text-sky-300 font-extrabold">Efectiva: {attendanceHoursRate.toFixed(1)}%</span>
+                                                                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-semibold">
+                                                                              <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                                                                                  Asistidas: {attendedHours.toFixed(2)} hs
+                                                                              </span>
+                                                                              <span className={lostHours > 0 ? "text-rose-700 dark:text-rose-300 font-semibold" : "text-muted-foreground font-medium"}>
+                                                                                  Perdidas: {lostHours.toFixed(2)} hs
+                                                                              </span>
+                                                                              <span className={cn(
+                                                                                  "font-black px-2 py-0.5 rounded-md border",
+                                                                                  attendanceHoursRate >= 80 
+                                                                                      ? "bg-emerald-100/70 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/50" 
+                                                                                      : "bg-rose-100/70 text-rose-800 border-rose-200/80 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50"
+                                                                              )}>
+                                                                                  Efectiva: {attendanceHoursRate.toFixed(1)}%
+                                                                              </span>
                                                                           </div>
                                                                       </div>
                                                                       
-                                                                      <div className="space-y-1">
+                                                                      <div className="space-y-1.5">
                                                                           {/* Stacked indicator bar representing Attended Hours vs. Lost Hours */}
-                                                                          <div className="h-3 w-full bg-muted rounded-full overflow-hidden flex">
+                                                                          <div className="h-3 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden flex">
                                                                               {/* Attended hours bar */}
                                                                               <div 
-                                                                                  className="h-full bg-emerald-300 dark:bg-emerald-500 transition-all duration-500" 
+                                                                                  className="h-full bg-emerald-200 dark:bg-emerald-600/70 transition-all duration-500" 
                                                                                   style={{ width: `${attendanceHoursRate}%` }}
                                                                                   title={`Horas Asistidas: ${attendedHours.toFixed(2)} hs`}
                                                                               />
-                                                                              {/* Absent hours bar (red) */}
+                                                                              {/* Absent hours bar (rose) */}
                                                                               {absentHours > 0 && (
                                                                                   <div 
-                                                                                      className="h-full bg-rose-300 dark:bg-rose-500 transition-all duration-500" 
+                                                                                      className="h-full bg-rose-200 dark:bg-rose-600/70 transition-all duration-500" 
                                                                                       style={{ width: `${(absentHours / totalScheduledHours) * 100}%` }}
                                                                                       title={`Horas de Faltas: ${absentHours.toFixed(2)} hs`}
                                                                                   />
                                                                               )}
-                                                                              {/* Late hours bar (orange) */}
+                                                                              {/* Late hours bar (amber) */}
                                                                               {lateHours > 0 && (
                                                                                   <div 
-                                                                                      className="h-full bg-amber-300 dark:bg-amber-500 transition-all duration-500" 
+                                                                                      className="h-full bg-amber-200 dark:bg-amber-600/70 transition-all duration-500" 
                                                                                       style={{ width: `${(lateHours / totalScheduledHours) * 100}%` }}
                                                                                       title={`Horas de Tardanzas: ${lateHours.toFixed(2)} hs`}
                                                                                   />
                                                                               )}
-                                                                              {/* Leave hours bar (blue) */}
+                                                                              {/* Leave hours bar (sky) */}
                                                                               {leaveHours > 0 && (
                                                                                   <div 
-                                                                                      className="h-full bg-sky-300 dark:bg-sky-500 transition-all duration-500" 
+                                                                                      className="h-full bg-sky-200 dark:bg-sky-600/70 transition-all duration-500" 
                                                                                       style={{ width: `${(leaveHours / totalScheduledHours) * 100}%` }}
                                                                                       title={`Horas de Retiros: ${leaveHours.toFixed(2)} hs`}
                                                                                   />
@@ -3771,9 +3802,16 @@ const handleOpenAnalytics = async () => {
                                                                           </div>
                                                                           
                                                                           {/* Detailed breakdown subtext */}
-                                                                          <div className="text-[10px] text-muted-foreground flex justify-between">
-                                                                              <span>{totalScheduledHours.toFixed(1)} hs totales del curso</span>
-                                                                              <span>Desglose de pérdida: {absentHours.toFixed(1)} hs Faltas + {lateHours.toFixed(2)} hs Tardanzas + {leaveHours.toFixed(2)} hs Retiros</span>
+                                                                          <div className="text-[10px] text-muted-foreground flex flex-wrap justify-between gap-1 items-center">
+                                                                              <span className="font-medium">{totalScheduledHours.toFixed(1)} hs totales del curso</span>
+                                                                              <div className="flex flex-wrap items-center gap-1.5 font-medium">
+                                                                                  <span className="text-muted-foreground/80">Desglose de pérdida:</span>
+                                                                                  <span className="text-rose-700 dark:text-rose-300 font-medium">{absentHours.toFixed(1)} hs Faltas</span>
+                                                                                  <span className="text-muted-foreground/40">•</span>
+                                                                                  <span className="text-amber-800 dark:text-amber-300 font-medium">{lateHours.toFixed(2)} hs Tardanzas</span>
+                                                                                  <span className="text-muted-foreground/40">•</span>
+                                                                                  <span className="text-sky-800 dark:text-sky-300 font-medium">{leaveHours.toFixed(2)} hs Retiros</span>
+                                                                              </div>
                                                                           </div>
                                                                       </div>
                                                                   </div>
@@ -3821,7 +3859,7 @@ const handleOpenAnalytics = async () => {
                                                                         <span style={{ color: '#dc2626' }}>{absentCount} Faltas ({absenceRate.toFixed(1)}%)</span>
                                                                     </div>
                                                                     <div style={{ height: '12px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                                                                        <div style={{ height: '100%', backgroundColor: '#ef4444', width: `${absenceRate}%` }} />
+                                                                        <div style={{ height: '100%', backgroundColor: '#fecdd3', width: `${absenceRate}%` }} />
                                                                     </div>
                                                                 </div>
                                                             );
@@ -3841,7 +3879,7 @@ const handleOpenAnalytics = async () => {
                                                                     <span style={{ color: '#d97706' }}>{lateCount} Tardes ({lateDaysRate.toFixed(1)}%)</span>
                                                                 </div>
                                                                 <div style={{ height: '12px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                                                                    <div style={{ height: '100%', backgroundColor: '#f59e0b', width: `${lateDaysRate}%` }} />
+                                                                    <div style={{ height: '100%', backgroundColor: '#fde68a', width: `${lateDaysRate}%` }} />
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -3862,7 +3900,7 @@ const handleOpenAnalytics = async () => {
                                                                         <span style={{ color: '#3b82f6' }}>{leaveCount} Retiros ({leaveDaysRate.toFixed(1)}%)</span>
                                                                     </div>
                                                                     <div style={{ height: '12px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                                                                        <div style={{ height: '100%', backgroundColor: '#3b82f6', width: `${leaveDaysRate}%` }} />
+                                                                        <div style={{ height: '100%', backgroundColor: '#bae6fd', width: `${leaveDaysRate}%` }} />
                                                                     </div>
                                                                 </div>
                                                             );
@@ -3889,10 +3927,10 @@ const handleOpenAnalytics = async () => {
                                                                         </div>
                                                                     </div>
                                                                     <div style={{ height: '12px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden', display: 'flex' }}>
-                                                                        <div style={{ height: '100%', backgroundColor: '#10b981', width: `${attendanceHoursRate}%` }} />
-                                                                        {absentHours > 0 && <div style={{ height: '100%', backgroundColor: '#ef4444', width: `${(absentHours / totalScheduledHours) * 100}%` }} />}
-                                                                        {lateHours > 0 && <div style={{ height: '100%', backgroundColor: '#f59e0b', width: `${(lateHours / totalScheduledHours) * 100}%` }} />}
-                                                                        {leaveHours > 0 && <div style={{ height: '100%', backgroundColor: '#3b82f6', width: `${(leaveHours / totalScheduledHours) * 100}%` }} />}
+                                                                        <div style={{ height: '100%', backgroundColor: '#a7f3d0', width: `${attendanceHoursRate}%` }} />
+                                                                        {absentHours > 0 && <div style={{ height: '100%', backgroundColor: '#fecdd3', width: `${(absentHours / totalScheduledHours) * 100}%` }} />}
+                                                                        {lateHours > 0 && <div style={{ height: '100%', backgroundColor: '#fde68a', width: `${(lateHours / totalScheduledHours) * 100}%` }} />}
+                                                                        {leaveHours > 0 && <div style={{ height: '100%', backgroundColor: '#bae6fd', width: `${(leaveHours / totalScheduledHours) * 100}%` }} />}
                                                                     </div>
                                                                 </div>
                                                             );
@@ -5257,7 +5295,7 @@ const handleOpenAnalytics = async () => {
                                                                                 {datePct}% · {Math.min(daysPassed, daysTotal)}/{daysTotal} días
                                                                             </span>
                                                                         </div>
-                                                                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                                        <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                             <div
                                                                                 className={`h-full rounded-full transition-all duration-500 ${datePct >= 100 ? "bg-red-500" : datePct >= 75 ? "bg-amber-500" : "bg-primary"}`}
                                                                                 style={{ width: `${datePct}%` }}
@@ -5948,14 +5986,9 @@ const handleOpenAnalytics = async () => {
                                 const isDual = isLate && isLeaveEarly;
                                 const isCurr = isRecordInCurrentSchedule(att, att.courseId || attCourseId);
 
-                                const badgeLabel = isAbsent ? "Falta" : isDual ? "Tarde + Retiro" : isLate ? "Tarde" : isLeaveEarly ? "Retiro" : att.status;
-                                const badgeClass = isAbsent 
-                                    ? "bg-red-50 text-red-700 border-red-200 text-[10px]" 
-                                    : isDual 
-                                        ? "bg-amber-100 text-amber-800 border-amber-300 text-[10px]"
-                                        : isLate 
-                                            ? "bg-amber-50 text-amber-700 border-amber-200 text-[10px]" 
-                                            : "bg-blue-50 text-blue-700 border-blue-200 text-[10px]";
+                                const st = resolveAttendanceStatusStyle(att);
+                                const badgeLabel = st.label;
+                                const badgeClass = cn(st.badgeClass, "text-[10px]");
 
                                 return (
                                     <div key={att.id} className="p-3 rounded-xl border border-border bg-card/50 flex flex-col gap-1.5 text-left">
@@ -5969,7 +6002,7 @@ const handleOpenAnalytics = async () => {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-1.5 shrink-0">
-                                                <Badge className={isJustified ? "bg-emerald-500 hover:bg-emerald-500 text-white text-[10px]" : "bg-red-500 hover:bg-red-500 text-white text-[10px]"}>
+                                                <Badge className={isJustified ? "bg-emerald-600 hover:bg-emerald-700 text-white text-[10px]" : "bg-rose-600 hover:bg-rose-700 text-white text-[10px]"}>
                                                     {isJustified ? "Justificado" : "No Justificado"}
                                                 </Badge>
                                                 <Badge variant="outline" className={badgeClass}>
@@ -5987,7 +6020,7 @@ const handleOpenAnalytics = async () => {
                                         )}
                                         {att.departureTime && (
                                             <div className="text-[11px] text-muted-foreground">
-                                                <span className="font-semibold text-blue-600">Hora Retiro:</span> {formatTime12h(att.departureTime)}
+                                                <span className="font-semibold text-sky-600 dark:text-sky-400">Hora Retiro:</span> {formatTime12h(att.departureTime)}
                                             </div>
                                         )}
                                         <div className="mt-1 flex items-center justify-between gap-2 pt-1 border-t border-muted/30">

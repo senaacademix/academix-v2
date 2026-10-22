@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { CreditsModal } from "@/components/CreditsModal";
-import { LicenseModal } from "@/components/license/LicenseModal";
 import { ModeToggle } from "@/components/theme/ModeToggle";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -20,7 +19,6 @@ import { AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { GestorProgramProvider } from "@/features/gestor/context/GestorProgramContext";
 import { DashboardSidebarTrigger } from "@/components/sidebar/DashboardSidebarTrigger";
-import { DashboardRoleHelpButton } from "@/components/navigation/DashboardRoleHelpButton";
 
 export default async function DashboardLayout({
   children,
@@ -141,7 +139,6 @@ export default async function DashboardLayout({
   const themes = await getAvailableThemes();
   const showModeToggle = true;
   const showThemeSelector = true;
-  const showLicenseModal = session.user.role !== "student";
 
   const isSidebarDefaultOpen = session.user.role === "admin" || session.user.role === "gestor";
 
@@ -165,14 +162,8 @@ export default async function DashboardLayout({
               </div>
 
               <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
-                <DashboardRoleHelpButton />
                 {showThemeSelector && <ThemeSelector themes={themes} />}
                 {showModeToggle && <ModeToggle />}
-                {showLicenseModal && (
-                  <div className="hidden md:inline-flex">
-                    <LicenseModal />
-                  </div>
-                )}
 
                 <div className="hidden sm:inline-flex">
                   <CreditsModal />

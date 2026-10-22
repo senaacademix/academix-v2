@@ -164,8 +164,8 @@ export function ThemeSelector({ themes }: ThemeSelectorProps) {
           className="flex items-center justify-between cursor-pointer text-xs"
         >
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <span>Predeterminado</span>
+            <div className="w-3 h-3 rounded-full bg-[#39A900]" />
+            <span>Predeterminado (SENA)</span>
           </div>
           {activeTheme === "default" && <Check className="w-3 h-3 ml-2" />}
         </DropdownMenuItem>

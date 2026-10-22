@@ -18,7 +18,8 @@ import {
     Award, 
     Sparkles,
     Heart,
-    FlaskConical
+    FlaskConical,
+    X
 } from "lucide-react";
 import {
     Tooltip,
@@ -28,6 +29,7 @@ import {
 
 export function CreditsModal() {
     const [mounted, setMounted] = useState(false);
+    const [open, setOpen] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -64,7 +66,7 @@ export function CreditsModal() {
     ];
 
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <Tooltip>
                 <DialogTrigger asChild>
                     <TooltipTrigger asChild>
@@ -83,12 +85,25 @@ export function CreditsModal() {
                 </TooltipContent>
             </Tooltip>
 
-            <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl w-[95vw] rounded-3xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card/95 backdrop-blur-xl">
+            <DialogContent 
+                showCloseButton={false}
+                className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl w-[95vw] rounded-3xl p-0 overflow-hidden border border-border/80 shadow-2xl bg-card/95 backdrop-blur-xl"
+            >
                 {/* Hero Header */}
                 <div className="relative overflow-hidden p-5 sm:p-6 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-b border-border/60">
                     <div className="absolute -right-6 -bottom-6 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
                     
-                    <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
+                    {/* Botón de Cerrar */}
+                    <button
+                        type="button"
+                        onClick={() => setOpen(false)}
+                        className="absolute top-4 right-4 z-50 p-2 rounded-xl border border-border/70 bg-background/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
+                        aria-label="Cerrar modal de créditos"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+
+                    <div className="relative z-10 flex items-center justify-between flex-wrap gap-4 pr-10">
                         <div className="flex items-center gap-3">
                             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shadow-xs shrink-0">
                                 <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />

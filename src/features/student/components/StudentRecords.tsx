@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Clock, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle, X, AlertTriangle } from "lucide-react";
+import { Clock, ClipboardList, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle, X, AlertTriangle } from "lucide-react";
 import { calculateTotalScheduledHours, calculateStudentAttendanceLoss, calculatePenalizedGrade, getLostHoursForAttendance, formatTime12h, calculateHoursDiff } from "@/lib/gradePenaltyUtils";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatName, cn } from "@/lib/utils";
+import { resolveAttendanceStatusStyle, ATTENDANCE_STATUS_STYLES } from "@/lib/attendanceStatusStyles";
 import { fromUTC, toCalendarYMD, isDateExpired, formatCalendarDate } from "@/lib/dateUtils";
 import { getStudentRecords, justifyAttendanceAction, markRemarkViewed, getStudentDocumentation, deleteJustificationAction } from "../actions/studentActions";
 import { getStudentGrades, submitStudentSubmissionLink } from "@/features/teacher/actions/gradeActions";
@@ -102,6 +103,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
     const [gradesLoading, setGradesLoading] = useState(initialTab === "grades" || initialTab === "analytics");
     const [docCourses, setDocCourses] = useState<any[]>([]);
     const [docLoading, setDocLoading] = useState(initialTab === "documentation");
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
 
     // Submission link dialog
     const [submissionDialog, setSubmissionDialog] = useState<{ open: boolean; activityId: string; activityTitle: string; currentLink: string } | null>(null);
@@ -591,10 +593,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         }
 
         loadRecords();
+        loadGradesOnDemand();
 
-        if (initTab === "grades" || initTab === "analytics") {
-            loadGradesOnDemand();
-        } else if (initTab === "documentation") {
+        if (initTab === "documentation") {
             loadDocumentationOnDemand();
         } else if (initTab === "improvement") {
             loadImprovementPlansOnDemand();
@@ -717,6 +718,55 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         if (selectedGroupId === "ALL") return courses;
         return courses.filter((c: any) => c.groupId === selectedGroupId);
     }, [courses, selectedGroupId]);
+
+    const availableSubjects = useMemo(() => {
+        const map = new Map<string, { id: string; title: string; teacherName?: string }>();
+
+        const sourceCourses = filteredCourses.length > 0 ? filteredCourses : courses;
+        for (const c of sourceCourses) {
+            if (c?.id && !map.has(c.id)) {
+                map.set(c.id, {
+                    id: c.id,
+                    title: c.title,
+                    teacherName: formatTeacherName(c.teacher),
+                });
+            }
+        }
+
+        for (const dc of docCourses) {
+            if (selectedGroupId !== "ALL" && dc?.groupId && dc.groupId !== selectedGroupId) continue;
+            if (dc?.id && !map.has(dc.id)) {
+                map.set(dc.id, {
+                    id: dc.id,
+                    title: dc.title,
+                    teacherName: formatTeacherName(dc.teacher),
+                });
+            }
+        }
+
+        for (const att of attendances) {
+            const c = att.course;
+            if (c?.id && !map.has(c.id)) {
+                map.set(c.id, {
+                    id: c.id,
+                    title: c.title,
+                    teacherName: formatTeacherName(c.teacher),
+                });
+            }
+        }
+
+        return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
+    }, [filteredCourses, courses, docCourses, attendances, selectedGroupId]);
+
+    // Sincronizar automáticamente la materia seleccionada (sin opción "Todas")
+    useEffect(() => {
+        if (availableSubjects.length > 0) {
+            const exists = availableSubjects.some(s => s.id === selectedSubjectId);
+            if (!exists) {
+                setSelectedSubjectId(availableSubjects[0].id);
+            }
+        }
+    }, [availableSubjects, selectedSubjectId]);
 
     const gradesAvgChartData = useMemo(() => {
         const labels = courses.map(c => c.title);
@@ -1207,6 +1257,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                         </div>
                     </div>
 
+                    {Boolean(studentId) && currentUserRole !== "student" && (
                     <div className="flex items-center gap-2 flex-wrap shrink-0 self-end lg:self-auto">
                         <Button
                             variant="outline"
@@ -1243,6 +1294,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                             <span>Línea de Tiempo</span>
                         </Button>
                     </div>
+                    )}
                 </div>
             )}
 
@@ -1250,15 +1302,15 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             {!onlyImprovement && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Faltas */}
-                    <div className="p-3.5 rounded-2xl border border-border/70 bg-card/70 backdrop-blur-md flex items-center justify-between gap-3 shadow-2xs hover:border-destructive/40 transition-all">
+                    <div className="p-3.5 rounded-2xl border border-border/70 bg-card/70 backdrop-blur-md flex items-center justify-between gap-3 shadow-2xs hover:border-rose-500/40 transition-all">
                         <div className="space-y-0.5 min-w-0">
                             <p className="uppercase font-black text-[10px] tracking-wider text-muted-foreground">Inasistencias</p>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-black text-foreground leading-none">{absentCount}</span>
+                                <span className="text-2xl font-black text-rose-600 dark:text-rose-400 leading-none">{absentCount}</span>
                                 <span className="text-[11px] text-muted-foreground font-medium truncate">Faltas acumuladas</span>
                             </div>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+                        <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
                             <UserX className="w-4 h-4" />
                         </div>
                     </div>
@@ -1296,40 +1348,62 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             {hideTables ? (
                 analyticsContent
             ) : (
-                <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+                <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col gap-4 sm:gap-5 space-y-0">
                     {!onlyImprovement && (
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <TabsList className={cn(
-                                "flex w-full overflow-x-auto justify-start md:grid h-auto p-1.5 bg-muted/60 rounded-2xl border border-border/60 backdrop-blur-md gap-1.5 shadow-2xs scrollbar-none flex-1 touch-scroll touch-pan-x",
-                                hideDocumentation ? "md:grid-cols-5" : "md:grid-cols-6"
-                            )}>
-                                <TabsTrigger value="attendance" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                    <Clock className="w-4 h-4 text-primary shrink-0" />
-                                    <span>Asistencia</span>
-                                </TabsTrigger>
-                                <TabsTrigger value="grades" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                    <GraduationCap className="w-4 h-4 text-primary shrink-0" />
-                                    <span>Calificaciones</span>
-                                </TabsTrigger>
-                                {!hideDocumentation && (
-                                    <TabsTrigger value="documentation" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                        <BookOpen className="w-4 h-4 text-primary shrink-0" />
-                                        <span>Documentación</span>
+                        <div className="w-full flex items-center justify-between border-b border-border/80 gap-3">
+                            <div className="flex-1 overflow-x-auto scrollbar-none flex items-center touch-scroll touch-pan-x overscroll-x-contain -mb-px">
+                                <TabsList className="flex flex-nowrap items-center justify-start h-auto p-0 bg-transparent rounded-none gap-0 sm:gap-1 w-max">
+                                    <TabsTrigger
+                                        value="attendance"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <ClipboardList className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Asistencia</span>
                                     </TabsTrigger>
-                                )}
-                                <TabsTrigger value="remarks" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                    <ShieldAlert className="w-4 h-4 text-primary shrink-0" />
-                                    <span>Observaciones</span>
-                                </TabsTrigger>
-                                <TabsTrigger value="improvement" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                    <FileText className="w-4 h-4 text-primary shrink-0" />
-                                    <span>Planes de Mejoramiento</span>
-                                </TabsTrigger>
-                                <TabsTrigger value="analytics" className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                                    <BarChart3 className="w-4 h-4 text-primary shrink-0" />
-                                    <span>Analítica</span>
-                                </TabsTrigger>
-                            </TabsList>
+
+                                    <TabsTrigger
+                                        value="grades"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <GraduationCap className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Calificaciones</span>
+                                    </TabsTrigger>
+
+                                    {!hideDocumentation && (
+                                        <TabsTrigger
+                                            value="documentation"
+                                            className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                        >
+                                            <BookOpen className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                            <span>Documentación</span>
+                                        </TabsTrigger>
+                                    )}
+
+                                    <TabsTrigger
+                                        value="remarks"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <AlertTriangle className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Observaciones</span>
+                                    </TabsTrigger>
+
+                                    <TabsTrigger
+                                        value="improvement"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <FileText className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Planes de Mejoramiento</span>
+                                    </TabsTrigger>
+
+                                    <TabsTrigger
+                                        value="analytics"
+                                        className="group relative flex items-center gap-2 h-11 px-3.5 sm:px-4 text-xs sm:text-[13px] font-semibold whitespace-nowrap bg-transparent! dark:bg-transparent! rounded-none border-0 border-b-2 border-transparent data-[state=active]:border-primary! data-[state=active]:text-primary! dark:data-[state=active]:text-primary! data-[state=active]:bg-transparent! dark:data-[state=active]:bg-transparent! data-[state=active]:shadow-none! text-muted-foreground hover:text-foreground transition-all shrink-0 cursor-pointer -mb-px"
+                                    >
+                                        <BarChart3 className="w-4 h-4 text-muted-foreground group-data-[state=active]:text-primary group-hover:text-foreground transition-colors shrink-0" />
+                                        <span>Analítica</span>
+                                    </TabsTrigger>
+                                </TabsList>
+                            </div>
 
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1338,7 +1412,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                         variant="outline"
                                         size="sm"
                                         onClick={() => setShowHelpModal(true)}
-                                        className="h-10 px-3.5 rounded-2xl border-border/70 bg-card hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all text-xs font-bold gap-1.5 text-muted-foreground shadow-2xs cursor-pointer shrink-0"
+                                        className="h-8 px-3 rounded-xl border-border/70 bg-card hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all text-xs font-bold gap-1.5 text-muted-foreground shadow-2xs cursor-pointer shrink-0"
                                     >
                                         <HelpCircle className="w-4 h-4 text-primary" />
                                         <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
@@ -1352,10 +1426,36 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                         </div>
                     )}
 
-                    {/* ── ATTENDANCE (table per course) ────────────────────── */}
+                    {/* Selector de Materias (Asistencia, Calificaciones, Documentación) */}
+                    {!onlyImprovement && ["attendance", "grades", "documentation"].includes(activeTab) && availableSubjects.length > 0 && (
+                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none p-1.5 rounded-2xl bg-muted/40 border border-border/60 backdrop-blur-md shadow-2xs touch-pan-x">
+                            {availableSubjects.map((sub) => {
+                                const isSelected = (selectedSubjectId || availableSubjects[0]?.id) === sub.id;
+                                return (
+                                    <button
+                                        key={sub.id}
+                                        type="button"
+                                        onClick={() => setSelectedSubjectId(sub.id)}
+                                        className={cn(
+                                            "px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-2 border whitespace-nowrap",
+                                            isSelected
+                                                ? "bg-primary text-primary-foreground border-primary shadow-xs scale-[1.01]"
+                                                : "bg-card/70 text-muted-foreground hover:text-foreground hover:bg-card border-border/50"
+                                        )}
+                                        title={sub.title + (sub.teacherName ? ` (${sub.teacherName})` : "")}
+                                    >
+                                        <BookOpen className={cn("w-3.5 h-3.5 shrink-0", isSelected ? "text-primary-foreground" : "text-primary")} />
+                                        <span>{sub.title}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* ── ATTENDANCE (Single unified view for selected subject) ────────────────────── */}
                     {!onlyImprovement && <TabsContent value="attendance" className="m-0 border-none p-0 outline-none">
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
-                            {attendances.length === 0 ? (
+                            {attendances.length === 0 && courses.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-muted/5 text-muted-foreground">
                                     <Calendar className="w-12 h-12 mb-4 opacity-50 text-green-500" />
                                     <p className="font-semibold text-base text-green-600">¡Asistencia Perfecta!</p>
@@ -1424,186 +1524,74 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                         const sessionEnd = sch?.endTime || "22:00";
                                         const [sh, sm] = sessionStart.split(":").map(Number);
                                         const [eh, em] = sessionEnd.split(":").map(Number);
-                                        const sessionDailyHours = (eh * 60 + em - (sh * 60 + sm)) / 60;
-                                        const effectiveDailyHours = sessionDailyHours > 0 ? sessionDailyHours : dailyHours;
-
+                                        const sessionTotalHours = Math.max(0.5, (eh * 60 + em - (sh * 60 + sm)) / 60);
+                                        
                                         if (rec.status === "ABSENT") {
-                                            absentHours += effectiveDailyHours;
-                                        } else if (rec.status === "LATE" || rec.status === "LEAVE_EARLY" || rec.arrivalTime || rec.departureTime) {
+                                            absentHours += sessionTotalHours;
+                                        } else {
                                             const lost = getLostHoursForAttendance(sessionStart, sessionEnd, rec.arrivalTime, rec.departureTime);
                                             lateHours += lost.lateHours;
                                             leaveHours += lost.leaveEarlyHours;
                                         }
                                     });
-
-                                    const lateCount = entries.filter(e => e.status === "LATE" || (e.arrivalTime && e.status !== "PRESENT" && e.status !== "ABSENT")).length;
-                                    const leaveCount = entries.filter(e => e.status === "LEAVE_EARLY" || (e.departureTime && e.status !== "PRESENT" && e.status !== "ABSENT")).length;
-                                    const absenceRate = totalClassDays > 0 ? Math.max(0, Math.min(100, (absentCount / totalClassDays) * 100)) : 0;
-                                    const lateRate = totalClassDays > 0 ? Math.max(0, Math.min(100, (lateCount / totalClassDays) * 100)) : 0;
-                                    const leaveRate = totalClassDays > 0 ? Math.max(0, Math.min(100, (leaveCount / totalClassDays) * 100)) : 0;
                                     
+                                    const lateCount = entries.filter(e => e.status === "LATE" || (e.arrivalTime && e.status !== "ABSENT")).length;
+                                    const leaveCount = entries.filter(e => e.status === "LEAVE_EARLY" || (e.departureTime && e.status !== "ABSENT")).length;
                                     const totalLostHours = absentHours + lateHours + leaveHours;
                                     const attendedHours = Math.max(0, totalScheduledHours - totalLostHours);
-                                    const attendanceHoursRate = totalScheduledHours > 0 ? Math.max(0, Math.min(100, (attendedHours / totalScheduledHours) * 100)) : 100;
+                                    const attendanceHoursRate = totalScheduledHours > 0 ? Math.min(100, Math.max(0, (attendedHours / totalScheduledHours) * 100)) : 100;
                                     
                                     return {
                                         course,
+                                        entries,
                                         totalClassDays,
-                                        totalScheduledHours,
                                         absentCount,
                                         lateCount,
                                         leaveCount,
+                                        totalScheduledHours,
                                         absentHours,
                                         lateHours,
                                         leaveHours,
-                                        absenceRate,
-                                        lateRate,
-                                        leaveRate,
+                                        totalLostHours,
                                         attendedHours,
                                         attendanceHoursRate
                                     };
                                 });
 
-                                const allCourseList = Object.values(byCourse);
+                                const activeSubId = selectedSubjectId || availableSubjects[0]?.id;
+                                const m = courseMetrics.find(metric => metric.course.id === activeSubId);
+                                const entryData = activeSubId ? byCourse[activeSubId] : undefined;
+                                const course = entryData?.course || m?.course || courses.find(c => c.id === activeSubId);
+                                const entries = entryData?.entries || [];
+
+                                if (!course) {
+                                    return (
+                                        <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-2xl bg-muted/5 text-muted-foreground">
+                                            <Calendar className="w-12 h-12 mb-3 opacity-40 text-primary" />
+                                            <p className="font-bold text-sm text-foreground">Sin registros para esta materia</p>
+                                            <p className="text-xs text-muted-foreground mt-1">No hay datos de asistencia registrados en este periodo.</p>
+                                        </div>
+                                    );
+                                }
+
+                                const unjustified = entries.filter(a => !a.justification).length;
+                                const attendanceRate = m ? m.attendanceHoursRate : 100;
 
                                 return (
-                                    <div className="space-y-6">
-                                        <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs space-y-6">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-4">
-                                                <div>
-                                                    <h3 className="text-base font-black text-foreground flex items-center gap-2">
-                                                        <BarChart3 className="w-4 h-4 text-primary" />
-                                                        Resumen Integral de Asistencia y Horas por Materia
-                                                    </h3>
-                                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                                        Desglose completo de inasistencias, tardanzas, retiros y horas efectivas cursadas.
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-5">
-                                                {courseMetrics.map(m => {
-                                                    const lostHours = m.absentHours + m.lateHours + m.leaveHours;
-                                                    return (
-                                                        <div key={m.course.id} className="rounded-2xl border border-border/70 bg-background/60 p-5 space-y-3.5 hover:border-primary/40 transition-all shadow-2xs">
-                                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                                                <div>
-                                                                    <h4 className="text-sm font-black text-foreground">
-                                                                        {m.course.title}
-                                                                    </h4>
-                                                                    {m.course.teacher && (
-                                                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                                                            Instructor: {formatName(m.course.teacher.name, m.course.teacher.profile)}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="flex items-center gap-2 self-start sm:self-auto">
-                                                                    <span className={cn(
-                                                                        "px-2.5 py-1 rounded-xl text-xs font-black border",
-                                                                        m.attendanceHoursRate >= 80 
-                                                                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
-                                                                            : "bg-destructive/10 text-destructive border-destructive/20"
-                                                                    )}>
-                                                                        {m.attendanceHoursRate.toFixed(1)}% Asistencia Efectiva
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* 4 KPIs per Course */}
-                                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                                <div className="p-3 rounded-xl bg-card border border-border/60">
-                                                                    <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Faltas</div>
-                                                                    <div className="text-base font-black text-destructive mt-0.5">
-                                                                        {m.absentCount} días <span className="text-xs font-semibold text-muted-foreground">({m.absentHours.toFixed(1)} hs)</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="p-3 rounded-xl bg-card border border-border/60">
-                                                                    <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Tardanzas</div>
-                                                                    <div className="text-base font-black text-amber-600 dark:text-amber-400 mt-0.5">
-                                                                        {m.lateCount} días <span className="text-xs font-semibold text-muted-foreground">({m.lateHours.toFixed(1)} hs)</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="p-3 rounded-xl bg-card border border-border/60">
-                                                                    <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Retiros</div>
-                                                                    <div className="text-base font-black text-blue-600 dark:text-blue-400 mt-0.5">
-                                                                        {m.leaveCount} días <span className="text-xs font-semibold text-muted-foreground">({m.leaveHours.toFixed(1)} hs)</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="p-3 rounded-xl bg-card border border-border/60">
-                                                                    <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Horas Cursadas</div>
-                                                                    <div className="text-base font-black text-foreground mt-0.5">
-                                                                        {m.attendedHours.toFixed(1)} / {m.totalScheduledHours.toFixed(1)} hs
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Visual Progress Bar */}
-                                                            <div className="space-y-1 pt-1">
-                                                                <div className="h-2.5 w-full bg-muted/60 rounded-full overflow-hidden flex">
-                                                                    <div 
-                                                                        className="h-full bg-emerald-500 transition-all duration-500" 
-                                                                        style={{ width: `${m.attendanceHoursRate}%` }} 
-                                                                        title={`Asistidas: ${m.attendedHours.toFixed(1)} hs`} 
-                                                                    />
-                                                                    {m.absentHours > 0 && (
-                                                                        <div 
-                                                                            className="h-full bg-destructive transition-all duration-500" 
-                                                                            style={{ width: `${(m.absentHours / (m.totalScheduledHours || 1)) * 100}%` }} 
-                                                                            title={`Faltas: ${m.absentHours.toFixed(1)} hs`} 
-                                                                        />
-                                                                    )}
-                                                                    {m.lateHours > 0 && (
-                                                                        <div 
-                                                                            className="h-full bg-amber-500 transition-all duration-500" 
-                                                                            style={{ width: `${(m.lateHours / (m.totalScheduledHours || 1)) * 100}%` }} 
-                                                                            title={`Tardes: ${m.lateHours.toFixed(1)} hs`} 
-                                                                        />
-                                                                    )}
-                                                                    {m.leaveHours > 0 && (
-                                                                        <div 
-                                                                            className="h-full bg-blue-500 transition-all duration-500" 
-                                                                            style={{ width: `${(m.leaveHours / (m.totalScheduledHours || 1)) * 100}%` }} 
-                                                                            title={`Retiros: ${m.leaveHours.toFixed(1)} hs`} 
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                    <Card className="overflow-hidden border border-border/70 rounded-3xl bg-card shadow-xs">
+                                        <CardHeader className="bg-muted/10 border-b border-border/60 p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div className="flex-1 min-w-0 space-y-1.5">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    {course.teacher && (
+                                                        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                                                            <GraduationCap className="w-4 h-4 text-primary shrink-0" />
+                                                            <span>Instructor: {formatTeacherName(course.teacher)}</span>
                                                         </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-6 border-t border-border/80 space-y-4 my-6">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                                <div>
-                                                    <h3 className="text-base font-black text-foreground flex items-center gap-2">
-                                                        <Calendar className="w-4 h-4 text-primary" />
-                                                        Historial Detallado de Registros por Materia
-                                                    </h3>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Listado completo de asistencias, tardanzas, retiros y justificaciones registradas por curso.
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-6">
-                                            {allCourseList.map(({ course, entries }) => {
-                                                const unjustified = entries.filter(a => !a.justification).length;
-                                                return (
-                                        <Card key={course.id} className="overflow-hidden border-border/50 shadow-sm">
-                                            <CardHeader className="bg-muted/10 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5">
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="text-lg font-black text-foreground">{course.title}</h3>
-                                                    <div className="flex items-center gap-1.5 mt-1">
-                                                        <GraduationCap className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                                        <span className="text-sm text-muted-foreground">{formatTeacherName(course.teacher)}</span>
-                                                    </div>
+                                                    )}
                                                     {course.schedules && course.schedules.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                                        <div className="flex flex-wrap gap-1.5">
                                                             {course.schedules.map((sch: any) => (
-                                                                <span key={sch.id} className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                                                <span key={sch.id} className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                                                                     <Calendar className="w-2.5 h-2.5" />
                                                                     {DAY_LABELS[sch.dayOfWeek] ?? sch.dayOfWeek} {sch.startTime}–{sch.endTime}
                                                                 </span>
@@ -1611,15 +1599,118 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex flex-col items-end shrink-0">
-                                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sin Justificar</span>
-                                                    <span className={`text-3xl font-black ${unjustified > 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{unjustified}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 self-end sm:self-auto">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sin Justificar</span>
+                                                    <span className={`text-2xl font-black ${unjustified > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                                        {unjustified}
+                                                    </span>
                                                 </div>
-                                            </CardHeader>
-                                            <CardContent className="p-0">
-<div className="w-full overflow-x-auto scrollbar-none">
-                                                    <Table className="[&_th:first-child]:pl-5 [&_th:last-child]:pr-5 [&_td:first-child]:pl-5 [&_td:last-child]:pr-5 min-w-[550px]">
-                                                        <TableHeader className="bg-muted/5">
+                                                {m && (
+                                                    <div className="border-l border-border/60 pl-3">
+                                                        <span className={cn(
+                                                            "px-3 py-1.5 rounded-xl text-xs font-black border inline-block",
+                                                            attendanceRate >= 80 
+                                                                ? "bg-emerald-100/70 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/50" 
+                                                                : "bg-rose-100/70 text-rose-800 border-rose-200/80 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50"
+                                                        )}>
+                                                            {attendanceRate.toFixed(1)}% Asistencia
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardHeader>
+
+                                        {/* Attendance Metrics Ribbon */}
+                                        {m && (
+                                            <div className="p-5 sm:p-6 border-b border-border/60 space-y-4 bg-background/40">
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                    <div className="p-3.5 rounded-2xl bg-card border border-border/60 shadow-2xs">
+                                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Inasistencias</div>
+                                                        <div className="text-lg font-black text-rose-700 dark:text-rose-300 mt-0.5">
+                                                            {m.absentCount} días <span className="text-xs font-semibold text-muted-foreground">({m.absentHours.toFixed(1)}h)</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-3.5 rounded-2xl bg-card border border-border/60 shadow-2xs">
+                                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Llegadas Tarde</div>
+                                                        <div className="text-lg font-black text-amber-800 dark:text-amber-300 mt-0.5">
+                                                            {m.lateCount} días <span className="text-xs font-semibold text-muted-foreground">({m.lateHours.toFixed(1)}h)</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-3.5 rounded-2xl bg-card border border-border/60 shadow-2xs">
+                                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Retiros Anticipados</div>
+                                                        <div className="text-lg font-black text-sky-800 dark:text-sky-300 mt-0.5">
+                                                            {m.leaveCount} días <span className="text-xs font-semibold text-muted-foreground">({m.leaveHours.toFixed(1)}h)</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-3.5 rounded-2xl bg-card border border-border/60 shadow-2xs">
+                                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Horas Cursadas</div>
+                                                        <div className="text-lg font-black text-foreground mt-0.5">
+                                                            {m.attendedHours.toFixed(1)} / {m.totalScheduledHours.toFixed(1)} hs
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Visual Progress Bar & Breakdown */}
+                                                <div className="space-y-1.5">
+                                                    <div className="h-2.5 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden flex">
+                                                        <div 
+                                                            className="h-full bg-emerald-200 dark:bg-emerald-600/70 transition-all duration-500" 
+                                                            style={{ width: `${m.attendanceHoursRate}%` }} 
+                                                            title={`Asistidas: ${m.attendedHours.toFixed(1)} hs`} 
+                                                        />
+                                                        {m.absentHours > 0 && (
+                                                            <div 
+                                                                className="h-full bg-rose-200 dark:bg-rose-600/70 transition-all duration-500" 
+                                                                style={{ width: `${(m.absentHours / (m.totalScheduledHours || 1)) * 100}%` }} 
+                                                                title={`Faltas: ${m.absentHours.toFixed(1)} hs`} 
+                                                            />
+                                                        )}
+                                                        {m.lateHours > 0 && (
+                                                            <div 
+                                                                className="h-full bg-amber-200 dark:bg-amber-600/70 transition-all duration-500" 
+                                                                style={{ width: `${(m.lateHours / (m.totalScheduledHours || 1)) * 100}%` }} 
+                                                                title={`Tardes: ${m.lateHours.toFixed(1)} hs`} 
+                                                            />
+                                                        )}
+                                                        {m.leaveHours > 0 && (
+                                                            <div 
+                                                                className="h-full bg-sky-200 dark:bg-sky-600/70 transition-all duration-500" 
+                                                                style={{ width: `${(m.leaveHours / (m.totalScheduledHours || 1)) * 100}%` }} 
+                                                                title={`Retiros: ${m.leaveHours.toFixed(1)} hs`} 
+                                                            />
+                                                        )}
+                                                    </div>
+
+                                                    <div className="text-[10px] text-muted-foreground flex flex-wrap justify-between gap-1 items-center pt-0.5">
+                                                        <span className="font-medium">{m.totalScheduledHours.toFixed(1)} hs totales</span>
+                                                        <div className="flex flex-wrap items-center gap-1.5 font-medium">
+                                                            <span className="text-muted-foreground/80">Desglose de pérdida:</span>
+                                                            <span className="text-rose-700 dark:text-rose-300 font-medium">{m.absentHours.toFixed(1)} hs Faltas</span>
+                                                            <span className="text-muted-foreground/40">•</span>
+                                                            <span className="text-amber-800 dark:text-amber-300 font-medium">{m.lateHours.toFixed(1)} hs Tardanzas</span>
+                                                            <span className="text-muted-foreground/40">•</span>
+                                                            <span className="text-sky-800 dark:text-sky-300 font-medium">{m.leaveHours.toFixed(1)} hs Retiros</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Attendance Detailed Log */}
+                                        <CardContent className="p-0">
+                                            {entries.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center p-10 text-center text-muted-foreground gap-2">
+                                                    <CheckCircle2 className="w-10 h-10 text-emerald-500 opacity-90" />
+                                                    <p className="font-bold text-sm text-foreground">¡Asistencia perfecta en esta materia!</p>
+                                                    <p className="text-xs text-muted-foreground">No registras inasistencias ni llegadas tarde.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="w-full overflow-x-auto scrollbar-none">
+                                                    <Table className="[&_th:first-child]:pl-6 [&_th:last-child]:pr-6 [&_td:first-child]:pl-6 [&_td:last-child]:pr-6 min-w-[550px]">
+                                                        <TableHeader className="bg-muted/10">
                                                             <TableRow>
                                                                 <TableHead>Fecha</TableHead>
                                                                 <TableHead className="w-[120px] text-center">Estado</TableHead>
@@ -1638,50 +1729,10 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                             {att.arrivalTime && <div className="text-xs text-muted-foreground mt-0.5">Llegada: {formatTime12h(att.arrivalTime)}</div>}
                                                                             {att.departureTime && <div className="text-xs text-muted-foreground mt-0.5">Retiro: {formatTime12h(att.departureTime)}</div>}
                                                                             {(() => {
-                                                                                if (att.status === "PRESENT") return null;
-                                                                                const daysMap: Record<string, number> = {
-                                                                                    SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6
-                                                                                };
-                                                                                const targetDay = new Date(att.date).getUTCDay();
-                                                                                const sch = att.course?.schedules?.find((s: any) => daysMap[s.dayOfWeek] === targetDay) || att.course?.schedules?.[0];
-                                                                                const sessionStart = sch?.startTime || "08:00";
-                                                                                const sessionEnd = sch?.endTime || "12:00";
-                                                                                const lost = getLostHoursForAttendance(sessionStart, sessionEnd, att.arrivalTime, att.departureTime);
-                                                                                const sessionHours = Math.max(0.5, calculateHoursDiff(sessionStart, sessionEnd) || 4);
-                                                                                const lostH = att.status === "ABSENT" ? sessionHours : lost.totalLostHours;
-                                                                                if (lostH <= 0) return null;
+                                                                                const st = resolveAttendanceStatusStyle(att);
                                                                                 return (
-                                                                                    <div className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 shadow-2xs">
-                                                                                        <Clock className="w-2.5 h-2.5 shrink-0" />
-                                                                                        <span>{lostH}h perdidas</span>
-                                                                                    </div>
-                                                                                );
-                                                                            })()}
-                                                                        </TableCell>
-                                                                        <TableCell className="text-center">
-                                                                            {(() => {
-                                                                                const isAbsent = att.status === 'ABSENT';
-                                                                                const isLate = att.status === 'LATE' || !!att.arrivalTime;
-                                                                                const isLeaveEarly = att.status === 'LEAVE_EARLY' || !!att.departureTime;
-                                                                                const isDual = isLate && isLeaveEarly;
-
-                                                                                let badgeClass = "text-red-600 border-red-200 bg-red-50";
-                                                                                let label = "Ausencia";
-
-                                                                                if (isDual) {
-                                                                                    badgeClass = "text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300";
-                                                                                    label = "Tarde + Retiro";
-                                                                                } else if (isLate) {
-                                                                                    badgeClass = "text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400";
-                                                                                    label = "Llegada Tarde";
-                                                                                } else if (isLeaveEarly) {
-                                                                                    badgeClass = "text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400";
-                                                                                    label = "Retiro Temprano";
-                                                                                }
-
-                                                                                return (
-                                                                                    <Badge variant="outline" className={`text-xs font-bold w-28 h-6 inline-flex items-center justify-center ${badgeClass}`}>
-                                                                                        {label}
+                                                                                    <Badge variant="outline" className={cn("text-xs font-bold w-28 h-6 inline-flex items-center justify-center border", st.badgeClass)}>
+                                                                                        {st.label}
                                                                                     </Badge>
                                                                                 );
                                                                             })()}
@@ -1690,7 +1741,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                             {isJustified ? (
                                                                                 <div className="space-y-1.5 py-1">
                                                                                     <div className="flex items-center gap-2">
-                                                                                        <Badge variant="outline" className="text-xs font-bold text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 gap-1 h-5 inline-flex items-center justify-center shrink-0">
+                                                                                        <Badge variant="outline" className="text-xs font-bold text-emerald-800 border-emerald-300/80 bg-emerald-100/80 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60 gap-1 h-5 inline-flex items-center justify-center shrink-0">
                                                                                             <CheckCircle2 className="w-3 h-3" /> Justificado
                                                                                         </Badge>
                                                                                         {att.justificationUrl && (
@@ -1764,15 +1815,11 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                         </TableBody>
                                                     </Table>
                                                 </div>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })()}
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })()}
                         </motion.div>
                     </TabsContent>}
 
@@ -1783,14 +1830,24 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                 <div className="flex justify-center items-center h-48">
                                     <LoadingSpinner />
                                 </div>
-                            ) : courses.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-muted/5 text-muted-foreground">
-                                    <BookOpen className="w-12 h-12 mb-4 opacity-50" />
-                                    <p className="font-semibold text-base">Sin Materias</p>
-                                    <p className="text-sm text-center mt-1">No estás inscrito en ninguna materia actualmente.</p>
-                                </div>
-                            ) : (
-                                courses.map(course => {
+                            ) : (() => {
+                                const activeSubId = selectedSubjectId || availableSubjects[0]?.id;
+                                const displayedCourses = activeSubId
+                                    ? courses.filter(c => c.id === activeSubId)
+                                    : courses;
+
+                                return displayedCourses.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-muted/5 text-muted-foreground">
+                                        <BookOpen className="w-12 h-12 mb-4 opacity-50" />
+                                        <p className="font-semibold text-base">Sin Calificaciones</p>
+                                        <p className="text-sm text-center mt-1">
+                                            {selectedSubjectId
+                                                ? "No se encontró información de actividades ni calificaciones para la materia seleccionada."
+                                                : "No estás inscrito en ninguna materia actualmente."}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    displayedCourses.map(course => {
                                     let totalScore = 0;
                                     let totalWeight = 0;
                                     let count = 0;
@@ -2067,7 +2124,8 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                         </Card>
                                     );
                                 })
-                            )}
+                            );
+                        })()}
                         </motion.div>
                     </TabsContent>}
 
@@ -2078,14 +2136,24 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                 <div className="flex items-center justify-center p-12">
                                     <LoadingSpinner className="w-8 h-8 text-primary" />
                                 </div>
-                            ) : docCourses.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-muted/5 text-muted-foreground">
-                                    <BookOpen className="w-12 h-12 mb-4 opacity-40" />
-                                    <p className="font-semibold text-base">Sin materias inscritas</p>
-                                    <p className="text-sm text-center mt-1">No tienes materias activas con documentación disponible.</p>
-                                </div>
-                            ) : (
-                                docCourses.map((course: any) => {
+                            ) : (() => {
+                                const activeSubId = selectedSubjectId || availableSubjects[0]?.id;
+                                const displayedDocCourses = activeSubId
+                                    ? docCourses.filter((c: any) => c.id === activeSubId)
+                                    : docCourses;
+
+                                return displayedDocCourses.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-xl bg-muted/5 text-muted-foreground">
+                                        <BookOpen className="w-12 h-12 mb-4 opacity-40" />
+                                        <p className="font-semibold text-base">Sin documentación disponible</p>
+                                        <p className="text-sm text-center mt-1">
+                                            {selectedSubjectId
+                                                ? "No hay documentos ni recursos compartidos en la materia seleccionada."
+                                                : "No tienes materias activas con documentación disponible."}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    displayedDocCourses.map((course: any) => {
                                     const links = course.sharedContent.flatMap((sc: any) =>
                                         (Array.isArray(sc.links) ? sc.links : [])
                                             .filter((l: any) => l?.url)
@@ -2145,7 +2213,8 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                         </Card>
                                     );
                                 })
-                            )}
+                            );
+                        })()}
                         </motion.div>
                     </TabsContent>}
 

@@ -120,8 +120,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ? [
           {
             title: "Inicio",
-            url: "/dashboard/admin",
+            url: "/dashboard",
             icon: Home,
+            isActive: false,
+          },
+          {
+            title: "Panel de Control",
+            url: "/dashboard/admin",
+            icon: BarChart3,
             isActive: false,
           },
           {
@@ -153,8 +159,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ? [
             {
               title: "Inicio",
-              url: effectiveGestorProgramId ? `/dashboard/gestor?programId=${effectiveGestorProgramId}` : "/dashboard/gestor",
+              url: "/dashboard",
               icon: Home,
+              isActive: false,
+            },
+            {
+              title: "Panel del Área",
+              url: effectiveGestorProgramId ? `/dashboard/gestor?programId=${effectiveGestorProgramId}` : "/dashboard/gestor",
+              icon: BarChart3,
               isActive: false,
             },
             {
@@ -192,8 +204,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ? [
               {
                 title: "Inicio",
-                url: effectiveGestorProgramId ? `/dashboard/admin?programId=${effectiveGestorProgramId}` : "/dashboard/admin",
+                url: "/dashboard",
                 icon: Home,
+                isActive: false,
+              },
+              {
+                title: "Panel de Supervisión",
+                url: effectiveGestorProgramId ? `/dashboard/admin?programId=${effectiveGestorProgramId}` : "/dashboard/admin",
+                icon: BarChart3,
                 isActive: false,
               },
               {

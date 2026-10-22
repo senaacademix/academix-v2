@@ -210,24 +210,6 @@ export function StudentDashboard({
                         </div>
 
                         <div className="shrink-0 flex items-center gap-2">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowHelpModal(true)}
-                                        className="gap-2 rounded-2xl h-11 px-4 text-xs font-bold border-border/80 text-foreground bg-background/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary shadow-2xs transition-all cursor-pointer"
-                                    >
-                                        <HelpCircle className="h-4 w-4 text-primary" />
-                                        <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
-                                        <span className="sm:hidden">Ayuda</span>
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
-                                    Guía del portal del aprendiz y herramientas
-                                </TooltipContent>
-                            </Tooltip>
 
                             <Button
                                 variant="outline"

@@ -9,12 +9,8 @@ import { announcementService } from "@/features/announcements/services/announcem
 export default async function Page() {
   const session = await auth.api.getSession({ headers: await headers() });
   
-  if (session?.user?.role === "admin" || session?.user?.role === "observer") {
-    redirect("/dashboard/admin");
-  }
-  
-  if (session?.user?.role === "gestor") {
-    redirect("/dashboard/gestor");
+  if (!session) {
+    redirect("/signin");
   }
   
   const reqHeaders = await headers();

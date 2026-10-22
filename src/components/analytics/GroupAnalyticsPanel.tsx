@@ -45,7 +45,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatName } from "@/lib/utils";
+import { formatName, cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -1512,7 +1512,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                              <Card className="shadow-sm border-slate-200 dark:border-slate-800">
                                                  <CardHeader>
                                                      <CardTitle className="text-base font-black flex items-center gap-2">
-                                                         <UserX className="w-5 h-5 text-red-500" />
+                                                         <UserX className="w-5 h-5 text-rose-500" />
                                                          Registro de Inasistencias (Faltas)
                                                      </CardTitle>
                                                      <CardDescription>Total de días no asistidos por cada aprendiz sobre el total de días programados.</CardDescription>
@@ -1524,13 +1524,13 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                              <div key={student.id} className="space-y-1.5 pb-2 border-b border-border/30 last:border-0 last:pb-0">
                                                                  <div className="flex items-center justify-between text-xs font-bold">
                                                                      <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                     <span className="text-red-600 shrink-0 font-extrabold">
+                                                                     <span className="text-rose-700 dark:text-rose-300 shrink-0 font-bold">
                                                                          {absentCount} {absentCount === 1 ? "Falta" : "Faltas"} / {totalClassDays} días ({absenceRate.toFixed(1)}%)
                                                                      </span>
                                                                  </div>
-                                                                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                                 <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                      <div 
-                                                                         className="h-full bg-rose-300 dark:bg-rose-500 rounded-full transition-all duration-500" 
+                                                                         className="h-full bg-rose-200 dark:bg-rose-600/70 rounded-full transition-all duration-500" 
                                                                          style={{ width: `${absenceRate}%` }}
                                                                      />
                                                                  </div>
@@ -1540,7 +1540,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                              <div key={idx} className="flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded px-2 py-1 text-[10px] text-muted-foreground">
                                                                                  <span className="font-semibold text-slate-700 dark:text-slate-300 mr-1 truncate max-w-[120px]">{d.courseName}</span>
                                                                                  <span className="mr-2 border-r border-slate-200 dark:border-slate-700 pr-2">({d.teacherName})</span>
-                                                                                 <span className="text-red-500 font-bold">{d.absent} {d.absent === 1 ? "falta" : "faltas"}</span>
+                                                                                 <span className="text-rose-700 dark:text-rose-300 font-semibold">{d.absent} {d.absent === 1 ? "falta" : "faltas"}</span>
                                                                              </div>
                                                                          ))}
                                                                      </div>
@@ -1567,13 +1567,13 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                          <div key={student.id} className="space-y-1.5 pb-2 border-b border-border/30 last:border-0 last:pb-0">
                                                              <div className="flex items-center justify-between text-xs font-bold">
                                                                  <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                 <span className="text-amber-600 dark:text-amber-400 shrink-0 font-extrabold">
+                                                                 <span className="text-amber-800 dark:text-amber-300 shrink-0 font-bold">
                                                                      {lateCount} {lateCount === 1 ? "Tarde" : "Tardes"} / {totalClassDays} días ({lateDaysRate.toFixed(1)}%)
                                                                  </span>
                                                              </div>
-                                                             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                             <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                  <div 
-                                                                     className="h-full bg-amber-300 dark:bg-amber-500 rounded-full transition-all duration-500" 
+                                                                     className="h-full bg-amber-200 dark:bg-amber-600/70 rounded-full transition-all duration-500" 
                                                                      style={{ width: `${lateDaysRate}%` }}
                                                                  />
                                                              </div>
@@ -1583,7 +1583,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                          <div key={idx} className="flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded px-2 py-1 text-[10px] text-muted-foreground">
                                                                              <span className="font-semibold text-slate-700 dark:text-slate-300 mr-1 truncate max-w-[120px]">{d.courseName}</span>
                                                                              <span className="mr-2 border-r border-slate-200 dark:border-slate-700 pr-2">({d.teacherName})</span>
-                                                                             <span className="text-amber-500 font-bold">{d.late} {d.late === 1 ? "tarde" : "tardes"}</span>
+                                                                             <span className="text-amber-800 dark:text-amber-300 font-semibold">{d.late} {d.late === 1 ? "tarde" : "tardes"}</span>
                                                                          </div>
                                                                      ))}
                                                                  </div>
@@ -1599,7 +1599,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                              <Card className="shadow-sm border-slate-200 dark:border-slate-800">
                                                  <CardHeader>
                                                      <CardTitle className="text-base font-black flex items-center gap-2">
-                                                         <LogOut className="w-5 h-5 text-blue-500" />
+                                                         <LogOut className="w-5 h-5 text-sky-500" />
                                                          Registro de Retiros Tempranos (Retiros)
                                                      </CardTitle>
                                                      <CardDescription>Cantidad de días en los que el aprendiz se retiró antes de finalizar la clase sobre los días programados.</CardDescription>
@@ -1609,13 +1609,13 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                          <div key={student.id} className="space-y-1.5 pb-2 border-b border-border/30 last:border-0 last:pb-0">
                                                              <div className="flex items-center justify-between text-xs font-bold">
                                                                  <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                 <span className="text-blue-600 dark:text-blue-400 shrink-0 font-extrabold">
+                                                                 <span className="text-sky-800 dark:text-sky-300 shrink-0 font-bold">
                                                                      {leaveEarlyCount} {leaveEarlyCount === 1 ? "Retiro" : "Retiros"} / {totalClassDays} días ({leaveEarlyDaysRate.toFixed(1)}%)
                                                                  </span>
                                                              </div>
-                                                             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                                                             <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                  <div 
-                                                                     className="h-full bg-sky-300 dark:bg-sky-500 rounded-full transition-all duration-500" 
+                                                                     className="h-full bg-sky-200 dark:bg-sky-600/70 rounded-full transition-all duration-500" 
                                                                      style={{ width: `${leaveEarlyDaysRate}%` }}
                                                                  />
                                                              </div>
@@ -1625,7 +1625,7 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                                                                          <div key={idx} className="flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded px-2 py-1 text-[10px] text-muted-foreground">
                                                                              <span className="font-semibold text-slate-700 dark:text-slate-300 mr-1 truncate max-w-[120px]">{d.courseName}</span>
                                                                              <span className="mr-2 border-r border-slate-200 dark:border-slate-700 pr-2">({d.teacherName})</span>
-                                                                             <span className="text-blue-500 font-bold">{d.leaveEarly} {d.leaveEarly === 1 ? "retiro" : "retiros"}</span>
+                                                                             <span className="text-sky-800 dark:text-sky-300 font-semibold">{d.leaveEarly} {d.leaveEarly === 1 ? "retiro" : "retiros"}</span>
                                                                          </div>
                                                                      ))}
                                                                  </div>
@@ -1638,70 +1638,112 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
 
                                          {/* SUB-TAB 4: EFECTIVA */}
                                          <TabsContent value="efectiva" className="m-0 focus-visible:outline-none">
-                                             <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-                                                 <CardHeader>
-                                                     <CardTitle className="text-base font-black flex items-center gap-2">
-                                                         <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                                                         Carga Horaria y Asistencia Efectiva (Horas Asistidas vs. Perdidas)
-                                                     </CardTitle>
-                                                     <CardDescription>Muestra la cantidad de horas acumuladas entre faltas, tardanzas y retiros, la diferencia (horas asistidas) y el porcentaje de asistencia efectiva con respecto a las horas totales.</CardDescription>
-                                                 </CardHeader>
-                                                 <CardContent className="space-y-5">
-                                                     {detailedMetricsData.map(({ student, absentHours, lateHours, leaveEarlyHours, attendanceHoursRate, totalScheduledHours }: any) => {
-                                                         const lostHours = absentHours + lateHours + (leaveEarlyHours || 0);
-                                                         const attendedHours = Math.max(0, totalScheduledHours - lostHours);
-                                                         return (
-                                                             <div key={student.id} className="space-y-2 border-b border-border/30 pb-3 last:border-0 last:pb-0">
-                                                                 <div className="flex flex-wrap items-center justify-between text-xs font-bold gap-2">
-                                                                     <span className="truncate text-foreground max-w-[280px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-muted-foreground">
-                                                                         <span className="text-emerald-600 dark:text-emerald-400">Asistidas: {attendedHours.toFixed(2)} hs</span>
-                                                                         <span className="text-red-500">Perdidas: {lostHours.toFixed(2)} hs</span>
-                                                                         <span className="text-blue-600 dark:text-blue-400 font-extrabold">Efectiva: {attendanceHoursRate.toFixed(1)}%</span>
-                                                                     </div>
-                                                                 </div>
-                                                                 
-                                                                 <div className="space-y-1">
-                                                                     <div className="h-3 w-full bg-muted rounded-full overflow-hidden flex">
-                                                                         <div 
-                                                                             className="h-full bg-emerald-300 dark:bg-emerald-500 transition-all duration-500" 
-                                                                             style={{ width: `${attendanceHoursRate}%` }}
-                                                                             title={`Horas Asistidas: ${attendedHours.toFixed(2)} hs`}
-                                                                         />
-                                                                         {absentHours > 0 && (
-                                                                             <div 
-                                                                                 className="h-full bg-red-500 dark:bg-red-600 transition-all duration-500" 
-                                                                                 style={{ width: `${(absentHours / totalScheduledHours) * 100}%` }}
-                                                                                 title={`Horas de Faltas: ${absentHours.toFixed(2)} hs`}
-                                                                             />
-                                                                         )}
-                                                                         {lateHours > 0 && (
-                                                                             <div 
-                                                                                 className="h-full bg-amber-500 dark:bg-amber-500 transition-all duration-500" 
-                                                                                 style={{ width: `${(lateHours / totalScheduledHours) * 100}%` }}
-                                                                                 title={`Horas de Tardanzas: ${lateHours.toFixed(2)} hs`}
-                                                                             />
-                                                                         )}
-                                                                         {leaveEarlyHours > 0 && (
-                                                                             <div 
-                                                                                 className="h-full bg-blue-500 dark:bg-blue-500 transition-all duration-500" 
-                                                                                 style={{ width: `${(leaveEarlyHours / totalScheduledHours) * 100}%` }}
-                                                                                 title={`Horas de Retiros: ${leaveEarlyHours.toFixed(2)} hs`}
-                                                                             />
-                                                                         )}
-                                                                     </div>
-                                                                     
-                                                                     <div className="text-[10px] text-muted-foreground flex justify-between">
-                                                                         <span>{totalScheduledHours.toFixed(1)} hs totales del curso</span>
-                                                                         <span>Desglose de pérdida: {absentHours.toFixed(1)} hs Faltas + {lateHours.toFixed(1)} hs Tardanzas + {(leaveEarlyHours || 0).toFixed(1)} hs Retiros</span>
-                                                                     </div>
-                                                                 </div>
-                                                             </div>
-                                                         );
-                                                     })}
-                                                 </CardContent>
-                                             </Card>
-                                         </TabsContent>
+                                            <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+                                                <CardHeader>
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                        <div>
+                                                            <CardTitle className="text-base font-black flex items-center gap-2">
+                                                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                                                                Carga Horaria y Asistencia Efectiva (Horas Asistidas vs. Perdidas)
+                                                            </CardTitle>
+                                                            <CardDescription className="mt-1">
+                                                                Muestra la cantidad de horas acumuladas entre faltas, tardanzas y retiros, la diferencia (horas asistidas) y el porcentaje de asistencia efectiva con respecto a las horas totales.
+                                                            </CardDescription>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-3 pt-3 text-xs">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-200 dark:bg-emerald-500/80 border border-emerald-400/40"></span>
+                                                            <span className="text-muted-foreground font-semibold">Horas Asistidas</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="w-2.5 h-2.5 rounded-full bg-rose-200 dark:bg-rose-500/80 border border-rose-400/40"></span>
+                                                            <span className="text-muted-foreground font-semibold">Faltas</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="w-2.5 h-2.5 rounded-full bg-amber-200 dark:bg-amber-500/80 border border-amber-400/40"></span>
+                                                            <span className="text-muted-foreground font-semibold">Tardanzas</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="w-2.5 h-2.5 rounded-full bg-sky-200 dark:bg-sky-500/80 border border-sky-400/40"></span>
+                                                            <span className="text-muted-foreground font-semibold">Retiros</span>
+                                                        </div>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="space-y-5">
+                                                    {detailedMetricsData.map(({ student, absentHours, lateHours, leaveEarlyHours, attendanceHoursRate, totalScheduledHours }: any) => {
+                                                        const lostHours = absentHours + lateHours + (leaveEarlyHours || 0);
+                                                        const attendedHours = Math.max(0, totalScheduledHours - lostHours);
+                                                        return (
+                                                            <div key={student.id} className="space-y-2 border-b border-border/30 pb-3 last:border-0 last:pb-0">
+                                                                <div className="flex flex-wrap items-center justify-between text-xs font-bold gap-2">
+                                                                    <span className="truncate text-foreground max-w-[280px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
+                                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-semibold">
+                                                                        <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
+                                                                            Asistidas: {attendedHours.toFixed(2)} hs
+                                                                        </span>
+                                                                        <span className={lostHours > 0 ? "text-rose-700 dark:text-rose-300 font-semibold" : "text-muted-foreground font-medium"}>
+                                                                            Perdidas: {lostHours.toFixed(2)} hs
+                                                                        </span>
+                                                                        <span className={cn(
+                                                                            "font-black px-2 py-0.5 rounded-md border",
+                                                                            attendanceHoursRate >= 80 
+                                                                                ? "bg-emerald-100/70 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/50" 
+                                                                                : "bg-rose-100/70 text-rose-800 border-rose-200/80 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50"
+                                                                        )}>
+                                                                            Efectiva: {attendanceHoursRate.toFixed(1)}%
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div className="space-y-1.5">
+                                                                    <div className="h-3 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden flex">
+                                                                        <div 
+                                                                            className="h-full bg-emerald-200 dark:bg-emerald-600/70 transition-all duration-500" 
+                                                                            style={{ width: `${attendanceHoursRate}%` }}
+                                                                            title={`Horas Asistidas: ${attendedHours.toFixed(2)} hs`}
+                                                                        />
+                                                                        {absentHours > 0 && (
+                                                                            <div 
+                                                                                className="h-full bg-rose-200 dark:bg-rose-600/70 transition-all duration-500" 
+                                                                                style={{ width: `${(absentHours / totalScheduledHours) * 100}%` }}
+                                                                                title={`Horas de Faltas: ${absentHours.toFixed(2)} hs`}
+                                                                            />
+                                                                        )}
+                                                                        {lateHours > 0 && (
+                                                                            <div 
+                                                                                className="h-full bg-amber-200 dark:bg-amber-600/70 transition-all duration-500" 
+                                                                                style={{ width: `${(lateHours / totalScheduledHours) * 100}%` }}
+                                                                                title={`Horas de Tardanzas: ${lateHours.toFixed(2)} hs`}
+                                                                            />
+                                                                        )}
+                                                                        {leaveEarlyHours > 0 && (
+                                                                            <div 
+                                                                                className="h-full bg-sky-200 dark:bg-sky-600/70 transition-all duration-500" 
+                                                                                style={{ width: `${(leaveEarlyHours / totalScheduledHours) * 100}%` }}
+                                                                                title={`Horas de Retiros: ${leaveEarlyHours.toFixed(2)} hs`}
+                                                                            />
+                                                                        )}
+                                                                    </div>
+                                                                    
+                                                                    <div className="text-[10px] text-muted-foreground flex flex-wrap justify-between gap-1 items-center">
+                                                                        <span className="font-medium">{totalScheduledHours.toFixed(1)} hs totales del curso</span>
+                                                                        <div className="flex flex-wrap items-center gap-1.5 font-medium">
+                                                                            <span className="text-muted-foreground/80">Desglose de pérdida:</span>
+                                                                            <span className="text-rose-700 dark:text-rose-300 font-medium">{absentHours.toFixed(1)} hs Faltas</span>
+                                                                            <span className="text-muted-foreground/40">•</span>
+                                                                            <span className="text-amber-800 dark:text-amber-300 font-medium">{lateHours.toFixed(1)} hs Tardanzas</span>
+                                                                            <span className="text-muted-foreground/40">•</span>
+                                                                            <span className="text-sky-800 dark:text-sky-300 font-medium">{(leaveEarlyHours || 0).toFixed(1)} hs Retiros</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </CardContent>
+                                            </Card>
+                                        </TabsContent>
                                      </Tabs>
                                  </div>
                                     </div>

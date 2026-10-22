@@ -95,18 +95,9 @@ export async function proxy(request: NextRequest) {
 
     const role = session?.user?.role || "student";
 
-    // Redireccionar usuarios autenticados fuera de las páginas públicas
+    // Redireccionar usuarios autenticados fuera de las páginas públicas hacia la Página de Inicio
     if (session && (pathname === "/" || pathname === "/signin" || pathname === "/signup")) {
-        if (role === "admin" || role === "observer") {
-            return NextResponse.redirect(new URL("/dashboard/admin", request.url));
-        }
-        if (role === "gestor") {
-            return NextResponse.redirect(new URL("/dashboard/gestor", request.url));
-        }
-        if (role === "teacher") {
-            return NextResponse.redirect(new URL("/dashboard/teacher", request.url));
-        }
-        return NextResponse.redirect(new URL("/dashboard/student", request.url));
+        return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
     // Control de acceso basado en roles para subrutas específicas

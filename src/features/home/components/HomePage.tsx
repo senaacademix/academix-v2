@@ -1,57 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { getSettingsAction } from "@/features/admin/actions/settingsActions";
-import { getDashboardMetricsAction, DashboardMetricData } from "@/features/home/actions/dashboardActions";
 import { authClient } from "@/lib/auth-client";
 import { getRoleFromUser } from "@/features/auth/services/authService";
-import Link from "next/link";
-import { cn, formatName } from "@/lib/utils";
+import { formatName } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { getFormattedTodayDate } from "@/lib/dateUtils";
+import { useGestorProgram } from "@/features/gestor/context/GestorProgramContext";
 import {
-  Users,
-  BookOpen,
-  Calendar,
-  Settings2,
-  CalendarClock,
-  ClipboardList,
   Sparkles,
-  ArrowRight,
+  GraduationCap,
+  Award,
+  ShieldCheck,
+  Layers,
+  Eye,
+  BookOpen,
+  School,
+  CheckCircle2,
+  Users,
+  CalendarClock,
+  CalendarDays,
+  Wrench,
+  ClipboardList,
   BarChart3,
-  Wrench
+  Megaphone,
+  Settings2,
+  ArrowRight
 } from "lucide-react";
 
-import { PageTransition, StaggerGroup, StaggerItem } from "@/components/ui/animated-container";
-import { SpotlightCard } from "@/components/ui/spotlight-card";
-
-import { StatWidget } from "@/components/aicanvas/stat-widget";
-import { QuickCalendarWidget } from "@/components/aicanvas/quick-calendar-widget";
-import { ProgressTrackerCard } from "@/components/aicanvas/progress-tracker-card";
-import { GraduationCap, CheckCircle, Activity, Award } from "lucide-react";
-import { AnnouncementFeedWidget } from "@/features/announcements/components/AnnouncementFeedWidget";
-import { AnnouncementItem } from "@/features/announcements/types";
-import { getActiveAnnouncementsAction } from "@/features/announcements/actions/announcementActions";
+import { PageTransition } from "@/components/ui/animated-container";
 
 interface HomePageProps {
   initialUserName?: string;
   initialUserRole?: string;
   initialDate?: string;
-  initialMetrics?: DashboardMetricData | null;
-  initialAnnouncements?: AnnouncementItem[];
+  initialMetrics?: any;
+  initialAnnouncements?: any[];
 }
 
-export default function HomePage({ initialUserName, initialUserRole, initialDate, initialMetrics, initialAnnouncements }: HomePageProps) {
+export default function HomePage({
+  initialUserName,
+  initialUserRole,
+  initialDate,
+  initialMetrics: _initialMetrics,
+  initialAnnouncements: _initialAnnouncements
+}: HomePageProps) {
   const [settings, setSettings] = useState<{ institutionName?: string | null }>({});
-  const [metrics, setMetrics] = useState<DashboardMetricData | null>(initialMetrics || null);
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(initialAnnouncements || []);
-  const [loadingMetrics, setLoadingMetrics] = useState(!initialMetrics);
   const [mounted, setMounted] = useState(false);
   const [clientDate, setClientDate] = useState<string>("");
   const { data: session } = authClient.useSession();
+  const { selectedProgramId, managedPrograms } = useGestorProgram();
 
   const role = initialUserRole || getRoleFromUser(session?.user);
   const userName = initialUserName || session?.user?.name;
+  const effectiveGestorProgramId = selectedProgramId || (managedPrograms?.length > 0 ? managedPrograms[0].id : null);
 
   useEffect(() => {
     setMounted(true);
@@ -61,397 +65,280 @@ export default function HomePage({ initialUserName, initialUserRole, initialDate
   const displayDate = mounted && clientDate ? clientDate : (initialDate || "");
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchSettings = async () => {
       try {
-        const [settingsData, metricsData, announcementsData] = await Promise.all([
-          getSettingsAction(),
-          getDashboardMetricsAction(),
-          getActiveAnnouncementsAction()
-        ]);
+        const settingsData = await getSettingsAction();
         setSettings(settingsData || {});
-        setMetrics(metricsData);
-        if (announcementsData && announcementsData.length > 0) {
-          setAnnouncements(announcementsData as AnnouncementItem[]);
-        }
       } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-      } finally {
-        setLoadingMetrics(false);
+        console.error("Error fetching settings:", err);
       }
     };
-    fetchData();
+    fetchSettings();
   }, []);
 
-  const getNavigationItems = () => {
-    const activeRole = role;
-    if (!activeRole) return [];
+  // Saludo dinámico según la hora del día
+  const timeGreeting = useMemo(() => {
+    if (!mounted) return "¡Hola";
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "¡Buenos días";
+    if (hour >= 12 && hour < 18) return "¡Buenas tardes";
+    return "¡Buenas noches";
+  }, [mounted]);
 
-    if (activeRole === "admin") {
-      return [
-        {
-          title: "Gestión de Usuarios",
-          description: "Aprendices, planes de mejoramiento, instructores, gestores y coordinadores.",
-          url: "/dashboard/admin/users",
-          icon: Users,
-          color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-        },
-        {
-          title: "Estructura Académica",
-          description: "Configura programas de formación, sedes, materias y asignaciones.",
-          url: "/dashboard/admin/courses",
-          icon: BookOpen,
-          color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-        },
-        {
-          title: "Programación de Horarios y Eventos",
-          description: "Supervisa horarios y publica eventos y actividades institucionales.",
-          url: "/dashboard/admin/schedules",
-          icon: CalendarClock,
-          color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
-        },
-        {
-          title: "Reportes y Analítica",
-          description: "Estadísticas académicas, asistencia y métricas globales.",
-          url: "/dashboard/admin/analytics",
-          icon: BarChart3,
-          color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-        },
-        {
-          title: "Configuración General",
-          description: "Parámetros globales del colegio e institución.",
-          url: "/dashboard/admin/settings",
-          icon: Settings2,
-          color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-        }
-      ];
-    } else if (activeRole === "gestor") {
-      return [
-        {
-          title: "Gestión de Aprendices",
-          description: "Matrícula de aprendices, carga masiva y planes de mejoramiento.",
-          url: "/dashboard/gestor/users",
-          icon: GraduationCap,
-          color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-        },
-        {
-          title: "Estructura Curricular",
-          description: "Administra fichas/grupos, competencias, resultados y ambientes.",
-          url: "/dashboard/gestor/courses",
-          icon: BookOpen,
-          color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-        },
-        {
-          title: "Programación Horaria",
-          description: "Diseño y validación de mallas horarias, jornadas y bloqueos.",
-          url: "/dashboard/gestor/schedules",
-          icon: CalendarClock,
-          color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
-        },
-        {
-          title: "Herramientas Sofia Plus",
-          description: "Analítica de juicios evaluativos, auditoría y trazabilidad.",
-          url: "/dashboard/gestor/tools",
-          icon: Wrench,
-          color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-        }
-      ];
-    } else if (activeRole === "observer") {
-      return [
-        {
-          title: "Gestión de Aprendices",
-          description: "Consulta de aprendices y planes de mejoramiento.",
-          url: "/dashboard/admin/users",
-          icon: GraduationCap,
-          color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-        },
-        {
-          title: "Estructura Académica",
-          description: "Consulta de programas, fichas, competencias y materias.",
-          url: "/dashboard/admin/courses",
-          icon: BookOpen,
-          color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-        },
-        {
-          title: "Horarios y Eventos",
-          description: "Consulta de programación de clases, mallas y eventos.",
-          url: "/dashboard/admin/schedules",
-          icon: CalendarClock,
-          color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
-        },
-        {
-          title: "Reportes y Analítica",
-          description: "Métricas académicas, control de asistencia y estadísticas.",
-          url: "/dashboard/admin/analytics",
-          icon: BarChart3,
-          color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-        }
-      ];
-    } else if (activeRole === "teacher") {
-      return [
-        {
-          title: "Mis Grupos",
-          description: "Toma asistencia, califica actividades y gestiona aprendices de tus fichas.",
-          url: "/dashboard/teacher",
-          icon: Users,
-          color: "bg-primary/10 text-primary border-primary/20"
-        },
-        {
-          title: "Horario y Configuración",
-          description: "Consulta tus clases asignadas, disponibilidad y materias declaradas.",
-          url: "/dashboard/teacher/schedule",
-          icon: CalendarClock,
-          color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-        },
-        {
-          title: "Reporte de Juicios Evaluativos",
-          description: "Procesa archivos Sofia Plus, analítica de juicios y matrices por ficha.",
-          url: "/dashboard/teacher/tools",
-          icon: Wrench,
-          color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-        }
-      ];
-    } else {
-      return [
-        {
-          title: "Mis Materias",
-          description: "Accede a tus asignaturas, actividades, evidencias y calificaciones.",
-          url: "/dashboard/student",
-          icon: BookOpen,
-          color: "bg-primary/10 text-primary border-primary/20"
-        },
-        {
-          title: "Horario Semanal",
-          description: "Consulta el calendario de tus clases, franjas y ambientes asignados.",
-          url: "/dashboard/student/schedule",
-          icon: CalendarClock,
-          color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
-        },
-        {
-          title: "Registro Académico",
-          description: "Revisa tus notas acumuladas, inasistencias y justificaciones.",
-          url: "/dashboard/student/records",
-          icon: ClipboardList,
-          color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-        }
-      ];
-    }
-  };
-
-  const getRoleLabel = () => {
+  // Metadatos de rol adaptativos
+  const roleInfo = useMemo(() => {
     switch (role) {
       case "admin":
-        return "Administrador";
+        return {
+          label: "Administrador Central",
+          icon: ShieldCheck,
+          message:
+            "Bienvenido al panel central de AcademiX. Lideras el gobierno del sistema, la administración de usuarios y el aseguramiento continuo de la calidad formativa.",
+        };
       case "gestor":
-        return "Gestor Académico";
-      case "teacher":
-        return "Instructor";
+        return {
+          label: "Gestor Curricular",
+          icon: Layers,
+          message:
+            "Bienvenido a tu panel de gestión curricular. Coordinas la articulación de fichas, competencias y asignación de ambientes de formación en tu área.",
+        };
       case "observer":
-        return "Observador / Auditor";
+        return {
+          label: "Observador Institucional",
+          icon: Eye,
+          message:
+            "Bienvenido a la plataforma de auditoría formativa. Supervisas la trazabilidad de procesos, mallas horarias y métricas del centro.",
+        };
       case "student":
-        return "Aprendiz";
+        return {
+          label: "Aprendiz en Formación",
+          icon: BookOpen,
+          message:
+            "¡Te damos la más cordial bienvenida a tu centro formativo! Construye tus competencias con dedicación, aprovecha cada ambiente y avanza con éxito hacia tu certificación.",
+        };
+      case "teacher":
       default:
-        return "Usuario";
+        return {
+          label: "Instructor / Docente",
+          icon: GraduationCap,
+          message:
+            "Te damos la bienvenida al portal docente. Tu compromiso y vocación pedagógica guían el talento de nuestros aprendices hacia la excelencia técnica y humana.",
+        };
     }
-  };
+  }, [role]);
 
-  const navItems = getNavigationItems();
+  // Opciones de navegación correspondientes a la barra lateral izquierda de cada rol
+  const navigationOptions = useMemo(() => {
+    switch (role) {
+      case "admin":
+        return [
+          {
+            title: "Panel de Control",
+            url: "/dashboard/admin",
+            icon: BarChart3,
+          },
+          {
+            title: "Gestión de Usuarios",
+            url: "/dashboard/admin/users",
+            icon: Users,
+          },
+          {
+            title: "Áreas de Formación",
+            url: "/dashboard/admin/courses",
+            icon: BookOpen,
+          },
+          {
+            title: "Blog de Anuncios",
+            url: "/dashboard/admin/announcements",
+            icon: Megaphone,
+          },
+          {
+            title: "Configuración",
+            url: "/dashboard/admin/settings",
+            icon: Settings2,
+          },
+        ];
+      case "gestor":
+        return [
+          {
+            title: "Panel del Área",
+            url: effectiveGestorProgramId ? `/dashboard/gestor?programId=${effectiveGestorProgramId}` : "/dashboard/gestor",
+            icon: BarChart3,
+          },
+          {
+            title: "Gestión de Aprendices",
+            url: effectiveGestorProgramId ? `/dashboard/gestor/users?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/users",
+            icon: GraduationCap,
+          },
+          {
+            title: "Estructura Curricular",
+            url: effectiveGestorProgramId ? `/dashboard/gestor/courses?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/courses",
+            icon: BookOpen,
+          },
+          {
+            title: "Programación Horaria",
+            url: effectiveGestorProgramId ? `/dashboard/gestor/schedules?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/schedules",
+            icon: CalendarClock,
+          },
+          {
+            title: "Asistencia Semanal",
+            url: effectiveGestorProgramId ? `/dashboard/gestor/attendance?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/attendance",
+            icon: CalendarDays,
+          },
+          {
+            title: "Herramientas",
+            url: effectiveGestorProgramId ? `/dashboard/gestor/tools?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/tools",
+            icon: Wrench,
+          },
+        ];
+      case "observer":
+        return [
+          {
+            title: "Panel de Supervisión",
+            url: effectiveGestorProgramId ? `/dashboard/admin?programId=${effectiveGestorProgramId}` : "/dashboard/admin",
+            icon: BarChart3,
+          },
+          {
+            title: "Programas y Fichas",
+            url: effectiveGestorProgramId ? `/dashboard/admin/courses?programId=${effectiveGestorProgramId}` : "/dashboard/admin/courses",
+            icon: BookOpen,
+          },
+          {
+            title: "Programación Horaria",
+            url: effectiveGestorProgramId ? `/dashboard/admin/schedules?programId=${effectiveGestorProgramId}` : "/dashboard/admin/schedules",
+            icon: CalendarClock,
+          },
+          {
+            title: "Asistencia Semanal",
+            url: effectiveGestorProgramId ? `/dashboard/gestor/attendance?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/attendance",
+            icon: CalendarDays,
+          },
+        ];
+      case "student":
+        return [
+          {
+            title: "Mis Materias",
+            url: "/dashboard/student",
+            icon: BookOpen,
+          },
+          {
+            title: "Registro Académico",
+            url: "/dashboard/student/records",
+            icon: ClipboardList,
+          },
+          {
+            title: "Programación Horaria",
+            url: "/dashboard/student/schedule",
+            icon: CalendarClock,
+          },
+          {
+            title: "Elección de Vocero",
+            url: "/dashboard/student/elections",
+            icon: Award,
+          },
+        ];
+      case "teacher":
+      default:
+        return [
+          {
+            title: "Mis Grupos y Fichas",
+            url: "/dashboard/teacher",
+            icon: Users,
+          },
+          {
+            title: "Programación Horaria",
+            url: "/dashboard/teacher/schedule",
+            icon: CalendarClock,
+          },
+          {
+            title: "Herramientas",
+            url: "/dashboard/teacher/tools",
+            icon: Wrench,
+          },
+        ];
+    }
+  }, [role, effectiveGestorProgramId]);
+
+  const RoleIcon = roleInfo.icon;
+  const institutionName = settings.institutionName || "SERVICIO NACIONAL DE APRENDIZAJE — SENA";
 
   return (
-    <PageTransition className="w-full space-y-8 pb-12">
-      {/* Banner Hero Estilo AI Canvas Adaptativo */}
-      <section className="relative rounded-3xl overflow-hidden bg-card/80 border border-border/80 p-6 sm:p-12 backdrop-blur-2xl shadow-xl dark:shadow-2xl dark:shadow-primary/5 transition-colors">
-        {/* Background Grid & Glow */}
-        <div className="absolute inset-0 bg-grid-pattern pointer-events-none" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary/10 dark:bg-primary/15 blur-[120px] rounded-full pointer-events-none" />
+    <PageTransition className="w-full flex-1 flex flex-col items-center justify-center min-h-[calc(100vh-6rem)] my-auto overflow-hidden">
+      <div className="relative w-full max-w-4xl mx-auto px-4 py-8 text-center flex flex-col items-center justify-center my-auto">
+        {/* Luz ambiental difusa usando el color primario del tema actual */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[540px] h-[340px] sm:h-[420px] bg-primary/10 blur-[130px] rounded-full pointer-events-none -z-10" />
 
-        <div className="relative z-10 flex flex-col items-center text-center max-w-3xl mx-auto space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold backdrop-blur-md badge-glow"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Panel de {getRoleLabel()}</span>
-          </motion.div>
+        {/* Insignia de contexto y fecha */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-xs font-bold backdrop-blur-md shadow-2xs"
+        >
+          <RoleIcon className="w-3.5 h-3.5" />
+          <span>Panel de {roleInfo.label}</span>
+          <span className="w-1 h-1 rounded-full bg-primary/40 mx-0.5" />
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[11px] font-medium text-foreground/80" suppressHydrationWarning>
+            {displayDate}
+          </span>
+        </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-3xl sm:text-5xl font-extrabold text-foreground tracking-tight leading-tight text-balance"
-          >
-            ¡Hola, <span className="bg-gradient-to-r from-foreground via-foreground/80 to-primary bg-clip-text text-transparent">{userName ? formatName(userName) : 'Instructor'}</span>!
-          </motion.h1>
+        {/* Nombre Institucional */}
+        <motion.p
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.05 }}
+          className="mt-6 text-xs sm:text-sm font-black tracking-widest text-primary uppercase"
+        >
+          {institutionName}
+        </motion.p>
 
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-muted-foreground text-sm sm:text-base capitalize flex items-center justify-center gap-2 font-medium text-pretty"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span suppressHydrationWarning>{displayDate}</span>
-            {settings.institutionName && (
-              <>
-                <span className="text-muted-foreground/60">•</span>
-                <span className="text-foreground font-semibold">{settings.institutionName}</span>
-              </>
-            )}
-          </motion.p>
-        </div>
-      </section>
+        {/* Gran Título de Bienvenida */}
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.1 }}
+          className="mt-3 text-4xl sm:text-6xl font-black text-foreground tracking-tight leading-[1.1] text-balance"
+        >
+          {timeGreeting},{" "}
+          <span className="bg-gradient-to-r from-foreground via-foreground/90 to-primary bg-clip-text text-transparent">
+            {userName ? formatName(userName) : roleInfo.label}
+          </span>
+        </motion.h1>
 
-      {/* Metrics Grid AI Canvas */}
-      <StaggerGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StaggerItem>
-          <StatWidget
-            title={metrics?.stat1.title || "Asistencia General"}
-            value={loadingMetrics ? "..." : (metrics?.stat1.value || "100%")}
-            change={metrics?.stat1.change}
-            isPositive={metrics?.stat1.isPositive ?? true}
-            icon={CheckCircle}
-            description={metrics?.stat1.description || "Historial de asistencia"}
-          />
-        </StaggerItem>
-        <StaggerItem>
-          <StatWidget
-            title={metrics?.stat2.title || "Fichas / Cursos"}
-            value={loadingMetrics ? "..." : (metrics?.stat2.value || "0 Materias")}
-            change={metrics?.stat2.change}
-            isPositive={metrics?.stat2.isPositive ?? true}
-            icon={GraduationCap}
-            description={metrics?.stat2.description || "Cursos asignados"}
-          />
-        </StaggerItem>
-        <StaggerItem>
-          <StatWidget
-            title={metrics?.stat3.title || "Rendimiento Promedio"}
-            value={loadingMetrics ? "..." : (metrics?.stat3.value || "Sin Notas")}
-            change={metrics?.stat3.change}
-            isPositive={metrics?.stat3.isPositive ?? true}
-            icon={Award}
-            description={metrics?.stat3.description || "Promedio de notas"}
-          />
-        </StaggerItem>
-        <StaggerItem>
-          <StatWidget
-            title={metrics?.stat4.title || "Actividades Pendientes"}
-            value={loadingMetrics ? "..." : (metrics?.stat4.value || "0 Pendientes")}
-            change={metrics?.stat4.change}
-            isPositive={metrics?.stat4.isPositive ?? true}
-            icon={Activity}
-            description={metrics?.stat4.description || "Entregas del período"}
-          />
-        </StaggerItem>
-      </StaggerGroup>
+        {/* Mensaje Editorial de Bienvenida */}
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.15 }}
+          className="mt-5 text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed text-pretty font-normal"
+        >
+          {roleInfo.message}
+        </motion.p>
 
-      {/* Main Grid: Comunicados a la izquierda y Acceso Rápido + Agenda a la derecha */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Columna Principal (2 Columnas en desktop): Anuncios Completos */}
-        <div className="lg:col-span-2 space-y-8 min-w-0">
-          {/* Blog de Anuncios y Comunicados Institucionales (Renderizado Completo en Markdown) */}
-          <AnnouncementFeedWidget announcements={announcements} />
-
-          {/* Si no hay anuncios activos, mostramos Acceso Rápido de forma amplia aquí */}
-          {(!announcements || announcements.length === 0) && (
-            <section className="space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
-                    <span>Módulos de Acceso Rápido</span>
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Accede directamente a tus herramientas y funciones principales</p>
-                </div>
-              </div>
-
-              <StaggerGroup className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {navItems.map((item, index) => {
-                  const Icon = item.icon;
-                  return (
-                    <StaggerItem key={index}>
-                      <Link href={item.url} className="group block h-full">
-                        <SpotlightCard className="h-full flex items-center gap-4 transition-all duration-300 p-4 rounded-2xl">
-                          <div className={cn("w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300", item.color)}>
-                            <Icon className="w-5 h-5" />
-                          </div>
-
-                          <div className="flex-1 min-w-0 space-y-0.5">
-                            <div className="flex items-center justify-between gap-2">
-                              <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                                {item.title}
-                              </h3>
-                              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
-                            </div>
-                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                              {item.description}
-                            </p>
-                          </div>
-                        </SpotlightCard>
-                      </Link>
-                    </StaggerItem>
-                  );
-                })}
-              </StaggerGroup>
-            </section>
-          )}
-        </div>
-
-        {/* Columna Lateral Derecha (1 Columna en desktop): Acceso Rápido al inicio + Agenda + Progreso */}
-        <section className="space-y-6 lg:sticky lg:top-20">
-          {/* Módulos de Acceso Rápido (a la derecha, al inicio) cuando hay anuncios */}
-          {announcements && announcements.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <div>
-                  <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
-                    Acceso Rápido
-                  </h2>
-                  <p className="text-xs text-muted-foreground">Tus herramientas y funciones</p>
-                </div>
-              </div>
-
-              <div className="space-y-2.5">
-                {navItems.map((item, index) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link key={index} href={item.url} className="group block">
-                      <SpotlightCard className="flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 border border-border/80 hover:border-primary/40 bg-card/85 shadow-2xs">
-                        <div className={cn("w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300", item.color)}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1">
-                            <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                              {item.title}
-                            </h3>
-                            <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
-                          </div>
-                          <p className="text-[11px] text-muted-foreground leading-tight line-clamp-1">
-                            {item.description}
-                          </p>
-                        </div>
-                      </SpotlightCard>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Agenda del Día */}
-          <QuickCalendarWidget events={metrics?.events || []} />
-
-          {/* Progreso del Período */}
-          <ProgressTrackerCard
-            title={metrics?.progress.title || "Progreso del Período"}
-            subtitle={metrics?.progress.subtitle || "Período Académico Actual"}
-            progressPercentage={metrics?.progress.progressPercentage || 0}
-            completedTasks={metrics?.progress.completedTasks || 0}
-            totalTasks={metrics?.progress.totalTasks || 0}
-          />
-        </section>
+        {/* Botones de navegación a las opciones de la barra lateral de cada rol */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.2 }}
+          className="mt-8 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 text-xs font-semibold"
+        >
+          {navigationOptions.map((opt, idx) => {
+            const Icon = opt.icon;
+            return (
+              <Link
+                key={idx}
+                href={opt.url}
+                className="group inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border/80 bg-card/70 hover:bg-primary hover:text-primary-foreground hover:border-primary/80 backdrop-blur-sm text-foreground shadow-2xs hover:shadow-md hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <Icon className="w-3.5 h-3.5 text-primary group-hover:text-primary-foreground transition-colors shrink-0" />
+                <span className="font-semibold">{opt.title}</span>
+                <ArrowRight className="w-3 h-3 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+              </Link>
+            );
+          })}
+        </motion.div>
       </div>
     </PageTransition>
   );

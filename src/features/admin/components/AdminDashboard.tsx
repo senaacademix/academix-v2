@@ -330,29 +330,7 @@ export function AdminDashboard({
                             </p>
                         </div>
 
-                        <div className="shrink-0 flex items-center gap-2">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => {
-                                            setHelpInitialTab("programs");
-                                            setHelpModalOpen(true);
-                                        }}
-                                        className="gap-2 rounded-2xl h-11 px-4 text-xs font-bold border-border/80 text-foreground bg-background/80 hover:bg-primary/10 hover:border-primary/40 hover:text-primary shadow-2xs transition-all cursor-pointer"
-                                    >
-                                        <HelpCircle className="h-4 w-4 text-primary" />
-                                        <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
-                                        <span className="sm:hidden">Ayuda</span>
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
-                                    Guía de áreas y funciones para el Gestor
-                                </TooltipContent>
-                            </Tooltip>
-                        </div>
+
                     </div>
                 </motion.div>
 
@@ -517,26 +495,6 @@ export function AdminDashboard({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => {
-                                        setHelpInitialTab(isGestor ? "programs" : "overview");
-                                        setHelpModalOpen(true);
-                                    }}
-                                    className="rounded-2xl h-11 px-4 border-border/80 bg-background/80 text-foreground hover:bg-primary/10 hover:border-primary/40 hover:text-primary text-xs font-bold shadow-2xs gap-2 cursor-pointer"
-                                >
-                                    <HelpCircle className="h-4 w-4 text-primary" />
-                                    <span className="hidden sm:inline">¿Qué puedo hacer acá?</span>
-                                    <span className="sm:hidden">Ayuda</span>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom" align="end" className="bg-popover text-popover-foreground border border-border shadow-md text-xs font-semibold px-3 py-1.5 rounded-xl">
-                                Guía de administración, monitoreo y gestión
-                            </TooltipContent>
-                        </Tooltip>
 
                         {isGestor ? (
                             <>
@@ -628,49 +586,6 @@ export function AdminDashboard({
             {/* Blog de Anuncios Institucionales */}
             <AnnouncementFeedWidget announcements={announcements} />
 
-            {/* Módulos Operativos */}
-            {operationalModules && (
-                <div className="space-y-4">
-                    <div>
-                        <h2 className="text-lg font-black text-foreground tracking-tight flex items-center gap-2">
-                            <Layers className="w-5 h-5 text-primary" />
-                            {isGestor ? "Módulos de Gestión del Área" : "Módulos Operativos Institucionales"}
-                        </h2>
-                        <p className="text-xs text-muted-foreground font-medium">
-                            {isGestor 
-                                ? `Accesos rápidos directos para ${currentProgram?.name}.` 
-                                : "Accesos directos a los centros de gestión, estructura y supervisión."
-                            }
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                        {operationalModules.map((mod, i) => (
-                            <Link href={mod.link} key={i} className="block group">
-                                <Card className="h-full rounded-3xl border border-border/80 shadow-xs bg-card p-5 hover:border-primary/40 hover:scale-[1.02] transition-all flex flex-col justify-between">
-                                    <div className="space-y-3">
-                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border shadow-xs ${mod.color}`}>
-                                            <mod.icon className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors flex items-center justify-between">
-                                                {mod.title}
-                                                <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            </h3>
-                                            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                                                {mod.description}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="pt-4 border-t border-border/40 mt-4 text-[11px] font-bold text-primary flex items-center gap-1">
-                                        {isObserver ? "Consultar módulo" : "Ingresar al módulo"} <ChevronRight className="w-3 h-3" />
-                                    </div>
-                                </Card>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* Activity & User Distribution Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
