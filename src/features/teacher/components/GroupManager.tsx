@@ -2084,7 +2084,15 @@ const handleOpenAnalytics = async () => {
                             </div>
 
                             {/* FILA INFERIOR: Pestañas de Navegación estilo subrayado plano (Flat Underline) */}
-                            <div className="w-full overflow-x-auto scrollbar-none flex items-center touch-scroll touch-pan-x overscroll-x-contain -mb-px">
+                            <div 
+                                className="w-full overflow-x-auto overflow-y-hidden scrollbar-none flex items-center touch-scroll overscroll-x-contain overscroll-y-auto -mb-px"
+                                style={{
+                                    WebkitOverflowScrolling: "touch",
+                                    touchAction: "pan-x pan-y",
+                                    overscrollBehaviorX: "contain",
+                                    overscrollBehaviorY: "auto"
+                                }}
+                            >
                                 <TabsList className="flex flex-nowrap items-center justify-start h-auto p-0 bg-transparent rounded-none gap-0 sm:gap-1 w-max">
                                     {/* ── ASISTENCIA ── */}
                                     <TabsTrigger
@@ -2161,7 +2169,13 @@ const handleOpenAnalytics = async () => {
                             </div>
                         </div>
 
-                        <div className="flex-1 p-3 sm:p-6 overflow-y-visible sm:overflow-y-auto overflow-x-auto w-full min-w-0 max-w-full touch-pan-y">
+                        <div 
+                            className="flex-1 p-3 sm:p-6 overflow-y-visible sm:overflow-y-auto overflow-x-hidden w-full min-w-0 max-w-full"
+                            style={{
+                                WebkitOverflowScrolling: "touch",
+                                touchAction: "pan-x pan-y",
+                            }}
+                        >
                             {/* TAB 1: STUDENTS */}
                             <TabsContent value="students" className="m-0 space-y-4 outline-none animate-in fade-in-50 duration-200">
                                 {/* Header Hero Banner */}
@@ -2715,7 +2729,15 @@ const handleOpenAnalytics = async () => {
                                     {/* Navigation and Actions Wrapper */}
                                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto min-w-0">
                                         {/* View mode pills */}
-                                        <div className="w-full overflow-x-auto touch-pan-x overscroll-x-contain scrollbar-none pb-1 sm:pb-0">
+                                        <div 
+                                            className="w-full overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-auto scrollbar-none pb-1 sm:pb-0"
+                                            style={{
+                                                WebkitOverflowScrolling: "touch",
+                                                touchAction: "pan-x pan-y",
+                                                overscrollBehaviorX: "contain",
+                                                overscrollBehaviorY: "auto"
+                                            }}
+                                        >
                                             <div className="inline-flex w-max items-center gap-1 bg-muted/60 dark:bg-muted/40 p-1 rounded-xl border border-border/60 shadow-2xs">
                                                 <div className="flex items-center gap-0.5">
                                                     {([
@@ -3191,7 +3213,15 @@ const handleOpenAnalytics = async () => {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto">
+                                            <div 
+                                                className="rounded-2xl border bg-card shadow-sm overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-auto scrollbar-thin"
+                                                style={{
+                                                    WebkitOverflowScrolling: "touch",
+                                                    touchAction: "pan-x pan-y",
+                                                    overscrollBehaviorX: "contain",
+                                                    overscrollBehaviorY: "auto"
+                                                }}
+                                            >
                                                 <Table>
                                                     <TableHeader className="bg-muted/30">
                                                         <TableRow>
@@ -3226,7 +3256,7 @@ const handleOpenAnalytics = async () => {
                                                                                     </AvatarFallback>
                                                                                 </Avatar>
                                                                                 <div className="min-w-0">
-                                                                                    <div className="font-semibold text-sm text-foreground truncate max-w-[280px] flex items-center gap-1.5 flex-wrap">
+                                                                                    <div className="font-semibold text-sm text-foreground flex items-center gap-1.5 flex-wrap whitespace-normal">
                                                                                         <span>{formatName(s.name, s.profile)}</span>
                                                                                         <StudentNovedadBadge novedad={s.profile?.novedad} color={s.profile?.novedadColor} />
                                                                                         <StudentVoceroBadge size="sm" role={s.id === selectedGroup?.voceroPrincipalId ? "PRINCIPAL" : s.id === selectedGroup?.voceroSuplenteId ? "SUPLENTE" : null} />
@@ -3562,20 +3592,21 @@ const handleOpenAnalytics = async () => {
                                                     <h3 className="text-lg font-bold">Resumen Analítico</h3>
                                                     <p className="text-sm text-muted-foreground">Estadísticas calculadas para la materia seleccionada</p>
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-                                                    <div className="w-full sm:w-auto overflow-x-auto scrollbar-none touch-pan-x pb-0.5">
-                                                        <TabsList className="h-9 p-1 bg-muted/60 dark:bg-muted/30 rounded-xl border border-border/60 shadow-2xs flex items-center w-max">
-                                                            <TabsTrigger value="faltas" className="h-7 px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Faltas</TabsTrigger>
-                                                            <TabsTrigger value="tardanzas" className="h-7 px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Tardanzas</TabsTrigger>
-                                                            <TabsTrigger value="retiros" className="h-7 px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Retiros</TabsTrigger>
-                                                            <TabsTrigger value="horas" className="h-7 px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer">Carga Horaria</TabsTrigger>
-                                                        </TabsList>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <Button variant="outline" size="sm" onClick={exportMetricsExcel} className="h-9">
+                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+                                                    <TabsList className="h-10 sm:h-9 p-1 bg-muted/60 dark:bg-muted/30 rounded-xl border border-border/60 shadow-2xs grid grid-cols-4 w-full sm:flex sm:w-max gap-0.5 sm:gap-1">
+                                                        <TabsTrigger value="faltas" className="h-8 sm:h-7 px-1.5 sm:px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer justify-center">Faltas</TabsTrigger>
+                                                        <TabsTrigger value="tardanzas" className="h-8 sm:h-7 px-1 sm:px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer justify-center">Tardanzas</TabsTrigger>
+                                                        <TabsTrigger value="retiros" className="h-8 sm:h-7 px-1.5 sm:px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer justify-center">Retiros</TabsTrigger>
+                                                        <TabsTrigger value="horas" className="h-8 sm:h-7 px-1 sm:px-3 rounded-lg text-xs font-extrabold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs transition-all cursor-pointer justify-center">
+                                                            <span className="hidden sm:inline">Carga Horaria</span>
+                                                            <span className="sm:hidden">Horas</span>
+                                                        </TabsTrigger>
+                                                    </TabsList>
+                                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                                        <Button variant="outline" size="sm" onClick={exportMetricsExcel} className="flex-1 sm:flex-none h-9 text-xs font-bold">
                                                             <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" /> Excel
                                                         </Button>
-                                                        <Button variant="outline" size="sm" onClick={exportMetricsPDF} className="h-9">
+                                                        <Button variant="outline" size="sm" onClick={exportMetricsPDF} className="flex-1 sm:flex-none h-9 text-xs font-bold">
                                                             <FileDown className="w-4 h-4 mr-2 text-red-600" /> PDF
                                                         </Button>
                                                     </div>
@@ -3631,12 +3662,12 @@ const handleOpenAnalytics = async () => {
                                                              const absenceRate = 100 - attendanceDaysRate;
                                                              return (
                                                                  <div key={student.id} className="space-y-1.5">
-                                                                     <div className="flex items-center justify-between text-xs font-bold">
-                                                                         <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                         <span className="text-rose-700 dark:text-rose-300 shrink-0 font-extrabold">
-                                                                             {absentCount} {absentCount === 1 ? "Falta" : "Faltas"} / {totalClassDays} días ({absenceRate.toFixed(1)}%)
-                                                                         </span>
-                                                                     </div>
+                                                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 text-xs font-bold">
+                                                                          <span className="text-foreground font-bold break-words leading-tight">{formatName(student.name, student.profile)}</span>
+                                                                          <span className="text-rose-700 dark:text-rose-300 font-extrabold text-[11px] sm:text-xs shrink-0">
+                                                                              {absentCount} {absentCount === 1 ? "Falta" : "Faltas"} / {totalClassDays} días ({absenceRate.toFixed(1)}%)
+                                                                          </span>
+                                                                      </div>
                                                                      <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                          <div 
                                                                              className="h-full bg-rose-200 dark:bg-rose-600/70 rounded-full transition-all duration-500" 
@@ -3662,12 +3693,12 @@ const handleOpenAnalytics = async () => {
                                                     <div className="space-y-4">
                                                          {studentMetrics.map(({ student, lateCount, lateDaysRate }: any) => (
                                                              <div key={student.id} className="space-y-1.5">
-                                                                 <div className="flex items-center justify-between text-xs font-bold">
-                                                                     <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                     <span className="text-amber-700 dark:text-amber-300 shrink-0 font-extrabold">
-                                                                         {lateCount} {lateCount === 1 ? "Tarde" : "Tardes"} / {totalClassDays} días ({lateDaysRate.toFixed(1)}%)
-                                                                     </span>
-                                                                 </div>
+                                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 text-xs font-bold">
+                                                                      <span className="text-foreground font-bold break-words leading-tight">{formatName(student.name, student.profile)}</span>
+                                                                      <span className="text-amber-700 dark:text-amber-300 font-extrabold text-[11px] sm:text-xs shrink-0">
+                                                                          {lateCount} {lateCount === 1 ? "Tarde" : "Tardes"} / {totalClassDays} días ({lateDaysRate.toFixed(1)}%)
+                                                                      </span>
+                                                                  </div>
                                                                  <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                      <div 
                                                                          className="h-full bg-amber-200 dark:bg-amber-600/70 rounded-full transition-all duration-500" 
@@ -3694,12 +3725,12 @@ const handleOpenAnalytics = async () => {
                                                              const leaveDaysRate = totalClassDays > 0 ? (leaveCount / totalClassDays) * 100 : 0;
                                                              return (
                                                                  <div key={student.id} className="space-y-1.5">
-                                                                     <div className="flex items-center justify-between text-xs font-bold">
-                                                                         <span className="truncate text-foreground max-w-[300px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                         <span className="text-sky-700 dark:text-sky-300 shrink-0 font-extrabold">
-                                                                             {leaveCount} {leaveCount === 1 ? "Retiro" : "Retiros"} / {totalClassDays} días ({leaveDaysRate.toFixed(1)}%)
-                                                                         </span>
-                                                                     </div>
+                                                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 text-xs font-bold">
+                                                                          <span className="text-foreground font-bold break-words leading-tight">{formatName(student.name, student.profile)}</span>
+                                                                          <span className="text-sky-700 dark:text-sky-300 font-extrabold text-[11px] sm:text-xs shrink-0">
+                                                                              {leaveCount} {leaveCount === 1 ? "Retiro" : "Retiros"} / {totalClassDays} días ({leaveDaysRate.toFixed(1)}%)
+                                                                          </span>
+                                                                      </div>
                                                                      <div className="h-2 w-full bg-slate-100/90 dark:bg-muted/60 border border-slate-200/50 dark:border-transparent rounded-full overflow-hidden">
                                                                          <div 
                                                                              className="h-full bg-sky-200 dark:bg-sky-600/70 rounded-full transition-all duration-500" 
@@ -3746,9 +3777,9 @@ const handleOpenAnalytics = async () => {
                                                               const attendedHours = Math.max(0, totalScheduledHours - lostHours);
                                                               return (
                                                                   <div key={student.id} className="space-y-2 border-b border-border/30 pb-3 last:border-0 last:pb-0">
-                                                                      <div className="flex flex-wrap items-center justify-between text-xs font-bold gap-2">
-                                                                          <span className="truncate text-foreground max-w-[280px] sm:max-w-md">{formatName(student.name, student.profile)}</span>
-                                                                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-semibold">
+                                                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold gap-1.5 sm:gap-2">
+                                                                          <span className="text-foreground font-bold break-words leading-tight">{formatName(student.name, student.profile)}</span>
+                                                                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-semibold">
                                                                               <span className="text-emerald-700 dark:text-emerald-300 font-semibold">
                                                                                   Asistidas: {attendedHours.toFixed(2)} hs
                                                                               </span>
@@ -4230,7 +4261,15 @@ const handleOpenAnalytics = async () => {
                                                                 </div>
 
                                                                 {/* Detail Records List inside Student card */}
-                                                                <div className="overflow-x-auto">
+                                                                <div 
+                                                                    className="overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-auto scrollbar-thin"
+                                                                    style={{
+                                                                        WebkitOverflowScrolling: "touch",
+                                                                        touchAction: "pan-x pan-y",
+                                                                        overscrollBehaviorX: "contain",
+                                                                        overscrollBehaviorY: "auto"
+                                                                    }}
+                                                                >
                                                                     <Table>
                                                                         <TableHeader className="bg-muted/10">
                                                                             <TableRow className="hover:bg-transparent">
@@ -4524,7 +4563,27 @@ const handleOpenAnalytics = async () => {
                                                     </div>
                                                 ) : (
                                                     <TooltipProvider>
-                                                        <div id="matrix-table-container" className="overflow-x-auto w-full max-w-full touch-pan-x rounded-2xl border border-border/60 shadow-sm bg-background scrollbar-thin">
+                                                        {/* Indicador móvil para deslizar fecha */}
+                                                        <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border border-border/60 border-b-0 text-xs text-muted-foreground sm:hidden rounded-t-2xl">
+                                                            <span className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                                                                <ChevronLeft className="w-3.5 h-3.5 text-primary animate-pulse" />
+                                                                Desliza para ver todas las fechas
+                                                                <ChevronRight className="w-3.5 h-3.5 text-primary animate-pulse" />
+                                                            </span>
+                                                            <span className="text-[10px] font-mono text-muted-foreground/80 font-bold">
+                                                                {displayedDays.length} clases
+                                                            </span>
+                                                        </div>
+                                                        <div 
+                                                            id="matrix-table-container" 
+                                                            className="overflow-x-auto overflow-y-hidden w-full max-w-full overscroll-x-contain overscroll-y-auto sm:rounded-2xl rounded-b-2xl border border-border/60 shadow-sm bg-background scrollbar-thin"
+                                                            style={{
+                                                                WebkitOverflowScrolling: "touch",
+                                                                touchAction: "pan-x pan-y",
+                                                                overscrollBehaviorX: "contain",
+                                                                overscrollBehaviorY: "auto"
+                                                            }}
+                                                        >
                                                         <table className="text-xs border-collapse min-w-max w-full">
                                                             <thead>
                                                                 <tr className="print-avoid-break bg-muted/40 sticky top-0 z-10">

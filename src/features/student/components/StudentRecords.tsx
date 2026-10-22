@@ -1351,7 +1351,15 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col gap-4 sm:gap-5 space-y-0">
                     {!onlyImprovement && (
                         <div className="w-full flex items-center justify-between border-b border-border/80 gap-3">
-                            <div className="flex-1 overflow-x-auto scrollbar-none flex items-center touch-scroll touch-pan-x overscroll-x-contain -mb-px">
+                            <div 
+                                className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-none flex items-center touch-scroll overscroll-x-contain overscroll-y-auto -mb-px"
+                                style={{
+                                    WebkitOverflowScrolling: "touch",
+                                    touchAction: "pan-x pan-y",
+                                    overscrollBehaviorX: "contain",
+                                    overscrollBehaviorY: "auto"
+                                }}
+                            >
                                 <TabsList className="flex flex-nowrap items-center justify-start h-auto p-0 bg-transparent rounded-none gap-0 sm:gap-1 w-max">
                                     <TabsTrigger
                                         value="attendance"
@@ -1426,9 +1434,16 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                         </div>
                     )}
 
-                    {/* Selector de Materias (Asistencia, Calificaciones, Documentación) */}
                     {!onlyImprovement && ["attendance", "grades", "documentation"].includes(activeTab) && availableSubjects.length > 0 && (
-                        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none p-1.5 rounded-2xl bg-muted/40 border border-border/60 backdrop-blur-md shadow-2xs touch-pan-x">
+                        <div 
+                            className="flex items-center gap-2 overflow-x-auto overflow-y-hidden scrollbar-none p-1.5 rounded-2xl bg-muted/40 border border-border/60 backdrop-blur-md shadow-2xs overscroll-x-contain overscroll-y-auto"
+                            style={{
+                                WebkitOverflowScrolling: "touch",
+                                touchAction: "pan-x pan-y",
+                                overscrollBehaviorX: "contain",
+                                overscrollBehaviorY: "auto"
+                            }}
+                        >
                             {availableSubjects.map((sub) => {
                                 const isSelected = (selectedSubjectId || availableSubjects[0]?.id) === sub.id;
                                 return (

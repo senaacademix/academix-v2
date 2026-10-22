@@ -307,7 +307,15 @@ export function AcademicTabsHelpModal({
             onValueChange={(val) => setSelectedTab(val as AcademicTabKey)}
             className="w-full mt-3"
           >
-            <TabsList className="w-full flex overflow-x-auto bg-muted/50 p-1 rounded-2xl scrollbar-none justify-start sm:justify-center gap-1 h-auto touch-scroll touch-pan-x">
+            <TabsList 
+              className="w-full flex overflow-x-auto overflow-y-hidden bg-muted/50 p-1 rounded-2xl scrollbar-none justify-start sm:justify-center gap-1 h-auto touch-scroll overscroll-x-contain overscroll-y-auto"
+              style={{
+                WebkitOverflowScrolling: "touch",
+                touchAction: "pan-x pan-y",
+                overscrollBehaviorX: "contain",
+                overscrollBehaviorY: "auto"
+              }}
+            >
               {(Object.keys(TABS_HELP_CONFIG) as AcademicTabKey[]).map((tabKey) => {
                 const cfg = TABS_HELP_CONFIG[tabKey];
                 return (

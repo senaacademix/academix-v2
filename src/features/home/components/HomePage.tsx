@@ -29,9 +29,6 @@ import {
   Megaphone,
   Settings2,
   ArrowRight,
-  Zap,
-  Smartphone,
-  Shield,
   Clock,
   ExternalLink
 } from "lucide-react";
@@ -457,50 +454,6 @@ export default function HomePage({
           })}
         </div>
       </div>
-
-      {/* ── STRIP DE BENEFICIOS PWA ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, delay: 0.25 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2"
-      >
-        <div className="flex items-start gap-3.5 p-4 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
-            <Zap className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-extrabold text-foreground">Acceso Ultrarrápido</h4>
-            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-              Caché inteligente del Service Worker para consultar horarios de forma instantánea.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-3.5 p-4 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
-            <Smartphone className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-extrabold text-foreground">Instalable como App</h4>
-            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-              Ábrela directamente desde la pantalla de inicio de tu teléfono en pantalla completa.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-3.5 p-4 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
-            <Shield className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-extrabold text-foreground">Seguridad Institucional</h4>
-            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-              Autenticación blindada, sincronización continua y permisos asignados por rol.
-            </p>
-          </div>
-        </div>
-      </motion.div>
     </PageTransition>
   );
 }

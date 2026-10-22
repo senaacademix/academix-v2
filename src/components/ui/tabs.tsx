@@ -20,15 +20,23 @@ function Tabs({
 
 function TabsList({
   className,
+  style,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "bg-muted text-muted-foreground inline-flex h-9 w-fit max-w-full items-center justify-start rounded-lg p-[3px] overflow-x-auto overflow-y-hidden scrollbar-none shrink-0 touch-scroll touch-pan-x",
+        "bg-muted text-muted-foreground inline-flex h-9 w-fit max-w-full items-center justify-start rounded-lg p-[3px] overflow-x-auto overflow-y-hidden scrollbar-none shrink-0 touch-scroll overscroll-x-contain overscroll-y-auto",
         className
       )}
+      style={{
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-x pan-y",
+        overscrollBehaviorX: "contain",
+        overscrollBehaviorY: "auto",
+        ...style,
+      }}
       {...props}
     />
   )
