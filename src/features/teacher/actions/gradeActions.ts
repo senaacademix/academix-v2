@@ -23,10 +23,26 @@ async function verifyCourseTeacher(courseId: string, user: { id: string, role: s
     if (user.role === "admin" || user.role === "gestor") return;
     const course = await prisma.course.findUnique({
         where: { id: courseId },
-        select: { teacherId: true }
+        select: {
+            teacherId: true,
+            schedules: { select: { teacherId: true } },
+            group: {
+                select: {
+                    teachers: { select: { id: true } }
+                }
+            }
+        }
     });
-    if (!course || course.teacherId !== user.id) {
-        throw new Error("Unauthorized: You do not have permission to modify this course");
+    if (!course) {
+        throw new Error("Unauthorized: Curso no encontrado");
+    }
+    const isAssigned = 
+        course.teacherId === user.id ||
+        course.schedules?.some((s: any) => s.teacherId === user.id) ||
+        (!course.teacherId && course.group?.teachers?.some((t: any) => t.id === user.id));
+
+    if (!isAssigned) {
+        throw new Error("Unauthorized: No tienes permisos para gestionar este curso.");
     }
 }
 

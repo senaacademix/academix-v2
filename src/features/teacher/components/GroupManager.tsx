@@ -141,6 +141,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface GroupManagerProps {
     groups: any[];
@@ -715,6 +716,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         };
     }, [selectedGroup, attCourseId, attDate]);
     const [isSavingAtt, setIsSavingAtt] = useState(false);
+    const [isLoadingAttendance, setIsLoadingAttendance] = useState<boolean>(true);
     const [selectedDayFilter, setSelectedDayFilter] = useState<number | null>(null);
     const [historyStudentFilter, setHistoryStudentFilter] = useState<string>("all");
     const [historyScheduleScope, setHistoryScheduleScope] = useState<"current" | "previous" | "all">("all");
@@ -961,16 +963,18 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         }
         if (!pendingAction || !attCourseId || !attDate) return;
         
-        const recordsArray = filteredStudents.map((s: any) => {
-            const rec = attRecords[s.id];
-            return {
-                studentId: s.id,
-                status: rec?.status || "PRESENT",
-                arrivalTime: rec?.arrivalTime || undefined,
-                departureTime: rec?.departureTime || undefined,
-                justification: rec?.justification || undefined
-            };
-        });
+        const recordsArray = filteredStudents
+            .filter((s: any) => attRecords[s.id]?.status && (attRecords[s.id]?.status as string) !== "UNMARKED")
+            .map((s: any) => {
+                const rec = attRecords[s.id];
+                return {
+                    studentId: s.id,
+                    status: rec.status,
+                    arrivalTime: rec?.arrivalTime || undefined,
+                    departureTime: rec?.departureTime || undefined,
+                    justification: rec?.justification || undefined
+                };
+            });
 
         const toastId = toast.loading("Guardando cambios y continuando...");
         try {
@@ -1091,6 +1095,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             setDetailOpen(false);
 
             // Load fresh history for the new group
+            setIsLoadingAttendance(true);
             loadHistory(selectedGroup.id);
         }
     }, [selectedGroup?.id]);
@@ -1104,10 +1109,17 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
 
 
     const loadHistory = async (groupId: string) => {
-        const att = await getGroupAttendanceHistory(groupId);
-        const rem = await getGroupRemarksHistory(groupId);
-        setAttendanceHistory(att);
-        setRemarksHistory(rem);
+        setIsLoadingAttendance(true);
+        try {
+            const att = await getGroupAttendanceHistory(groupId);
+            const rem = await getGroupRemarksHistory(groupId);
+            setAttendanceHistory(att);
+            setRemarksHistory(rem);
+        } catch (error) {
+            console.error("Error al cargar historial:", error);
+        } finally {
+            setIsLoadingAttendance(false);
+        }
     };
 
     
@@ -1338,12 +1350,12 @@ const handleOpenAnalytics = async () => {
                 undefined,
                 undefined
             );
-            if (res.success && res.record) {
+            if (res.success) {
                 setAttendanceHistory(prev => {
                     const filtered = prev.filter((a: any) => !(a.courseId === attCourseId && a.userId === studentId && new Date(a.date).toISOString().split('T')[0] === attDate));
-                    return status === "UNMARKED" ? filtered : [res.record, ...filtered];
+                    return status === "UNMARKED" || !res.record ? filtered : [res.record, ...filtered];
                 });
-            } else if (!res.success) {
+            } else {
                 toast.error("Error al registrar asistencia: " + res.error);
                 setAttRecords(prev => {
                     const newRecords = { ...prev };
@@ -1475,12 +1487,12 @@ const handleOpenAnalytics = async () => {
                 newArrivalTime,
                 newDepartureTime
             );
-            if (res.success && res.record) {
+            if (res.success) {
                 setAttendanceHistory(prev => {
                     const filtered = prev.filter((a: any) => !(a.courseId === attCourseId && a.userId === studentId && new Date(a.date).toISOString().split('T')[0] === attDate));
-                    return newStatus === "UNMARKED" ? filtered : [res.record, ...filtered];
+                    return newStatus === "UNMARKED" || !res.record ? filtered : [res.record, ...filtered];
                 });
-            } else if (!res.success) {
+            } else {
                 toast.error("Error al registrar asistencia: " + res.error);
                 setAttRecords(prev => {
                     const newRecords = { ...prev };
@@ -1892,14 +1904,16 @@ const handleOpenAnalytics = async () => {
         
         setIsSavingAtt(true);
         try {
-            // Send ONLY ABSENT or LATE records. PRESENT is implicit.
-            const records = Object.entries(attRecords).map(([studentId, rec]) => ({
-                studentId,
-                status: rec.status,
-                arrivalTime: rec.arrivalTime ? `${attDate}T${rec.arrivalTime}:00Z` : undefined,
-                departureTime: rec.departureTime ? `${attDate}T${rec.departureTime}:00Z` : undefined,
-                justification: rec.justification
-            }));
+            // Send ONLY records with a status (exclude UNMARKED)
+            const records = Object.entries(attRecords)
+                .filter(([_, rec]) => rec && rec.status && (rec.status as any) !== "UNMARKED")
+                .map(([studentId, rec]) => ({
+                    studentId,
+                    status: rec.status,
+                    arrivalTime: rec.arrivalTime ? `${attDate}T${rec.arrivalTime}:00Z` : undefined,
+                    departureTime: rec.departureTime ? `${attDate}T${rec.departureTime}:00Z` : undefined,
+                    justification: rec.justification
+                }));
 
             const res = await saveAttendanceBatch(attCourseId, attDate, records as any);
             if (res.success) {
@@ -1935,12 +1949,10 @@ const handleOpenAnalytics = async () => {
             const res = await saveSingleAttendanceAction(attCourseId, studentId, dateStr, status, justification);
             if (res.success) {
                 toast.success("Asistencia actualizada", { id: toastId });
-                if (res.record) {
-                    setAttendanceHistory(prev => {
-                        const filtered = prev.filter((a: any) => !(a.courseId === attCourseId && a.userId === studentId && new Date(a.date).toISOString().split('T')[0] === dateStr));
-                        return [res.record, ...filtered];
-                    });
-                }
+                setAttendanceHistory(prev => {
+                    const filtered = prev.filter((a: any) => !(a.courseId === attCourseId && a.userId === studentId && new Date(a.date).toISOString().split('T')[0] === dateStr));
+                    return res.record ? [res.record, ...filtered] : filtered;
+                });
             } else {
                 toast.error("Error: " + res.error, { id: toastId });
             }
@@ -2069,6 +2081,7 @@ const handleOpenAnalytics = async () => {
                                                 type="button"
                                                 variant={isActive ? "default" : "outline"}
                                                 size="sm"
+                                                disabled={isSavingAtt || (isLoadingAttendance && isActive)}
                                                 onClick={() => handleGroupChangeAttempt(g.id)}
                                                 className={`h-8 text-xs font-black rounded-xl transition-all flex items-center gap-1.5 ${
                                                     isActive
@@ -2076,6 +2089,9 @@ const handleOpenAnalytics = async () => {
                                                         : "hover:bg-primary/10 hover:text-primary text-foreground border-border/80"
                                                 }`}
                                             >
+                                                {isActive && isLoadingAttendance && (
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                                                )}
                                                 <span>{g.name}</span>
                                             </Button>
                                         );
@@ -2714,7 +2730,7 @@ const handleOpenAnalytics = async () => {
                                     {/* Course */}
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 w-full lg:w-auto min-w-0">
                                         <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">Materia</Label>
-                                        <Select disabled={isSavingAtt} value={attCourseId} onValueChange={handleCourseChangeAttempt}>
+                                        <Select disabled={isSavingAtt || isLoadingAttendance} value={attCourseId} onValueChange={handleCourseChangeAttempt}>
                                             <SelectTrigger className="h-9 rounded-xl border-border/70 font-bold bg-background text-xs sm:text-sm w-full lg:min-w-[200px] lg:max-w-[300px] shadow-2xs">
                                                 <SelectValue placeholder="Seleccionar Materia" />
                                             </SelectTrigger>
@@ -2746,7 +2762,7 @@ const handleOpenAnalytics = async () => {
                                                      ] as const).map(({ mode, icon, label }) => (
                                                         <button
                                                             key={mode}
-                                                            disabled={isSavingAtt}
+                                                            disabled={isSavingAtt || isLoadingAttendance}
                                                             onClick={() => setAttMode(mode)}
                                                             className={`flex items-center gap-1.5 px-3 h-7.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                                                                 attMode === mode
@@ -2772,7 +2788,7 @@ const handleOpenAnalytics = async () => {
                                                     ] as const).map(({ mode, icon, label }) => (
                                                         <button
                                                             key={mode}
-                                                            disabled={isSavingAtt}
+                                                            disabled={isSavingAtt || isLoadingAttendance}
                                                             onClick={() => setAttMode(mode)}
                                                             className={`flex items-center gap-1.5 px-3 h-7.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                                                                 attMode === mode
@@ -2794,7 +2810,7 @@ const handleOpenAnalytics = async () => {
                                             <Button
                                                 onClick={startSequentialFullscreen}
                                                 variant="outline"
-                                                disabled={!attCourseId || isSavingAtt}
+                                                disabled={!attCourseId || isSavingAtt || isLoadingAttendance}
                                                 className="w-full sm:w-auto h-9 px-3 rounded-xl font-bold text-xs gap-1.5 shrink-0 border-primary/20 hover:bg-primary/5 text-primary shadow-xs"
                                             >
                                                 <Play className="w-3.5 h-3.5" />
@@ -2814,7 +2830,7 @@ const handleOpenAnalytics = async () => {
                                                 <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-xl border border-border/70 shadow-2xs">
                                                     <Switch
                                                         id="hide-other-dates"
-                                                        disabled={isSavingAtt}
+                                                        disabled={isSavingAtt || isLoadingAttendance}
                                                         checked={hideOtherDates}
                                                         onCheckedChange={setHideOtherDates}
                                                         className="scale-75 cursor-pointer"
@@ -2862,8 +2878,8 @@ const handleOpenAnalytics = async () => {
                                                         <Button
                                                             key={ds}
                                                             size="sm"
-                                                             variant={isSelected ? "default" : "outline"}
-                                                            disabled={isFuture || isSavingAtt}
+                                                            variant={isSelected ? "default" : "outline"}
+                                                            disabled={isFuture || isSavingAtt || isLoadingAttendance}
                                                             type="button"
                                                             onClick={() => handleDateChangeAttempt(ds)}
                                                             className={`h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-bold transition-all rounded-lg shrink-0 cursor-pointer ${
@@ -2884,7 +2900,14 @@ const handleOpenAnalytics = async () => {
                                     </div>
                                 )}
 
-                                {!isCurrentDateValid && (attMode === "list" || attMode === "summary") ? (
+                                {isLoadingAttendance ? (
+                                    <div className="flex flex-col items-center justify-center py-24 px-4 bg-card/60 backdrop-blur-xs border border-border/70 rounded-2xl shadow-2xs gap-3 animate-in fade-in-50 duration-200 min-h-[350px]">
+                                        <LoadingSpinner message="Cargando asistencias de la ficha..." size="lg" className="p-0" />
+                                        <span className="text-xs font-semibold text-muted-foreground animate-pulse">
+                                            Sincronizando registros de asistencia con el sistema...
+                                        </span>
+                                    </div>
+                                ) : !isCurrentDateValid && (attMode === "list" || attMode === "summary") ? (
                                     <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-amber-300 bg-amber-500/5 dark:bg-amber-500/10 rounded-2xl text-center space-y-4">
                                         <div className="p-3 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 rounded-full animate-bounce">
                                             <ShieldAlert className="w-8 h-8" />

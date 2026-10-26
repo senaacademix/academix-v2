@@ -353,9 +353,10 @@ export async function saveAttendanceBatch(
             return null;
         };
 
-        if (records.length > 0) {
+        const validRecords = records.filter(r => r.status && (r.status as string) !== "UNMARKED");
+        if (validRecords.length > 0) {
             await prisma.attendance.createMany({
-                data: records.map(r => ({
+                data: validRecords.map(r => ({
                     courseId,
                     userId: r.studentId,
                     date: dateObj,
@@ -460,7 +461,18 @@ export async function getGroupAttendanceHistory(groupId: string) {
         const courses = await prisma.course.findMany({
             where: {
                 groupId,
-                ...(isPrivileged ? {} : { teacherId: user.id })
+                ...(isPrivileged ? {} : {
+                    OR: [
+                        { teacherId: user.id },
+                        { schedules: { some: { teacherId: user.id } } },
+                        {
+                            AND: [
+                                { teacherId: null },
+                                { group: { teachers: { some: { id: user.id } } } }
+                            ]
+                        }
+                    ]
+                })
             },
             select: { id: true }
         });
@@ -531,7 +543,18 @@ export async function getGroupRemarksHistory(groupId: string) {
         const courses = await prisma.course.findMany({
             where: {
                 groupId,
-                ...(isPrivileged ? {} : { teacherId: user.id })
+                ...(isPrivileged ? {} : {
+                    OR: [
+                        { teacherId: user.id },
+                        { schedules: { some: { teacherId: user.id } } },
+                        {
+                            AND: [
+                                { teacherId: null },
+                                { group: { teachers: { some: { id: user.id } } } }
+                            ]
+                        }
+                    ]
+                })
             },
             select: { id: true }
         });
@@ -578,6 +601,7 @@ export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: strin
         include: {
             program: true,
             environment: true,
+            teachers: { select: { id: true } },
             scheduleSlots: {
                 include: {
                     period: true,
@@ -621,7 +645,11 @@ export async function getTeacherComprehensiveGroupAnalyticsAction(groupId: strin
     // Filter courses: teachers only see their own courses, admins/gestores/observers see all
     const coursesTaught = isPrivileged
         ? group.courses
-        : group.courses.filter(c => c.teacherId === user.id);
+        : group.courses.filter(c => 
+            c.teacherId === user.id ||
+            c.schedules?.some((s: any) => s.teacherId === user.id) ||
+            (!c.teacherId && group.teachers?.some((t: any) => t.id === user.id))
+        );
 
     const courseIds = coursesTaught.map(c => c.id);
 
@@ -875,15 +903,20 @@ export async function saveSingleAttendanceAction(
             }
         });
 
+        if (status === "UNMARKED" as any) {
+            await prisma.attendance.deleteMany({
+                where: {
+                    courseId,
+                    userId: studentId,
+                    date: dateObj
+                }
+            });
+            return { success: true, record: null };
+        }
+
         let savedRecord: any = null;
 
-        if (status === "UNMARKED" as any) {
-            if (existing) {
-                await prisma.attendance.delete({
-                    where: { id: existing.id }
-                });
-            }
-        } else if (status === "PRESENT") {
+        if (status === "PRESENT") {
             savedRecord = await prisma.attendance.upsert({
                 where: {
                     courseId_userId_date: {
