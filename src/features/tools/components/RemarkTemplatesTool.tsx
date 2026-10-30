@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import {
     ClipboardList,
     Plus,
@@ -229,6 +230,8 @@ export function RemarkTemplatesTool({ onBack }: RemarkTemplatesToolProps) {
     useEffect(() => {
         loadTemplates();
     }, []);
+
+    useAppRefresh(() => loadTemplates());
 
     const openCreateModal = () => {
         setEditingTemplate(null);

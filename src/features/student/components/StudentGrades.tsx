@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { getStudentGrades } from "@/features/teacher/actions/gradeActions";
 import { authClient } from "@/lib/auth-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,23 +15,26 @@ export function StudentGrades() {
   const [studentUserId, setStudentUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchGrades = async () => {
-      try {
-        const session = await authClient.getSession();
-        if (session?.data?.user?.id) {
-          setStudentUserId(session.data.user.id);
-          const data = await getStudentGrades(session.data.user.id);
-          setCourses(data);
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
+  const fetchGrades = useCallback(async () => {
+    try {
+      const session = await authClient.getSession();
+      if (session?.data?.user?.id) {
+        setStudentUserId(session.data.user.id);
+        const data = await getStudentGrades(session.data.user.id);
+        setCourses(data);
       }
-    };
-    fetchGrades();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchGrades();
+  }, [fetchGrades]);
+
+  useAppRefresh(() => fetchGrades());
 
   if (loading) {
     return <div className="py-12 text-center text-muted-foreground animate-pulse">Cargando calificaciones...</div>;
@@ -71,7 +75,7 @@ export function StudentGrades() {
         let loss: any = null;
         let totalScheduledHours = 0;
         let penaltyResult: any = null;
-        let finalDisplay = rawGrade !== null ? rawGrade.toFixed(2) : "-";
+        let finalDisplay = rawGrade !== null ? rawGrade.toFixed(1) : "-";
 
         if (course.attendancePenaltyEnabled) {
           totalScheduledHours = calculateTotalScheduledHours(course, course.group, null, course.attendances || []);
@@ -94,7 +98,7 @@ export function StudentGrades() {
               },
             });
 
-            finalDisplay = penaltyResult.finalGrade.toFixed(2);
+            finalDisplay = penaltyResult.finalGrade.toFixed(1);
           }
         }
 
@@ -116,7 +120,7 @@ export function StudentGrades() {
                 <div className="flex items-baseline gap-2">
                   {penaltyResult?.isPenaltyApplied && (
                     <span className="text-xs text-muted-foreground line-through font-semibold">
-                      {rawGrade?.toFixed(2)}
+                      {rawGrade?.toFixed(1)}
                     </span>
                   )}
                   <span className={`text-2xl font-black ${!isNaN(avgNum) && avgNum < 3.0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
@@ -132,7 +136,7 @@ export function StudentGrades() {
                         <span>{loss.totalLostHours}h inasistencia</span>
                         {penaltyResult?.isPenaltyApplied && (
                           <span className="font-extrabold text-amber-800 dark:text-amber-200">
-                            (-{penaltyResult.discountPoints.toFixed(2)} pts)
+                            (-{penaltyResult.discountPoints.toFixed(1)} pts)
                           </span>
                         )}
                       </Badge>
@@ -159,7 +163,7 @@ export function StudentGrades() {
                           Penalización por Inasistencia Aplicada
                         </p>
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200">
-                          Descuento: -{penaltyResult.discountPoints.toFixed(2)} pts
+                          Descuento: -{penaltyResult.discountPoints.toFixed(1)} pts
                         </span>
                       </div>
                       <p className="leading-relaxed font-medium">

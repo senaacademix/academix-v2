@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -275,6 +276,10 @@ export function ScheduleView() {
     useEffect(() => {
         loadScheduleData();
     }, []);
+
+    useAppRefresh(() => {
+        loadScheduleData(selectedScheduleId || undefined);
+    });
 
     // Build schedule events with color indices
     const events: ScheduleEvent[] = [];

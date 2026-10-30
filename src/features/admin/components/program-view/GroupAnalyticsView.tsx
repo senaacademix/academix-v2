@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,21 @@ export function GroupAnalyticsView({
             isMounted = false;
         };
     }, [groupId]);
+
+    const loadAnalytics = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await getTeacherComprehensiveGroupAnalyticsAction(groupId);
+            setAnalyticsData(data);
+        } catch (err) {
+            console.error("Error loading group analytics:", err);
+            toast.error("Error al cargar las analíticas generales de la ficha.");
+        } finally {
+            setLoading(false);
+        }
+    }, [groupId]);
+
+    useAppRefresh(() => loadAnalytics());
 
     // Computed overall metrics
     const stats = useMemo(() => {

@@ -142,6 +142,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useAppRefresh } from "@/lib/app-refresh";
 
 interface GroupManagerProps {
     groups: any[];
@@ -1177,6 +1178,20 @@ const handleOpenAnalytics = async () => {
         }
     }, [groups]);
 
+    const hasInitGroupParamRef = useRef(false);
+    useAppRefresh(async () => {
+        const tasks: Promise<unknown>[] = [fetchTemplates(), checkEditPermission()];
+        if (selectedGroupId) {
+            tasks.push(loadHistory(selectedGroupId));
+            if (activeTab === "improvement") {
+                tasks.push(loadGroupPlans(selectedGroupId));
+            }
+            if (activeTab === "analytics") {
+                tasks.push(handleOpenAnalytics());
+            }
+        }
+        await Promise.allSettled(tasks);
+    });
     const filteredStudents = useMemo(() => {
         if (!selectedGroup?.students) return [];
         let list = selectedGroup.students.filter((s: any) => !s.banned);

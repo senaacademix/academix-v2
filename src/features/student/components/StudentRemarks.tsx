@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { getStudentRemarksAction } from "@/features/student/actions/remarkActions";
 import { markRemarkViewed } from "@/features/student/actions/studentActions";
 import { Badge } from "@/components/ui/badge";
@@ -31,20 +32,22 @@ export function StudentRemarks({ courseId, userId }: StudentRemarksProps) {
     const [viewingRemark, setViewingRemark] = useState<any | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
 
-    useEffect(() => {
-        const fetchRemarks = async () => {
-            try {
-                const data = await getStudentRemarksAction(courseId, userId);
-                setRemarks(data);
-            } catch (error) {
-                console.error("Failed to fetch remarks", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchRemarks();
+    const fetchRemarks = useCallback(async () => {
+        try {
+            const data = await getStudentRemarksAction(courseId, userId);
+            setRemarks(data);
+        } catch (error) {
+            console.error("Failed to fetch remarks", error);
+        } finally {
+            setLoading(false);
+        }
     }, [courseId, userId]);
+
+    useEffect(() => {
+        fetchRemarks();
+    }, [fetchRemarks]);
+
+    useAppRefresh(() => fetchRemarks());
 
     const handleViewRemark = (remark: any) => {
         setViewingRemark(remark);

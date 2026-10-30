@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, useMemo, useRef } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Clock, ClipboardList, ShieldAlert, BadgeCheck, XSquare, Calendar, LinkIcon, BookOpen, GraduationCap, Link2, ExternalLink, FileText, Eye, EyeOff, CheckCircle2, BarChart3, UserX, Mail, RotateCcw, UserCheck, History, Layers, FileSpreadsheet, HelpCircle, X, AlertTriangle } from "lucide-react";
@@ -602,6 +603,27 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         }
     }, [studentId, defaultTab, onlyImprovement]);
 
+    useAppRefresh(async () => {
+        gradesLoadedRef.current = false;
+        docLoadedRef.current = false;
+        plansLoadedRef.current = false;
+        historyLoadedRef.current = false;
+
+        if (onlyImprovement) {
+            await loadImprovementPlansOnDemand();
+            return;
+        }
+
+        loadRecords();
+        const tasks: Promise<unknown>[] = [loadGradesOnDemand()];
+        if (activeTab === "documentation") {
+            tasks.push(loadDocumentationOnDemand());
+        } else if (activeTab === "improvement") {
+            tasks.push(loadImprovementPlansOnDemand());
+        }
+        await Promise.allSettled(tasks);
+    });
+
     const handleJustifySubmit = () => {
         if (!justifyingId) return;
         if (!justificationText.trim()) {
@@ -780,7 +802,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     totalWeight += act.weight;
                 }
             });
-            return totalWeight > 0 ? parseFloat((totalScore / (totalWeight / 100)).toFixed(2)) : 0;
+            return totalWeight > 0 ? parseFloat((totalScore / (totalWeight / 100)).toFixed(1)) : 0;
         });
 
         return {
@@ -1882,7 +1904,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                     let loss: any = null;
                                     let totalScheduledHours = 0;
                                     let penaltyResult: any = null;
-                                    let finalDisplay = rawGrade !== null ? rawGrade.toFixed(2) : "-";
+                                    let finalDisplay = rawGrade !== null ? rawGrade.toFixed(1) : "-";
 
                                     const targetUserId = studentId || records?.targetUser?.id;
                                     if (course.attendancePenaltyEnabled && targetUserId) {
@@ -1906,7 +1928,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                 },
                                             });
 
-                                            finalDisplay = penaltyResult.finalGrade.toFixed(2);
+                                            finalDisplay = penaltyResult.finalGrade.toFixed(1);
                                         }
                                     }
 
@@ -1946,7 +1968,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                     <div className="flex items-baseline gap-2">
                                                         {penaltyResult?.isPenaltyApplied && (
                                                             <span className="text-xs text-muted-foreground line-through font-semibold">
-                                                                {rawGrade?.toFixed(2)}
+                                                                {rawGrade?.toFixed(1)}
                                                             </span>
                                                         )}
                                                         <span className={`text-3xl font-black ${!isNaN(avgNum) && avgNum < 3.0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
@@ -1962,7 +1984,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                     <span>{loss.totalLostHours}h inasistencia</span>
                                                                     {penaltyResult?.isPenaltyApplied && (
                                                                         <span className="font-extrabold text-amber-800 dark:text-amber-200">
-                                                                            (-{penaltyResult.discountPoints.toFixed(2)} pts)
+                                                                            (-{penaltyResult.discountPoints.toFixed(1)} pts)
                                                                         </span>
                                                                     )}
                                                                 </Badge>
@@ -1989,7 +2011,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                         Penalización por Inasistencia Aplicada
                                                                     </p>
                                                                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-200">
-                                                                        Descuento: -{penaltyResult.discountPoints.toFixed(2)} pts
+                                                                        Descuento: -{penaltyResult.discountPoints.toFixed(1)} pts
                                                                     </span>
                                                                 </div>
                                                                 <p className="leading-relaxed font-medium">

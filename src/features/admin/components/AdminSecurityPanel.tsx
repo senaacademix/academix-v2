@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import {
   Card,
   CardContent,
@@ -63,6 +63,14 @@ export function AdminSecurityPanel({
 }: AdminSecurityPanelProps) {
   const [settings, setSettings] = useState<SecuritySettingsData>(initialSettings);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>(initialBlockedUsers);
+
+  useEffect(() => {
+    setSettings(initialSettings);
+  }, [initialSettings]);
+
+  useEffect(() => {
+    setBlockedUsers(initialBlockedUsers);
+  }, [initialBlockedUsers]);
   const [isPending, startTransition] = useTransition();
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
 

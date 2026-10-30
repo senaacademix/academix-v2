@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -139,6 +139,10 @@ export function ScheduleEventsManagerView({
     : "/dashboard/admin/schedules";
 
   const [events, setEvents] = useState<ScheduleEventItem[]>(initialEvents);
+
+  useEffect(() => {
+    setEvents(initialEvents);
+  }, [initialEvents]);
   const [searchQuery, setSearchQuery] = useState("");
   const [audienceFilter, setAudienceFilter] = useState<string>("ALL");
   const [filterGroupId, setFilterGroupId] = useState<string>("ALL");

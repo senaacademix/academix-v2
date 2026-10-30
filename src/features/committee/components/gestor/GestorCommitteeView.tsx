@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import {
     Scale,
     Plus,
@@ -164,6 +165,12 @@ export function GestorCommitteeView({
             setSelectedProcessId(null);
         }
     }, [effectiveProgramId]);
+
+    useAppRefresh(async () => {
+        if (effectiveProgramId) {
+            await loadData(effectiveProgramId);
+        }
+    });
 
     const activeProcess = useMemo(() => {
         if (!selectedProcessId) return null;

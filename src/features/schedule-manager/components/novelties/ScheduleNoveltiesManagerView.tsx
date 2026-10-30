@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useTransition } from "react";
+import React, { useState, useEffect, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -167,6 +167,10 @@ export function ScheduleNoveltiesManagerView({
 }: ScheduleNoveltiesManagerViewProps) {
   const router = useRouter();
   const [novelties, setNovelties] = useState<any[]>(initialNovelties);
+
+  useEffect(() => {
+    setNovelties(initialNovelties);
+  }, [initialNovelties]);
   const [isPending, startTransition] = useTransition();
 
   // View Mode: Month vs Week vs List

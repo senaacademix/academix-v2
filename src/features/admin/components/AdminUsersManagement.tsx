@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useTransition } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -229,6 +230,13 @@ export function AdminUsersManagement({ initialUsers, programs, currentUserId, hi
             router.refresh();
         }
     };
+
+    useAppRefresh(async () => {
+        const freshUsers = await getAdminsAndObserversAction();
+        if (freshUsers) {
+            setUsers(freshUsers as any);
+        }
+    });
 
     // Dialogs state
     const [createDialogOpen, setCreateDialogOpen] = useState(false);

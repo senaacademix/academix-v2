@@ -505,16 +505,16 @@ export function calculatePenalizedGrade({
   const absencePercentage = Math.round(absenceRate * 100);
 
   if (!penaltyEnabled || maxPenaltyPercentage <= 0 || safeRawGrade <= 0 || absenceRate <= 0) {
-    const finalGrade = Number(safeRawGrade.toFixed(2));
+    const finalGrade = Number(safeRawGrade.toFixed(1));
     let message = "";
     if (penaltyEnabled && maxPenaltyPercentage > 0) {
       if (absenceRate <= 0 || totalLostHours <= 0) {
-        message = `Regla de penalización activa (${maxPenaltyPercentage}% máx.), pero tienes 0 hrs de inasistencia acumuladas (0%). Tu nota definitiva se mantiene en ${finalGrade.toFixed(2)}.`;
+        message = `Regla de penalización activa (${maxPenaltyPercentage}% máx.), pero tienes 0 hrs de inasistencia acumuladas (0%). Tu nota definitiva se mantiene en ${finalGrade.toFixed(1)}.`;
       } else {
-        message = `Tu nota definitiva es ${finalGrade.toFixed(2)}.`;
+        message = `Tu nota definitiva es ${finalGrade.toFixed(1)}.`;
       }
     } else {
-      message = `Tu nota definitiva es ${finalGrade.toFixed(2)}.`;
+      message = `Tu nota definitiva es ${finalGrade.toFixed(1)}.`;
     }
 
     return {
@@ -530,13 +530,13 @@ export function calculatePenalizedGrade({
     };
   }
 
-  // Paso 2: Puntos a descontar
+  // Paso 2: Puntos a descontar (1 dígito decimal)
   const penaltyFraction = maxPenaltyPercentage / 100;
   const rawDiscount = safeRawGrade * penaltyFraction * absenceRate;
-  const discountPoints = Math.round(rawDiscount * 100) / 100;
+  const discountPoints = Math.round(rawDiscount * 10) / 10;
 
-  // Paso 3: Nota definitiva (restringida a >= 0.0)
-  const finalGrade = Math.max(0, Math.round((safeRawGrade - discountPoints) * 100) / 100);
+  // Paso 3: Nota definitiva (restringida a >= 0.0, 1 dígito decimal)
+  const finalGrade = Math.max(0, Math.round((safeRawGrade - discountPoints) * 10) / 10);
 
   // Mensaje de transparencia para el aprendiz explicitando las horas de inasistencia
   let detailSnippet = "";
@@ -548,7 +548,7 @@ export function calculatePenalizedGrade({
     if (parts.length > 0) detailSnippet = ` (${parts.join(", ")})`;
   }
 
-  const transparencyMessage = `Tu nota académica de evaluaciones es ${safeRawGrade.toFixed(2)}. Al acumular ${totalLostHours.toFixed(1)} hrs de inasistencia${detailSnippet} (un ${absencePercentage}% de las ${safeScheduledHours} hrs programadas), con una penalización del ${maxPenaltyPercentage}%, se te descuentan ${discountPoints.toFixed(2)} puntos. Tu nota definitiva queda en ${finalGrade.toFixed(2)}.`;
+  const transparencyMessage = `Tu nota académica de evaluaciones es ${safeRawGrade.toFixed(1)}. Al acumular ${totalLostHours.toFixed(1)} hrs de inasistencia${detailSnippet} (un ${absencePercentage}% de las ${safeScheduledHours} hrs programadas), con una penalización del ${maxPenaltyPercentage}%, se te descuentan ${discountPoints.toFixed(1)} puntos. Tu nota definitiva queda en ${finalGrade.toFixed(1)}.`;
 
   return {
     finalGrade,

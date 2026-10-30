@@ -3,6 +3,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 
 
 import { useState, useTransition, useEffect, useRef } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -718,7 +719,7 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                 }
             }
             if (currentUserRole !== "admin" || isObserver) {
-                setSelectedProgram(programs[0]);
+                setSelectedProgram(prev => (prev && programs.some(p => p.id === prev.id)) ? prev : programs[0]);
             }
         }
     }, [currentUserRole, isObserver, programIdParam, initialProgramId, programs]);
@@ -1089,6 +1090,19 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
         fetchSystemTeachers();
         fetchAllTrainingAreas();
     }, []);
+
+    useAppRefresh(async () => {
+        const tasks: Promise<unknown>[] = [
+            refreshAll(),
+            fetchSystemStudents(),
+            fetchSystemTeachers(),
+            fetchAllTrainingAreas(),
+        ];
+        if (!isObserver) {
+            tasks.push(getGestoresAction().then(setAllGestores).catch(console.error));
+        }
+        await Promise.allSettled(tasks);
+    });
 
     const prevSubTabRef = useRef(subTab);
     const prevProgIdForGroupRef = useRef(selectedProgram?.id);

@@ -5,6 +5,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 
 
 import { useState, useTransition, useEffect } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -321,6 +322,26 @@ export function UserManagement({
             setFullAnalyticsData(null);
         }
     }, [groupFilter, showGroupAnalytics]);
+
+    useEffect(() => {
+        setProgramsList(initialPrograms);
+        setGroupsList(initialGroups);
+    }, [initialPrograms, initialGroups]);
+
+    useAppRefresh(async () => {
+        const tasks: Promise<unknown>[] = [
+            refreshUsers(currentPage),
+            loadBanRequests(),
+        ];
+        if (showGroupAnalytics && groupFilter && groupFilter !== "all" && groupFilter !== "none") {
+            tasks.push(
+                getComprehensiveGroupAnalyticsAction(groupFilter).then((data) => {
+                    setFullAnalyticsData(data);
+                })
+            );
+        }
+        await Promise.allSettled(tasks);
+    });
 
     // Groups are loaded from props
 

@@ -232,13 +232,13 @@ export async function saveStudentGrades(activityId: string, grades: { userId: st
                         }
                     },
                     update: {
-                        score: grade.score,
+                        score: Math.round(grade.score * 10) / 10,
                         feedback: grade.feedback
                     },
                     create: {
                         activityId,
                         userId: grade.userId,
-                        score: grade.score,
+                        score: Math.round(grade.score * 10) / 10,
                         feedback: grade.feedback
                     }
                 })

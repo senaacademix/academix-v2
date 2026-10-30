@@ -2,7 +2,7 @@
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
     Table,
     TableBody,
@@ -71,6 +71,9 @@ interface GradesManagerProps {
 
 export function GradesManager({ courseId, courseTitle = "Materia", initialData }: GradesManagerProps) {
     const [data, setData] = useState(initialData);
+    useEffect(() => {
+        setData(initialData);
+    }, [initialData]);
     const [activeTab, setActiveTab] = useState("view");
     const [searchTerm, setSearchTerm] = useState("");
     const printRef = useRef<HTMLDivElement>(null);
@@ -526,7 +529,7 @@ export function GradesManager({ courseId, courseTitle = "Materia", initialData }
                                                         return (
                                                             <TableCell key={group.id} className={`text-center tabular-nums border-x ${getCategoryBgColor(idx)}`}>
                                                                 <span className={getGradeColor(grade)}>
-                                                                    {grade.toFixed(2)}
+                                                                    {grade.toFixed(1)}
                                                                 </span>
                                                             </TableCell>
                                                         );
@@ -539,7 +542,7 @@ export function GradesManager({ courseId, courseTitle = "Materia", initialData }
                                             )}
                                             <TableCell className="text-right tabular-nums font-bold bg-primary/5">
                                                 <span className={getGradeColor(finalGrade)}>
-                                                    {finalGrade.toFixed(2)}
+                                                    {finalGrade.toFixed(1)}
                                                 </span>
                                             </TableCell>
                                         </TableRow>
@@ -675,7 +678,7 @@ export function GradesManager({ courseId, courseTitle = "Materia", initialData }
                                                                         </span>
                                                                         <div className="flex items-center gap-2 shrink-0">
                                                                             <span className="text-muted-foreground whitespace-nowrap">{item.weight}%</span>
-                                                                            <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                                                            <div className="flex items-center gap-1">
                                                                                 <Tooltip><TooltipTrigger asChild><Button 
                                                                                                                                                                     variant="ghost" size="icon"
                                                                                                                                                                     onClick={() => { setEditingItem(item); setIsEditItemOpen(true); }}

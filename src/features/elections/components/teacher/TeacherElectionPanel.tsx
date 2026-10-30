@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { GroupElectionDTO } from "../../types";
 import {
     createElectionAction,
@@ -70,6 +71,10 @@ export function TeacherElectionPanel({
     onRefresh,
 }: TeacherElectionPanelProps) {
     const [election, setElection] = useState<GroupElectionDTO | null>(initialElection);
+    useEffect(() => {
+        setElection(initialElection);
+    }, [initialElection]);
+    useAppRefresh(() => refreshData());
     const [loading, setLoading] = useState(false);
 
     // Dialog state for creating an election

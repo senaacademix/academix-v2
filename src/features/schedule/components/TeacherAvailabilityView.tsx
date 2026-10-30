@@ -2,6 +2,7 @@
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { authClient } from "@/lib/auth-client";
 import { useState, useEffect, useMemo, useTransition } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -267,6 +268,8 @@ export function TeacherAvailabilityView({
     useEffect(() => {
         loadAvailability(selectedScheduleId);
     }, [selectedScheduleId]);
+
+    useAppRefresh(() => loadAvailability(selectedScheduleId, true));
 
     const loadAvailability = async (schedId?: string, silent: boolean = false) => {
         if (!silent) setLoading(true);

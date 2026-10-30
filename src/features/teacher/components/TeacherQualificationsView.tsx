@@ -2,6 +2,7 @@
 
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useState, useEffect, useMemo, useTransition } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -127,6 +128,12 @@ export function TeacherQualificationsView({ teacherId, scheduleId, isAdminMode =
             loadQualifications(selectedScheduleId);
         }
     }, [targetTeacherId, selectedScheduleId, programId]);
+
+    useAppRefresh(async () => {
+        if (targetTeacherId) {
+            await loadQualifications(selectedScheduleId);
+        }
+    });
 
     const loadQualifications = async (schedId?: string) => {
         if (!targetTeacherId) return;

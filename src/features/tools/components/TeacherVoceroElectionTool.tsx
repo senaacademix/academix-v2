@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Award, ArrowLeft, Users, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,12 @@ export function TeacherVoceroElectionTool({ groups = [], onBack }: TeacherVocero
             loadElection(activeGroup.id);
         }
     }, [activeGroup?.id]);
+
+    useAppRefresh(async () => {
+        if (activeGroup?.id) {
+            await loadElection(activeGroup.id);
+        }
+    });
 
     const studentCount = useMemo(() => {
         if (!activeGroup) return 0;

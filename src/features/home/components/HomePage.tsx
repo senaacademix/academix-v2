@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import Link from "next/link";
 import Image from "next/image";
 import { getSettingsAction } from "@/features/admin/actions/settingsActions";
@@ -68,17 +69,20 @@ export default function HomePage({
 
   const displayDate = mounted && clientDate ? clientDate : (initialDate || "");
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const settingsData = await getSettingsAction();
-        setSettings(settingsData || {});
-      } catch (err) {
-        console.error("Error fetching settings:", err);
-      }
-    };
-    fetchSettings();
+  const fetchSettings = useCallback(async () => {
+    try {
+      const settingsData = await getSettingsAction();
+      setSettings(settingsData || {});
+    } catch (err) {
+      console.error("Error fetching settings:", err);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  useAppRefresh(() => fetchSettings());
 
   // Saludo dinámico según la hora del día
   const timeGreeting = useMemo(() => {

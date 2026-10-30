@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AnnouncementItem } from "../types";
 import { AnnouncementEditorPanel } from "@/features/announcements/components/AnnouncementEditorPanel";
 import { AnnouncementDetailDialog } from "@/features/announcements/components/AnnouncementDetailDialog";
@@ -46,6 +46,10 @@ interface AdminAnnouncementManagerProps {
 
 export function AdminAnnouncementManager({ initialAnnouncements }: AdminAnnouncementManagerProps) {
     const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(initialAnnouncements);
+
+    useEffect(() => {
+        setAnnouncements(initialAnnouncements);
+    }, [initialAnnouncements]);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedTab, setSelectedTab] = useState<"all" | "published" | "scheduled" | "draft">("all");
     const [selectedCategory, setSelectedCategory] = useState<string>("ALL");

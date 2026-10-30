@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,20 @@ export function ProgramScheduleTab({ program }: ProgramScheduleTabProps) {
             isMounted = false;
         };
     }, [program.id]);
+
+    const loadSchedules = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await getSchedulesAction(program.id);
+            setAcademicSchedules(data || []);
+        } catch (err) {
+            console.error("Error al cargar horarios académicos del programa:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [program.id]);
+
+    useAppRefresh(() => loadSchedules());
 
     // Consolidar únicamente las materias programadas (CourseSchedule de las fichas del programa)
     const allScheduleEntries = useMemo(() => {

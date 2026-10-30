@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import {
     Scale,
     Plus,
@@ -135,6 +136,12 @@ export function TeacherCommitteeView({
             setSelectedProcessId(null);
         }
     }, [selectedProgramId]);
+
+    useAppRefresh(async () => {
+        if (selectedProgramId) {
+            await loadProgramData(selectedProgramId);
+        }
+    });
 
     const currentProgram = useMemo(() => {
         return programs.find((p) => p.id === selectedProgramId) || programs[0] || null;

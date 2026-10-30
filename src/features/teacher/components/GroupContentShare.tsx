@@ -82,6 +82,9 @@ const LANGUAGES = ["javascript", "typescript", "python", "java", "csharp", "cpp"
 
 export function GroupContentShare({ courseId, initialContent = [] }: { courseId: string; initialContent: any[] }) {
     const [contents, setContents] = useState(initialContent);
+    useEffect(() => {
+        setContents(initialContent);
+    }, [initialContent]);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");

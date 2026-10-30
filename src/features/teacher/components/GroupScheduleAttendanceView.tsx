@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useAppRefresh } from "@/lib/app-refresh";
 import { 
     Calendar, 
     CalendarDays, 
@@ -219,6 +220,12 @@ export function GroupScheduleAttendanceView({
         await loadGroupData(selectedGroupId, true);
         toast.success("Asistencia actualizada correctamente", { id: toastId });
     };
+
+    useAppRefresh(async () => {
+        if (isActiveTab && selectedGroupId) {
+            await loadGroupData(selectedGroupId, true);
+        }
+    });
 
     // Datos activos del grupo seleccionado
     const groupData = cache[selectedGroupId] || null;
