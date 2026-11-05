@@ -184,13 +184,6 @@ export default function HomePage({
       case "gestor":
         return [
           {
-            title: "Panel del Área",
-            description: "Resumen de fichas activas, ocupación de ambientes y métricas del área formativa.",
-            url: effectiveGestorProgramId ? `/dashboard/gestor?programId=${effectiveGestorProgramId}` : "/dashboard/gestor",
-            icon: BarChart3,
-            badge: "Área",
-          },
-          {
             title: "Gestión de Aprendices",
             description: "Control de matrículas, seguimiento formativo y novedades de aprendices.",
             url: effectiveGestorProgramId ? `/dashboard/gestor/users?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/users",

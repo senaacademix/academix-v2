@@ -37,7 +37,7 @@ export default async function GestorUsersPage({
             if (programs.length > 0) {
                 effectiveProgramId = programs[0].id;
             } else {
-                redirect("/dashboard/gestor");
+                redirect("/dashboard");
             }
         }
     }

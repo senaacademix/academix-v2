@@ -164,12 +164,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               isActive: false,
             },
             {
-              title: "Panel del Área",
-              url: effectiveGestorProgramId ? `/dashboard/gestor?programId=${effectiveGestorProgramId}` : "/dashboard/gestor",
-              icon: BarChart3,
-              isActive: false,
-            },
-            {
               title: "Gestión de Aprendices",
               url: effectiveGestorProgramId ? `/dashboard/gestor/users?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/users",
               icon: GraduationCap,

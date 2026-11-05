@@ -83,7 +83,7 @@ import Link from "next/link";
 import * as htmlToImage from "html-to-image";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
-import { Users, User, Check, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, CalendarDays, Award, ShieldCheck, Building, SlidersHorizontal, Tag } from "lucide-react";
+import { Users, User, Check, Key, Clock, Lock, Unlock, MessageSquare, Save, Search, ShieldAlert, UserX, UserCheck, ArrowRight, ArrowLeft, Play, LayoutList, ListTodo, CheckSquare, Mail, Eye, EyeOff, GraduationCap, BookOpen, Loader2, HelpCircle, FileText, X, ClipboardList, History, FileSpreadsheet, FileDown, Trash2, ChevronDown, Dices, Shuffle, ChevronLeft, ChevronRight, BarChart3, LogOut, RefreshCw, RotateCcw, Sparkles, ExternalLink, AlertTriangle, Plus, Info, GitBranch, CalendarClock, CalendarDays, Calendar, CalendarX, Award, ShieldCheck, Building, SlidersHorizontal, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -258,13 +258,11 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         };
     };
 
-    const isDateValidForAttendance = (dateStr: string, courseId: string) => {
-        if (!selectedGroup) return false;
-        
-        // 1. Check if within period (startDate and endDate)
+    const isDateValidForGroupAndCourse = (group: any, dateStr: string, courseId: string) => {
+        if (!group) return false;
         const dateVal = new Date(dateStr + "T12:00:00Z");
         
-        const { start: groupStart, end: groupEnd } = getEffectiveDatesForCourse(selectedGroup, courseId);
+        const { start: groupStart, end: groupEnd } = getEffectiveDatesForCourse(group, courseId);
         if (groupStart) {
             const startLimit = new Date(toISODateString(groupStart) + "T12:00:00Z");
             if (dateVal < startLimit) return false;
@@ -275,8 +273,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             if (dateVal > endLimit) return false;
         }
         
-        // 2. Check if it's a scheduled day of week for this course
-        const course = selectedGroup.courses?.find((c: any) => c.id === courseId);
+        const course = group.courses?.find((c: any) => c.id === courseId);
         if (!course) return false;
         
         const scheduledDays = course.schedules?.map((s: any) => s.dayOfWeek) || [];
@@ -284,6 +281,10 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
         const dayOfWeekStr = daysOfWeek[dateVal.getUTCDay()];
         
         return scheduledDays.includes(dayOfWeekStr);
+    };
+
+    const isDateValidForAttendance = (dateStr: string, courseId: string) => {
+        return isDateValidForGroupAndCourse(selectedGroup, dateStr, courseId);
     };
 
     const findClosestValidDate = (refDateStr: string, courseId: string) => {
@@ -405,10 +406,24 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             }
         });
         
+        // Always ensure today Colombian date is included in the date list even if not a scheduled class day
+        const todayStr = getTodayColombianDate();
+        if (todayStr) {
+            allDateStrings.add(todayStr);
+        }
+
         return Array.from(allDateStrings).sort(); // returns YYYY-MM-DD strings sorted chronologically
     };
     
-    const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id || "");
+    const initialGroupId = useMemo(() => {
+        const todayStr = getTodayColombianDate();
+        const groupScheduledToday = groups.find((g: any) =>
+            g.courses?.some((c: any) => isDateValidForGroupAndCourse(g, todayStr, c.id))
+        );
+        return groupScheduledToday?.id || groups[0]?.id || "";
+    }, [groups]);
+
+    const [selectedGroupId, setSelectedGroupId] = useState<string>(initialGroupId);
     const [activeTab, setActiveTab] = useState<"students" | "attendance" | "schedule-attendance" | "remarks" | "analytics" | "grades" | "documentation" | "improvement">("attendance");
 
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
@@ -684,7 +699,6 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
     }, []);
     const [seqIndex, setSeqIndex] = useState(0);
     const [attDate, setAttDate] = useState<string>(getTodayColombianDate());
-    const [hideOtherDates, setHideOtherDates] = useState<boolean>(true);
     const [attCourseId, setAttCourseId] = useState<string>("");
     // We only store ABSENT or LATE in attRecords. If a student is not here, they are PRESENT.
     const [attRecords, setAttRecords] = useState<Record<string, { status: "PRESENT" | "ABSENT" | "LATE" | "LEAVE_EARLY", arrivalTime?: string, departureTime?: string, justification?: string }>>({});
@@ -949,6 +963,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             setAttDate(value);
         } else if (type === "COURSE") {
             setAttCourseId(value);
+            setAttDate(getTodayColombianDate());
         } else if (type === "TAB") {
             setActiveTab(value as any);
         } else if (type === "GROUP") {
@@ -990,6 +1005,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
                     setAttDate(value);
                 } else if (type === "COURSE") {
                     setAttCourseId(value);
+                    setAttDate(getTodayColombianDate());
                 } else if (type === "TAB") {
                     setActiveTab(value as any);
                 } else if (type === "GROUP") {
@@ -1024,6 +1040,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             setPendingAction({ type: "COURSE", value: newVal });
         } else {
             setAttCourseId(newVal);
+            setAttDate(getTodayColombianDate());
         }
     };
 
@@ -1074,7 +1091,7 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
             // Attendance
             setAttMode("list");
             setAttCourseId(firstCourseId);
-            setAttDate(findClosestValidDate(getTodayColombianDate(), firstCourseId));
+            setAttDate(getTodayColombianDate());
             setAttRecords({});
             setSeqIndex(0);
             setSelectedDayFilter(null);
@@ -1278,6 +1295,14 @@ const handleOpenAnalytics = async () => {
         if (!attDate || !attCourseId) return true;
         return isDateValidForAttendance(attDate, attCourseId);
     }, [attDate, attCourseId, selectedGroupId]);
+
+    const otherGroupsWithClassToday = useMemo(() => {
+        const todayStr = getTodayColombianDate();
+        return groups.filter((g: any) =>
+            g.id !== selectedGroupId &&
+            g.courses?.some((c: any) => isDateValidForGroupAndCourse(g, todayStr, c.id))
+        );
+    }, [groups, selectedGroupId]);
 
     const remarksByStudent = useMemo(() => {
         const grouped: Record<string, { student: any; remarks: any[] }> = {};
@@ -2728,26 +2753,27 @@ const handleOpenAnalytics = async () => {
 
                             {/* TAB 2: ATTENDANCE */}
                             <TabsContent value="attendance" className="m-0 space-y-4 outline-none animate-in fade-in-50 duration-200">
-                                {isDateLocked && (
-                                    <div className="p-4 rounded-2xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 bg-amber-500/10 border-amber-500/20 text-amber-800 dark:text-amber-300">
-                                        <Lock className="w-4 h-4 shrink-0" />
-                                        <div className="space-y-0.5">
-                                            <p className="font-bold text-sm">Fecha Bloqueada (Semana Anterior)</p>
-                                            <p className="text-xs opacity-90">
-                                                Esta fecha pertenece a una semana anterior y el administrador ha deshabilitado su edición. Para habilitarla, el administrador debe activar la opción "Permitir edición de fechas anteriores" en la configuración del sistema.
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
                                 {/* Header Controls for Attendance — single compact row */}
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-muted/20 p-3 sm:p-4 rounded-2xl border border-border/70 shadow-2xs">
 
                                     {/* Course */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 w-full lg:w-auto min-w-0">
-                                        <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">Materia</Label>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full lg:w-auto min-w-0">
+                                        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-primary/10 dark:bg-primary/20 border border-primary/25 shrink-0 shadow-2xs">
+                                            <div className="p-1 rounded-lg bg-primary text-primary-foreground shadow-xs">
+                                                <BookOpen className="w-3.5 h-3.5" />
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-primary/80 leading-none">
+                                                    Materia Seleccionada
+                                                </span>
+                                                <span className="text-xs font-black text-foreground truncate max-w-[180px] sm:max-w-[240px] leading-tight mt-0.5">
+                                                    {selectedGroup.courses?.find((c: any) => c.id === attCourseId)?.title || "Sin materia"}
+                                                </span>
+                                            </div>
+                                        </div>
                                         <Select disabled={isSavingAtt || isLoadingAttendance} value={attCourseId} onValueChange={handleCourseChangeAttempt}>
-                                            <SelectTrigger className="h-9 rounded-xl border-border/70 font-bold bg-background text-xs sm:text-sm w-full lg:min-w-[200px] lg:max-w-[300px] shadow-2xs">
-                                                <SelectValue placeholder="Seleccionar Materia" />
+                                            <SelectTrigger className="h-9 rounded-xl border-primary/30 font-extrabold bg-background text-xs sm:text-sm w-full lg:min-w-[190px] lg:max-w-[280px] shadow-2xs hover:border-primary transition-colors">
+                                                <SelectValue placeholder="Cambiar Materia" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-2xl shadow-xl">
                                                 {selectedGroup.courses?.map((c: any) => (
@@ -2836,52 +2862,44 @@ const handleOpenAnalytics = async () => {
                                     </div>
                                 </div>
 
-                                {/* Dedicated Date Selection Bar */}
+                                 {/* Dedicated Date Selection Bar */}
                                 {attMode !== "matrix" && attMode !== "history" && attMode !== "metrics" && (
                                     <div className="flex flex-col gap-2 bg-muted/10 p-4 rounded-2xl border border-border/70 w-full shadow-2xs">
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full mb-1">
-                                            <div className="flex flex-wrap items-center gap-3">
+                                            <div className="flex flex-wrap items-center gap-2.5">
                                                 <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Fecha de Asistencia</Label>
-                                                <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-xl border border-border/70 shadow-2xs">
-                                                    <Switch
-                                                        id="hide-other-dates"
-                                                        disabled={isSavingAtt || isLoadingAttendance}
-                                                        checked={hideOtherDates}
-                                                        onCheckedChange={setHideOtherDates}
-                                                        className="scale-75 cursor-pointer"
-                                                    />
-                                                    <Label htmlFor="hide-other-dates" className="text-[10px] font-bold text-muted-foreground cursor-pointer select-none">
-                                                        Solo fecha actual
-                                                    </Label>
-                                                </div>
-                                                <span className={`text-[10px] px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 shadow-2xs border ${
-                                                    limitSettingsActive
-                                                        ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400"
-                                                        : "bg-primary/10 border-primary/20 text-primary"
-                                                }`}>
-                                                    {limitSettingsActive ? (
-                                                        <>
-                                                            <Lock className="w-3.5 h-3.5" />
-                                                            <span>Semanas anteriores restringidas</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Unlock className="w-3.5 h-3.5" />
-                                                            <span>Modificación de historial libre</span>
-                                                        </>
-                                                    )}
-                                                </span>
+                                                <Button
+                                                    size="sm"
+                                                    variant={attDate === getTodayColombianDate() ? "default" : "outline"}
+                                                    type="button"
+                                                    disabled={isSavingAtt || isLoadingAttendance}
+                                                    onClick={() => handleDateChangeAttempt(getTodayColombianDate())}
+                                                    className={`h-7 px-2.5 text-[11px] font-black rounded-xl gap-1.5 transition-all cursor-pointer shadow-xs ${
+                                                        attDate === getTodayColombianDate()
+                                                            ? "bg-primary text-primary-foreground hover:bg-primary/90 ring-2 ring-primary/20"
+                                                            : "border-primary/40 text-primary hover:bg-primary/10"
+                                                    }`}
+                                                    title="Ir a la fecha actual (Hoy)"
+                                                >
+                                                    <CalendarClock className="w-3.5 h-3.5" />
+                                                    Hoy
+                                                </Button>
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap gap-1.5 p-1.5 bg-background rounded-xl border border-border/70 shadow-2xs max-h-[120px] overflow-y-auto">
                                             {(() => {
                                                 const validDaysList = getValidClassDaysList();
                                                 const todayStr = getTodayColombianDate();
-                                                const filteredDaysList = hideOtherDates 
-                                                    ? (validDaysList.includes(attDate) ? [attDate] : (validDaysList.length > 0 ? [attDate] : []))
-                                                    : validDaysList;
 
-                                                return filteredDaysList.map((ds) => {
+                                                if (validDaysList.length === 0) {
+                                                    return (
+                                                        <span className="text-xs text-muted-foreground italic px-2 py-1">
+                                                            No hay fechas de clase programadas para mostrar.
+                                                        </span>
+                                                    );
+                                                }
+
+                                                return validDaysList.map((ds) => {
                                                     const d = new Date(ds + "T12:00:00Z");
                                                     const dayNamesShort = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
                                                     const label = `${dayNamesShort[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -2904,9 +2922,9 @@ const handleOpenAnalytics = async () => {
                                                                         ? "border-primary/40 text-primary hover:bg-primary/10 font-extrabold"
                                                                         : "text-muted-foreground hover:text-foreground border-border/70"
                                                             }`}
-                                                            title={isFuture ? "Fecha futura (deshabilitada)" : `Seleccionar ${ds}`}
+                                                            title={isFuture ? "Fecha futura (deshabilitada)" : isToday ? `Hoy (${ds})` : `Seleccionar ${ds}`}
                                                         >
-                                                            {label}
+                                                            {isToday ? `Hoy (${label})` : label}
                                                         </Button>
                                                     );
                                                 });
@@ -2923,22 +2941,71 @@ const handleOpenAnalytics = async () => {
                                         </span>
                                     </div>
                                 ) : !isCurrentDateValid && (attMode === "list" || attMode === "summary") ? (
-                                    <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-amber-300 bg-amber-500/5 dark:bg-amber-500/10 rounded-2xl text-center space-y-4">
-                                        <div className="p-3 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 rounded-full animate-bounce">
-                                            <ShieldAlert className="w-8 h-8" />
+                                    <div className="flex flex-col items-center justify-center p-8 sm:p-12 border-2 border-dashed border-amber-300 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/20 rounded-3xl text-center space-y-4 max-w-2xl mx-auto my-6 shadow-xs animate-in fade-in-50 duration-200">
+                                        <div className="p-4 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-2xl shadow-2xs">
+                                            <CalendarX className="w-10 h-10" />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <h4 className="font-black text-lg text-foreground">Fecha no Programada</h4>
-                                            <p className="text-sm text-muted-foreground max-w-sm">
-                                                Hoy no es un día que corresponda a este curso según el horario programado. Seleccione otra fecha o use las flechas de navegación para ver los días válidos.
+                                        <div className="space-y-2 max-w-lg">
+                                            <h4 className="font-black text-lg sm:text-xl text-foreground tracking-tight">
+                                                {attDate === getTodayColombianDate()
+                                                    ? "Hoy no tienes sesión de clase programada para esta ficha"
+                                                    : "Fecha no Programada para este Curso"}
+                                            </h4>
+                                            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                                                {attDate === getTodayColombianDate()
+                                                    ? "Para el día de hoy no hay una sesión o ficha programada con esta materia en el horario vigente. Por este motivo no se habilitan aprendices para llamar asistencia hoy."
+                                                    : "La fecha seleccionada no corresponde a un día de clase según el horario programado para esta materia."}
                                             </p>
+                                        </div>
+
+                                        {otherGroupsWithClassToday.length > 0 && (
+                                            <div className="pt-2 w-full max-w-md">
+                                                <div className="p-3.5 bg-background/90 dark:bg-card/80 border border-border/80 rounded-2xl shadow-xs text-left space-y-2">
+                                                    <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                                                        <CalendarDays className="w-3.5 h-3.5 text-primary" />
+                                                        Tienes clase programada hoy en otra ficha:
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2 pt-1">
+                                                        {otherGroupsWithClassToday.map((og: any) => (
+                                                            <Button
+                                                                key={og.id}
+                                                                size="sm"
+                                                                variant="outline"
+                                                                type="button"
+                                                                onClick={() => handleGroupChangeAttempt(og.id)}
+                                                                className="h-8 text-xs font-bold rounded-xl border-primary/30 text-primary hover:bg-primary/10 gap-1.5 cursor-pointer"
+                                                            >
+                                                                <Users className="w-3 h-3" />
+                                                                Ir a ficha {og.name}
+                                                                <ArrowRight className="w-3 h-3 ml-0.5" />
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+                                            <span>¿Deseas revisar o editar asistencias de clases pasadas?</span>
+                                            <span className="font-semibold text-foreground">
+                                                Selecciona cualquiera de las fechas habilitadas en la barra superior.
+                                            </span>
                                         </div>
                                     </div>
                                 ) : attMode === "list" ? (
                                     // MODE 1: LIST VIEW
                                     <div className="space-y-4">
-                                        <div className="flex items-center justify-center sm:justify-end mb-2 w-full">
-                                            <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
+                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 mb-2 w-full">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border/80 shadow-2xs w-full sm:w-auto">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                                                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">
+                                                    Materia:
+                                                </span>
+                                                <span className="text-xs sm:text-sm font-black text-foreground truncate max-w-[260px] sm:max-w-[420px]">
+                                                    {selectedGroup.courses?.find((c: any) => c.id === attCourseId)?.title || "Sin materia seleccionada"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold justify-end w-full sm:w-auto">
                                                 <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100/70 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
                                                     {Object.values(attRecords).filter(r => r.status === "PRESENT" && !r.arrivalTime && !r.departureTime).length} Presentes
                                                 </span>

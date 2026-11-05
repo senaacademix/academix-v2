@@ -1,19 +1,9 @@
 import { auth } from "@/lib/auth";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { GestorDashboardView } from "@/features/gestor/components/GestorDashboardView";
-import { 
-    getGestorDashboardStatsAction, 
-    getGestorRecentActivityAction 
-} from "@/features/gestor/actions/gestorActions";
-import { announcementService } from "@/features/announcements/services/announcementService";
+import { gestorService } from "@/features/gestor/services/gestorService";
 
 export const dynamic = "force-dynamic";
-
-export const metadata = {
-    title: "Panel del Gestor Académico | AcademiX",
-    description: "Gestión curricular, matrícula de aprendices, franjas horarias y ambientes de formación.",
-};
 
 export default async function GestorDashboardPage({
     searchParams,
@@ -29,22 +19,18 @@ export default async function GestorDashboardPage({
     const resolvedSearchParams = searchParams ? await searchParams : undefined;
     const cookieStore = await cookies();
     const cookieProgramId = cookieStore.get("academix_gestor_program_id")?.value;
-    const effectiveProgramId = resolvedSearchParams?.programId || cookieProgramId;
+    let effectiveProgramId = resolvedSearchParams?.programId || cookieProgramId;
 
-    const [stats, recentActivity, announcements] = await Promise.all([
-        getGestorDashboardStatsAction(),
-        getGestorRecentActivityAction(10, effectiveProgramId),
-        announcementService.getActiveAnnouncements()
-    ]);
+    if (!effectiveProgramId && session.user.role === "gestor") {
+        const managed = await gestorService.getManagedPrograms(session.user.id);
+        if (managed.length > 0) {
+            effectiveProgramId = managed[0].id;
+        }
+    }
 
-    return (
-        <div className="container mx-auto py-8">
-            <GestorDashboardView 
-                stats={stats} 
-                recentActivity={recentActivity} 
-                userName={session.user.name || undefined}
-                announcements={announcements}
-            />
-        </div>
-    );
+    if (effectiveProgramId) {
+        redirect(`/dashboard/gestor/users?programId=${effectiveProgramId}`);
+    }
+
+    redirect("/dashboard/gestor/users");
 }

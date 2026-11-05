@@ -45,7 +45,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { 
   getTeacherScheduleLockStatusAction, 
   adminLockBothTeacherScheduleAction,
-  toggleTeacherSchedulePastAttendanceAction,
   adminLockBothAllTeachersScheduleAction,
   adminLockTeacherQualificationsAction,
   unlockTeacherQualificationsAction
@@ -172,23 +171,6 @@ export function ScheduleTeacherConfigModal({
       await fetchLockStatus();
     } catch (err: any) {
       toast.error(err.message || "Error al actualizar bloqueo de materias");
-    } finally {
-      setLockLoading(false);
-    }
-  };
-
-  const handleTogglePastAttendance = async (checked: boolean) => {
-    if (!selectedTeacherId || !selectedScheduleId) return;
-    setLockLoading(true);
-    try {
-      await toggleTeacherSchedulePastAttendanceAction(selectedTeacherId, selectedScheduleId, checked);
-      toast.success(checked 
-        ? "Edición de fechas anteriores permitida para este instructor en este horario" 
-        : "Edición de fechas anteriores restringida a la semana actual"
-      );
-      setLockStatus(prev => prev ? { ...prev, allowPastAttendanceEdit: checked } : null);
-    } catch (err: any) {
-      toast.error(err.message || "Error al actualizar configuración");
     } finally {
       setLockLoading(false);
     }
@@ -505,46 +487,6 @@ export function ScheduleTeacherConfigModal({
                           <span>Bloquear Horario y Materias</span>
                         </Button>
                       )}
-
-                      {/* Control para permitir edición de fechas anteriores para este instructor en este horario */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div 
-                            className={cn(
-                              "flex items-center gap-1.5 px-2.5 h-7 rounded-md border text-[10px] font-bold transition-all select-none",
-                              lockStatus.allowPastAttendanceEdit 
-                                ? "bg-primary/10 border-primary/40 text-primary shadow-2xs" 
-                                : "bg-background border-border/80 text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                          >
-                            <CalendarDays className={cn("w-3.5 h-3.5 shrink-0", lockStatus.allowPastAttendanceEdit ? "text-primary" : "text-muted-foreground")} />
-                            <span className="hidden sm:inline">Fechas anteriores:</span>
-                            <Badge 
-                              variant="outline" 
-                              className={cn(
-                                "text-[9px] px-1.5 py-0 h-4 rounded font-extrabold uppercase tracking-wider border-0",
-                                lockStatus.allowPastAttendanceEdit 
-                                  ? "bg-primary text-primary-foreground" 
-                                  : "bg-muted text-muted-foreground"
-                              )}
-                            >
-                              {lockStatus.allowPastAttendanceEdit ? "Habilitadas" : "Bloqueadas"}
-                            </Badge>
-                            <Switch
-                              id="teacher-allow-past-attendance"
-                              checked={!!lockStatus.allowPastAttendanceEdit}
-                              disabled={lockLoading}
-                              onCheckedChange={handleTogglePastAttendance}
-                              className="scale-75 data-[state=checked]:bg-primary ml-0.5 cursor-pointer"
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs max-w-xs font-medium">
-                          {lockStatus.allowPastAttendanceEdit
-                            ? "Fechas anteriores HABILITADAS: Este instructor puede registrar o modificar asistencias y novedades de semanas anteriores en este horario."
-                            : "Fechas anteriores BLOQUEADAS: Este instructor solo puede registrar asistencias de la semana en curso en este horario."}
-                        </TooltipContent>
-                      </Tooltip>
                     </div>
                   )}
                 </div>

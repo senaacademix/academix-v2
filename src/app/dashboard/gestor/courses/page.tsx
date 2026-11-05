@@ -31,10 +31,10 @@ export default async function GestorCoursesPage({
 
     if (session.user.role === "gestor" && !effectiveProgramId) {
         const gestorPrograms = await gestorService.getManagedPrograms(session.user.id);
-        if (gestorPrograms.length === 1) {
+        if (gestorPrograms.length >= 1) {
             effectiveProgramId = gestorPrograms[0].id;
         } else {
-            redirect("/dashboard/gestor");
+            redirect("/dashboard");
         }
     }
 

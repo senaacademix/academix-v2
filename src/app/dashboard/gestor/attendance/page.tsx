@@ -40,7 +40,7 @@ export default async function GestorAttendancePage({
             if (managedPrograms.length >= 1) {
                 effectiveProgramId = managedPrograms[0].id;
             } else {
-                redirect("/dashboard/gestor");
+                redirect("/dashboard");
             }
         }
     } else {

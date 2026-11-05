@@ -3,5 +3,5 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export default async function GestorAnalyticsPage() {
-    redirect("/dashboard/gestor");
+    redirect("/dashboard/gestor/users");
 }

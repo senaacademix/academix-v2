@@ -42,7 +42,7 @@ export default async function GestorToolsPage({
                 effectiveProgramId = managedPrograms[0].id;
                 programName = managedPrograms[0].name;
             } else {
-                redirect("/dashboard/gestor");
+                redirect("/dashboard");
             }
         } else {
             const found = managedPrograms.find((p) => p.id === effectiveProgramId);
