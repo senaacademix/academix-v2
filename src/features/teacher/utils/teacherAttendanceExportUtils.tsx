@@ -313,6 +313,16 @@ export async function generateAndDownloadAttendanceMatrixExcel(data: MatrixExpor
         cell.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: "FF7C3AED" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F3FF" } };
       }
+
+      // Agregar nota de celda si la fecha tiene justificación
+      if (colNum >= 4 && colNum < 4 + data.allDates.length) {
+        const dateIdx = colNum - 4;
+        const dateKey = data.allDates[dateIdx];
+        const rec = s.records[dateKey];
+        if (rec?.justification?.trim()) {
+          cell.note = `Justificación: "${rec.justification.trim()}"`;
+        }
+      }
     });
   });
 

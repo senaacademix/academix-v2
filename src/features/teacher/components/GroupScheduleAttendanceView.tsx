@@ -100,8 +100,8 @@ export function GroupScheduleAttendanceView({
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Modo de vista: "week" (Semana) o "month" (Mes)
-    const [viewMode, setViewMode] = useState<"week" | "month">("week");
+    // Modo de vista: "week" (Semana), "month" (Mes) o "all" (Todo el período)
+    const [viewMode, setViewMode] = useState<"week" | "month" | "all">("week");
 
     // Estado del horario seleccionado: "current" o el ID específico del horario
     const [selectedScheduleMode, setSelectedScheduleMode] = useState<"current" | "past">("current");
@@ -299,16 +299,21 @@ export function GroupScheduleAttendanceView({
         return monthList;
     }, [activeSchedule]);
 
-    // Sincronizar mes seleccionado
+    // Sincronizar mes seleccionado por defecto al horario activo
     useEffect(() => {
         if (months.length === 0) return;
         const currentMonth = months.find(m => m.isCurrentMonth);
         if (currentMonth) {
             setSelectedMonthKey(currentMonth.key);
-        } else if (!months.some(m => m.key === selectedMonthKey)) {
-            setSelectedMonthKey(months[0].key);
+        } else {
+            const todayYMD = getTodayColombianDate();
+            if (activeSchedule?.endDate && todayYMD > toCalendarYMD(activeSchedule.endDate)) {
+                setSelectedMonthKey(months[months.length - 1].key);
+            } else {
+                setSelectedMonthKey(months[0].key);
+            }
         }
-    }, [months, selectedMonthKey]);
+    }, [months, activeSchedule]);
 
     const selectedMonth = useMemo(() => {
         return months.find(m => m.key === selectedMonthKey) || months[0] || null;
@@ -626,6 +631,105 @@ export function GroupScheduleAttendanceView({
         return sessions;
     }, [selectedMonth, groupData, activeSchedule]);
 
+    // =========================================================================
+    // 6.1. SESIONES DE TODO EL PERÍODO (VISTA TODO)
+    // =========================================================================
+    const allPeriodSessions = useMemo<DayClassSession[]>(() => {
+        if (!groupData || !activeSchedule?.startDate || !activeSchedule?.endDate) return [];
+
+        const startLimitYMD = toCalendarYMD(activeSchedule.startDate);
+        const endLimitYMD = toCalendarYMD(activeSchedule.endDate);
+
+        const relevantCourses = groupData.courses.filter(c => {
+            if (!activeSchedule) return true;
+            if (!c.academicScheduleId) return true;
+            return c.academicScheduleId === activeSchedule.id;
+        });
+
+        const dayKeys = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+        const sessions: DayClassSession[] = [];
+
+        // Recorrer día a día desde la fecha de inicio hasta la de fin
+        const start = new Date(activeSchedule.startDate);
+        const end = new Date(activeSchedule.endDate);
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return [];
+
+        const curDate = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate(), 12, 0, 0));
+        const endDateUTC = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate(), 12, 0, 0));
+
+        while (curDate <= endDateUTC) {
+            const y = curDate.getUTCFullYear();
+            const m = curDate.getUTCMonth();
+            const d = curDate.getUTCDate();
+            const dateStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+            const dayOfWeekIdx = curDate.getUTCDay();
+            const dayKey = dayKeys[dayOfWeekIdx];
+
+            if (dayKey !== "SUNDAY") {
+                const meta = DAY_LABELS[dayKey] || { full: dayKey, short: dayKey };
+                const formattedDate = formatCalendarDate(curDate, "d MMM");
+
+                const dayClasses: DayClassSession[] = [];
+
+                relevantCourses.forEach(course => {
+                    course.schedules.forEach(sched => {
+                        if (sched.dayOfWeek === dayKey) {
+                            dayClasses.push({
+                                courseId: course.id,
+                                courseTitle: course.title,
+                                teacherName: sched.teacherName || course.teacherName,
+                                startTime: sched.startTime,
+                                endTime: sched.endTime,
+                                environmentName: sched.environmentName,
+                                dateStr,
+                                dayOfWeekKey: dayKey,
+                                dayMeta: {
+                                    dayName: meta.full,
+                                    shortDay: meta.short,
+                                    formattedDate,
+                                    dateStr
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // Complementar con asistencias reales registradas en esa fecha
+                const attsInDate = groupData.attendances.filter(a => a.date === dateStr);
+                attsInDate.forEach(att => {
+                    const course = groupData.courses.find(c => c.id === att.courseId);
+                    if (!course) return;
+                    if (!dayClasses.some(dc => dc.courseId === course.id)) {
+                        dayClasses.push({
+                            courseId: course.id,
+                            courseTitle: course.title,
+                            teacherName: course.teacherName,
+                            startTime: "Sesión",
+                            endTime: "Registrada",
+                            environmentName: null,
+                            dateStr,
+                            dayOfWeekKey: dayKey,
+                            dayMeta: {
+                                dayName: meta.full,
+                                shortDay: meta.short,
+                                formattedDate,
+                                dateStr
+                            }
+                        });
+                    }
+                });
+
+                dayClasses.sort((a, b) => a.startTime.localeCompare(b.startTime));
+                dayClasses.forEach(s => sessions.push(s));
+            }
+
+            curDate.setUTCDate(curDate.getUTCDate() + 1);
+        }
+
+        return sessions;
+    }, [groupData, activeSchedule]);
+
     // Diccionario rápido de asistencias por [userId_courseId_date]
     const attendanceMap = useMemo(() => {
         const map = new Map<string, GroupScheduleAttendanceData["attendances"][0]>();
@@ -640,11 +744,13 @@ export function GroupScheduleAttendanceView({
     }, [groupData]);
 
     // =========================================================================
-    // 7. SESIONES ACTIVAS (SEMANA VS MES) Y ESTADÍSTICAS
+    // 7. SESIONES ACTIVAS (SEMANA VS MES VS TODO) Y ESTADÍSTICAS
     // =========================================================================
     const activeSessions = useMemo(() => {
-        return viewMode === "week" ? allWeekSessions : allMonthSessions;
-    }, [viewMode, allWeekSessions, allMonthSessions]);
+        if (viewMode === "week") return allWeekSessions;
+        if (viewMode === "month") return allMonthSessions;
+        return allPeriodSessions;
+    }, [viewMode, allWeekSessions, allMonthSessions, allPeriodSessions]);
 
     const studentsWithStats = useMemo(() => {
         if (!groupData) return [];
@@ -746,16 +852,19 @@ export function GroupScheduleAttendanceView({
     }, [studentsWithStats, activeSessions]);
 
     // =========================================================================
-    // 8. EXPORTACIÓN A EXCEL (.XLSX) PARA SEMANA O MES
+    // 8. EXPORTACIÓN A EXCEL (.XLSX) PARA SEMANA, MES O TODO EL PERÍODO
     // =========================================================================
     const handleExportExcel = async () => {
         if (!groupData) return;
 
         const isMonthMode = viewMode === "month";
+        const isAllMode = viewMode === "all";
         const toastId = toast.loading(
-            isMonthMode 
-                ? `Generando Excel de Asistencia Mensual (${selectedMonth?.label || "Mes"})...` 
-                : "Generando Excel de Asistencia Semanal..."
+            isAllMode
+                ? "Generando Excel de Asistencia Completa (Todo el Período)..."
+                : isMonthMode 
+                    ? `Generando Excel de Asistencia Mensual (${selectedMonth?.label || "Mes"})...` 
+                    : "Generando Excel de Asistencia Semanal..."
         );
 
         try {
@@ -763,9 +872,11 @@ export function GroupScheduleAttendanceView({
             workbook.creator = "AcademiX Plataforma";
             workbook.created = new Date();
 
-            const periodName = isMonthMode
-                ? (selectedMonth ? selectedMonth.label.replace(/\s+/g, "_") : "Mes")
-                : `Semana_${currentWeek?.weekNumber || 1}`;
+            const periodName = isAllMode
+                ? (activeSchedule ? activeSchedule.name.replace(/\s+/g, "_") : "Todo_el_Periodo")
+                : isMonthMode
+                    ? (selectedMonth ? selectedMonth.label.replace(/\s+/g, "_") : "Mes")
+                    : `Semana_${currentWeek?.weekNumber || 1}`;
 
             const sheetName = periodName.slice(0, 31);
             const sheet = workbook.addWorksheet(sheetName, {
@@ -775,9 +886,11 @@ export function GroupScheduleAttendanceView({
             // Título Principal
             sheet.mergeCells("A1:K1");
             const titleCell = sheet.getCell("A1");
-            titleCell.value = isMonthMode
-                ? `ACADEMIX — SÁBANA MENSUAL DE ASISTENCIA • FICHA ${groupData.group.name} • ${selectedMonth?.label || ""}`
-                : `ACADEMIX — SÁBANA SEMANAL DE ASISTENCIA • FICHA ${groupData.group.name}`;
+            titleCell.value = isAllMode
+                ? `ACADEMIX — SÁBANA COMPLETA DE ASISTENCIA (TODO EL PERÍODO) • FICHA ${groupData.group.name}`
+                : isMonthMode
+                    ? `ACADEMIX — SÁBANA MENSUAL DE ASISTENCIA • FICHA ${groupData.group.name} • ${selectedMonth?.label || ""}`
+                    : `ACADEMIX — SÁBANA SEMANAL DE ASISTENCIA • FICHA ${groupData.group.name}`;
             titleCell.font = { name: "Arial", size: 14, bold: true, color: { argb: "FFFFFFFF" } };
             titleCell.alignment = { horizontal: "center", vertical: "middle" };
             titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
@@ -787,9 +900,11 @@ export function GroupScheduleAttendanceView({
             sheet.mergeCells("A2:K2");
             const subCell = sheet.getCell("A2");
             const scheduleTitle = activeSchedule ? activeSchedule.name : "Horario General";
-            const periodDetail = isMonthMode
-                ? `Mes: ${selectedMonth?.label || ""} • Total Sesiones: ${activeSessions.length}`
-                : `Semana ${currentWeek?.weekNumber || 1} (${currentWeek?.startDateStr || ""} al ${currentWeek?.endDateStr || ""})`;
+            const periodDetail = isAllMode
+                ? `Período Completo: ${activeSchedule ? `${formatCalendarDate(activeSchedule.startDate, "d MMM yyyy")} al ${formatCalendarDate(activeSchedule.endDate, "d MMM yyyy")}` : ""} • Total Sesiones: ${activeSessions.length}`
+                : isMonthMode
+                    ? `Mes: ${selectedMonth?.label || ""} • Total Sesiones: ${activeSessions.length}`
+                    : `Semana ${currentWeek?.weekNumber || 1} (${currentWeek?.startDateStr || ""} al ${currentWeek?.endDateStr || ""})`;
 
             subCell.value = `Período / Horario: ${scheduleTitle} • ${periodDetail} • ${groupData.students.length} Aprendices`;
             subCell.font = { name: "Arial", size: 10, italic: true, color: { argb: "FF334155" } };
@@ -895,6 +1010,37 @@ export function GroupScheduleAttendanceView({
                         cell.font = { name: "Arial", size: 9, bold: true, color: { argb: "FFB45309" } };
                         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
                     }
+
+                    // Si es una celda de sesión de clase, asignar nota/comentario de celda si tiene justificación
+                    if (colNum >= 5 && colNum < 5 + validSessions.length) {
+                        const sessionIdx = colNum - 5;
+                        const session = validSessions[sessionIdx];
+                        if (session) {
+                            const key = `${st.id}_${session.courseId}_${session.dateStr}`;
+                            const rec = attendanceMap.get(key);
+                            if (rec) {
+                                const noteParts: string[] = [];
+                                if (rec.justification?.trim()) {
+                                    noteParts.push(`Justificación: "${rec.justification.trim()}"`);
+                                }
+                                if (rec.justificationUrl?.trim()) {
+                                    noteParts.push(`Soporte: ${rec.justificationUrl.trim()}`);
+                                }
+                                if (rec.arrivalTime) {
+                                    const arrival = new Date(rec.arrivalTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                                    noteParts.push(`Hora ingreso: ${arrival}`);
+                                }
+                                if (rec.departureTime) {
+                                    const departure = new Date(rec.departureTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                                    noteParts.push(`Hora retiro: ${departure}`);
+                                }
+
+                                if (noteParts.length > 0) {
+                                    cell.note = noteParts.join("\n");
+                                }
+                            }
+                        }
+                    }
                 });
             });
 
@@ -918,7 +1064,11 @@ export function GroupScheduleAttendanceView({
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            const prefix = isMonthMode ? `Asistencia_Mes_${selectedMonth?.key || "General"}` : `Asistencia_Semana_${currentWeek?.weekNumber || 1}`;
+            const prefix = isAllMode 
+                ? "Asistencia_Periodo_Completo" 
+                : isMonthMode 
+                    ? `Asistencia_Mes_${selectedMonth?.key || "General"}` 
+                    : `Asistencia_Semana_${currentWeek?.weekNumber || 1}`;
             a.download = `${prefix}_${groupData.group.name.replace(/[^a-zA-Z0-9]/g, "_")}.xlsx`;
             a.click();
             window.URL.revokeObjectURL(url);
@@ -1077,7 +1227,7 @@ export function GroupScheduleAttendanceView({
 
                     {/* Controles de Acción Rápida (Semana/Mes, Actualizar, Exportar) */}
                     <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-start sm:justify-end">
-                        {/* ALTERNADOR DE VISTA: SEMANA / MES */}
+                        {/* ALTERNADOR DE VISTA: SEMANA / MES / TODO */}
                         <div className="flex items-center gap-1 bg-background/90 dark:bg-card/90 p-1 rounded-2xl border border-border/80 shadow-2xs">
                             <Button
                                 type="button"
@@ -1110,6 +1260,22 @@ export function GroupScheduleAttendanceView({
                                 <CalendarRange className="w-3.5 h-3.5" />
                                 <span>Mes</span>
                             </Button>
+
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={viewMode === "all" ? "default" : "ghost"}
+                                onClick={() => setViewMode("all")}
+                                className={cn(
+                                    "h-8 px-3 text-xs font-black rounded-xl transition-all gap-1.5",
+                                    viewMode === "all"
+                                        ? "bg-primary text-primary-foreground shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                )}
+                            >
+                                <Layers className="w-3.5 h-3.5" />
+                                <span>Todo</span>
+                            </Button>
                         </div>
 
                         <Button
@@ -1133,7 +1299,7 @@ export function GroupScheduleAttendanceView({
                             className="h-8 px-3.5 rounded-xl text-xs font-black gap-2 shadow-xs bg-emerald-100 hover:bg-emerald-200/90 text-emerald-900 border border-emerald-300/80 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-700/60 cursor-pointer transition-all"
                         >
                             <FileSpreadsheet className="w-4 h-4" />
-                            <span>Exportar {viewMode === "month" ? "Mes" : "Semana"}</span>
+                            <span>Exportar {viewMode === "all" ? "Todo" : viewMode === "month" ? "Mes" : "Semana"}</span>
                         </Button>
 
                         {/* Botón de Pantalla Completa */}
@@ -1298,6 +1464,19 @@ export function GroupScheduleAttendanceView({
                                     </>
                                 );
                             })()}
+                        </div>
+                    )}
+
+                    {/* MODO TODO EL PERÍODO */}
+                    {viewMode === "all" && activeSchedule && (
+                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                            <Badge variant="outline" className="h-8 px-3 text-xs font-extrabold bg-primary/10 text-primary border-primary/30 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                                <Layers className="w-3.5 h-3.5 text-primary" />
+                                <span>Todo el período ({formatCalendarDate(activeSchedule.startDate, "d MMM yyyy")} al {formatCalendarDate(activeSchedule.endDate, "d MMM yyyy")})</span>
+                            </Badge>
+                            <Badge variant="secondary" className="h-8 px-2.5 text-[11px] font-black rounded-xl">
+                                {allPeriodSessions.length} clases en total
+                            </Badge>
                         </div>
                     )}
 
@@ -1534,16 +1713,25 @@ export function GroupScheduleAttendanceView({
                                                         );
                                                     })
                                                 ) : (
-                                                    /* MODO MES: encabezado agrupador */
+                                                    /* MODO MES / MODO TODO: encabezado agrupador */
                                                     <th
-                                                        colSpan={Math.max(1, allMonthSessions.length)}
+                                                        colSpan={Math.max(1, activeSessions.length)}
                                                         className="p-2.5 text-center font-black text-xs border-r border-border/60 uppercase tracking-wide bg-primary/10 text-primary"
                                                     >
                                                         <div className="flex items-center justify-center gap-2">
-                                                            <CalendarRange className="w-4 h-4 text-primary" />
-                                                            <span>CLASES Y SESIONES DEL MES: {selectedMonth?.label}</span>
+                                                            {viewMode === "all" ? (
+                                                                <Layers className="w-4 h-4 text-primary" />
+                                                            ) : (
+                                                                <CalendarRange className="w-4 h-4 text-primary" />
+                                                            )}
+                                                            <span>
+                                                                {viewMode === "all"
+                                                                    ? `CLASES Y SESIONES DE TODO EL PERÍODO (${formatCalendarDate(activeSchedule?.startDate, "d MMM yyyy")} — ${formatCalendarDate(activeSchedule?.endDate, "d MMM yyyy")})`
+                                                                    : `CLASES Y SESIONES DEL MES: ${selectedMonth?.label}`
+                                                                }
+                                                            </span>
                                                             <Badge variant="secondary" className="text-[10px] py-0 px-2 bg-primary/20 text-primary font-mono">
-                                                                {allMonthSessions.length} Sesiones
+                                                                {activeSessions.length} Sesiones
                                                             </Badge>
                                                         </div>
                                                     </th>
@@ -1600,8 +1788,8 @@ export function GroupScheduleAttendanceView({
                                                                     </span>
                                                                 ) : (
                                                                     <div className="space-y-1">
-                                                                        {/* En vista mensual, destacar el día y la fecha de cada columna */}
-                                                                        {viewMode === "month" && (
+                                                                        {/* En vista mensual o todo el período, destacar el día y la fecha de cada columna */}
+                                                                        {viewMode !== "week" && (
                                                                             <div className="text-[10px] font-black uppercase text-primary/80 flex items-center justify-center gap-1 border-b border-border/50 pb-1">
                                                                                 <span>{session.dayMeta.shortDay}</span>
                                                                                 <span>{session.dayMeta.formattedDate}</span>
