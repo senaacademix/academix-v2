@@ -96,7 +96,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatName, cn } from "@/lib/utils";
 import { resolveAttendanceStatusStyle } from "@/lib/attendanceStatusStyles";
-import { formatCalendarDate, fromUTC, getTodayColombianDate, toCalendarYMD, isScheduleCurrent } from "@/lib/dateUtils";
+import { formatCalendarDate, fromUTC, getTodayColombianDate, toCalendarYMD, isScheduleCurrent, isColombianHoliday, getColombianHolidayName } from "@/lib/dateUtils";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { resetStudentPassword, saveAttendanceBatch, saveRemarkBatch, getGroupAttendanceHistory, getGroupRemarksHistory, getTeacherComprehensiveGroupAnalyticsAction, saveSingleAttendanceAction, deleteRemarkAction, resetStudentDailyAttempts, notifyEmailSentBatchAction } from "../actions/groupActions";
@@ -260,6 +260,9 @@ export function GroupManager({ groups, scheduleStartDate, scheduleEndDate, teach
 
     const isDateValidForGroupAndCourse = (group: any, dateStr: string, courseId: string) => {
         if (!group) return false;
+        // Los días festivos oficiales en Colombia quedan bloqueados para toma de asistencia
+        if (isColombianHoliday(dateStr)) return false;
+
         const dateVal = new Date(dateStr + "T12:00:00Z");
         
         const { start: groupStart, end: groupEnd } = getEffectiveDatesForCourse(group, courseId);
@@ -2906,25 +2909,44 @@ const handleOpenAnalytics = async () => {
                                                     const isFuture = ds > todayStr;
                                                     const isSelected = ds === attDate;
                                                     const isToday = ds === todayStr;
+                                                    const holidayName = getColombianHolidayName(ds);
+                                                    const isHoliday = !!holidayName;
 
                                                     return (
                                                         <Button
                                                             key={ds}
                                                             size="sm"
-                                                            variant={isSelected ? "default" : "outline"}
+                                                            variant={isSelected ? (isHoliday ? "destructive" : "default") : "outline"}
                                                             disabled={isFuture || isSavingAtt || isLoadingAttendance}
                                                             type="button"
                                                             onClick={() => handleDateChangeAttempt(ds)}
                                                             className={`h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-bold transition-all rounded-lg shrink-0 cursor-pointer ${
                                                                 isSelected 
-                                                                    ? "shadow-sm font-extrabold bg-primary text-primary-foreground" 
-                                                                    : isToday
-                                                                        ? "border-primary/40 text-primary hover:bg-primary/10 font-extrabold"
-                                                                        : "text-muted-foreground hover:text-foreground border-border/70"
+                                                                    ? isHoliday
+                                                                        ? "shadow-sm font-extrabold bg-rose-600 hover:bg-rose-700 text-white border-rose-600 ring-2 ring-rose-400/40"
+                                                                        : "shadow-sm font-extrabold bg-primary text-primary-foreground" 
+                                                                    : isHoliday
+                                                                        ? "border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 font-extrabold"
+                                                                        : isToday
+                                                                            ? "border-primary/40 text-primary hover:bg-primary/10 font-extrabold"
+                                                                            : "text-muted-foreground hover:text-foreground border-border/70"
                                                             }`}
-                                                            title={isFuture ? "Fecha futura (deshabilitada)" : isToday ? `Hoy (${ds})` : `Seleccionar ${ds}`}
+                                                            title={
+                                                                isHoliday 
+                                                                    ? `Día Festivo: ${holidayName} (Bloqueado para asistencia)`
+                                                                    : isFuture 
+                                                                        ? "Fecha futura (deshabilitada)" 
+                                                                        : isToday 
+                                                                            ? `Hoy (${ds})` 
+                                                                            : `Seleccionar ${ds}`
+                                                            }
                                                         >
                                                             {isToday ? `Hoy (${label})` : label}
+                                                            {isHoliday && (
+                                                                <span className="ml-1 text-[9px] px-1 py-0.2 rounded bg-rose-200/80 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200 font-black">
+                                                                    Festivo
+                                                                </span>
+                                                            )}
                                                         </Button>
                                                     );
                                                 });
@@ -2947,14 +2969,18 @@ const handleOpenAnalytics = async () => {
                                         </div>
                                         <div className="space-y-2 max-w-lg">
                                             <h4 className="font-black text-lg sm:text-xl text-foreground tracking-tight">
-                                                {attDate === getTodayColombianDate()
-                                                    ? "Hoy no tienes sesión de clase programada para esta ficha"
-                                                    : "Fecha no Programada para este Curso"}
+                                                {isColombianHoliday(attDate)
+                                                    ? `Día Festivo Oficial: ${getColombianHolidayName(attDate)}`
+                                                    : attDate === getTodayColombianDate()
+                                                        ? "Hoy no tienes sesión de clase programada para esta ficha"
+                                                        : "Fecha no Programada para este Curso"}
                                             </h4>
                                             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                                                {attDate === getTodayColombianDate()
-                                                    ? "Para el día de hoy no hay una sesión o ficha programada con esta materia en el horario vigente. Por este motivo no se habilitan aprendices para llamar asistencia hoy."
-                                                    : "La fecha seleccionada no corresponde a un día de clase según el horario programado para esta materia."}
+                                                {isColombianHoliday(attDate)
+                                                    ? "La fecha seleccionada corresponde a un día festivo oficial en Colombia. Por normativa institucional y legal, no se programa jornada académica ni se habilita toma de asistencia."
+                                                    : attDate === getTodayColombianDate()
+                                                        ? "Para el día de hoy no hay una sesión o ficha programada con esta materia en el horario vigente. Por este motivo no se habilitan aprendices para llamar asistencia hoy."
+                                                        : "La fecha seleccionada no corresponde a un día de clase según el horario programado para esta materia."}
                                             </p>
                                         </div>
 

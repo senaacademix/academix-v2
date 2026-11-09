@@ -41,7 +41,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatName, cn } from "@/lib/utils";
-import { toCalendarYMD, getTodayColombianDate, formatCalendarDate } from "@/lib/dateUtils";
+import { toCalendarYMD, getTodayColombianDate, formatCalendarDate, isColombianHoliday, getColombianHolidayName } from "@/lib/dateUtils";
 import { getGroupScheduleAttendanceAction, type GroupScheduleAttendanceData } from "../actions/groupScheduleAttendanceActions";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
@@ -755,7 +755,8 @@ export function GroupScheduleAttendanceView({
     const studentsWithStats = useMemo(() => {
         if (!groupData) return [];
 
-        const validSessions = activeSessions.filter(s => !s.courseId.startsWith("empty-"));
+        // Excluir días vacíos y días festivos oficiales para el cálculo de estadísticas
+        const validSessions = activeSessions.filter(s => !s.courseId.startsWith("empty-") && !isColombianHoliday(s.dateStr));
 
         return groupData.students.map(student => {
             let presentCount = 0;
@@ -1578,6 +1579,8 @@ export function GroupScheduleAttendanceView({
                                             ) : (
                                                 activeSessions.map((session, sIdx) => {
                                                     const isEmpty = session.courseId.startsWith("empty-");
+                                                    const isHoliday = isColombianHoliday(session.dayMeta.dateStr);
+                                                    const holidayName = isHoliday ? getColombianHolidayName(session.dayMeta.dateStr) : null;
                                                     const isToday = session.dayMeta.dateStr === getTodayColombianDate();
                                                     const dayShort = session.dayMeta.shortDay || DAY_LABELS[session.dayOfWeekKey]?.short || "";
                                                     const dateFormatted = session.dayMeta.formattedDate || "";
@@ -1587,7 +1590,11 @@ export function GroupScheduleAttendanceView({
                                                             key={`compact_${session.dayOfWeekKey}_${session.dateStr}_${sIdx}`}
                                                             className={cn(
                                                                 "p-1.5 sm:p-2 text-center border-r border-border/60 align-middle min-w-[65px] sm:min-w-[85px] transition-colors select-none",
-                                                                isToday ? "bg-primary/15 text-primary border-primary/30" : "bg-muted hover:bg-muted/80 text-foreground"
+                                                                isHoliday
+                                                                    ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300/60 dark:border-rose-900/40"
+                                                                    : isToday
+                                                                        ? "bg-primary/15 text-primary border-primary/30"
+                                                                        : "bg-muted hover:bg-muted/80 text-foreground"
                                                             )}
                                                         >
                                                             <Tooltip>
@@ -1596,33 +1603,61 @@ export function GroupScheduleAttendanceView({
                                                                         <div className="flex items-center justify-center gap-1">
                                                                             <span className={cn(
                                                                                 "font-black text-xs uppercase tracking-tight",
-                                                                                isToday ? "text-primary font-black" : "text-foreground group-hover:text-primary transition-colors"
+                                                                                isHoliday
+                                                                                    ? "text-rose-600 dark:text-rose-400 font-black"
+                                                                                    : isToday
+                                                                                        ? "text-primary font-black"
+                                                                                        : "text-foreground group-hover:text-primary transition-colors"
                                                                             )}>
                                                                                 {dayShort}
                                                                             </span>
-                                                                            {isToday && (
+                                                                            {isHoliday ? (
+                                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                                            ) : isToday ? (
                                                                                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-                                                                            )}
+                                                                            ) : null}
                                                                         </div>
                                                                         <span className={cn(
                                                                             "font-mono text-[10px] font-bold leading-none mt-0.5",
-                                                                            isToday ? "text-primary/90" : "text-muted-foreground"
+                                                                            isHoliday
+                                                                                ? "text-rose-600/90 dark:text-rose-400/90 font-bold"
+                                                                                : isToday
+                                                                                    ? "text-primary/90"
+                                                                                    : "text-muted-foreground"
                                                                         )}>
                                                                             {dateFormatted}
                                                                         </span>
+                                                                        {isHoliday && (
+                                                                            <span className="text-[9px] uppercase font-black tracking-widest text-rose-600 dark:text-rose-400 mt-0.5">
+                                                                                Festivo
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent side="top" className="p-3 max-w-xs space-y-2 bg-popover text-popover-foreground border border-border shadow-xl rounded-xl z-50 text-left">
                                                                     <div className="font-extrabold text-xs text-foreground flex items-center gap-1.5 border-b border-border/60 pb-1.5">
                                                                         <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
                                                                         <span>{session.dayMeta.dayName || dayShort}, {dateFormatted}</span>
-                                                                        {isToday && (
+                                                                        {isHoliday ? (
+                                                                            <Badge variant="destructive" className="text-[9px] py-0 px-1.5 ml-auto font-bold">
+                                                                                Festivo
+                                                                            </Badge>
+                                                                        ) : isToday ? (
                                                                             <Badge variant="secondary" className="text-[9px] py-0 px-1.5 bg-primary/20 text-primary ml-auto font-bold">
                                                                                 Hoy
                                                                             </Badge>
-                                                                        )}
+                                                                        ) : null}
                                                                     </div>
-                                                                    {isEmpty ? (
+                                                                    {isHoliday ? (
+                                                                        <div className="space-y-1 text-xs">
+                                                                            <div className="font-black text-rose-600 dark:text-rose-400">
+                                                                                {holidayName}
+                                                                            </div>
+                                                                            <div className="text-muted-foreground text-[11px]">
+                                                                                Día festivo oficial en Colombia (sin actividad académica).
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : isEmpty ? (
                                                                         <div className="text-xs text-muted-foreground italic py-1">
                                                                             Sin sesiones programadas este día.
                                                                         </div>
@@ -1688,6 +1723,8 @@ export function GroupScheduleAttendanceView({
                                                     currentWeek?.days.map(day => {
                                                         const daySessions = weekClassesByDay.get(day.dayOfWeekKey) || [];
                                                         const colSpan = Math.max(1, daySessions.length);
+                                                        const isHoliday = isColombianHoliday(day.dateStr);
+                                                        const holidayName = isHoliday ? getColombianHolidayName(day.dateStr) : null;
 
                                                         return (
                                                             <th
@@ -1695,18 +1732,32 @@ export function GroupScheduleAttendanceView({
                                                                 colSpan={colSpan}
                                                                 className={cn(
                                                                     "p-2 text-center font-black text-xs border-r border-border/60 uppercase tracking-wide",
-                                                                    day.dateStr === getTodayColombianDate()
-                                                                        ? "bg-primary/15 text-primary border-primary/30"
-                                                                        : "text-foreground"
+                                                                    isHoliday
+                                                                        ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300/60 dark:border-rose-900/40"
+                                                                        : day.dateStr === getTodayColombianDate()
+                                                                            ? "bg-primary/15 text-primary border-primary/30"
+                                                                            : "text-foreground"
                                                                 )}
                                                             >
-                                                                <div className="flex items-center justify-center gap-1.5">
-                                                                    <span>{day.dayName}</span>
-                                                                    <span className="font-mono text-[11px] font-bold text-muted-foreground">
-                                                                        {day.formattedDate}
-                                                                    </span>
-                                                                    {day.dateStr === getTodayColombianDate() && (
-                                                                        <span className="inline-block w-2 h-2 rounded-full bg-primary animate-ping" />
+                                                                <div className="flex flex-col items-center justify-center gap-0.5">
+                                                                    <div className="flex items-center justify-center gap-1.5">
+                                                                        <span>{day.dayName}</span>
+                                                                        <span className={cn(
+                                                                            "font-mono text-[11px] font-bold",
+                                                                            isHoliday ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"
+                                                                        )}>
+                                                                            {day.formattedDate}
+                                                                        </span>
+                                                                        {isHoliday ? (
+                                                                            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" title={`Festivo: ${holidayName}`} />
+                                                                        ) : day.dateStr === getTodayColombianDate() ? (
+                                                                            <span className="inline-block w-2 h-2 rounded-full bg-primary animate-ping" />
+                                                                        ) : null}
+                                                                    </div>
+                                                                    {isHoliday && (
+                                                                        <span className="text-[9px] uppercase tracking-wider font-extrabold text-rose-600 dark:text-rose-400 px-1.5 py-0.2 bg-rose-200/60 dark:bg-rose-950/60 rounded border border-rose-300/40">
+                                                                            {holidayName || "Festivo"}
+                                                                        </span>
                                                                     )}
                                                                 </div>
                                                             </th>
@@ -1773,16 +1824,32 @@ export function GroupScheduleAttendanceView({
                                                 ) : (
                                                     activeSessions.map((session, sIdx) => {
                                                         const isEmpty = session.courseId.startsWith("empty-");
+                                                        const isHoliday = isColombianHoliday(session.dayMeta.dateStr);
 
                                                         return (
                                                             <th
                                                                 key={`${session.dayOfWeekKey}_${session.dateStr}_${sIdx}`}
                                                                 className={cn(
                                                                     "p-2 sm:p-2.5 border-r border-border/60 text-center align-top min-w-[150px] sm:min-w-[185px]",
-                                                                    session.dayMeta.dateStr === getTodayColombianDate() && "bg-primary/5"
+                                                                    isHoliday
+                                                                        ? "bg-rose-500/10 border-rose-300/40 dark:border-rose-900/30"
+                                                                        : session.dayMeta.dateStr === getTodayColombianDate() && "bg-primary/5"
                                                                 )}
                                                             >
-                                                                {isEmpty ? (
+                                                                {isHoliday ? (
+                                                                    <div className="space-y-1 py-1">
+                                                                        <div className="text-[10px] font-black uppercase text-rose-600 dark:text-rose-400 flex items-center justify-center gap-1 border-b border-rose-200/60 dark:border-rose-900/40 pb-1">
+                                                                            <span>{session.dayMeta.shortDay}</span>
+                                                                            <span>{session.dayMeta.formattedDate}</span>
+                                                                        </div>
+                                                                        <span className="font-extrabold text-rose-700 dark:text-rose-300 text-xs block leading-snug">
+                                                                            {getColombianHolidayName(session.dayMeta.dateStr) || "Día Festivo"}
+                                                                        </span>
+                                                                        <span className="text-[10px] text-muted-foreground block italic">
+                                                                            Sin actividad académica
+                                                                        </span>
+                                                                    </div>
+                                                                ) : isEmpty ? (
                                                                     <span className="text-[11px] font-semibold text-muted-foreground/60 italic">
                                                                         Sin sesiones
                                                                     </span>
@@ -1868,6 +1935,22 @@ export function GroupScheduleAttendanceView({
                                                     </td>
                                                 ) : (
                                                     activeSessions.map((session, sIdx) => {
+                                                        const isHoliday = isColombianHoliday(session.dayMeta.dateStr);
+
+                                                        if (isHoliday) {
+                                                            return (
+                                                                <td
+                                                                    key={`${session.dayOfWeekKey}_${session.dateStr}_${sIdx}`}
+                                                                    className="p-2 text-center border-r border-border/60 bg-rose-500/5 text-rose-500 dark:text-rose-400 font-mono text-xs select-none"
+                                                                    title={`Día Festivo: ${getColombianHolidayName(session.dayMeta.dateStr) || "Festivo"}`}
+                                                                >
+                                                                    <span className="text-[10px] font-black uppercase text-rose-600/70 dark:text-rose-400/70">
+                                                                        Festivo
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+
                                                         if (session.courseId.startsWith("empty-")) {
                                                             return (
                                                                 <td 
@@ -1976,6 +2059,13 @@ export function GroupScheduleAttendanceView({
                                 -
                             </span>
                             <span className="text-muted-foreground">Sin registro</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-300/60 dark:border-rose-900/40 font-black flex items-center justify-center text-[9px] uppercase tracking-wider">
+                                Festivo
+                            </span>
+                            <span className="text-muted-foreground">Día feriado (Sin clases)</span>
                         </div>
                     </div>
 

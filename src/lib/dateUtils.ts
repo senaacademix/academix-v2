@@ -247,4 +247,116 @@ export function isDateInColombianWeek(date: Date | string): boolean {
     return targetYMD >= mondayYMD && targetYMD <= sundayYMD;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CÁLCULO OFICIAL DE DÍAS FESTIVOS EN COLOMBIA (LEY 51 DE 1983 - LEY EMILIANI Y LEY 2578)
+// Garantiza compatibilidad universal determinista en entornos locales y en servidor (Vercel, Docker UTC).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function calculateEasterSundayUTC(year: number): Date {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+}
+
+function nextMondayUTC(date: Date): Date {
+    const r = new Date(date);
+    const day = r.getUTCDay();
+    if (day === 1) return r; // Ya es lunes
+    const diff = (8 - day) % 7;
+    r.setUTCDate(r.getUTCDate() + (diff === 0 ? 7 : diff));
+    return r;
+}
+
+function addDaysUTC(date: Date, days: number): Date {
+    const r = new Date(date);
+    r.setUTCDate(r.getUTCDate() + days);
+    return r;
+}
+
+export interface ColombianHoliday {
+    date: string; // YYYY-MM-DD
+    name: string;
+}
+
+const holidaysCache: Record<number, ColombianHoliday[]> = {};
+
+/**
+ * Obtiene la lista completa de días festivos en Colombia para un año específico.
+ */
+export function getColombianHolidays(year: number): ColombianHoliday[] {
+    if (holidaysCache[year]) {
+        return holidaysCache[year];
+    }
+
+    const holidays: ColombianHoliday[] = [];
+
+    // 1. Festivos de fecha fija (No se trasladan)
+    holidays.push({ date: `${year}-01-01`, name: "Año Nuevo" });
+    holidays.push({ date: `${year}-05-01`, name: "Día del Trabajo" });
+    holidays.push({ date: `${year}-07-20`, name: "Día de la Independencia" });
+    holidays.push({ date: `${year}-08-07`, name: "Batalla de Boyacá" });
+    holidays.push({ date: `${year}-12-08`, name: "Inmaculada Concepción" });
+    holidays.push({ date: `${year}-12-25`, name: "Navidad" });
+
+    // 2. Festivos con traslado al siguiente lunes (Ley Emiliani / Ley 51 de 1983)
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(new Date(Date.UTC(year, 0, 6, 12)))), name: "Reyes Magos" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(new Date(Date.UTC(year, 2, 19, 12)))), name: "San José" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(new Date(Date.UTC(year, 5, 29, 12)))), name: "San Pedro y San Pablo" });
+    // Festivo nacional Virgen de Chiquinquirá (Ley 2578, 9 de julio con regla Ley Emiliani)
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(new Date(Date.UTC(year, 6, 9, 12)))), name: "Virgen de Chiquinquirá" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(new Date(Date.UTC(year, 7, 15, 12)))), name: "Asunción de la Virgen" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(new Date(Date.UTC(year, 9, 12, 12)))), name: "Día de la Raza" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(new Date(Date.UTC(year, 10, 1, 12)))), name: "Todos los Santos" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(new Date(Date.UTC(year, 10, 11, 12)))), name: "Independencia de Cartagena" });
+
+    // 3. Festivos móviles relativos a la Pascua (Semana Santa y celebraciones católicas)
+    const easter = calculateEasterSundayUTC(year);
+    holidays.push({ date: toCalendarYMD(addDaysUTC(easter, -3)), name: "Jueves Santo" });
+    holidays.push({ date: toCalendarYMD(addDaysUTC(easter, -2)), name: "Viernes Santo" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(addDaysUTC(easter, 40))), name: "Ascensión del Señor" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(addDaysUTC(easter, 60))), name: "Corpus Christi" });
+    holidays.push({ date: toCalendarYMD(nextMondayUTC(addDaysUTC(easter, 68))), name: "Sagrado Corazón de Jesús" });
+
+    holidays.sort((a, b) => a.date.localeCompare(b.date));
+    holidaysCache[year] = holidays;
+    return holidays;
+}
+
+/**
+ * Determina si una fecha dada (Date o string YYYY-MM-DD) es día festivo oficial en Colombia.
+ * Retorna el nombre del festivo si lo es, o null si es día hábil.
+ */
+export function getColombianHolidayName(date: Date | string | null | undefined): string | null {
+    if (!date) return null;
+    const ymd = toCalendarYMD(date);
+    if (!ymd || ymd.length < 4) return null;
+
+    const year = parseInt(ymd.slice(0, 4), 10);
+    if (isNaN(year)) return null;
+
+    const holidays = getColombianHolidays(year);
+    const holiday = holidays.find(h => h.date === ymd);
+    return holiday ? holiday.name : null;
+}
+
+/**
+ * Retorna true si la fecha es festivo en Colombia.
+ */
+export function isColombianHoliday(date: Date | string | null | undefined): boolean {
+    return getColombianHolidayName(date) !== null;
+}
+
+
 
