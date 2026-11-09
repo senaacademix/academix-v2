@@ -8,6 +8,8 @@
  * 4. Nota definitiva: max(0.0, Nota original - Puntos a descontar).
  */
 
+import { isColombianHoliday, toCalendarYMD } from "@/lib/dateUtils";
+
 export interface AttendanceRecordLike {
   userId?: string;
   studentId?: string;
@@ -206,6 +208,13 @@ export function calculateTotalScheduledHours(
       const hasSchedules = schedules.length > 0;
 
       while (cur <= endLimit) {
+        const curYMD = toCalendarYMD(cur);
+        // Excluir días festivos de las horas programadas
+        if (isColombianHoliday(curYMD)) {
+          cur.setUTCDate(cur.getUTCDate() + 1);
+          continue;
+        }
+
         const jsDay = cur.getUTCDay();
 
         if (hasSchedules) {

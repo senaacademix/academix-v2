@@ -1459,7 +1459,7 @@ export function GroupScheduleAttendanceView({
                                             )}
 
                                             <Badge variant="outline" className="text-[10px] font-bold py-0.5 px-2 bg-muted/60 rounded-lg border-border shrink-0 hidden sm:inline-flex">
-                                                {allMonthSessions.length} clases
+                                                {allMonthSessions.filter(s => !isColombianHoliday(s.dateStr)).length} clases
                                             </Badge>
                                         </div>
                                     </>
@@ -1476,7 +1476,7 @@ export function GroupScheduleAttendanceView({
                                 <span>Todo el período ({formatCalendarDate(activeSchedule.startDate, "d MMM yyyy")} al {formatCalendarDate(activeSchedule.endDate, "d MMM yyyy")})</span>
                             </Badge>
                             <Badge variant="secondary" className="h-8 px-2.5 text-[11px] font-black rounded-xl">
-                                {allPeriodSessions.length} clases en total
+                                {allPeriodSessions.filter(s => !isColombianHoliday(s.dateStr)).length} clases en total
                             </Badge>
                         </div>
                     )}

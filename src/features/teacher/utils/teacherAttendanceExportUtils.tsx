@@ -2,6 +2,7 @@ import React from "react";
 import { pdf, Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import ExcelJS from "exceljs";
 import { format } from "date-fns";
+import { isColombianHoliday, getColombianHolidayName } from "@/lib/dateUtils";
 
 // ============================================================================
 // PDF STYLESHEET — Matching Administrator Schedule Manager Design Language
@@ -144,6 +145,10 @@ const pdfStyles = StyleSheet.create({
     color: "#7c3aed",
     backgroundColor: "#f5f3ff",
   },
+  statusHoliday: {
+    color: "#be123c",
+    backgroundColor: "#ffe4e6",
+  },
   footer: {
     position: "absolute",
     bottom: 12,
@@ -243,16 +248,25 @@ export async function generateAndDownloadAttendanceMatrixExcel(data: MatrixExpor
 
   const headerRow = sheet.addRow(headerValues);
   headerRow.height = 26;
-  headerRow.eachCell((cell) => {
+  headerRow.eachCell((cell, colNum) => {
+    const isHolidayCol = colNum >= 4 && colNum < 4 + data.allDates.length && isColombianHoliday(data.allDates[colNum - 4]);
     cell.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: "FFFFFFFF" } };
     cell.alignment = { vertical: "middle", horizontal: "center" };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E1B4B" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: isHolidayCol ? "FFE11D48" : "FF1E1B4B" },
+    };
     cell.border = {
       top: { style: "thin", color: { argb: "FFCBD5E1" } },
       left: { style: "thin", color: { argb: "FFCBD5E1" } },
-      bottom: { style: "medium", color: { argb: "FF4F46E5" } },
+      bottom: { style: "medium", color: { argb: isHolidayCol ? "FFBE123C" : "FF4F46E5" } },
       right: { style: "thin", color: { argb: "FFCBD5E1" } },
     };
+    if (isHolidayCol) {
+      const hName = getColombianHolidayName(data.allDates[colNum - 4]);
+      cell.note = `Festivo Oficial: ${hName || "Día festivo"}`;
+    }
   });
 
   // Data rows
@@ -262,6 +276,7 @@ export async function generateAndDownloadAttendanceMatrixExcel(data: MatrixExpor
       s.name,
       s.identification || "—",
       ...data.allDates.map(d => {
+        if (isColombianHoliday(d)) return "FEST";
         const rec = s.records[d];
         if (!rec) return "•";
         if (rec.justification) return "E";
@@ -300,7 +315,10 @@ export async function generateAndDownloadAttendanceMatrixExcel(data: MatrixExpor
 
       // Highlight statuses
       const val = String(cell.value);
-      if (val === "F") {
+      if (val === "FEST") {
+        cell.font = { name: "Segoe UI", size: 8, bold: true, color: { argb: "FFBE123C" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFE4E6" } };
+      } else if (val === "F") {
         cell.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: "FFDC2626" } };
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF2F2" } };
       } else if (val === "T") {
@@ -314,13 +332,18 @@ export async function generateAndDownloadAttendanceMatrixExcel(data: MatrixExpor
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F3FF" } };
       }
 
-      // Agregar nota de celda si la fecha tiene justificación
+      // Agregar nota de celda si la fecha tiene justificación o es festivo
       if (colNum >= 4 && colNum < 4 + data.allDates.length) {
         const dateIdx = colNum - 4;
         const dateKey = data.allDates[dateIdx];
-        const rec = s.records[dateKey];
-        if (rec?.justification?.trim()) {
-          cell.note = `Justificación: "${rec.justification.trim()}"`;
+        if (isColombianHoliday(dateKey)) {
+          const hName = getColombianHolidayName(dateKey);
+          cell.note = `Festivo Oficial: ${hName || "Día festivo"}`;
+        } else {
+          const rec = s.records[dateKey];
+          if (rec?.justification?.trim()) {
+            cell.note = `Justificación: "${rec.justification.trim()}"`;
+          }
         }
       }
     });
@@ -398,17 +421,21 @@ const MatrixPdfDocument: React.FC<{ data: MatrixExportData }> = ({ data }) => {
             <Text style={[pdfStyles.tableHeaderCell, { width: "4%" }]}>N°</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "24%", textAlign: "left" }]}>Aprendiz</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "12%" }]}>Documento</Text>
-            {data.allDates.map((d, i) => (
-              <Text
-                key={i}
-                style={[
-                  pdfStyles.tableHeaderCell,
-                  { width: `${Math.max(4, 40 / Math.max(1, data.allDates.length))}%` },
-                ]}
-              >
-                {d.split("-").slice(1).join("/")}
-              </Text>
-            ))}
+            {data.allDates.map((d, i) => {
+              const isHoliday = isColombianHoliday(d);
+              return (
+                <Text
+                  key={i}
+                  style={[
+                    pdfStyles.tableHeaderCell,
+                    isHoliday ? { backgroundColor: "#e11d48", color: "#ffffff" } : {},
+                    { width: `${Math.max(4, 40 / Math.max(1, data.allDates.length))}%` },
+                  ]}
+                >
+                  {d.split("-").slice(1).join("/")}
+                </Text>
+              );
+            })}
             <Text style={[pdfStyles.tableHeaderCell, { width: "5%" }]}>F</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "5%" }]}>T</Text>
             <Text style={[pdfStyles.tableHeaderCell, { width: "5%" }]}>R</Text>
@@ -432,6 +459,23 @@ const MatrixPdfDocument: React.FC<{ data: MatrixExportData }> = ({ data }) => {
                   {s.identification || "—"}
                 </Text>
                 {data.allDates.map((d, i) => {
+                  const isHoliday = isColombianHoliday(d);
+                  if (isHoliday) {
+                    return (
+                      <Text
+                        key={i}
+                        style={[
+                          pdfStyles.tableCell,
+                          pdfStyles.badgeStatus,
+                          pdfStyles.statusHoliday,
+                          { width: `${Math.max(4, 40 / Math.max(1, data.allDates.length))}%` },
+                        ]}
+                      >
+                        FEST
+                      </Text>
+                    );
+                  }
+
                   const rec = s.records[d];
                   let label = "•";
                   let styleClass = pdfStyles.statusPresent;

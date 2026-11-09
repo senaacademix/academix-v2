@@ -3527,8 +3527,10 @@ const handleOpenAnalytics = async () => {
                                         return { start, end, duration: duration > 0 ? duration : (groupDailyHours || 4) };
                                     };
 
-                                    // Get all scheduled dates within the active schedule period (inicio y fin de horario vigente)
-                                    const validDaysList = getValidClassDaysList();
+                                    // Get all scheduled dates within the active schedule period (inicio y fin de horario vigente),
+                                    // excluyendo los días festivos oficiales para el cálculo de sesiones y horas reales de clase
+                                    const rawValidDaysList = getValidClassDaysList();
+                                    const validDaysList = rawValidDaysList.filter((dStr: string) => !isColombianHoliday(dStr));
                                     const totalClassDays = validDaysList.length;
 
                                     // Horas totales programadas calculadas con base en las franjas horarias semanales de la materia
@@ -4647,6 +4649,9 @@ const handleOpenAnalytics = async () => {
                                                     <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
                                                         <span className="inline-flex items-center justify-center w-6 h-6 rounded text-xs font-black bg-indigo-100/70 text-indigo-800 border border-indigo-200/60 dark:bg-indigo-950/60 dark:text-indigo-200 dark:border-indigo-700/60">E</span> Excusa
                                                     </span>
+                                                    <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
+                                                        <span className="inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-black bg-rose-600 text-white border border-rose-700 shadow-2xs">FEST</span> Festivo
+                                                    </span>
 
                                                     {/* Quick selection day filters */}
                                                     <div className="w-px h-5 bg-border mx-1 shrink-0" />
@@ -4683,7 +4688,9 @@ const handleOpenAnalytics = async () => {
                                                         })}
                                                     </div>
 
-                                                    <span className="ml-auto text-xs text-muted-foreground shrink-0">{displayedDays.length} clases · {selectedGroup.students?.length || 0} aprendices</span>
+                                                    <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                                                        {displayedDays.filter(d => !isColombianHoliday(toUTCDateStr(d))).length} clases hábiles {displayedDays.some(d => isColombianHoliday(toUTCDateStr(d))) ? `(${displayedDays.filter(d => isColombianHoliday(toUTCDateStr(d))).length} festivos)` : ""} · {selectedGroup.students?.length || 0} aprendices
+                                                    </span>
                                                 </div>
 
                                                 {displayedDays.length === 0 ? (
@@ -4724,12 +4731,36 @@ const handleOpenAnalytics = async () => {
                                                                     {displayedDays.map(d => {
                                                                         const ds = toUTCDateStr(d);
                                                                         const isToday = ds === toLocalDateStr(new Date());
+                                                                        const holidayName = getColombianHolidayName(ds);
+                                                                        const isHoliday = !!holidayName;
                                                                         return (
-                                                                            <th key={ds} className={`px-1.5 py-3 text-center font-bold border-b border-border/40 min-w-[44px] ${isToday ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>
-                                                                                <div>{["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getUTCDay()]}</div>
-                                                                                <div className={`text-[10px] font-mono mt-0.5 ${isToday ? "text-primary font-bold" : "text-muted-foreground/70"}`}>
+                                                                            <th key={ds} title={holidayName ? `Festivo: ${holidayName}` : undefined} className={`px-1.5 py-3 text-center font-bold border-b border-border/40 min-w-[44px] ${
+                                                                                isHoliday
+                                                                                    ? "bg-rose-500/15 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-x border-rose-300/50 dark:border-rose-800/50"
+                                                                                    : isToday
+                                                                                        ? "bg-primary/10 text-primary"
+                                                                                        : "text-muted-foreground"
+                                                                            }`}>
+                                                                                <div className="flex items-center justify-center gap-1">
+                                                                                    <span>{["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getUTCDay()]}</span>
+                                                                                    {isHoliday && (
+                                                                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse shrink-0" />
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className={`text-[10px] font-mono mt-0.5 ${
+                                                                                    isHoliday
+                                                                                        ? "text-rose-700 dark:text-rose-300 font-extrabold"
+                                                                                        : isToday
+                                                                                            ? "text-primary font-bold"
+                                                                                            : "text-muted-foreground/70"
+                                                                                }`}>
                                                                                     {String(d.getUTCDate()).padStart(2,"0")}/{String(d.getUTCMonth()+1).padStart(2,"0")}
                                                                                 </div>
+                                                                                {isHoliday && (
+                                                                                    <div className="text-[8px] font-black uppercase text-rose-600 dark:text-rose-400 leading-none mt-0.5 tracking-tighter">
+                                                                                        Festivo
+                                                                                    </div>
+                                                                                )}
                                                                             </th>
                                                                         );
                                                                     })}
@@ -4758,9 +4789,40 @@ const handleOpenAnalytics = async () => {
                                                                             {displayedDays.map(d => {
                                                                                 const ds = toUTCDateStr(d);
                                                                                 const record = uLookup[ds];
+                                                                                const holidayName = getColombianHolidayName(ds);
+                                                                                const isHoliday = !!holidayName;
                                                                                 return (
-                                                                                    <td key={ds} className="px-1.5 py-2 text-center border-border/20 border-b">
+                                                                                    <td key={ds} className={`px-1.5 py-2 text-center border-border/20 border-b ${
+                                                                                        isHoliday ? "bg-rose-500/5 dark:bg-rose-950/20 border-x border-rose-200/40 dark:border-rose-900/40" : ""
+                                                                                    }`}>
                                                                                         {(() => {
+                                                                                            if (isHoliday) {
+                                                                                                return (
+                                                                                                    <Tooltip delayDuration={200}>
+                                                                                                        <TooltipTrigger asChild>
+                                                                                                            <div className="inline-flex items-center justify-center cursor-help">
+                                                                                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/70 dark:text-rose-200 dark:border-rose-800 shadow-2xs">
+                                                                                                                    FEST
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                        </TooltipTrigger>
+                                                                                                        <TooltipContent side="top" className="p-2 font-semibold text-xs bg-popover text-popover-foreground border shadow-md rounded-lg max-w-[240px] break-words">
+                                                                                                            <div className="space-y-1">
+                                                                                                                <div className="font-bold border-b pb-0.5 mb-1 text-rose-600 dark:text-rose-400">
+                                                                                                                    Día Festivo Oficial
+                                                                                                                </div>
+                                                                                                                <p className="text-xs text-foreground font-medium">
+                                                                                                                    {holidayName}
+                                                                                                                </p>
+                                                                                                                <p className="text-[10px] text-muted-foreground italic">
+                                                                                                                    Día no hábil formativo (descontado de horas programadas).
+                                                                                                                </p>
+                                                                                                            </div>
+                                                                                                        </TooltipContent>
+                                                                                                    </Tooltip>
+                                                                                                );
+                                                                                            }
+
                                                                                             const cellRecord = record || { status: "PRESENT" };
                                                                                             return (
                                                                                                 <Tooltip delayDuration={200}>
