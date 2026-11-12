@@ -628,9 +628,8 @@ export async function assignStudentToGroupAction(studentId: string, groupId: str
         throw new Error("Estudiante no encontrado");
     }
 
-    if (student.groupId !== groupId) {
-        const { syncUserGroupChange } = await import("@/features/student/actions/studentGroupHistoryActions");
-        await syncUserGroupChange(studentId, student.groupId, groupId, "Traslado / Asignación de ficha");
+    if (student.groupId && student.groupId !== groupId) {
+        throw new Error("No está permitido cambiar o trasladar a un aprendiz de ficha. El aprendiz solo puede pertenecer a la ficha en la que fue creado.");
     }
 
     const targetGroup = groupId ? await prisma.group.findUnique({
@@ -661,14 +660,16 @@ export async function assignStudentToGroupAction(studentId: string, groupId: str
         userName: session.user.name || "Admin",
         userRole: "admin",
         description: groupId
-            ? `Estudiante "${student?.name || 'Desconocido'}" trasladado/asignado a la ficha: "${targetGroup?.name || groupId}"`
+            ? `Estudiante "${student?.name || 'Desconocido'}" asignado a la ficha: "${targetGroup?.name || groupId}"`
             : `Estudiante "${student?.name || 'Desconocido'}" desasignado de su ficha`,
         metadata: { studentId, groupId, groupName: targetGroup?.name },
         success: true,
     });
 
     revalidatePath("/dashboard/admin/courses");
+    revalidatePath("/dashboard/gestor/courses");
     revalidatePath("/dashboard/admin/users");
+    revalidatePath("/dashboard/gestor/users");
     return result;
 }
 
@@ -940,33 +941,12 @@ export async function registerSingleStudentAction(
         }
 
         if (existingUser) {
-            // Asignar al grupo
-            await prisma.user.update({
-                where: { id: existingUser.id },
-                data: {
-                    groupId: groupId,
-                    role: existingUser.role === "admin" ? "admin" : "student"
-                }
-            });
-
-            if (existingUser.profile) {
-                await prisma.profile.update({
-                    where: { id: existingUser.profile.id },
-                    data: {
-                        identificacion: existingUser.profile.identificacion || iden,
-                        nombres: existingUser.profile.nombres || nombres,
-                        apellido: existingUser.profile.apellido || apellido,
-                        telefono: telefono || existingUser.profile.telefono,
-                    }
-                });
-            }
-
             return {
-                success: true,
+                success: false,
                 studentName: fullName,
                 identificacion: iden,
                 email: email,
-                action: "assigned"
+                error: "El aprendiz ya se encuentra registrado en el sistema (correo o documento duplicado)."
             };
         }
 

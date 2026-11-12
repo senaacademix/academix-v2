@@ -205,7 +205,7 @@ export default function HomePage({
             badge: "Horarios",
           },
           {
-            title: "Asistencia Semanal",
+            title: "Asistencia General",
             description: "Monitoreo consolidado de asistencia por ficha, instructor y período.",
             url: effectiveGestorProgramId ? `/dashboard/gestor/attendance?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/attendance",
             icon: CalendarDays,

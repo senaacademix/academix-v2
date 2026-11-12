@@ -19,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { isScheduleCurrent } from "@/lib/dateUtils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getFormattedTodayDate } from "@/lib/dateUtils";
-import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
 import { StudentHelpModal } from "./StudentHelpModal";
 import { AnnouncementFeedWidget } from "@/features/announcements/components/AnnouncementFeedWidget";
 import { AnnouncementItem } from "@/features/announcements/types";
@@ -64,7 +63,6 @@ export function StudentDashboard({
     const [passwordError, setPasswordError] = useState("");
     const [passwordSuccess, setPasswordSuccess] = useState("");
     const [changingPassword, setChangingPassword] = useState(false);
-    const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [showHelpModal, setShowHelpModal] = useState(false);
 
     useEffect(() => {
@@ -207,19 +205,6 @@ export function StudentDashboard({
                                     </div>
                                 );
                             })()}
-                        </div>
-
-                        <div className="shrink-0 flex items-center gap-2">
-
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowHistoryModal(true)}
-                                className="gap-2 rounded-2xl h-11 px-4 text-xs font-bold border-purple-500/30 text-purple-700 dark:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 shadow-sm"
-                            >
-                                <History className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                                <span>Mi Histórico de Fichas</span>
-                            </Button>
                         </div>
                     </div>
                 </motion.div>
@@ -496,14 +481,6 @@ export function StudentDashboard({
                     </form>
                 </DialogContent>
             </Dialog>
-
-            {/* Modal: Histórico de Fichas para el Aprendiz */}
-            <StudentGroupHistoryModal
-                open={showHistoryModal}
-                onOpenChange={setShowHistoryModal}
-                studentId="me"
-                isStaffManager={false}
-            />
 
             {/* Modal de Ayuda del Portal de Aprendiz */}
             <StudentHelpModal

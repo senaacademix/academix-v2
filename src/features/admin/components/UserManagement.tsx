@@ -63,9 +63,7 @@ import {
     HelpCircle, ClipboardList
 } from "lucide-react";
 import { toast } from "sonner";
-import { PendingAttendancesModal } from "@/features/admin/components/PendingAttendancesModal";
 import { updateUserRoleAction, deleteUserAction, createUserAction, toggleUserBanAction, getAllUsersAction, resetUserPasswordToDocAction, getComprehensiveGroupAnalyticsAction, getAllFilteredUserIdsAction, getUserEmailsAction, updateStudentNovedadAction, updateStudentAction, assignStudentToGroupAction } from "@/app/admin-actions";
-import { StudentGroupHistoryModal } from "@/features/student/components/StudentGroupHistoryModal";
 import { format } from "date-fns";
 import { Switch } from "@/components/ui/switch";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -115,6 +113,7 @@ interface UserManagementProps {
     hideMainHeader?: boolean;
     onHelpClick?: () => void;
     onUserCreated?: (newUser: User) => void;
+    onUserDeleted?: (deletedId: string) => void;
 }
 
 export function UserManagement({ 
@@ -126,16 +125,12 @@ export function UserManagement({
     isObserver = false,
     hideMainHeader = false,
     onHelpClick,
-    onUserCreated
+    onUserCreated,
+    onUserDeleted
 }: UserManagementProps) {
     const router = useRouter();
     const [users, setUsers] = useState<User[]>(initialUsers);
     const [searchQuery, setSearchQuery] = useState("");
-
-    useEffect(() => {
-        setUsers(initialUsers);
-        setCurrentTotal(totalCount);
-    }, [initialUsers, totalCount]);
     const [roleFilter, setRoleFilter] = useState<string>("student");
     const [programFilter, setProgramFilter] = useState<string>(() => {
         if (initialGroupId && initialGroupId !== "all") {
@@ -234,7 +229,6 @@ export function UserManagement({
     const [fullAnalyticsData, setFullAnalyticsData] = useState<any>(null);
     const [loadingGroupAnalytics, setLoadingGroupAnalytics] = useState(false);
     const [showGroupAnalytics, setShowGroupAnalytics] = useState(false);
-    const [showPendingAttendances, setShowPendingAttendances] = useState(false);
 
     const [isPending, startTransition] = useTransition();
 
@@ -253,9 +247,6 @@ export function UserManagement({
     const [currentTotal, setCurrentTotal] = useState(totalCount);
     const usersPerPage = 20;
     const totalPages = Math.ceil(currentTotal / usersPerPage);
-
-    // Group transfer and history modal state
-    const [historyModalStudentId, setHistoryModalStudentId] = useState<string | null>(null);
 
     // Role change dialog state
     const [roleChangeDialogOpen, setRoleChangeDialogOpen] = useState(false);
@@ -502,6 +493,7 @@ export function UserManagement({
                 setUsers(prev => prev.filter(u => u.id !== deletedId));
                 setSelectedUserIds(prev => prev.filter(id => id !== deletedId));
                 setCurrentTotal(prev => Math.max(0, prev - 1));
+                onUserDeleted?.(deletedId);
 
                 toast.success("Aprendiz eliminado", {
                     description: "El aprendiz ha sido eliminado por completo del sistema"
@@ -511,9 +503,14 @@ export function UserManagement({
                 setUserToDelete(null);
                 setDeleteConfirmDoc("");
 
-                // Sincronizar paginación y listado con la base de datos
+                // Sincronizar paginación y listado con la base de datos manteniendo la ficha actual
                 const targetPage = users.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
-                await refreshUsers(targetPage);
+                await refreshUsers(targetPage, {
+                    role: roleFilter,
+                    group: groupFilter,
+                    program: programFilter,
+                    search: searchQuery
+                });
             } catch (error: any) {
                 toast.error("Error", {
                     description: error.message || "No se pudo eliminar el aprendiz"
@@ -871,16 +868,6 @@ export function UserManagement({
                         >
                             {showGroupAnalytics ? "Ocultar Analítica" : "Ver Analítica de Grupo"}
                         </Button>
-
-                        <Button 
-                            variant="outline" 
-                            onClick={() => setShowPendingAttendances(true)}
-                            className="shrink-0 gap-1.5 border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50 font-medium"
-                            title="Ver instructores con inasistencias o asistencias pendientes por diligenciar"
-                        >
-                            <ClipboardList className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                            <span>Asistencias por Diligenciar</span>
-                        </Button>
                     </div>
 
                     {/* Fichas Buttons Bar */}
@@ -933,13 +920,6 @@ export function UserManagement({
                 onOpenChange={setShowGroupAnalytics}
                 isLoading={loadingGroupAnalytics}
                 analyticsData={fullAnalyticsData}
-            />
-
-            {/* Pending Attendances Modal */}
-            <PendingAttendancesModal
-                open={showPendingAttendances}
-                onOpenChange={setShowPendingAttendances}
-                programId={programFilter}
             />
 
             {/* Users Table */}
@@ -1080,16 +1060,10 @@ export function UserManagement({
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="w-52">
                                                             {!isObserver && (
-                                                                <>
-                                                                    <DropdownMenuItem onClick={() => handleOpenEditModal(user)}>
-                                                                        <Pencil className="mr-2 h-4 w-4 text-blue-600" />
-                                                                        <span>Editar aprendiz</span>
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => setHistoryModalStudentId(user.id)}>
-                                                                        <History className="mr-2 h-4 w-4 text-purple-600" />
-                                                                        <span>Histórico y Traslado de Fichas</span>
-                                                                    </DropdownMenuItem>
-                                                                </>
+                                                                <DropdownMenuItem onClick={() => handleOpenEditModal(user)}>
+                                                                    <Pencil className="mr-2 h-4 w-4 text-blue-600" />
+                                                                    <span>Editar aprendiz</span>
+                                                                </DropdownMenuItem>
                                                             )}
                                                             <DropdownMenuItem
                                                                 onClick={() => {
@@ -1814,18 +1788,6 @@ export function UserManagement({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* Modal: Histórico de Fichas del Estudiante */}
-            <StudentGroupHistoryModal
-                open={!!historyModalStudentId}
-                onOpenChange={(open) => {
-                    if (!open) setHistoryModalStudentId(null);
-                }}
-                studentId={historyModalStudentId}
-                isStaffManager={!isObserver}
-                groupsList={groupsList}
-                onSuccess={() => refreshUsers(currentPage)}
-            />
         </div>
     );
 }

@@ -88,30 +88,6 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
             },
           },
         },
-        groupEnrollments: {
-          select: {
-            group: {
-              select: {
-                id: true,
-                name: true,
-                startDate: true,
-                endDate: true,
-                courses: {
-                  include: {
-                    teacher: { select: { name: true, profile: { select: { nombres: true, apellido: true } } } },
-                    schedules: { orderBy: { startTime: "asc" } },
-                    activities: {
-                      orderBy: { createdAt: "asc" },
-                      include: {
-                        grades: { where: { userId } },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
         enrollments: {
           where: { status: "APPROVED" },
           include: {
@@ -147,13 +123,12 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
         ? `${presentAtt} de ${totalAtt} asistencias registradas${absentAtt > 0 ? ` (${absentAtt} faltas)` : ""}`
         : "1 de 1 asistencias registradas";
 
-    // 3. Collect and deduplicate all courses across group, groupEnrollments, and enrollments
+    // 3. Collect and deduplicate all courses across group and enrollments
     const directGroupCourses = user?.group?.courses || [];
-    const geGroupCourses = (user?.groupEnrollments || []).flatMap((ge) => ge.group?.courses || []);
     const directCourses = (user?.enrollments || []).map((e) => e.course).filter(Boolean);
 
     const allCoursesMap = new Map<string, any>();
-    [...directGroupCourses, ...geGroupCourses, ...directCourses].forEach((c) => {
+    [...directGroupCourses, ...directCourses].forEach((c) => {
       if (c && !allCoursesMap.has(c.id)) {
         allCoursesMap.set(c.id, c);
       }
@@ -197,7 +172,7 @@ export async function getDashboardMetricsAction(): Promise<DashboardMetricData> 
     );
 
     // Primary group name
-    const mainGroupName = user?.group?.name || user?.groupEnrollments?.[0]?.group?.name;
+    const mainGroupName = user?.group?.name;
 
     // 7. Academic Progress
     let progressPercentage = 0;

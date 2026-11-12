@@ -182,6 +182,7 @@ export function UnifiedUserManagement({
             hideMainHeader={true}
             onHelpClick={() => setIsHelpOpen(true)}
             onUserCreated={() => setStudentsCount((prev) => prev + 1)}
+            onUserDeleted={() => setStudentsCount((prev) => Math.max(0, prev - 1))}
           />
         </TabsContent>
 

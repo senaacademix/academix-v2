@@ -182,7 +182,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               isActive: false,
             },
             {
-              title: "Asistencia Semanal",
+              title: "Asistencia General",
               url: effectiveGestorProgramId ? `/dashboard/gestor/attendance?programId=${effectiveGestorProgramId}` : "/dashboard/gestor/attendance",
               icon: CalendarDays,
               isActive: false,

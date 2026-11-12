@@ -31,10 +31,6 @@ export class ElectionService {
                     where: { banned: { not: true } },
                     select: { id: true }
                 },
-                groupEnrollments: {
-                    where: { isCurrent: true, status: "ACTIVE" },
-                    select: { studentId: true }
-                },
                 elections: {
                     where: {
                         status: { not: "CANCELLED" }
@@ -49,11 +45,7 @@ export class ElectionService {
         const results: TeacherElectionGroupSummary[] = [];
 
         for (const g of groups) {
-            // Distinct student count
-            const studentIds = new Set<string>();
-            g.students.forEach(s => studentIds.add(s.id));
-            g.groupEnrollments.forEach(e => studentIds.add(e.studentId));
-            const totalStudents = studentIds.size;
+            const totalStudents = g.students.length;
 
             let activeElection: GroupElectionDTO | null = null;
             if (g.elections.length > 0) {
@@ -102,20 +94,6 @@ export class ElectionService {
                                 profile: { select: { identificacion: true } }
                             },
                             orderBy: { name: "asc" }
-                        },
-                        groupEnrollments: {
-                            where: { isCurrent: true, status: "ACTIVE" },
-                            include: {
-                                student: {
-                                    select: {
-                                        id: true,
-                                        name: true,
-                                        email: true,
-                                        image: true,
-                                        profile: { select: { identificacion: true } }
-                                    }
-                                }
-                            }
                         }
                     }
                 },
@@ -168,17 +146,6 @@ export class ElectionService {
                 image: s.image,
                 identificacion: s.profile?.identificacion
             });
-        });
-        election.group.groupEnrollments.forEach(e => {
-            if (e.student) {
-                studentMap.set(e.student.id, {
-                    id: e.student.id,
-                    name: e.student.name,
-                    email: e.student.email,
-                    image: e.student.image,
-                    identificacion: e.student.profile?.identificacion
-                });
-            }
         });
         const totalEligibleStudents = studentMap.size;
 
@@ -368,24 +335,11 @@ export class ElectionService {
                         name: true,
                         program: { select: { name: true } }
                     }
-                },
-                groupEnrollments: {
-                    where: { isCurrent: true, status: "ACTIVE" },
-                    include: {
-                        group: {
-                            select: {
-                                id: true,
-                                name: true,
-                                program: { select: { name: true } }
-                            }
-                        }
-                    },
-                    take: 1
                 }
             }
         });
 
-        const activeGroup = student?.group || student?.groupEnrollments[0]?.group || null;
+        const activeGroup = student?.group || null;
 
         if (!activeGroup) {
             return { election: null, group: null };
@@ -478,8 +432,7 @@ export class ElectionService {
             include: {
                 group: {
                     include: {
-                        students: { select: { id: true } },
-                        groupEnrollments: { where: { isCurrent: true, status: "ACTIVE" }, select: { studentId: true } }
+                        students: { select: { id: true } }
                     }
                 }
             }
@@ -491,8 +444,7 @@ export class ElectionService {
         }
 
         // Verify student belongs to group
-        const isEnrolled = election.group.students.some(s => s.id === studentId) ||
-            election.group.groupEnrollments.some(e => e.studentId === studentId);
+        const isEnrolled = election.group.students.some(s => s.id === studentId);
 
         if (!isEnrolled) {
             throw new Error("Solo los aprendices pertenecientes a esta ficha pueden postularse.");
@@ -572,8 +524,7 @@ export class ElectionService {
             include: {
                 group: {
                     include: {
-                        students: { select: { id: true } },
-                        groupEnrollments: { where: { isCurrent: true, status: "ACTIVE" }, select: { studentId: true } }
+                        students: { select: { id: true } }
                     }
                 },
                 candidates: { select: { id: true } }
@@ -586,8 +537,7 @@ export class ElectionService {
         }
 
         // Verify student belongs to group
-        const isEnrolled = election.group.students.some(s => s.id === studentId) ||
-            election.group.groupEnrollments.some(e => e.studentId === studentId);
+        const isEnrolled = election.group.students.some(s => s.id === studentId);
 
         if (!isEnrolled) {
             throw new Error("Solo los aprendices de esta ficha están autorizados para votar.");

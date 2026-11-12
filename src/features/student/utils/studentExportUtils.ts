@@ -37,53 +37,18 @@ export async function exportStudentRecordExcel(data: StudentExportData) {
   const workbook = new ExcelJS.Workbook();
   const studentName = data.student.name || "Aprendiz";
 
-  // ── Sheet 1: Resumen y Trayectoria de Fichas ─────────────────────────────
-  const wsHistory = workbook.addWorksheet("Trayectoria de Fichas");
+  // ── Sheet 1: Resumen del Aprendiz ─────────────────────────────
+  const wsHistory = workbook.addWorksheet("Resumen del Aprendiz");
 
   wsHistory.addRow(["EXPEDIENTE Y REGISTRO ACADÉMICO INTEGRAL"]);
   wsHistory.addRow([`Aprendiz: ${studentName}`]);
   wsHistory.addRow([`Identificación: ${data.student.identificacion} | Email: ${data.student.email}`]);
-  wsHistory.addRow([`Ficha Activa Actual: ${data.student.currentGroup}`]);
+  wsHistory.addRow([`Ficha de Formación: ${data.student.currentGroup}`]);
   wsHistory.addRow([`Fecha de Generación: ${formatCalendarDate(getTodayColombianDate(), "d 'de' MMMM, yyyy")}`]);
   wsHistory.addRow([]);
 
-  const historyHeaders = [
-    "Ficha / Grupo",
-    "Programa de Formación",
-    "Estado en la Ficha",
-    "Fecha de Ingreso",
-    "Fecha de Salida",
-    "Promedio Académico",
-    "% Asistencia Efectiva",
-    "Llamados de Atención",
-    "Planes de Mejoramiento",
-    "Observaciones / Motivo"
-  ];
-
-  const headerRow = wsHistory.addRow(historyHeaders);
-  headerRow.font = { bold: true, color: { argb: "FFFFFF" } };
-  headerRow.eachCell((cell) => {
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4F46E5" } };
-    cell.alignment = { horizontal: "center", vertical: "middle" };
-  });
-
-  data.groupHistory.forEach((g) => {
-    wsHistory.addRow([
-      g.groupName,
-      g.programName,
-      g.isCurrent ? "FICHA ACTIVA ACTUAL" : "TRASLADADO / HISTÓRICO",
-      g.joinedAt ? formatCalendarDate(g.joinedAt, "dd/MM/yyyy") : "S/I",
-      g.leftAt ? formatCalendarDate(g.leftAt, "dd/MM/yyyy") : "Presente",
-      g.averageGrade ? g.averageGrade.toFixed(2) : "N/A",
-      g.attendanceRate !== undefined ? `${g.attendanceRate.toFixed(1)}%` : "100%",
-      g.remarksCount || 0,
-      g.improvementPlansCount || 0,
-      g.notes || "-"
-    ]);
-  });
-
   wsHistory.columns.forEach((col) => {
-    col.width = 24;
+    col.width = 36;
   });
 
   // ── Sheet 2: Asistencias e Inasistencias ──────────────────────────────
@@ -221,39 +186,12 @@ export function exportStudentRecordPDF(data: StudentExportData) {
 
   let currentY = 46;
 
-  // ── Section 1: Trayectoria Histórica de Fichas ─────────────────────────
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(15, 23, 42);
-  doc.text("1. Trayectoria e Historial de Fichas de Formación", 14, currentY);
-
-  const historyRows = data.groupHistory.map((g) => [
-    g.groupName,
-    g.programName,
-    g.isCurrent ? "ACTIVA" : "TRASLADADO",
-    g.joinedAt ? formatCalendarDate(g.joinedAt, "dd/MM/yyyy") : "S/I",
-    g.leftAt ? formatCalendarDate(g.leftAt, "dd/MM/yyyy") : "Presente",
-    g.averageGrade ? g.averageGrade.toFixed(2) : "N/A",
-    g.attendanceRate !== undefined ? `${g.attendanceRate.toFixed(1)}%` : "100%"
-  ]);
-
-  autoTable(doc, {
-    startY: currentY + 3,
-    head: [["Ficha / Grupo", "Programa", "Estado", "Ingreso", "Salida", "Promedio", "% Asistencia"]],
-    body: historyRows.length > 0 ? historyRows : [["-", "Sin historial registrado", "-", "-", "-", "-", "-"]],
-    styles: { fontSize: 8, cellPadding: 2.5 },
-    headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-  });
-
-  currentY = (doc as any).lastAutoTable.finalY + 10;
-
-  // ── Section 2: Resumen de Calificaciones por Ficha ──────────────────────
+  // ── Section 1: Resumen de Calificaciones por Ficha ──────────────────────
   if (currentY > 240) { doc.addPage(); currentY = 20; }
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(15, 23, 42);
-  doc.text("2. Calificaciones Académicas por Ficha de Formación", 14, currentY);
+  doc.text("1. Calificaciones Académicas", 14, currentY);
 
   const gradeRows = data.courses.map((c) => {
     let totalScore = 0;

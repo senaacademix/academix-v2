@@ -891,11 +891,10 @@ export async function updateStudentAction(userId: string, data: {
     }
 
     const fullName = `${data.nombres.trim()} ${data.apellido.trim()}`;
-    const groupId = data.groupId === undefined ? user.groupId : ((data.groupId && data.groupId !== "none" && data.groupId !== "all") ? data.groupId : null);
+    const groupId = user.groupId || ((data.groupId && data.groupId !== "none" && data.groupId !== "all") ? data.groupId : null);
 
-    if (user.groupId !== groupId) {
-        const { syncUserGroupChange } = await import("@/features/student/actions/studentGroupHistoryActions");
-        await syncUserGroupChange(userId, user.groupId, groupId, "Traslado de ficha desde la edición del estudiante");
+    if (user.groupId && data.groupId !== undefined && data.groupId !== user.groupId) {
+        throw new Error("No está permitido cambiar la ficha de un aprendiz. El aprendiz solo puede existir en la ficha en la que fue creado.");
     }
 
     const updatedUser = await prisma.user.update({

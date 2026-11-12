@@ -61,7 +61,6 @@ import {
   GroupExportImprovementPlan,
 } from "@/features/schedule-manager/utils/groupExportPdf";
 import { generateAndDownloadGroupExcel } from "@/features/schedule-manager/utils/groupExportExcel";
-import { StudentGroupHistoryModal } from "@/features/student/components/StudentGroupHistoryModal";
 
 interface GroupAnalyticsPanelProps {
     open?: boolean;
@@ -159,7 +158,6 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
 
     const [isExportingPdf, setIsExportingPdf] = useState(false);
     const [isExportingExcel, setIsExportingExcel] = useState(false);
-    const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
 
     const prepareExportPayload = (): GroupExportPayload | null => {
         if (!analyticsData) return null;
@@ -2158,14 +2156,6 @@ export function GroupAnalyticsPanel({ open, onOpenChange, inline = false, isTeac
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            {/* Student Group History Modal for Teachers, Gestores & Admins */}
-            <StudentGroupHistoryModal
-                open={!!historyStudentId}
-                onOpenChange={(open) => { if (!open) setHistoryStudentId(null); }}
-                studentId={historyStudentId}
-                isStaffManager={!isTeacherView}
-            />
         </>
     );
 }

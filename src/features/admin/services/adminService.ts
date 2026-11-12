@@ -397,7 +397,7 @@ export const adminService = {
             // 1. Verificar si el usuario existe
             const user = await tx.user.findUnique({
                 where: { id: userId },
-                select: { id: true, role: true }
+                select: { id: true, role: true, email: true }
             });
 
             if (!user) {
@@ -415,24 +415,20 @@ export const adminService = {
             });
 
             // 3. Desvincular de grupos de trabajo colaborativo (CourseWorkGroup m:n) y de relaciones m:n
-            try {
-                await tx.user.update({
-                    where: { id: userId },
-                    data: {
-                        groupId: null,
-                        workGroups: { set: [] },
-                        groupsTaught: { set: [] },
-                        qualifiedCourses: { set: [] },
-                        observedGroups: { set: [] },
-                        programs: { set: [] },
-                        timelines: { set: [] },
-                        managedPrograms: { set: [] },
-                        observedPrograms: { set: [] }
-                    }
-                });
-            } catch (err) {
-                console.warn("[deleteUser] Non-critical warning resetting user relation sets:", err);
-            }
+            await tx.user.update({
+                where: { id: userId },
+                data: {
+                    groupId: null,
+                    workGroups: { set: [] },
+                    groupsTaught: { set: [] },
+                    qualifiedCourses: { set: [] },
+                    observedGroups: { set: [] },
+                    programs: { set: [] },
+                    timelines: { set: [] },
+                    managedPrograms: { set: [] },
+                    observedPrograms: { set: [] }
+                }
+            });
 
             // 4. Eliminar todas las matrículas e historial de grupos (GroupEnrollment)
             await tx.groupEnrollment.deleteMany({
@@ -460,7 +456,24 @@ export const adminService = {
                 where: { studentId: userId }
             });
 
-            // 6. Eliminar planes de mejoramiento (como estudiante o profesor)
+            // 6. Eliminar reportes y procesos de comité de evaluación y seguimiento
+            await tx.committeeReport.deleteMany({
+                where: {
+                    OR: [
+                        { studentId: userId },
+                        { reportedById: userId }
+                    ]
+                }
+            });
+            await tx.committeeProcess.deleteMany({
+                where: { createdById: userId }
+            });
+            await tx.committeeEmailTemplate.updateMany({
+                where: { createdById: userId },
+                data: { createdById: null }
+            });
+
+            // 7. Eliminar planes de mejoramiento (como estudiante o profesor)
             await tx.improvementPlan.deleteMany({
                 where: {
                     OR: [
@@ -470,12 +483,12 @@ export const adminService = {
                 }
             });
 
-            // 7. Eliminar calificaciones de actividades del estudiante
+            // 8. Eliminar calificaciones de actividades del estudiante
             await tx.studentGrade.deleteMany({
                 where: { userId }
             });
 
-            // 8. Eliminar observaciones (como estudiante receptor o creador)
+            // 9. Eliminar observaciones (como estudiante receptor o creador)
             await tx.remark.deleteMany({
                 where: {
                     OR: [
@@ -485,22 +498,25 @@ export const adminService = {
                 }
             });
 
-            // 9. Eliminar asistencias
+            // 10. Eliminar asistencias y solicitudes de permisos de asistencia
             await tx.attendance.deleteMany({
                 where: { userId }
             });
+            await tx.attendancePermissionRequest.deleteMany({
+                where: { teacherId: userId }
+            });
 
-            // 10. Eliminar matrículas en asignaturas
+            // 11. Eliminar matrículas en asignaturas
             await tx.enrollment.deleteMany({
                 where: { userId }
             });
 
-            // 11. Eliminar registros de accesos
+            // 12. Eliminar registros de accesos
             await tx.studentAccessLog.deleteMany({
                 where: { userId }
             });
 
-            // 12. Si el usuario tenía asignaciones docentes o administrativas
+            // 13. Si el usuario tenía asignaciones docentes o administrativas
             await tx.course.updateMany({
                 where: { teacherId: userId },
                 data: { teacherId: null }
@@ -531,7 +547,7 @@ export const adminService = {
                 where: { authorId: userId }
             });
 
-            // 13. Limpiar referencias de auditoría o modificaciones secundarias
+            // 14. Limpiar referencias de auditoría o modificaciones secundarias
             await tx.scheduleNovelty.updateMany({
                 where: { reportedById: userId },
                 data: { reportedById: null }
@@ -557,7 +573,7 @@ export const adminService = {
                 data: { lockedById: null }
             });
 
-            // 14. Eliminar perfil, sesiones y cuentas de autenticación
+            // 15. Eliminar perfil, sesiones, tokens de verificación y cuentas de autenticación
             await tx.profile.deleteMany({
                 where: { userId }
             });
@@ -567,8 +583,13 @@ export const adminService = {
             await tx.account.deleteMany({
                 where: { userId }
             });
+            if (user.email) {
+                await tx.verification.deleteMany({
+                    where: { identifier: user.email }
+                });
+            }
 
-            // 15. Finalmente, eliminar el registro de usuario
+            // 16. Finalmente, eliminar el registro de usuario
             return await tx.user.delete({
                 where: { id: userId }
             });

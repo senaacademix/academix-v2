@@ -18,8 +18,8 @@ import { resolveAttendanceStatusStyle, ATTENDANCE_STATUS_STYLES } from "@/lib/at
 import { fromUTC, toCalendarYMD, isDateExpired, formatCalendarDate } from "@/lib/dateUtils";
 import { getStudentRecords, justifyAttendanceAction, markRemarkViewed, getStudentDocumentation, deleteJustificationAction } from "../actions/studentActions";
 import { getStudentGrades, submitStudentSubmissionLink } from "@/features/teacher/actions/gradeActions";
-import { getStudentGroupHistoryAction } from "../actions/studentGroupHistoryActions";
-import { StudentGroupHistoryModal } from "./StudentGroupHistoryModal";
+
+
 import { StudentHelpModal } from "./StudentHelpModal";
 import { exportStudentRecordExcel, exportStudentRecordPDF } from "../utils/studentExportUtils";
 import { notifyEmailSentBatchAction } from "@/features/teacher/actions/groupActions";
@@ -412,11 +412,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         notifyEmailSentBatchAction([plan.studentId], "PLAN");
     };
 
-    // Multi-Ficha Group History State
-    const [groupHistory, setGroupHistory] = useState<any[]>([]);
-    const [selectedGroupId, setSelectedGroupId] = useState<string>("ALL");
-    const [historyModalOpen, setHistoryModalOpen] = useState(false);
-
     const [isExporting, setIsExporting] = useState(false);
 
     const handleExportExcel = async () => {
@@ -426,7 +421,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             await Promise.all([
                 loadGradesOnDemand(),
                 loadImprovementPlansOnDemand(),
-                loadGroupHistoryOnDemand(),
             ]);
             const data = {
                 student: {
@@ -436,7 +430,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     identificacion: records?.targetUser?.profile?.identificacion || "S/I",
                     currentGroup: records?.targetUser?.groupName || "Sin Ficha Activa",
                 },
-                groupHistory: groupHistory || [],
+                groupHistory: [],
                 attendances: rawAttendances || [],
                 remarks: rawRemarks || [],
                 courses: courses || [],
@@ -459,7 +453,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
             await Promise.all([
                 loadGradesOnDemand(),
                 loadImprovementPlansOnDemand(),
-                loadGroupHistoryOnDemand(),
             ]);
             const data = {
                 student: {
@@ -469,7 +462,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     identificacion: records?.targetUser?.profile?.identificacion || "S/I",
                     currentGroup: records?.targetUser?.groupName || "Sin Ficha Activa",
                 },
-                groupHistory: groupHistory || [],
+                groupHistory: [],
                 attendances: rawAttendances || [],
                 remarks: rawRemarks || [],
                 courses: courses || [],
@@ -488,7 +481,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
     const gradesLoadedRef = useRef(false);
     const docLoadedRef = useRef(false);
     const plansLoadedRef = useRef(false);
-    const historyLoadedRef = useRef(false);
 
     const loadRecords = () => {
         getStudentRecords(studentId)
@@ -529,20 +521,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         }
     };
 
-    const loadGroupHistory = async () => {
-        try {
-            const targetId = studentId || (await authClient.getSession())?.data?.user?.id;
-            if (targetId) {
-                const res = await getStudentGroupHistoryAction(targetId);
-                if (res.success && res.data?.history) {
-                    setGroupHistory(res.data.history);
-                }
-            }
-        } catch (err) {
-            console.error("Error loading student group history:", err);
-        }
-    };
-
     const loadGradesOnDemand = async () => {
         if (gradesLoadedRef.current) return;
         gradesLoadedRef.current = true;
@@ -561,12 +539,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         await loadImprovementPlans();
     };
 
-    const loadGroupHistoryOnDemand = async () => {
-        if (historyLoadedRef.current) return;
-        historyLoadedRef.current = true;
-        await loadGroupHistory();
-    };
-
     const handleTabChange = (value: string) => {
         setActiveTab(value);
         if (value === "grades" || value === "analytics") {
@@ -582,7 +554,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         gradesLoadedRef.current = false;
         docLoadedRef.current = false;
         plansLoadedRef.current = false;
-        historyLoadedRef.current = false;
 
         const initTab = onlyImprovement ? "improvement" : defaultTab;
         setActiveTab(initTab);
@@ -607,7 +578,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         gradesLoadedRef.current = false;
         docLoadedRef.current = false;
         plansLoadedRef.current = false;
-        historyLoadedRef.current = false;
 
         if (onlyImprovement) {
             await loadImprovementPlansOnDemand();
@@ -726,20 +696,9 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         });
     }, [records?.remarks, records?.scheduleDates]);
 
-    const attendances = useMemo(() => {
-        if (selectedGroupId === "ALL") return rawAttendances;
-        return rawAttendances.filter((a: any) => a.course?.groupId === selectedGroupId);
-    }, [rawAttendances, selectedGroupId]);
-
-    const remarks = useMemo(() => {
-        if (selectedGroupId === "ALL") return rawRemarks;
-        return rawRemarks.filter((r: any) => r.course?.groupId === selectedGroupId);
-    }, [rawRemarks, selectedGroupId]);
-
-    const filteredCourses = useMemo(() => {
-        if (selectedGroupId === "ALL") return courses;
-        return courses.filter((c: any) => c.groupId === selectedGroupId);
-    }, [courses, selectedGroupId]);
+    const attendances = rawAttendances;
+    const remarks = rawRemarks;
+    const filteredCourses = courses;
 
     const availableSubjects = useMemo(() => {
         const map = new Map<string, { id: string; title: string; teacherName?: string }>();
@@ -756,7 +715,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         }
 
         for (const dc of docCourses) {
-            if (selectedGroupId !== "ALL" && dc?.groupId && dc.groupId !== selectedGroupId) continue;
             if (dc?.id && !map.has(dc.id)) {
                 map.set(dc.id, {
                     id: dc.id,
@@ -778,7 +736,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         }
 
         return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
-    }, [filteredCourses, courses, docCourses, attendances, selectedGroupId]);
+    }, [filteredCourses, courses, docCourses, attendances]);
 
     // Sincronizar automáticamente la materia seleccionada (sin opción "Todas")
     useEffect(() => {
@@ -1252,71 +1210,30 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
 
     return (
         <div className="space-y-4">
-            {/* Multi-Ficha Group Selector & Full Export Controls Banner */}
-            {!onlyImprovement && (
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 p-3.5 rounded-2xl border border-border/70 bg-card/80 backdrop-blur-md shadow-2xs">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
-                            <Layers className="w-4 h-4" />
-                        </div>
-                        <div className="space-y-0.5 min-w-0">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Filtrar Vista por Ficha de Formación</p>
-                            <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                                <SelectTrigger className="h-8 rounded-xl text-xs font-bold bg-background border-border/80 min-w-[240px] max-w-[380px]">
-                                    <SelectValue placeholder="Seleccionar ficha..." />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-60">
-                                    <SelectItem value="ALL" className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                                        🌐 Histórico Consolidado (Todas las Fichas)
-                                    </SelectItem>
-                                    {groupHistory.map((g) => (
-                                        <SelectItem key={g.groupId} value={g.groupId} className="text-xs font-bold">
-                                            {g.isCurrent ? "🟢" : "🟣"} Ficha {g.groupName}{g.periodName ? ` • ${g.periodName}` : ""}{g.timelineName ? ` • ${g.timelineName}` : ""} {g.isCurrent ? "— FICHA ACTIVA" : "— TRASLADADO"}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
+            {/* Full Export Controls Banner */}
+            {!onlyImprovement && Boolean(studentId) && currentUserRole !== "student" && (
+                <div className="flex items-center justify-end gap-2 flex-wrap p-3 rounded-2xl border border-border/70 bg-card/80 backdrop-blur-md shadow-2xs">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportExcel}
+                        disabled={isExporting}
+                        className="h-8 text-xs font-bold rounded-xl border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-1.5 shadow-2xs"
+                    >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Exportar Excel</span>
+                    </Button>
 
-                    {Boolean(studentId) && currentUserRole !== "student" && (
-                    <div className="flex items-center gap-2 flex-wrap shrink-0 self-end lg:self-auto">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleExportExcel}
-                            disabled={isExporting}
-                            className="h-8 text-xs font-bold rounded-xl border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-1.5 shadow-2xs"
-                        >
-                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span>Exportar Excel</span>
-                        </Button>
-
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleExportPDF}
-                            disabled={isExporting}
-                            className="h-8 text-xs font-bold rounded-xl border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/10 gap-1.5 shadow-2xs"
-                        >
-                            <FileText className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                            <span>Exportar PDF</span>
-                        </Button>
-
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                                await loadGroupHistoryOnDemand();
-                                setHistoryModalOpen(true);
-                            }}
-                            className="h-8 text-xs font-bold rounded-xl border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10 gap-1.5 shadow-2xs"
-                        >
-                            <History className="w-3.5 h-3.5" />
-                            <span>Línea de Tiempo</span>
-                        </Button>
-                    </div>
-                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportPDF}
+                        disabled={isExporting}
+                        className="h-8 text-xs font-bold rounded-xl border-rose-500/40 text-rose-700 dark:text-rose-300 hover:bg-rose-500/10 gap-1.5 shadow-2xs"
+                    >
+                        <FileText className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>Exportar PDF</span>
+                    </Button>
                 </div>
             )}
 
@@ -3580,19 +3497,6 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            {/* Student Group History Timeline Modal */}
-            <StudentGroupHistoryModal
-                open={historyModalOpen}
-                onOpenChange={setHistoryModalOpen}
-                studentId={studentId || null}
-                isStaffManager={currentUserRole === "admin" || currentUserRole === "gestor" || currentUserRole === "coordinador" || currentUserRole === "manager"}
-                onSuccess={() => {
-                    loadRecords();
-                    loadGrades();
-                    loadGroupHistory();
-                }}
-            />
 
             {/* Modal de Ayuda del Registro Académico del Aprendiz */}
             <StudentHelpModal

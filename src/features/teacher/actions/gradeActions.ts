@@ -285,20 +285,14 @@ export async function getStudentGrades(userId: string) {
         });
         const directCourses = enrollments.map((e: any) => e.course);
 
-        // ── 2. Materias de TODAS las fichas (históricas y activa) del estudiante ────
+        // ── 2. Materias de la ficha del estudiante ────
         const user = await prisma.user.findUnique({
             where: { id: userId },
             select: { groupId: true }
         });
 
-        const groupEnrollments = await prisma.groupEnrollment.findMany({
-            where: { studentId: userId },
-            select: { groupId: true }
-        });
-
         const allGroupIds = new Set<string>();
         if (user?.groupId) allGroupIds.add(user.groupId);
-        groupEnrollments.forEach(ge => allGroupIds.add(ge.groupId));
 
         const gradeRecords = await prisma.studentGrade.findMany({
             where: { userId },

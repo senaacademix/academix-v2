@@ -78,10 +78,7 @@ export function TeacherVoceroElectionTool({ groups = [], onBack }: TeacherVocero
 
     const studentCount = useMemo(() => {
         if (!activeGroup) return 0;
-        const ids = new Set<string>();
-        activeGroup.students?.forEach((s: any) => ids.add(s.id));
-        activeGroup.groupEnrollments?.forEach((e: any) => ids.add(e.studentId));
-        return ids.size;
+        return activeGroup.students?.length || 0;
     }, [activeGroup]);
 
     return (

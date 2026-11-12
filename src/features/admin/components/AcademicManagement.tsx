@@ -3342,6 +3342,21 @@ export function AcademicManagement({ initialCourses, teachers, totalCount, isObs
                     }
                 } else if (deleteType === "student") {
                     await deleteUserAction(deleteItemId);
+                    const filterStudent = (g: Group): Group => ({
+                        ...g,
+                        students: (g.students || []).filter(s => s.id !== deleteItemId)
+                    });
+                    setManagingGroup(prev => prev ? filterStudent(prev) : null);
+                    setSelectedGroupForStudents(prev => prev ? filterStudent(prev) : null);
+                    setSelectedProgram(prev => prev ? {
+                        ...prev,
+                        groups: prev.groups?.map(g => filterStudent(g))
+                    } : null);
+                    setPrograms(prev => prev.map(p => ({
+                        ...p,
+                        groups: p.groups?.map(g => filterStudent(g))
+                    })));
+                    setStudents(prev => prev.filter(s => s.id !== deleteItemId));
                     toast.success("Aprendiz eliminado del sistema");
                 }
                 setDeleteConfirmationOpen(false);
