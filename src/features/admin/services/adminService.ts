@@ -472,6 +472,17 @@ export const adminService = {
                 where: { createdById: userId },
                 data: { createdById: null }
             });
+            await tx.standoutNomination.deleteMany({
+                where: {
+                    OR: [
+                        { studentId: userId },
+                        { nominatedById: userId }
+                    ]
+                }
+            });
+            await tx.standoutProcess.deleteMany({
+                where: { createdById: userId }
+            });
 
             // 7. Eliminar planes de mejoramiento (como estudiante o profesor)
             await tx.improvementPlan.deleteMany({

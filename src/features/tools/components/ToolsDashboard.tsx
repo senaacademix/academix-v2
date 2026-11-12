@@ -26,6 +26,19 @@ const CommitteeTool = dynamic(
     }
 );
 
+const StandoutTool = dynamic(
+    () => import("@/features/standout/components/StandoutTool").then((m) => m.StandoutTool),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex flex-col items-center justify-center p-16 text-muted-foreground gap-3 min-h-[300px]">
+                <div className="w-7 h-7 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-medium">Cargando herramienta de aprendices destacados...</span>
+            </div>
+        ),
+    }
+);
+
 interface ToolsDashboardProps {
     initialGroups?: any[];
     userRole?: string;
@@ -95,6 +108,20 @@ function ToolsDashboardContent({ initialGroups = [], userRole = "gestor", progra
             return (
                 <div className="h-full flex-1 flex flex-col min-h-0 animate-in fade-in duration-300">
                     <CommitteeTool
+                        onBack={handleBackToHub}
+                        userRole={userRole}
+                        initialGroups={initialGroups}
+                        programId={programId}
+                        programName={programName}
+                    />
+                </div>
+            );
+        }
+
+        if (selectedToolId === "standout-learners") {
+            return (
+                <div className="h-full flex-1 flex flex-col min-h-0 animate-in fade-in duration-300">
+                    <StandoutTool
                         onBack={handleBackToHub}
                         userRole={userRole}
                         initialGroups={initialGroups}

@@ -5,6 +5,7 @@ import {
     Award,
     Scale,
     ClipboardList,
+    Trophy,
     LucideIcon
 } from "lucide-react";
 
@@ -45,6 +46,29 @@ export const TOOLS_REGISTRY: ToolDefinition[] = [
             "Campo obligatorio para enlace (URL) de evidencias documentales",
             "Gestión, edición y retiro de reportes de aprendices en tiempo real",
             "Exportación corporativa a Excel (.xlsx) para actas de comité"
+        ],
+        author: "AcademiX Gestión",
+        allowedRoles: ["gestor", "teacher", "admin"]
+    },
+    {
+        id: "standout-learners",
+        title: "Aprendices Destacados",
+        shortTitle: "Aprendices Destacados",
+        description: "Convocatoria y postulación de aprendices sobresalientes al Cuadro de Honor. Permite al Gestor abrir procesos de reconocimiento y a los instructores postular aprendices por excelencia académica, liderazgo, innovación y compromiso.",
+        category: "Evaluación",
+        status: "available",
+        isAutonomous: false,
+        version: "v1.0",
+        icon: Trophy,
+        color: "text-teal-600 dark:text-teal-400",
+        badgeBg: "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25",
+        features: [
+            "Creación y gestión de convocatorias de aprendices destacados por área",
+            "Postulación por parte de instructores en todas las fichas de su área",
+            "Categorías: Excelencia Académica, Liderazgo, Innovación, Compromiso e Integral",
+            "Registro de logros, proyectos destacados y enlace opcional a portafolio",
+            "Consolidación, exaltación a Cuadro de Honor y auditoría por el Gestor",
+            "Exportación corporativa a Excel (.xlsx) y PDF oficial"
         ],
         author: "AcademiX Gestión",
         allowedRoles: ["gestor", "teacher", "admin"]

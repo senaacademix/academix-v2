@@ -94,6 +94,9 @@ model User {
   studentCommitteeReports      CommitteeReport[]  @relation("StudentCommitteeReports")
   teacherCommitteeReports      CommitteeReport[]  @relation("TeacherCommitteeReports")
   committeeEmailTemplates      CommitteeEmailTemplate[] @relation("UserCommitteeEmailTemplates")
+  standoutProcessesCreated     StandoutProcess[]    @relation("GestorStandoutProcesses")
+  studentStandoutNominations   StandoutNomination[] @relation("StudentStandoutNominations")
+  teacherStandoutNominations   StandoutNomination[] @relation("TeacherStandoutNominations")
 
   @@unique([email])
   @@index([groupId])
@@ -460,6 +463,7 @@ model Program {
   scheduleEvents    ScheduleEvent[]
   committeeProcesses CommitteeProcess[] @relation("ProgramCommitteeProcesses")
   committeeEmailTemplates CommitteeEmailTemplate[] @relation("ProgramCommitteeEmailTemplates")
+  standoutProcesses StandoutProcess[] @relation("ProgramStandoutProcesses")
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -525,6 +529,7 @@ model Group {
   groupEnrollments GroupEnrollment[]
   elections GroupElection[]
   committeeReports  CommitteeReport[]  @relation("GroupCommitteeReports")
+  standoutNominations StandoutNomination[] @relation("GroupStandoutNominations")
 
   voceroPrincipalId String?
   voceroSuplenteId  String?
@@ -1026,6 +1031,73 @@ model CommitteeEmailTemplate {
   @@index([programId])
   @@index([createdById])
   @@map("committee_email_template")
+}
+
+enum StandoutCategory {
+  EXCELENCIA_ACADEMICA
+  LIDERAZGO_TRABAJO_EQUIPO
+  INNOVACION_PROYECTO
+  COMPROMISO_ACTITUD
+  INTEGRAL
+  OTRO
+}
+
+model StandoutProcess {
+  id          String                 @id @default(cuid())
+  title       String
+  description String?                @db.Text
+  status      CommitteeProcessStatus @default(OPEN)
+  startDate   DateTime?
+  endDate     DateTime?
+
+  programId   String?
+  program     Program?               @relation("ProgramStandoutProcesses", fields: [programId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User                   @relation("GestorStandoutProcesses", fields: [createdById], references: [id], onDelete: Cascade)
+
+  nominations StandoutNomination[]
+
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([programId])
+  @@index([createdById])
+  @@index([status])
+  @@map("standout_process")
+}
+
+model StandoutNomination {
+  id                  String           @id @default(cuid())
+  processId           String
+  process             StandoutProcess  @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  studentId           String
+  student             User             @relation("StudentStandoutNominations", fields: [studentId], references: [id], onDelete: Cascade)
+
+  groupId             String
+  group               Group            @relation("GroupStandoutNominations", fields: [groupId], references: [id], onDelete: Cascade)
+
+  nominatedById       String
+  nominatedBy         User             @relation("TeacherStandoutNominations", fields: [nominatedById], references: [id], onDelete: Cascade)
+
+  category            StandoutCategory @default(EXCELENCIA_ACADEMICA)
+  customCategory      String?
+  groupSchedule       String?
+  subject             String?
+  evidenceUrl         String?          @db.Text
+  reason              String           @db.Text
+  achievements        String?          @db.Text
+  recognitionDecision String?
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  @@index([processId])
+  @@index([studentId])
+  @@index([groupId])
+  @@index([nominatedById])
+  @@map("standout_nomination")
 }
 
 
