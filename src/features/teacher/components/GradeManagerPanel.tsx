@@ -24,6 +24,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { useAppRefresh } from "@/lib/app-refresh";
+import {
+  parseActivityLinkLabels,
+  serializeActivityLinkLabels,
+  parseStudentSubmissionLinks,
+  SubmittedLinkItem
+} from "@/lib/submission-links";
 
 interface GradeManagerPanelProps {
   courses: any[];
@@ -46,7 +52,19 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isActivityDialogOpen, setIsActivityDialogOpen] = useState(false);
-  const [activityForm, setActivityForm] = useState({ id: "", title: "", description: "", weight: 0, allowSubmissionLink: false });
+  const [activityForm, setActivityForm] = useState({
+    id: "",
+    title: "",
+    description: "",
+    weight: 0,
+    allowSubmissionLink: false,
+    submissionLinkLabels: [""] as string[]
+  });
+  const [studentLinksModal, setStudentLinksModal] = useState<{
+    studentName: string;
+    activityTitle: string;
+    links: SubmittedLinkItem[];
+  } | null>(null);
 
   const [isBulkGradeDialogOpen, setIsBulkGradeDialogOpen] = useState(false);
   const [bulkGradeActivity, setBulkGradeActivity] = useState<any | null>(null);
@@ -117,11 +135,29 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
     }
 
     startTransition(async () => {
+      const serializedLabels = serializeActivityLinkLabels(
+        activityForm.submissionLinkLabels,
+        activityForm.allowSubmissionLink
+      );
       let res;
       if (activityForm.id) {
-        res = await updateActivity(activityForm.id, activityForm.title, activityForm.description, activityForm.weight, activityForm.allowSubmissionLink);
+        res = await updateActivity(
+          activityForm.id,
+          activityForm.title,
+          activityForm.description,
+          activityForm.weight,
+          activityForm.allowSubmissionLink,
+          serializedLabels
+        );
       } else {
-        res = await createActivity(selectedCourseId, activityForm.title, activityForm.description, activityForm.weight, activityForm.allowSubmissionLink);
+        res = await createActivity(
+          selectedCourseId,
+          activityForm.title,
+          activityForm.description,
+          activityForm.weight,
+          activityForm.allowSubmissionLink,
+          serializedLabels
+        );
       }
 
       if (res.success) {
@@ -450,30 +486,31 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
   );
 
   const openEditActivity = (act: any) => {
+    const parsedLabels = parseActivityLinkLabels(act.submissionLinkLabels, act.allowSubmissionLink ?? false);
     setActivityForm({
       id: act.id,
       title: act.title,
       description: act.description || "",
       weight: act.weight,
       allowSubmissionLink: act.allowSubmissionLink ?? false,
+      submissionLinkLabels: parsedLabels.length > 0 ? parsedLabels : [""]
     });
     setIsActivityDialogOpen(true);
   };
 
   const getSubmissionInfo = (act: any, studentId: string) => {
     const sg = act.grades?.find((g: any) => g.userId === studentId);
-    const link = sg?.submissionLink?.trim();
-    if (!link) return null;
-    const url = link.startsWith("http://") || link.startsWith("https://") ? link : `https://${link}`;
-    return { raw: link, url };
+    const links = parseStudentSubmissionLinks(sg?.submissionLink, act.submissionLinkLabels);
+    if (links.length === 0) return null;
+    return { links, first: links[0], raw: links[0].raw, url: links[0].url };
   };
 
   const activityUsesSubmissionSlot = (act: any) => {
-    return Boolean(act.allowSubmissionLink || act.grades?.some((g: any) => g.submissionLink?.trim()));
+    return Boolean(act.allowSubmissionLink || act.grades?.some((g: any) => parseStudentSubmissionLinks(g.submissionLink, act.submissionLinkLabels).length > 0));
   };
 
   return (
-    <TooltipProvider delayDuration={150}>
+    <TooltipProvider delayDuration={150} disableHoverableContent={false}>
       <div className="space-y-5 w-full min-w-0 max-w-full">
         {/* Header Hero Banner */}
         <div className="bg-primary/5 border border-primary/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 relative overflow-hidden shadow-2xs">
@@ -588,7 +625,14 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
               variant="outline"
               className="h-10 px-3.5 rounded-xl font-bold border-border/70 bg-background hover:bg-primary/10 hover:text-primary gap-1.5 shadow-2xs justify-center cursor-pointer"
               onClick={() => {
-                setActivityForm({ id: "", title: "", description: "", weight: 20, allowSubmissionLink: false });
+                setActivityForm({
+                  id: "",
+                  title: "",
+                  description: "",
+                  weight: 20,
+                  allowSubmissionLink: false,
+                  submissionLinkLabels: [""]
+                });
                 setIsActivityDialogOpen(true);
               }}
             >
@@ -782,15 +826,35 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
                                 />
                                 {hasSlot && (
                                   sub ? (
-                                    <a
-                                      href={sub.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      title="Ver entrega del aprendiz"
-                                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/30 transition-all shrink-0 shadow-2xs"
-                                    >
-                                      <ExternalLink className="w-3.5 h-3.5" />
-                                    </a>
+                                    sub.links.length > 1 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setStudentLinksModal({
+                                            studentName: formatName(student.name, student.profile),
+                                            activityTitle: act.title,
+                                            links: sub.links
+                                          })
+                                        }
+                                        title={`Ver ${sub.links.length} enlaces de entrega`}
+                                        className="relative inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/30 transition-all shrink-0 shadow-2xs cursor-pointer"
+                                      >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                        <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                                          {sub.links.length}
+                                        </span>
+                                      </button>
+                                    ) : (
+                                      <a
+                                        href={sub.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Ver entrega del aprendiz"
+                                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/30 transition-all shrink-0 shadow-2xs"
+                                      >
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                      </a>
+                                    )
                                   ) : (
                                     <span
                                       title="Sin entrega registrada"
@@ -996,22 +1060,63 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
                                     sub ? (
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <a
-                                            href={sub.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            aria-label="Ver entrega del aprendiz"
-                                            className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/30 transition-all shrink-0 shadow-2xs cursor-pointer"
-                                          >
-                                            <ExternalLink className="w-3.5 h-3.5" />
-                                          </a>
+                                          {sub.links.length > 1 ? (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setStudentLinksModal({
+                                                  studentName: formatName(student.name, student.profile),
+                                                  activityTitle: act.title,
+                                                  links: sub.links
+                                                })
+                                              }
+                                              aria-label="Ver entregas del aprendiz"
+                                              className="relative inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/30 transition-all shrink-0 shadow-2xs cursor-pointer"
+                                            >
+                                              <ExternalLink className="w-3.5 h-3.5" />
+                                              <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                                                {sub.links.length}
+                                              </span>
+                                            </button>
+                                          ) : (
+                                            <a
+                                              href={sub.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              aria-label="Ver entrega del aprendiz"
+                                              className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/30 transition-all shrink-0 shadow-2xs cursor-pointer"
+                                            >
+                                              <ExternalLink className="w-3.5 h-3.5" />
+                                            </a>
+                                          )}
                                         </TooltipTrigger>
-                                        <TooltipContent side="top" className="max-w-[260px] p-2.5 space-y-1 text-xs shadow-lg">
-                                          <p className="font-bold flex items-center gap-1.5">
+                                        <TooltipContent side="top" className="max-w-[280px] p-2.5 space-y-1.5 text-xs shadow-lg">
+                                          <p className="font-bold flex items-center gap-1.5 border-b border-border/50 pb-1">
                                             <ExternalLink className="w-3 h-3 text-primary shrink-0" />
-                                            <span>Ver entrega del aprendiz</span>
+                                            <span>
+                                              {sub.links.length > 1
+                                                ? `Enlaces entregados (${sub.links.length})`
+                                                : "Ver entrega del aprendiz"}
+                                            </span>
                                           </p>
-                                          <p className="text-[11px] text-muted-foreground break-all line-clamp-2">{sub.raw}</p>
+                                          <div className="space-y-1">
+                                            {sub.links.map((item, idx) => (
+                                              <a
+                                                key={idx}
+                                                href={item.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block p-1.5 rounded-md hover:bg-muted/70 transition-colors"
+                                              >
+                                                <span className="font-semibold text-foreground block text-[11px]">
+                                                  {item.label}
+                                                </span>
+                                                <span className="text-[10px] text-primary underline break-all line-clamp-1">
+                                                  {item.raw}
+                                                </span>
+                                              </a>
+                                            ))}
+                                          </div>
                                         </TooltipContent>
                                       </Tooltip>
                                     ) : (
@@ -1195,22 +1300,102 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
                     </div>
                   )}
 
-                  <div className="flex items-start gap-3 p-4 rounded-xl border bg-muted/20">
-                    <Switch
-                      id="submission-link-toggle"
-                      checked={activityForm.allowSubmissionLink}
-                      onCheckedChange={val => setActivityForm(prev => ({ ...prev, allowSubmissionLink: val }))}
-                      className="mt-0.5 shrink-0"
-                    />
-                    <div>
-                      <Label htmlFor="submission-link-toggle" className="font-semibold cursor-pointer flex items-center gap-1.5">
-                        <Link2 className="w-4 h-4 text-primary" />
-                        Permitir Enlace de Entrega
-                      </Label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Los aprendices podrán enviar un enlace (URL) con su trabajo para esta actividad.
-                      </p>
+                  <div className="p-4 rounded-xl border bg-muted/20 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <Switch
+                        id="submission-link-toggle"
+                        checked={activityForm.allowSubmissionLink}
+                        onCheckedChange={val =>
+                          setActivityForm(prev => ({
+                            ...prev,
+                            allowSubmissionLink: val,
+                            submissionLinkLabels:
+                              val && (!prev.submissionLinkLabels || prev.submissionLinkLabels.length === 0)
+                                ? [""]
+                                : prev.submissionLinkLabels
+                          }))
+                        }
+                        className="mt-0.5 shrink-0"
+                      />
+                      <div>
+                        <Label htmlFor="submission-link-toggle" className="font-semibold cursor-pointer flex items-center gap-1.5">
+                          <Link2 className="w-4 h-4 text-primary" />
+                          Permitir Enlaces de Entrega
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Define uno o varios enlaces (URL) que los aprendices deberán enviar para esta actividad.
+                        </p>
+                      </div>
                     </div>
+
+                    {activityForm.allowSubmissionLink && (
+                      <div className="pt-3 border-t border-border/60 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-foreground">
+                            Enlaces requeridos ({activityForm.submissionLinkLabels.length})
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2.5 text-xs gap-1 rounded-lg border-primary/40 text-primary hover:bg-primary/10"
+                            onClick={() =>
+                              setActivityForm(prev => ({
+                                ...prev,
+                                submissionLinkLabels: [...prev.submissionLinkLabels, ""]
+                              }))
+                            }
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Agregar enlace
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {activityForm.submissionLinkLabels.map((labelVal, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] font-bold shrink-0 px-2 py-1 bg-background">
+                                #{idx + 1}
+                              </Badge>
+                              <Input
+                                value={labelVal}
+                                onChange={e => {
+                                  const nextVal = e.target.value;
+                                  setActivityForm(prev => {
+                                    const updated = [...prev.submissionLinkLabels];
+                                    updated[idx] = nextVal;
+                                    return { ...prev, submissionLinkLabels: updated };
+                                  });
+                                }}
+                                placeholder={
+                                  idx === 0
+                                    ? "Nombre opcional (ej. Repositorio GitHub)"
+                                    : `Nombre opcional para Enlace ${idx + 1}`
+                                }
+                                className="h-8 text-xs bg-background"
+                              />
+                              {activityForm.submissionLinkLabels.length > 1 && (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
+                                  onClick={() =>
+                                    setActivityForm(prev => ({
+                                      ...prev,
+                                      submissionLinkLabels: prev.submissionLinkLabels.filter((_, i) => i !== idx)
+                                    }))
+                                  }
+                                  title="Quitar este enlace"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1417,6 +1602,48 @@ export function GradeManagerPanel({ courses, students, voceroPrincipalId, vocero
             if (wgData.success) setWorkGroups(wgData.groups || []);
           }}
         />
+
+        {/* Modal para ver múltiples enlaces entregados por un aprendiz */}
+        <Dialog open={!!studentLinksModal} onOpenChange={open => !open && setStudentLinksModal(null)}>
+          <DialogContent className="max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base font-bold">
+                <Link2 className="w-5 h-5 text-primary" />
+                <span>Enlaces de Entrega ({studentLinksModal?.links.length || 0})</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Aprendiz: <strong>{studentLinksModal?.studentName}</strong> • Actividad:{" "}
+                <strong>{studentLinksModal?.activityTitle}</strong>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2.5 py-2 max-h-[60vh] overflow-y-auto">
+              {studentLinksModal?.links.map((item, idx) => (
+                <a
+                  key={idx}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border/70 bg-muted/20 hover:bg-primary/5 hover:border-primary/40 transition-all group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground group-hover:text-primary">
+                      {item.label}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      {item.raw}
+                    </p>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-primary shrink-0" />
+                </a>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" size="sm" onClick={() => setStudentLinksModal(null)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );

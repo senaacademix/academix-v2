@@ -18,6 +18,13 @@ import { resolveAttendanceStatusStyle, ATTENDANCE_STATUS_STYLES } from "@/lib/at
 import { fromUTC, toCalendarYMD, isDateExpired, formatCalendarDate } from "@/lib/dateUtils";
 import { getStudentRecords, justifyAttendanceAction, markRemarkViewed, getStudentDocumentation, deleteJustificationAction } from "../actions/studentActions";
 import { getStudentGrades, submitStudentSubmissionLink } from "@/features/teacher/actions/gradeActions";
+import {
+    parseActivityLinkLabels,
+    getSlotDisplayLabel,
+    getStudentSubmissionSlotValues,
+    parseStudentSubmissionLinks,
+    serializeStudentSubmissionLinks
+} from "@/lib/submission-links";
 
 
 import { StudentHelpModal } from "./StudentHelpModal";
@@ -107,12 +114,25 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
     const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
 
     // Submission link dialog
-    const [submissionDialog, setSubmissionDialog] = useState<{ open: boolean; activityId: string; activityTitle: string; currentLink: string } | null>(null);
-    const [submissionLinkInput, setSubmissionLinkInput] = useState("");
+    const [submissionDialog, setSubmissionDialog] = useState<{
+        open: boolean;
+        activityId: string;
+        activityTitle: string;
+        submissionLinkLabels?: string | null;
+        currentLink: string;
+    } | null>(null);
+    const [submissionLinkInputs, setSubmissionLinkInputs] = useState<string[]>([""]);
     const [isSubmittingLink, startSubmitLink] = useTransition();
 
     // Activity detail dialog
-    const [activityDetail, setActivityDetail] = useState<{ title: string; description: string; allowSubmissionLink: boolean; activityId: string; grade: any | null } | null>(null);
+    const [activityDetail, setActivityDetail] = useState<{
+        title: string;
+        description: string;
+        allowSubmissionLink: boolean;
+        submissionLinkLabels?: string | null;
+        activityId: string;
+        grade: any | null;
+    } | null>(null);
 
     // Remark detail dialog
     const [remarkDetail, setRemarkDetail] = useState<any | null>(null);
@@ -642,16 +662,37 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
         }
     };
 
+    const openSubmissionDialogForActivity = (act: {
+        id: string;
+        title: string;
+        submissionLinkLabels?: string | null;
+        currentLink?: string | null;
+    }) => {
+        const slotVals = getStudentSubmissionSlotValues(act.currentLink, act.submissionLinkLabels, true);
+        setSubmissionLinkInputs(slotVals);
+        setSubmissionDialog({
+            open: true,
+            activityId: act.id,
+            activityTitle: act.title,
+            submissionLinkLabels: act.submissionLinkLabels,
+            currentLink: act.currentLink || ""
+        });
+    };
+
     const handleSubmitLink = () => {
         if (!submissionDialog) return;
-        if (!submissionLinkInput.trim()) {
-            toast.error("El enlace no puede estar vacío");
+        const payload = serializeStudentSubmissionLinks(
+            submissionLinkInputs,
+            submissionDialog.submissionLinkLabels
+        );
+        if (!payload) {
+            toast.error("Debes ingresar al menos un enlace de entrega válido");
             return;
         }
         startSubmitLink(async () => {
-            const res = await submitStudentSubmissionLink(submissionDialog.activityId, submissionLinkInput.trim());
+            const res = await submitStudentSubmissionLink(submissionDialog.activityId, payload);
             if (res.success) {
-                toast.success("Enlace de entrega enviado correctamente");
+                toast.success("Enlace(s) de entrega enviado(s) correctamente");
                 setSubmissionDialog(null);
                 loadGrades();
             } else {
@@ -1997,6 +2038,14 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                             <TableBody>
                                                                 {course.activities.map((act: any) => {
                                                                     const grade = act.grades[0];
+                                                                    const actLabels = parseActivityLinkLabels(
+                                                                        act.submissionLinkLabels,
+                                                                        act.allowSubmissionLink ?? false
+                                                                    );
+                                                                    const submittedLinks = parseStudentSubmissionLinks(
+                                                                        grade?.submissionLink,
+                                                                        act.submissionLinkLabels
+                                                                    );
                                                                     return (
                                                                         <TableRow key={act.id}>
                                                                             {/* Actividad */}
@@ -2004,7 +2053,10 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                                 <div className="font-semibold">{act.title}</div>
                                                                                 {act.allowSubmissionLink && (
                                                                                     <Badge variant="outline" className="mt-1 text-[10px] text-primary border-primary/30 bg-primary/5 gap-1">
-                                                                                        <Link2 className="w-2.5 h-2.5" />Acepta entrega
+                                                                                        <Link2 className="w-2.5 h-2.5" />
+                                                                                        {actLabels.length > 1
+                                                                                            ? `Acepta ${actLabels.length} enlaces`
+                                                                                            : "Acepta entrega"}
                                                                                     </Badge>
                                                                                 )}
                                                                             </TableCell>
@@ -2028,19 +2080,56 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                             {/* Entrega */}
                                                                             <TableCell className="text-center">
                                                                                 {act.allowSubmissionLink ? (
-                                                                                    grade?.submissionLink ? (
+                                                                                    submittedLinks.length > 0 ? (
                                                                                         <div className="flex flex-col items-center gap-1">
-                                                                                            <a href={grade.submissionLink} target="_blank" rel="noopener noreferrer" className="text-primary text-xs hover:underline flex items-center gap-1 font-medium">
-                                                                                                <ExternalLink className="w-3 h-3" /> Ver entrega
-                                                                                            </a>
-                                                                                            <Button size="sm" variant="ghost" className="h-6 text-xs px-2 text-muted-foreground"
-                                                                                                onClick={() => { setSubmissionLinkInput(grade.submissionLink); setSubmissionDialog({ open: true, activityId: act.id, activityTitle: act.title, currentLink: grade.submissionLink }); }}>
+                                                                                            <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                                                                                {submittedLinks.map((item, idx) => (
+                                                                                                    <a
+                                                                                                        key={idx}
+                                                                                                        href={item.url}
+                                                                                                        target="_blank"
+                                                                                                        rel="noopener noreferrer"
+                                                                                                        className="text-primary text-xs hover:underline inline-flex items-center gap-1 font-medium bg-primary/5 px-2 py-0.5 rounded-md border border-primary/20"
+                                                                                                    >
+                                                                                                        <ExternalLink className="w-3 h-3 shrink-0" />
+                                                                                                        <span>
+                                                                                                            {submittedLinks.length > 1
+                                                                                                                ? item.label
+                                                                                                                : "Ver entrega"}
+                                                                                                        </span>
+                                                                                                    </a>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                            <Button
+                                                                                                size="sm"
+                                                                                                variant="ghost"
+                                                                                                className="h-6 text-xs px-2 text-muted-foreground"
+                                                                                                onClick={() =>
+                                                                                                    openSubmissionDialogForActivity({
+                                                                                                        id: act.id,
+                                                                                                        title: act.title,
+                                                                                                        submissionLinkLabels: act.submissionLinkLabels,
+                                                                                                        currentLink: grade?.submissionLink
+                                                                                                    })
+                                                                                                }
+                                                                                            >
                                                                                                 Editar
                                                                                             </Button>
                                                                                         </div>
                                                                                     ) : (
-                                                                                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 border-primary/50 text-primary hover:bg-primary/5"
-                                                                                            onClick={() => { setSubmissionLinkInput(""); setSubmissionDialog({ open: true, activityId: act.id, activityTitle: act.title, currentLink: "" }); }}>
+                                                                                        <Button
+                                                                                            size="sm"
+                                                                                            variant="outline"
+                                                                                            className="h-7 text-xs gap-1.5 border-primary/50 text-primary hover:bg-primary/5"
+                                                                                            onClick={() =>
+                                                                                                openSubmissionDialogForActivity({
+                                                                                                    id: act.id,
+                                                                                                    title: act.title,
+                                                                                                    submissionLinkLabels: act.submissionLinkLabels,
+                                                                                                    currentLink: ""
+                                                                                                })
+                                                                                            }
+                                                                                        >
                                                                                             <Link2 className="w-3 h-3" /> Enviar
                                                                                         </Button>
                                                                                     )
@@ -2059,6 +2148,7 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                                                                                         title: act.title,
                                                                                         description: act.description || "",
                                                                                         allowSubmissionLink: act.allowSubmissionLink ?? false,
+                                                                                        submissionLinkLabels: act.submissionLinkLabels,
                                                                                         activityId: act.id,
                                                                                         grade: grade ?? null
                                                                                     })}
@@ -2821,76 +2911,146 @@ export function StudentRecords({ studentId, hideTables = false, hideDocumentatio
                         )}
 
                         {/* Submission Link section */}
-                        {activityDetail?.allowSubmissionLink && (
-                            <div className="p-5 rounded-lg border bg-primary/5 border-primary/20 space-y-3 max-w-2xl">
-                                <div className="flex items-center gap-2">
-                                    <Link2 className="w-4 h-4 text-primary shrink-0" />
-                                    <span className="font-semibold text-sm">Entrega requerida</span>
-                                    {activityDetail.grade?.submissionLink && (
-                                        <Badge variant="outline" className="ml-auto text-emerald-700 border-emerald-300 bg-emerald-50 text-xs">
-                                            Entregado
-                                        </Badge>
+                        {activityDetail?.allowSubmissionLink && (() => {
+                            const detailSubmitted = parseStudentSubmissionLinks(
+                                activityDetail.grade?.submissionLink,
+                                activityDetail.submissionLinkLabels
+                            );
+                            const detailLabels = parseActivityLinkLabels(
+                                activityDetail.submissionLinkLabels,
+                                true
+                            );
+                            return (
+                                <div className="p-5 rounded-lg border bg-primary/5 border-primary/20 space-y-3 max-w-2xl">
+                                    <div className="flex items-center gap-2">
+                                        <Link2 className="w-4 h-4 text-primary shrink-0" />
+                                        <span className="font-semibold text-sm">
+                                            {detailLabels.length > 1
+                                                ? `Enlaces de entrega requeridos (${detailLabels.length})`
+                                                : "Entrega requerida"}
+                                        </span>
+                                        {detailSubmitted.length > 0 && (
+                                            <Badge variant="outline" className="ml-auto text-emerald-700 border-emerald-300 bg-emerald-50 text-xs">
+                                                Entregado ({detailSubmitted.length}/{detailLabels.length})
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Esta actividad requiere que envíes{" "}
+                                        {detailLabels.length > 1
+                                            ? `${detailLabels.length} enlaces con tu trabajo`
+                                            : "un enlace con tu trabajo"}{" "}
+                                        (Google Drive, GitHub, Notion, etc.).
+                                    </p>
+
+                                    {detailSubmitted.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {detailSubmitted.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-2 p-2.5 rounded-md bg-background border text-sm">
+                                                    <ExternalLink className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                    <span className="text-xs font-semibold text-foreground shrink-0">
+                                                        {item.label}:
+                                                    </span>
+                                                    <a
+                                                        href={item.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-primary hover:underline truncate flex-1 text-xs"
+                                                    >
+                                                        {item.raw}
+                                                    </a>
+                                                </div>
+                                            ))}
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="w-full gap-2"
+                                                onClick={() => {
+                                                    openSubmissionDialogForActivity({
+                                                        id: activityDetail.activityId,
+                                                        title: activityDetail.title,
+                                                        submissionLinkLabels: activityDetail.submissionLinkLabels,
+                                                        currentLink: activityDetail.grade?.submissionLink
+                                                    });
+                                                    setActivityDetail(null);
+                                                }}
+                                            >
+                                                <Link2 className="w-4 h-4" /> Actualizar enlace(s)
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            className="w-full gap-2"
+                                            onClick={() => {
+                                                openSubmissionDialogForActivity({
+                                                    id: activityDetail.activityId,
+                                                    title: activityDetail.title,
+                                                    submissionLinkLabels: activityDetail.submissionLinkLabels,
+                                                    currentLink: ""
+                                                });
+                                                setActivityDetail(null);
+                                            }}
+                                        >
+                                            <Link2 className="w-4 h-4" /> Enviar Enlace(s) de Entrega
+                                        </Button>
                                     )}
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Esta actividad requiere que envíes un enlace con tu trabajo (Google Drive, GitHub, Notion, etc.).
-                                </p>
-
-                                {activityDetail.grade?.submissionLink ? (
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 p-2 rounded-md bg-background border text-sm">
-                                            <ExternalLink className="w-3.5 h-3.5 text-primary shrink-0" />
-                                            <a href={activityDetail.grade.submissionLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate flex-1 text-xs">
-                                                {activityDetail.grade.submissionLink}
-                                            </a>
-                                        </div>
-                                        <Button size="sm" variant="outline" className="w-full gap-2"
-                                            onClick={() => {
-                                                setSubmissionLinkInput(activityDetail.grade.submissionLink);
-                                                setSubmissionDialog({ open: true, activityId: activityDetail.activityId, activityTitle: activityDetail.title, currentLink: activityDetail.grade.submissionLink });
-                                                setActivityDetail(null);
-                                            }}>
-                                            <Link2 className="w-4 h-4" /> Actualizar enlace
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <Button className="w-full gap-2"
-                                        onClick={() => {
-                                            setSubmissionLinkInput("");
-                                            setSubmissionDialog({ open: true, activityId: activityDetail.activityId, activityTitle: activityDetail.title, currentLink: "" });
-                                            setActivityDetail(null);
-                                        }}>
-                                        <Link2 className="w-4 h-4" /> Enviar Enlace de Entrega
-                                    </Button>
-                                )}
-                            </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 </DialogContent>
             </Dialog>
 
             {/* Submission Link Dialog */}
             <Dialog open={!!submissionDialog} onOpenChange={open => { if (!open) setSubmissionDialog(null); }}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Link2 className="w-5 h-5 text-primary" />
-                            Enviar Enlace de Entrega
+                            Enviar Enlace(s) de Entrega
                         </DialogTitle>
                         <DialogDescription>
-                            Actividad: <strong>{submissionDialog?.activityTitle}</strong>. Pega el enlace de tu trabajo (Google Drive, GitHub, etc.).
+                            Actividad: <strong>{submissionDialog?.activityTitle}</strong>. Ingresa los enlaces solicitados por el instructor (Google Drive, GitHub, etc.).
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-3 py-2">
-                        <Label htmlFor="submission-url">URL de la entrega *</Label>
-                        <Input
-                            id="submission-url"
-                            type="url"
-                            placeholder="https://drive.google.com/..."
-                            value={submissionLinkInput}
-                            onChange={e => setSubmissionLinkInput(e.target.value)}
-                        />
-                        <p className="text-xs text-muted-foreground">Asegúrate de que el enlace sea accesible para el instructor (sin restricciones de acceso).</p>
+                    <div className="space-y-4 py-2">
+                        {(() => {
+                            const dialogLabels = parseActivityLinkLabels(
+                                submissionDialog?.submissionLinkLabels,
+                                true
+                            );
+                            const count = Math.max(dialogLabels.length, submissionLinkInputs.length, 1);
+                            return Array.from({ length: count }).map((_, idx) => {
+                                const slotLabel = getSlotDisplayLabel(dialogLabels, idx);
+                                return (
+                                    <div key={idx} className="space-y-1.5">
+                                        <Label htmlFor={`submission-url-${idx}`} className="text-xs font-semibold flex items-center gap-1.5">
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                                #{idx + 1}
+                                            </Badge>
+                                            <span>{slotLabel}</span>
+                                        </Label>
+                                        <Input
+                                            id={`submission-url-${idx}`}
+                                            type="url"
+                                            placeholder="https://drive.google.com/... o https://github.com/..."
+                                            value={submissionLinkInputs[idx] || ""}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setSubmissionLinkInputs(prev => {
+                                                    const next = [...prev];
+                                                    next[idx] = val;
+                                                    return next;
+                                                });
+                                            }}
+                                        />
+                                    </div>
+                                );
+                            });
+                        })()}
+                        <p className="text-xs text-muted-foreground">
+                            Asegúrate de que los enlaces sean accesibles para el instructor (sin restricciones de acceso).
+                        </p>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setSubmissionDialog(null)} disabled={isSubmittingLink}>Cancelar</Button>

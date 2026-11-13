@@ -626,12 +626,13 @@ model TrainingEnvironment {
 }
 
 model Activity {
-  id                  String   @id @default(cuid())
-  title               String
-  description         String?
-  weight              Float    // Porcentaje de peso (ej. 20 para 20%)
-  date                DateTime @default(now())
-  allowSubmissionLink Boolean  @default(false)
+  id                   String   @id @default(cuid())
+  title                String
+  description          String?
+  weight               Float    // Porcentaje de peso (ej. 20 para 20%)
+  date                 DateTime @default(now())
+  allowSubmissionLink  Boolean  @default(false)
+  submissionLinkLabels String?  // JSON array con los nombres/etiquetas de los enlaces de entrega definidos por el instructor
   
   courseId    String
   course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)

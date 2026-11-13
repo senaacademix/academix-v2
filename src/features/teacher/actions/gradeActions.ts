@@ -127,7 +127,14 @@ export async function toggleCourseWeightMode(courseId: string, usePercentageWeig
     }
 }
 
-export async function createActivity(courseId: string, title: string, description: string, weight: number, allowSubmissionLink: boolean = false) {
+export async function createActivity(
+    courseId: string,
+    title: string,
+    description: string,
+    weight: number,
+    allowSubmissionLink: boolean = false,
+    submissionLinkLabels: string | null = null
+) {
     try {
         const teacher = await requireTeacherOrAdmin();
         await verifyCourseTeacher(courseId, teacher);
@@ -138,7 +145,8 @@ export async function createActivity(courseId: string, title: string, descriptio
                 title,
                 description,
                 weight,
-                allowSubmissionLink
+                allowSubmissionLink,
+                submissionLinkLabels: allowSubmissionLink ? submissionLinkLabels : null
             }
         });
         revalidatePath("/dashboard/teacher");
@@ -149,7 +157,14 @@ export async function createActivity(courseId: string, title: string, descriptio
     }
 }
 
-export async function updateActivity(activityId: string, title: string, description: string, weight: number, allowSubmissionLink: boolean = false) {
+export async function updateActivity(
+    activityId: string,
+    title: string,
+    description: string,
+    weight: number,
+    allowSubmissionLink: boolean = false,
+    submissionLinkLabels: string | null = null
+) {
     try {
         const teacher = await requireTeacherOrAdmin();
         const activity = await prisma.activity.findUnique({ where: { id: activityId }, select: { courseId: true } });
@@ -162,7 +177,8 @@ export async function updateActivity(activityId: string, title: string, descript
                 title,
                 description,
                 weight,
-                allowSubmissionLink
+                allowSubmissionLink,
+                submissionLinkLabels: allowSubmissionLink ? submissionLinkLabels : null
             }
         });
         revalidatePath("/dashboard/teacher");
@@ -173,19 +189,48 @@ export async function updateActivity(activityId: string, title: string, descript
     }
 }
 
-export async function submitStudentSubmissionLink(activityId: string, link: string) {
+export async function submitStudentSubmissionLink(activityId: string, linkPayload: string) {
     try {
         const session = await getSession();
         if (!session?.user) throw new Error("Unauthorized");
         const userId = session.user.id;
 
-        // Validate URL format
-        try { new URL(link); } catch { throw new Error("URL inválida"); }
+        const trimmed = (linkPayload || "").trim();
+        if (!trimmed) throw new Error("Debes ingresar al menos un enlace válido");
+
+        // Validate URL format(s)
+        if (trimmed.startsWith("[")) {
+            let parsed: any;
+            try {
+                parsed = JSON.parse(trimmed);
+            } catch {
+                throw new Error("Formato de enlaces inválido");
+            }
+            if (!Array.isArray(parsed)) throw new Error("Formato de enlaces inválido");
+            let validCount = 0;
+            for (const item of parsed) {
+                const rawUrl = typeof item === "string" ? item.trim() : (item?.url || "").trim();
+                if (!rawUrl) continue;
+                try {
+                    new URL(rawUrl);
+                    validCount++;
+                } catch {
+                    throw new Error(`URL inválida: ${rawUrl}`);
+                }
+            }
+            if (validCount === 0) throw new Error("Debes ingresar al menos un enlace válido");
+        } else {
+            try {
+                new URL(trimmed);
+            } catch {
+                throw new Error("URL inválida");
+            }
+        }
 
         await prisma.studentGrade.upsert({
             where: { activityId_userId: { activityId, userId } },
-            update: { submissionLink: link },
-            create: { activityId, userId, score: 0, submissionLink: link }
+            update: { submissionLink: trimmed },
+            create: { activityId, userId, score: 0, submissionLink: trimmed }
         });
 
         revalidatePath("/dashboard/student/records");
