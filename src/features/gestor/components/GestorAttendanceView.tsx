@@ -59,13 +59,19 @@ export function GestorAttendanceView({
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Estado del grupo seleccionado (por defecto el primer grupo de Etapa Lectiva o el inicial)
+    const sortedGroups = useMemo(() => {
+        return [...groups].sort((a, b) =>
+            a.name.localeCompare(b.name, "es", { numeric: true, sensitivity: "base" })
+        );
+    }, [groups]);
+
+    // Estado del grupo seleccionado (por defecto el primer grupo de Etapa Lectiva ordenado ascendentemente o el inicial)
     const [selectedGroupId, setSelectedGroupId] = useState<string>(() => {
-        if (initialGroupId && groups.some(g => g.id === initialGroupId)) {
+        if (initialGroupId && sortedGroups.some(g => g.id === initialGroupId)) {
             return initialGroupId;
         }
-        const lectivaGroups = groups.filter(g => (g.categoria || "LECTIVA") === "LECTIVA");
-        return lectivaGroups[0]?.id || groups[0]?.id || "";
+        const lectivaGroups = sortedGroups.filter(g => (g.categoria || "LECTIVA") === "LECTIVA");
+        return lectivaGroups[0]?.id || sortedGroups[0]?.id || "";
     });
 
     // Filtros de búsqueda para fichas
@@ -99,15 +105,15 @@ export function GestorAttendanceView({
     // Cambiar de categoría/etapa y auto-seleccionar la primera ficha de esa etapa
     const handleCategoryChange = (newCategory: string) => {
         setCategoryFilter(newCategory);
-        const groupsInNewCat = groups.filter(g => (g.categoria || "LECTIVA") === newCategory);
+        const groupsInNewCat = sortedGroups.filter(g => (g.categoria || "LECTIVA") === newCategory);
         if (groupsInNewCat.length > 0 && !groupsInNewCat.some(g => g.id === selectedGroupId)) {
             handleGroupChange(groupsInNewCat[0].id);
         }
     };
 
-    // Filtrar grupos por búsqueda de texto y categoría obligatoria
+    // Filtrar grupos por búsqueda de texto y categoría obligatoria (ordenados ascendentemente)
     const filteredGroups = useMemo(() => {
-        return groups.filter(g => {
+        return sortedGroups.filter(g => {
             const cat = g.categoria || "LECTIVA";
             if (cat !== categoryFilter) {
                 return false;
@@ -121,17 +127,17 @@ export function GestorAttendanceView({
             }
             return true;
         });
-    }, [groups, groupSearchQuery, categoryFilter]);
+    }, [sortedGroups, groupSearchQuery, categoryFilter]);
 
     // Ficha actualmente seleccionada
     const currentGroup = useMemo(() => {
-        return groups.find(g => g.id === selectedGroupId) || null;
-    }, [groups, selectedGroupId]);
+        return sortedGroups.find(g => g.id === selectedGroupId) || null;
+    }, [sortedGroups, selectedGroupId]);
 
     // Formato de grupos para el componente de vista
     const formattedGroupsList = useMemo(() => {
-        return groups.map(g => ({ id: g.id, name: g.name }));
-    }, [groups]);
+        return sortedGroups.map(g => ({ id: g.id, name: g.name }));
+    }, [sortedGroups]);
 
     const activeProgramName = currentGroup?.programName || programs.find(p => p.id === programId)?.name || "Programa Académico";
 
@@ -253,7 +259,7 @@ export function GestorAttendanceView({
                                             <SelectValue placeholder="Seleccionar grupo..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {groups.map((g) => (
+                                            {sortedGroups.map((g) => (
                                                 <SelectItem key={g.id} value={g.id} className="text-xs font-medium">
                                                     {g.name} ({g.studentCount || 0} aprendices)
                                                 </SelectItem>
@@ -264,8 +270,8 @@ export function GestorAttendanceView({
                             </div>
                         </div>
 
-                        {/* Pastillas horizontales para selección rápida con un clic */}
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin pt-1">
+                        {/* Pastillas organizadas por líneas para selección rápida con un clic */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
                             {filteredGroups.map((g) => {
                                 const isActive = g.id === selectedGroupId;
                                 return (

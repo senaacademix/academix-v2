@@ -530,6 +530,57 @@ export function GestorCommitteeView({
                     currentProgramId={effectiveProgramId}
                     programName={effectiveProgramName}
                 />
+
+                {/* Modal de Plantillas de Correo */}
+                <CommitteeEmailTemplatesModal
+                    isOpen={isTemplatesModalOpen}
+                    onClose={() => setIsTemplatesModalOpen(false)}
+                    programId={effectiveProgramId}
+                />
+
+                {/* Modal de confirmación para eliminar proceso de comité */}
+                <AlertDialog open={!!processToDelete} onOpenChange={(open) => !open && setProcessToDelete(null)}>
+                    <AlertDialogContent className="max-w-md bg-card border-border/80">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="text-base font-bold text-foreground">
+                                ¿Eliminar proceso de comité?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-xs text-muted-foreground">
+                                Estás a punto de eliminar la convocatoria <strong className="text-foreground">«{processToDelete?.title}»</strong>. Esta acción eliminará permanentemente todas las citaciones y reportes de aprendices asociados a este proceso.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+                            <AlertDialogCancel disabled={isDeletingProcess} className="h-9 text-xs">
+                                Cancelar
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                disabled={isDeletingProcess}
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    if (processToDelete) {
+                                        try {
+                                            setIsDeletingProcess(true);
+                                            await deleteProcessAction(processToDelete.id);
+                                            toast.success("Proceso de comité eliminado.");
+                                            if (selectedProcessId === processToDelete.id) {
+                                                setSelectedProcessId(null);
+                                            }
+                                            setProcessToDelete(null);
+                                            await loadData(effectiveProgramId);
+                                        } catch (err: any) {
+                                            toast.error(err.message || "Error al eliminar el proceso.");
+                                        } finally {
+                                            setIsDeletingProcess(false);
+                                        }
+                                    }
+                                }}
+                                className="h-9 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                                {isDeletingProcess ? "Eliminando..." : "Eliminar Proceso"}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         );
     }

@@ -191,31 +191,48 @@ export function ProcessReportDetailModal({
                     </div>
 
                     {/* Solución o Decisión del Comité */}
-                    <div className="p-3.5 rounded-xl bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-2xs">
-                        <div className="space-y-0.5">
-                            <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                                <Scale className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                Solución / Decisión del Comité:
-                            </span>
-                            <p className="text-muted-foreground text-[11px]">
-                                {readOnlyDecision
-                                    ? "Determinación oficial asignada por la Coordinación / Comité de Evaluación."
-                                    : "Selecciona o escribe la determinación final para este aprendiz (Cancelado, Condicionado, Absuelto u Otro)."}
-                            </p>
+                    <div className="p-3.5 rounded-xl bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/25 space-y-3 text-xs shadow-2xs">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="space-y-0.5">
+                                <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                                    <Scale className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                    Solución / Decisión del Comité:
+                                </span>
+                                <p className="text-muted-foreground text-[11px]">
+                                    {readOnlyDecision
+                                        ? "Determinación oficial asignada por la Coordinación / Comité de Evaluación."
+                                        : "Selecciona la determinación final y registra la observación del comité para este aprendiz."}
+                                </p>
+                            </div>
+                            <div className="shrink-0">
+                                {readOnlyDecision ? (
+                                    <ReadOnlyDecisionBadge decision={report.committeeDecision} />
+                                ) : (
+                                    <CommitteeDecisionSelector
+                                        reportId={report.id}
+                                        currentDecision={report.committeeDecision || null}
+                                        currentObservation={report.committeeDecisionObservation || null}
+                                        onUpdated={(newVal, newObs) => {
+                                            report.committeeDecision = newVal;
+                                            if (newObs !== undefined) {
+                                                report.committeeDecisionObservation = newObs;
+                                            }
+                                        }}
+                                    />
+                                )}
+                            </div>
                         </div>
-                        <div className="shrink-0">
-                            {readOnlyDecision ? (
-                                <ReadOnlyDecisionBadge decision={report.committeeDecision} />
-                            ) : (
-                                <CommitteeDecisionSelector
-                                    reportId={report.id}
-                                    currentDecision={report.committeeDecision || null}
-                                    onUpdated={(newVal) => {
-                                        report.committeeDecision = newVal;
-                                    }}
-                                />
-                            )}
-                        </div>
+
+                        {report.committeeDecisionObservation && (
+                            <div className="p-3 rounded-lg bg-background/80 border border-purple-500/25 space-y-1">
+                                <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300 block">
+                                    Observación del Gestor Académico (Solución Comité):
+                                </span>
+                                <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                                    {report.committeeDecisionObservation}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Reported by */}
@@ -372,14 +389,27 @@ function ReadOnlyDecisionBadge({ decision }: { decision?: string | null }) {
         );
     }
 
-    if (lower.startsWith("absuelto")) {
+    if (lower.startsWith("retiro voluntario")) {
+        return (
+            <Badge
+                variant="outline"
+                className="text-xs py-1 px-3 bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30 flex items-center gap-1.5 font-bold shadow-2xs"
+            >
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                <span>{decision}</span>
+            </Badge>
+        );
+    }
+
+    if (lower.startsWith("exonerado") || lower.startsWith("absuelto")) {
+        const displayDecision = lower === "absuelto" ? "Exonerado" : decision;
         return (
             <Badge
                 variant="outline"
                 className="text-xs py-1 px-3 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 flex items-center gap-1.5 font-bold shadow-2xs"
             >
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>{decision}</span>
+                <span>{displayDecision}</span>
             </Badge>
         );
     }

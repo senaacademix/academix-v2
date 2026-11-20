@@ -147,9 +147,13 @@ export function TeacherCommitteeView({
         return programs.find((p) => p.id === selectedProgramId) || programs[0] || null;
     }, [programs, selectedProgramId]);
 
-    // Show only OPEN processes published by the Gestor
-    const openProcesses = useMemo(() => {
-        return processes.filter((p) => p.status === "OPEN");
+    // Mostrar todos los procesos publicados por el Gestor (abiertos primero, luego cerrados en modo solo lectura)
+    const visibleProcesses = useMemo(() => {
+        return [...processes].sort((a, b) => {
+            if (a.status === "OPEN" && b.status !== "OPEN") return -1;
+            if (a.status !== "OPEN" && b.status === "OPEN") return 1;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
     }, [processes]);
 
     // Currently entered process
@@ -267,19 +271,19 @@ export function TeacherCommitteeView({
                 </div>
 
 
-                {/* Grid de Procesos Abiertos para Ingresar */}
+                {/* Grid de Procesos de Comité para Ingresar */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                            Procesos de Comité Abiertos en {currentProgram?.name || "esta Área"}
+                            Procesos de Comité en {currentProgram?.name || "esta Área"}
                         </h2>
                         <span className="text-xs text-muted-foreground">
-                            {openProcesses.length} {openProcesses.length === 1 ? "proceso disponible" : "procesos disponibles"}
+                            {visibleProcesses.length} {visibleProcesses.length === 1 ? "proceso disponible" : "procesos disponibles"}
                         </span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {openProcesses.map((process) => {
+                        {visibleProcesses.map((process) => {
                             const diligence = checkProcessDiligenceWindow(process);
                             const canEdit = diligence.canEdit;
                             const myReportsInProcess = myReports.filter((r) => r.processId === process.id).length;
@@ -373,15 +377,15 @@ export function TeacherCommitteeView({
                             );
                         })}
 
-                        {openProcesses.length === 0 && !isLoading && (
+                        {visibleProcesses.length === 0 && !isLoading && (
                             <div className="col-span-full py-16 text-center space-y-3 rounded-2xl border border-dashed border-border/80 bg-card">
                                 <Scale className="w-10 h-10 text-muted-foreground/60 mx-auto" />
                                 <div className="space-y-1">
                                     <h4 className="text-sm font-bold text-foreground">
-                                        No hay procesos de comité abiertos
+                                        No hay procesos de comité registrados
                                     </h4>
                                     <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                                        El Gestor Académico aún no ha publicado convocatorias de comité abiertas para el área de {currentProgram?.name || "esta formación"}.
+                                        El Gestor Académico aún no ha publicado convocatorias de comité para el área de {currentProgram?.name || "esta formación"}.
                                     </p>
                                 </div>
                             </div>

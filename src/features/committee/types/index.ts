@@ -45,14 +45,14 @@ export const FAULT_TYPE_CONFIG: Record<CommitteeFaultType, FaultTypeInfo> = {
         icon: "📓"
     },
     SOLICITUD_PLAN_MEJORAMIENTO: {
-        label: "Solicitud Plan de Mejoramiento",
-        description: "Concertación de compromisos pedagógicos ante dificultades de aprendizaje",
+        label: "Solicitud Segundo Plan de Mejoramiento",
+        description: "Solicitud de concertación de segundo plan de mejoramiento",
         badgeClass: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
         icon: "📝"
     },
     INCUMPLIMIENTO_PLAN_MEJORAMIENTO: {
-        label: "Incumplimiento Plan de Mejoramiento",
-        description: "No entrega, vencimiento o no superación de los compromisos acordados",
+        label: "Pérdida Segundo Plan de Mejoramiento",
+        description: "No superación o pérdida del segundo plan de mejoramiento",
         badgeClass: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30",
         icon: "⚠️"
     },
@@ -137,6 +137,7 @@ export interface CommitteeReportDTO {
     absenceDays?: number | null;
     absenceHours?: number | null;
     committeeDecision?: string | null;
+    committeeDecisionObservation?: string | null;
     reason: string;
     observations: string | null;
     status: string;

@@ -453,6 +453,7 @@ export class CommitteeService {
             absenceDays: r.absenceDays ?? r.absenceHours ?? 0,
             absenceHours: r.absenceDays ?? r.absenceHours ?? 0,
             committeeDecision: r.committeeDecision || null,
+            committeeDecisionObservation: r.committeeDecisionObservation || null,
             reason: r.reason,
             observations: r.observations,
             status: r.status,
@@ -722,6 +723,7 @@ export class CommitteeService {
             absenceDays: r.absenceDays ?? r.absenceHours ?? 0,
             absenceHours: r.absenceDays ?? r.absenceHours ?? 0,
             committeeDecision: r.committeeDecision || null,
+            committeeDecisionObservation: r.committeeDecisionObservation || null,
             reason: r.reason,
             observations: r.observations,
             status: r.status,
@@ -737,8 +739,8 @@ export class CommitteeService {
         if (!input.processId) throw new Error("Debe seleccionar un proceso de comité.");
         if (!input.studentId) throw new Error("Debe seleccionar un aprendiz.");
         if (!input.groupId) throw new Error("Debe seleccionar la ficha o grupo.");
-        if (!input.reason || input.reason.trim().length === 0) {
-            throw new Error("El motivo o causal del reporte es obligatorio.");
+        if (!input.observations || input.observations.trim().length === 0) {
+            throw new Error("Las observaciones del reporte son obligatorias.");
         }
 
         // Validar formato de URL si fue proporcionada
@@ -884,6 +886,7 @@ export class CommitteeService {
             absenceDays: report.absenceDays ?? report.absenceHours ?? 0,
             absenceHours: report.absenceDays ?? report.absenceHours ?? 0,
             committeeDecision: report.committeeDecision || null,
+            committeeDecisionObservation: report.committeeDecisionObservation || null,
             reason: report.reason,
             observations: report.observations,
             status: report.status,
@@ -1044,6 +1047,7 @@ export class CommitteeService {
             absenceDays: report.absenceDays ?? report.absenceHours ?? 0,
             absenceHours: report.absenceDays ?? report.absenceHours ?? 0,
             committeeDecision: report.committeeDecision || null,
+            committeeDecisionObservation: report.committeeDecisionObservation || null,
             reason: report.reason,
             observations: report.observations,
             status: report.status,
@@ -1055,12 +1059,24 @@ export class CommitteeService {
     /**
      * Actualiza la solución/decisión del comité para un reporte específico (Gestor o Admin)
      */
-    async updateReportDecision(reportId: string, decision: string | null): Promise<CommitteeReportDTO> {
+    async updateReportDecision(
+        reportId: string,
+        decision: string | null,
+        decisionObservation?: string | null
+    ): Promise<CommitteeReportDTO> {
+        const cleanDecision = decision?.trim() || null;
+        const updateData: any = {
+            committeeDecision: cleanDecision
+        };
+        if (!cleanDecision) {
+            updateData.committeeDecisionObservation = null;
+        } else if (decisionObservation !== undefined) {
+            updateData.committeeDecisionObservation = decisionObservation?.trim() || null;
+        }
+
         const report = await prisma.committeeReport.update({
             where: { id: reportId },
-            data: {
-                committeeDecision: decision?.trim() || null
-            },
+            data: updateData,
             include: {
                 process: { select: { id: true, title: true, status: true, startDate: true, endDate: true } },
                 student: {
@@ -1110,6 +1126,7 @@ export class CommitteeService {
             absenceDays: report.absenceDays ?? report.absenceHours ?? 0,
             absenceHours: report.absenceDays ?? report.absenceHours ?? 0,
             committeeDecision: report.committeeDecision || null,
+            committeeDecisionObservation: report.committeeDecisionObservation || null,
             reason: report.reason,
             observations: report.observations,
             status: report.status,

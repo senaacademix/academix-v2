@@ -996,10 +996,11 @@ model CommitteeReport {
   customFaultType   String?            // Especificación personalizada si la causal es OTRO
   groupSchedule     String?            // Horario de la ficha
   subject           String?            // Actividad de proyecto o materia reportada
-  absenceDays       Int?               @default(0) // Cantidad de días de inasistencia
-  absenceHours      Int?               @default(0) // Cantidad de horas de inasistencia
-  committeeDecision String?            // Solución del comité (Cancelado, Condicionado, Absuelto, u Otro)
-  reason            String             @db.Text
+  absenceDays                  Int?               @default(0) // Cantidad de días de inasistencia
+  absenceHours                 Int?               @default(0) // Cantidad de horas de inasistencia
+  committeeDecision            String?            // Solución del comité (Cancelado, Condicionado, Retiro Voluntario, Exonerado, u Otro)
+  committeeDecisionObservation String?            @db.Text // Observación asociada a la solución del comité por parte del gestor
+  reason                       String             @db.Text
   observations      String?            @db.Text
   status            String             @default("REPORTADO")
 

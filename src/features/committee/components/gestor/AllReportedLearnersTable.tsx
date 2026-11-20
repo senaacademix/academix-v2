@@ -168,8 +168,9 @@ export function AllReportedLearnersTable({
                 (selectedDecisionFilter === "PENDING" && !r.committeeDecision) ||
                 (selectedDecisionFilter === "Cancelado" && r.committeeDecision === "Cancelado") ||
                 (selectedDecisionFilter === "Condicionado" && r.committeeDecision === "Condicionado") ||
-                (selectedDecisionFilter === "Absuelto" && r.committeeDecision === "Absuelto") ||
-                (selectedDecisionFilter === "OTRO" && !!r.committeeDecision && !["Cancelado", "Condicionado", "Absuelto"].includes(r.committeeDecision));
+                (selectedDecisionFilter === "Retiro Voluntario" && r.committeeDecision === "Retiro Voluntario") ||
+                (selectedDecisionFilter === "Exonerado" && (r.committeeDecision === "Exonerado" || r.committeeDecision === "Absuelto")) ||
+                (selectedDecisionFilter === "OTRO" && !!r.committeeDecision && !["Cancelado", "Condicionado", "Retiro Voluntario", "Exonerado", "Absuelto"].includes(r.committeeDecision));
 
             const term = normalizeSearch(searchTerm);
             const matchesSearch =
@@ -499,8 +500,12 @@ export function AllReportedLearnersTable({
                     <CommitteeDecisionSelector
                         reportId={report.id}
                         currentDecision={report.committeeDecision || null}
-                        onUpdated={(newVal) => {
+                        currentObservation={report.committeeDecisionObservation || null}
+                        onUpdated={(newVal, newObs) => {
                             report.committeeDecision = newVal;
+                            if (newObs !== undefined) {
+                                report.committeeDecisionObservation = newObs;
+                            }
                         }}
                     />
                 </TableCell>
@@ -695,8 +700,12 @@ export function AllReportedLearnersTable({
                         <CommitteeDecisionSelector
                             reportId={report.id}
                             currentDecision={report.committeeDecision || null}
-                            onUpdated={(newVal) => {
+                            currentObservation={report.committeeDecisionObservation || null}
+                            onUpdated={(newVal, newObs) => {
                                 report.committeeDecision = newVal;
+                                if (newObs !== undefined) {
+                                    report.committeeDecisionObservation = newObs;
+                                }
                             }}
                         />
                     </div>
@@ -1014,35 +1023,20 @@ export function AllReportedLearnersTable({
                                     <SelectItem value="all" className="text-xs">
                                         Todas las causales
                                     </SelectItem>
-                                    <SelectItem value="ACADEMICO" className="text-xs">
-                                        📘 Académico
-                                    </SelectItem>
                                     <SelectItem value="DISCIPLINARIO" className="text-xs">
                                         📕 Disciplinario
-                                    </SelectItem>
-                                    <SelectItem value="INASISTENCIA" className="text-xs">
-                                        📙 Inasistencia
-                                    </SelectItem>
-                                    <SelectItem value="MIXTO" className="text-xs">
-                                        📓 Mixto
-                                    </SelectItem>
-                                    <SelectItem value="SOLICITUD_PLAN_MEJORAMIENTO" className="text-xs">
-                                        📝 Solicitud Plan Mejoramiento
-                                    </SelectItem>
-                                    <SelectItem value="INCUMPLIMIENTO_PLAN_MEJORAMIENTO" className="text-xs">
-                                        ⚠️ Incumplimiento Plan Mejoramiento
                                     </SelectItem>
                                     <SelectItem value="DESERCION" className="text-xs">
                                         🚶 Deserción
                                     </SelectItem>
-                                    <SelectItem value="PLAGIO_FRAUDE" className="text-xs">
-                                        🚫 Plagio o Fraude
+                                    <SelectItem value="SOLICITUD_PLAN_MEJORAMIENTO" className="text-xs">
+                                        📝 Solicitud Segundo Plan de Mejoramiento
                                     </SelectItem>
-                                    <SelectItem value="ETAPA_PRODUCTIVA" className="text-xs">
-                                        🏭 Etapa Productiva
+                                    <SelectItem value="INCUMPLIMIENTO_PLAN_MEJORAMIENTO" className="text-xs">
+                                        ⚠️ Pérdida Segundo Plan de Mejoramiento
                                     </SelectItem>
                                     <SelectItem value="OTRO" className="text-xs">
-                                        📋 Otra causal
+                                        📋 Otro
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
@@ -1064,8 +1058,11 @@ export function AllReportedLearnersTable({
                                     <SelectItem value="Condicionado" className="text-xs font-medium text-amber-600 dark:text-amber-400">
                                         ⚠️ Condicionado
                                     </SelectItem>
-                                    <SelectItem value="Absuelto" className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                        🛡️ Absuelto
+                                    <SelectItem value="Retiro Voluntario" className="text-xs font-medium text-sky-600 dark:text-sky-400">
+                                        🚪 Retiro Voluntario
+                                    </SelectItem>
+                                    <SelectItem value="Exonerado" className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                        🛡️ Exonerado
                                     </SelectItem>
                                     <SelectItem value="OTRO" className="text-xs font-medium text-purple-600 dark:text-purple-400">
                                         ✏️ Otra Solución

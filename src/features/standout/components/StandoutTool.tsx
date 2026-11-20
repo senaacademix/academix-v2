@@ -738,6 +738,17 @@ function GestorStandoutView({
                                 </>
                             )}
                         </Button>
+
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setProcessToDelete(activeProcess)}
+                            className="h-9 px-2.5 text-xs text-destructive hover:bg-destructive/10 rounded-xl"
+                            title="Eliminar convocatoria"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -788,6 +799,48 @@ function GestorStandoutView({
                 selectedProcessId={activeProcess.id}
                 nominationToEdit={nominationToEdit}
             />
+
+            <AlertDialog open={!!processToDelete} onOpenChange={(open) => !open && setProcessToDelete(null)}>
+                <AlertDialogContent className="max-w-md bg-card border-border/80">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-base font-bold text-foreground">
+                            ¿Eliminar convocatoria de aprendices destacados?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-muted-foreground">
+                            Estás a punto de eliminar <strong className="text-foreground">«{processToDelete?.title}»</strong>. Se eliminarán todas las postulaciones registradas en esta convocatoria.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeletingProcess} className="h-9 text-xs">
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={isDeletingProcess}
+                            onClick={async (e) => {
+                                e.preventDefault();
+                                if (!processToDelete) return;
+                                try {
+                                    setIsDeletingProcess(true);
+                                    await deleteStandoutProcessAction(processToDelete.id);
+                                    toast.success("Convocatoria eliminada.");
+                                    if (selectedProcessId === processToDelete.id) {
+                                        onSelectProcess(null);
+                                    }
+                                    setProcessToDelete(null);
+                                    await loadData(effectiveProgramId);
+                                } catch (err: any) {
+                                    toast.error(err.message || "Error al eliminar la convocatoria.");
+                                } finally {
+                                    setIsDeletingProcess(false);
+                                }
+                            }}
+                            className="h-9 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeletingProcess ? "Eliminando..." : "Eliminar"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -869,8 +922,13 @@ function TeacherStandoutView({
         [programs, selectedProgramId]
     );
 
-    const openProcesses = useMemo(
-        () => processes.filter((p) => p.status === "OPEN"),
+    const visibleProcesses = useMemo(
+        () =>
+            [...processes].sort((a, b) => {
+                if (a.status === "OPEN" && b.status !== "OPEN") return -1;
+                if (a.status !== "OPEN" && b.status === "OPEN") return 1;
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            }),
         [processes]
     );
 
@@ -955,15 +1013,15 @@ function TeacherStandoutView({
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                            Convocatorias Abiertas en {currentProgram?.name || "esta Área"}
+                            Convocatorias en {currentProgram?.name || "esta Área"}
                         </h2>
                         <span className="text-xs text-muted-foreground">
-                            {openProcesses.length} {openProcesses.length === 1 ? "convocatoria disponible" : "convocatorias disponibles"}
+                            {visibleProcesses.length} {visibleProcesses.length === 1 ? "convocatoria disponible" : "convocatorias disponibles"}
                         </span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {openProcesses.map((process) => {
+                        {visibleProcesses.map((process) => {
                             const diligence = checkProcessDiligenceWindow(process);
                             const canEdit = diligence.canEdit;
                             const myCount = myNominations.filter((n) => n.processId === process.id).length;
@@ -972,14 +1030,25 @@ function TeacherStandoutView({
                                 <Card
                                     key={process.id}
                                     onClick={() => onSelectProcess(process.id)}
-                                    className="p-5 rounded-2xl border border-teal-500/35 hover:border-teal-500 bg-card hover:bg-teal-500/5 transition-all cursor-pointer flex flex-col justify-between shadow-2xs space-y-4 hover:shadow-md"
+                                    className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between shadow-2xs space-y-4 hover:shadow-md ${
+                                        canEdit
+                                            ? "border-teal-500/35 hover:border-teal-500 bg-card hover:bg-teal-500/5"
+                                            : "border-border/80 hover:border-teal-500/40 bg-card hover:bg-muted/30"
+                                    }`}
                                 >
                                     <div className="space-y-3">
                                         <div className="flex items-start justify-between gap-2">
-                                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold gap-1.5 rounded-full px-2.5 py-0.5">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                <span>Habilitada para Postular</span>
-                                            </Badge>
+                                            {canEdit ? (
+                                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold gap-1.5 rounded-full px-2.5 py-0.5">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    <span>Habilitada para Postular</span>
+                                                </Badge>
+                                            ) : (
+                                                <Badge className="bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 text-[10px] font-semibold gap-1.5 rounded-full px-2.5 py-0.5">
+                                                    <Lock className="w-3 h-3" />
+                                                    <span>Cerrada (Solo Lectura)</span>
+                                                </Badge>
+                                            )}
 
                                             <span className="text-[10px] text-muted-foreground font-mono" suppressHydrationWarning>
                                                 {formatSafeShortDate(process.createdAt)}
@@ -1012,7 +1081,11 @@ function TeacherStandoutView({
                                     <div className="pt-2 border-t border-border/60">
                                         <Button
                                             type="button"
-                                            className="w-full text-xs font-semibold h-9 rounded-xl gap-2 bg-teal-600 hover:bg-teal-700 text-white shadow-2xs"
+                                            className={`w-full text-xs font-semibold h-9 rounded-xl gap-2 shadow-2xs ${
+                                                canEdit
+                                                    ? "bg-teal-600 hover:bg-teal-700 text-white"
+                                                    : "bg-muted hover:bg-muted/80 text-foreground"
+                                            }`}
                                         >
                                             {canEdit ? (
                                                 <>
@@ -1031,7 +1104,7 @@ function TeacherStandoutView({
                             );
                         })}
 
-                        {openProcesses.length === 0 && !isLoading && (
+                        {visibleProcesses.length === 0 && !isLoading && (
                             <div className="col-span-full py-16 text-center space-y-3 rounded-2xl border border-dashed border-border/80 bg-card">
                                 <Trophy className="w-10 h-10 text-muted-foreground/60 mx-auto" />
                                 <div className="space-y-1">

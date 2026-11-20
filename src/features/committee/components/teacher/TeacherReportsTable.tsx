@@ -30,6 +30,12 @@ import {
     AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
+} from "@/components/ui/tooltip";
+import {
     Search,
     ExternalLink,
     Eye,
@@ -46,7 +52,8 @@ import {
     X,
     RefreshCw,
     GraduationCap,
-    FileSpreadsheet
+    FileSpreadsheet,
+    MessageSquareText
 } from "lucide-react";
 import { toast } from "sonner";
 import { CommitteeReportDTO, TrainingAreaGroupDTO, FAULT_TYPE_CONFIG, formatFaultTypeLabel } from "../../types";
@@ -238,8 +245,18 @@ export function TeacherReportsTable({
 
                     <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 text-[11px]">
                         <span className="text-muted-foreground">Solución Comité:</span>
-                        <div>{renderTeacherDecisionBadge(report.committeeDecision)}</div>
+                        <div>{renderTeacherDecisionBadge(report.committeeDecision, report.committeeDecisionObservation)}</div>
                     </div>
+                    {report.committeeDecisionObservation && (
+                        <div className="p-2 rounded-lg bg-purple-500/5 border border-purple-500/20 text-[11px] space-y-0.5">
+                            <span className="font-bold text-purple-700 dark:text-purple-300 block">
+                                Observación del Gestor:
+                            </span>
+                            <p className="text-foreground/90 whitespace-pre-wrap leading-snug">
+                                {report.committeeDecisionObservation}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions Bar */}
@@ -599,7 +616,7 @@ export function TeacherReportsTable({
 
                                             {/* Solución Comité (Solo lectura para instructor) */}
                                             <TableCell>
-                                                {renderTeacherDecisionBadge(report.committeeDecision)}
+                                                {renderTeacherDecisionBadge(report.committeeDecision, report.committeeDecisionObservation)}
                                             </TableCell>
 
                                             {/* Evidence Link */}
@@ -810,7 +827,7 @@ export function TeacherReportsTable({
     );
 }
 
-function renderTeacherDecisionBadge(decision?: string | null) {
+function renderTeacherDecisionBadge(decision?: string | null, observation?: string | null) {
     if (!decision) {
         return (
             <span className="text-[11px] text-muted-foreground/60 italic inline-flex items-center gap-1">
@@ -821,34 +838,80 @@ function renderTeacherDecisionBadge(decision?: string | null) {
     }
 
     const lower = decision.toLowerCase().trim();
+    let badgeElement: React.ReactNode;
+
     if (lower.startsWith("cancelado")) {
-        return (
+        badgeElement = (
             <Badge variant="outline" className="text-[10px] py-0.5 px-2 bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 font-semibold inline-flex items-center gap-1 shadow-2xs">
                 <Ban className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
                 <span>{decision}</span>
             </Badge>
         );
-    }
-    if (lower.startsWith("condicionado")) {
-        return (
+    } else if (lower.startsWith("condicionado")) {
+        badgeElement = (
             <Badge variant="outline" className="text-[10px] py-0.5 px-2 bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-semibold inline-flex items-center gap-1 shadow-2xs">
                 <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
                 <span>{decision}</span>
             </Badge>
         );
-    }
-    if (lower.startsWith("absuelto")) {
-        return (
+    } else if (lower.startsWith("retiro voluntario")) {
+        badgeElement = (
+            <Badge variant="outline" className="text-[10px] py-0.5 px-2 bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30 font-semibold inline-flex items-center gap-1 shadow-2xs">
+                <CheckCircle2 className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
+                <span>{decision}</span>
+            </Badge>
+        );
+    } else if (lower.startsWith("exonerado") || lower.startsWith("absuelto")) {
+        const displayDecision = lower === "absuelto" ? "Exonerado" : decision;
+        badgeElement = (
             <Badge variant="outline" className="text-[10px] py-0.5 px-2 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-semibold inline-flex items-center gap-1 shadow-2xs">
                 <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{displayDecision}</span>
+            </Badge>
+        );
+    } else {
+        badgeElement = (
+            <Badge variant="outline" className="text-[10px] py-0.5 px-2 bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 font-semibold inline-flex items-center gap-1 truncate max-w-[140px] shadow-2xs" title={decision}>
+                <Scale className="w-3 h-3 text-purple-600 dark:text-purple-400 shrink-0" />
                 <span>{decision}</span>
             </Badge>
         );
     }
+
+    const cleanObs = observation?.trim();
+    if (!cleanObs) {
+        return badgeElement;
+    }
+
     return (
-        <Badge variant="outline" className="text-[10px] py-0.5 px-2 bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 font-semibold inline-flex items-center gap-1 truncate max-w-[140px] shadow-2xs" title={decision}>
-            <Scale className="w-3 h-3 text-purple-600 dark:text-purple-400 shrink-0" />
-            <span>{decision}</span>
-        </Badge>
+        <div className="space-y-1 max-w-[200px]">
+            <div className="flex items-center gap-1.5">
+                {badgeElement}
+                <TooltipProvider delayDuration={120}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 transition-colors shrink-0"
+                                aria-label="Ver observación de la solución del comité"
+                            >
+                                <MessageSquareText className="w-3 h-3" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs p-2.5 space-y-1 text-xs shadow-xl">
+                            <p className="font-bold text-foreground border-b border-border/60 pb-1">
+                                Observación del Gestor ({decision}):
+                            </p>
+                            <p className="text-[11px] text-muted-foreground whitespace-pre-wrap leading-snug">
+                                {cleanObs}
+                            </p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            </div>
+            <p className="text-[10px] text-muted-foreground line-clamp-1 italic" title={cleanObs}>
+                {cleanObs}
+            </p>
+        </div>
     );
 }

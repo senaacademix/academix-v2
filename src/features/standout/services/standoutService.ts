@@ -426,6 +426,13 @@ export class StandoutService {
             throw new Error("Solo puedes editar tus propias postulaciones.");
         }
 
+        if (!isGestorOrAdmin && existing.process) {
+            const diligence = checkProcessDiligenceWindow(existing.process);
+            if (!diligence.canEdit) {
+                throw new Error(diligence.message || "Este proceso se encuentra cerrado y en modo solo lectura.");
+            }
+        }
+
         const updateData: any = {};
         if (input.category !== undefined) {
             updateData.category = input.category;
@@ -484,12 +491,20 @@ export class StandoutService {
 
     async deleteNomination(nominationId: string, userId: string, isGestorOrAdmin: boolean): Promise<void> {
         const existing = await prisma.standoutNomination.findUnique({
-            where: { id: nominationId }
+            where: { id: nominationId },
+            include: { process: true }
         });
         if (!existing) throw new Error("La postulación no existe.");
 
         if (!isGestorOrAdmin && existing.nominatedById !== userId) {
             throw new Error("Solo puedes eliminar tus propias postulaciones.");
+        }
+
+        if (!isGestorOrAdmin && existing.process) {
+            const diligence = checkProcessDiligenceWindow(existing.process);
+            if (!diligence.canEdit) {
+                throw new Error(diligence.message || "Este proceso se encuentra cerrado y en modo solo lectura.");
+            }
         }
 
         await prisma.standoutNomination.delete({

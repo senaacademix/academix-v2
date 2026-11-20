@@ -103,7 +103,7 @@ export function ReportLearnerModal({
     const [groupId, setGroupId] = useState("");
     const [groupSearch, setGroupSearch] = useState("");
     const [studentId, setStudentId] = useState("");
-    const [faultType, setFaultType] = useState<CommitteeFaultType>("ACADEMICO");
+    const [faultType, setFaultType] = useState<CommitteeFaultType>("DISCIPLINARIO");
     const [customFaultType, setCustomFaultType] = useState("");
     const [absenceDays, setAbsenceDays] = useState<number | string>(0);
     const [evidenceUrl, setEvidenceUrl] = useState("");
@@ -126,10 +126,17 @@ export function ReportLearnerModal({
 
     useEffect(() => {
         if (reportToEdit) {
+            const allowedFaults: CommitteeFaultType[] = [
+                "DISCIPLINARIO",
+                "DESERCION",
+                "SOLICITUD_PLAN_MEJORAMIENTO",
+                "INCUMPLIMIENTO_PLAN_MEJORAMIENTO",
+                "OTRO"
+            ];
             setProcessId(reportToEdit.processId);
             setGroupId(reportToEdit.groupId);
             setStudentId(reportToEdit.studentId);
-            setFaultType(reportToEdit.faultType);
+            setFaultType(allowedFaults.includes(reportToEdit.faultType) ? reportToEdit.faultType : "DISCIPLINARIO");
             setCustomFaultType(reportToEdit.customFaultType || "");
             setAbsenceDays(reportToEdit.absenceDays ?? reportToEdit.absenceHours ?? 0);
             setEvidenceUrl(reportToEdit.evidenceUrl || "");
@@ -143,7 +150,7 @@ export function ReportLearnerModal({
             setProcessId(defaultProc);
             setGroupId(defGroupId);
             setStudentId("");
-            setFaultType("ACADEMICO");
+            setFaultType("DISCIPLINARIO");
             setCustomFaultType("");
             setAbsenceDays(0);
             setEvidenceUrl("");
@@ -235,6 +242,11 @@ export function ReportLearnerModal({
 
         if (faultType === "OTRO" && !customFaultType.trim()) {
             toast.error("Por favor especifica la causal o motivo del reporte.");
+            return;
+        }
+
+        if (!observations.trim()) {
+            toast.error("Por favor ingresa las observaciones del reporte.");
             return;
         }
 
@@ -616,35 +628,20 @@ export function ReportLearnerModal({
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="ACADEMICO" className="text-xs">
-                                            📘 Académico (Incumplimiento / bajo desempeño en RA)
-                                        </SelectItem>
                                         <SelectItem value="DISCIPLINARIO" className="text-xs">
-                                            📕 Disciplinario (Faltas al reglamento / conducta)
-                                        </SelectItem>
-                                        <SelectItem value="INASISTENCIA" className="text-xs">
-                                            📙 Inasistencia (Inasistencias continuas o injustificadas)
-                                        </SelectItem>
-                                        <SelectItem value="MIXTO" className="text-xs">
-                                            📓 Mixto (Académico y disciplinario/asistencia)
-                                        </SelectItem>
-                                        <SelectItem value="SOLICITUD_PLAN_MEJORAMIENTO" className="text-xs">
-                                            📝 Solicitud Plan de Mejoramiento (Concertación de compromisos)
-                                        </SelectItem>
-                                        <SelectItem value="INCUMPLIMIENTO_PLAN_MEJORAMIENTO" className="text-xs">
-                                            ⚠️ Incumplimiento Plan de Mejoramiento (Vencimiento de compromisos)
+                                            📕 Disciplinario
                                         </SelectItem>
                                         <SelectItem value="DESERCION" className="text-xs">
-                                            🚶 Deserción (Inasistencia injustificada reiterada / abandono)
+                                            🚶 Deserción
                                         </SelectItem>
-                                        <SelectItem value="PLAGIO_FRAUDE" className="text-xs">
-                                            🚫 Plagio o Fraude Académico (Copia no autorizada de evidencias)
+                                        <SelectItem value="SOLICITUD_PLAN_MEJORAMIENTO" className="text-xs">
+                                            📝 Solicitud Segundo Plan de Mejoramiento
                                         </SelectItem>
-                                        <SelectItem value="ETAPA_PRODUCTIVA" className="text-xs">
-                                            🏭 Incumplimiento en Etapa Productiva (Empresa / Práctica)
+                                        <SelectItem value="INCUMPLIMIENTO_PLAN_MEJORAMIENTO" className="text-xs">
+                                            ⚠️ Pérdida Segundo Plan de Mejoramiento
                                         </SelectItem>
                                         <SelectItem value="OTRO" className="text-xs">
-                                            📋 Otro (Especificar causal personalizada)
+                                            📋 Otro
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -739,19 +736,17 @@ export function ReportLearnerModal({
                             <div className="space-y-1.5 flex-1 flex flex-col">
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="report-observations" className="text-xs font-semibold">
-                                        Observaciones
+                                        Observaciones <span className="text-destructive">*</span>
                                     </Label>
-                                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-border/80">
-                                        Opcional
-                                    </Badge>
                                 </div>
                                 <Textarea
                                     id="report-observations"
                                     value={observations}
                                     onChange={(e) => setObservations(e.target.value)}
-                                    placeholder="Describe detalladamente los hechos, fechas, competencias o resultados de aprendizaje afectados (opcional)..."
+                                    placeholder="Describe detalladamente los hechos, fechas, competencias o resultados de aprendizaje afectados..."
                                     className="text-xs resize-none flex-1 min-h-[170px]"
                                     disabled={isReadOnly}
+                                    required
                                 />
                             </div>
                         </div>

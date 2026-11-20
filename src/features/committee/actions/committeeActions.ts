@@ -151,13 +151,17 @@ export async function deleteReportAction(reportId: string) {
     return { success: true };
 }
 
-export async function updateReportDecisionAction(reportId: string, decision: string | null) {
+export async function updateReportDecisionAction(
+    reportId: string,
+    decision: string | null,
+    decisionObservation?: string | null
+) {
     const { role } = await getAuthSession();
     if (role !== "gestor" && role !== "admin") {
         throw new Error("Solo el Gestor Académico o el Administrador pueden registrar la solución o decisión del comité.");
     }
 
-    const report = await committeeService.updateReportDecision(reportId, decision);
+    const report = await committeeService.updateReportDecision(reportId, decision, decisionObservation);
 
     revalidatePath("/dashboard/gestor/tools");
     revalidatePath("/dashboard/teacher/tools");
